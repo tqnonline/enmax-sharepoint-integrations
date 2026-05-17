@@ -549,7 +549,7 @@ Closes #
 - [ ] Build succeeds
 - [ ] Manual smoke check completed (describe below)
 
-<!-- For plug-in changes, the second reviewer requirement applies (CLAUDE.md Rule 14). -->
+<!-- Single-reviewer model (Rahul) per project decision 2026-05-17; CLAUDE.md Rule 14 reviewer count is overridden for this project. -->
 ```
 
 **`.github/ISSUE_TEMPLATE/bug.yml`, `feature.yml`, `manual-handoff.yml`:** standard GitHub form templates with fields for spec section reference, acceptance criteria, file targets, and runbook link (for `manual-handoff`).
@@ -613,7 +613,7 @@ git checkout main
 
 In `CONTRIBUTING.md`, document that `main` requires:
 - Status checks: `ci` green
-- Pull request reviews: 1 approval (2 for any change under `solution/plugins/`)
+- Pull request reviews: 1 approval (Rahul) for all changes including `solution/plugins/` (single-reviewer model per project decision 2026-05-17)
 - Conversation resolution required
 - No force-push
 
