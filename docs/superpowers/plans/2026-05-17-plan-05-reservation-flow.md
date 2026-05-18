@@ -271,11 +271,16 @@ src/features/approvals/
 
 ## Step 5 — Flow: `On Reservation Approved → Issue Drawings and Sheets`
 
-**Trigger:** Dataverse "When a row is updated" → `enmax_autocadreservation`. Filter: `enmax_acdnstatus eq 2` (Approved).
+**Trigger:** Dataverse "When a row is updated" → `enmax_autocadreservation`. Filter: `enmax_acdnstatus eq 2 and _modifiedby_value ne '<service-account-userid>'` (Approved AND not service-account-modified). *Trigger-level filter prevents loop without burning a flow run per architecture review Finding 5.5.*
 
 **Flow steps:**
 
-1. **Guard:** if `_modifiedby_value` is the service account AND the previous value was already Approved, exit (prevents loop)
+1. **Pre-validate batch capacity (added 2026-05-18 per architecture review Finding 5.3):**
+   - Query target Number Sequence row by composed Sequence Key
+   - Assert `LastIssued + Reservation.Count ≤ 9999` — if not, exit early with admin notification; Reservation reverts to Pending; no sequence values burned
+   - Assert `Reservation.DrawingCount × Reservation.SheetsPerDrawing ≤ 1000` (sanity cap to avoid runaway loops)
+   - Assert SharePoint Library URL is populated on the target Asset-Unit row — if null, exit early with admin notification; reservation reverts to Pending; admin runs library provisioning before re-approving
+   - **Note:** pre-validation reduces likelihood of mid-loop failure but does not eliminate it (transient Dataverse outages remain). Residual risk accepted per project decision 2026-05-18 (alternative: full compensating action rejected for complexity).
 2. **Retrieve related rows** (Business, Asset, Unit, Domain, System, Kind)
 3. **Invoke `enmax_acdnIssueNumbers` custom action** (plan #03):
    - Inputs: 6 segment codes + Count from the Reservation row
@@ -312,11 +317,11 @@ src/features/approvals/
 
 ## Step 6 — Flow: `On Reservation Declined → Notify Requester`
 
-**Trigger:** Dataverse "When a row is updated" → `enmax_autocadreservation`. Filter: `enmax_acdnstatus eq 3` (Declined).
+**Trigger:** Dataverse "When a row is updated" → `enmax_autocadreservation`. Filter: `enmax_acdnstatus eq 3 and _modifiedby_value ne '<service-account-userid>'` (Declined AND not service-account-modified). *Trigger-level filter per architecture review Finding 5.5.*
 
 **Flow steps:**
 
-1. **Guard:** ignore if `_modifiedby_value` is service account on re-replay
+1. ~~Guard: ignore if `_modifiedby_value` is service account on re-replay~~ *(now enforced at trigger filter — no inline guard needed per Finding 5.5)*
 2. **Notify requester** across 3 channels:
    - **Email** via child flow `Send_Approval_Result_Email` with template 36.3 (Declined) + DeclineReason from row
    - **Teams card** (1:1): "Declined: {{ReservationId}} — Reason: {{Reason}}"

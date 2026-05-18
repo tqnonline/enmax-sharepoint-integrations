@@ -86,7 +86,28 @@ When a request arises mid-build to add scope, the answer is **no** unless ALL of
 2. The fix is the minimum that makes the criterion pass — not a "better" version.
 3. The fix does not introduce a new external dependency, new data table, or new flow.
 
-Any other request is logged as a Phase 2 backlog item with a one-line rationale and parked. The 24-hour build window has no slack for scope drift.
+Any other request is logged as a Phase 2 backlog item with a one-line rationale and parked. The build window has no slack for scope drift.
+
+## Effort Baseline (re-baselined 2026-05-18 post architecture review)
+
+Phase 1 effort estimate (sum of plan-level estimates):
+
+| Plan | Estimate |
+|------|----------|
+| #01 Repo scaffold | 4–6h |
+| #02 Dataverse schema + seed (incl. retroactive amendments) | 10–14h |
+| #03 IssueNumbers plug-in | 12–16h |
+| #04 Code App shell | 10–14h |
+| #05 Reservation flow + 3-channel notifications | 16–20h |
+| #06 Check-out / Check-in + SP provisioning | 18–22h |
+| #07 Search + admin surfaces (incl. C# audit plug-in addition) | 26–30h |
+| #08 Broadcasts + notification feed + Home | 14–18h |
+| #09 UAT promotion + acceptance pass | 8–12h |
+| **Total Phase 1** | **118–152h** |
+
+Calendar at 20 hours/day sustained execution = **6–8 working days**. PRD's prior "24-hour build window" reference is rebased here. UAT cutover window separately remains ~24 hours within plan #09 timeframe.
+
+Plan #10 (F-06 release-numbers) is Phase 1.5 — ships after UAT acceptance, ~6–8h additional effort.
 
 ## Phase 1 Non-Goals (Explicit)
 

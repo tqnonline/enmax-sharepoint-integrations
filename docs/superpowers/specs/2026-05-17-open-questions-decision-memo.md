@@ -55,16 +55,28 @@ Two questions (Q6, Q7) are hard gates: no Code App without the environment toggl
 
 **Question:** Should the service account's `Sites.Selected` permission scope cover only the Generation Drawings site, or a wider Generation tenant area for future use?
 
-**Recommendation:** Generation Drawings site collection only. Least privilege.
+**Original recommendation:** Generation Drawings site collection only. Least privilege.
 
-**Rationale:**
-- `Sites.Selected` is granted per site collection. Expanding scope later is a single Graph API call; narrowing scope after a breach is much harder politically and operationally.
-- Phase 1 functional requirements only touch Generation Drawings. Phase 2 hooks (out of scope) can request additional grants when they arrive.
-- A narrower scope reduces blast radius if the service account credential is ever compromised.
+**Final decision (2026-05-18, post architecture review):** **FullControl** permanently granted to the service account on the Generation Drawings site collection. Override of original least-privilege recommendation.
 
-**Risk if wrong:** Low. Phase 2 scope expansion is a documented runbook step, not a code change.
+**Rationale for override:**
+- Architecture review (Finding 5.1) identified that the SharePoint provisioning flow (plan #06 Step 2) requires Site Owner / FullControl to (1) create document libraries, (2) bind content types, (3) configure versioning, (4) grant Read to Entra security groups. `Sites.Selected` READ is insufficient for any of these operations.
+- Three permission-model alternatives were considered:
+  1. Pre-provision via runbook + remove runtime flow (most secure, simplest impl)
+  2. Transient elevation per call via separate Azure AD app role (complex auth surface)
+  3. FullControl permanent grant (simplest, widest blast radius)
+  4. Split: indexing READ + provisioning via admin-impersonation (medium complexity)
+- Decision: FullControl permanent grant per project decision 2026-05-18.
 
-**Decision owner:** SharePoint admin + Security.
+**Security risk acknowledged:** compromised service account credential → full SharePoint write access to Generation Drawings site collection (delete libraries, modify files, exfiltrate content). Mitigated by:
+- Azure Key Vault storage with quarterly rotation (per PRD section 12.6)
+- Audit Event written for every flow-driven SharePoint operation
+- Service account excluded from all notification recipient lists (PRD section 12.6)
+- **Note:** synthetic monitor flow on SP health (originally proposed in PRD risk #2) was deprioritised for Phase 1 — increases this risk's blind-spot window.
+
+**Risk if wrong:** Medium (was Low). Override expands blast radius for credential compromise. Quarterly rotation rehearsal partially mitigates.
+
+**Decision owner:** SharePoint admin + Security (override accepted by Rahul Akmol on 2026-05-18).
 
 **Blocks:** Runbook #004 (SharePoint provisioning). Does not block code start.
 
@@ -159,7 +171,7 @@ Two questions (Q6, Q7) are hard gates: no Code App without the environment toggl
 |---|----------|--------------------|----|---|
 | Q1 | Conn-ref prefix | `enmax_connref_*` separate from `enmax_envar_*` | Solution architect + PP admin | Repo scaffold |
 | Q2 | Teams 1:1 bot | Confirm; fallback to private channel | Nathan / Teams admin | Notification UX (not start) |
-| Q3 | SharePoint scope | Generation Drawings site only | SP admin + Security | Runbook #004 |
+| Q3 | SharePoint perms | **FullControl on Generation Drawings site** (override of original site-only recommendation; see Q3 detail) | SP admin + Security | Runbook #004 |
 | Q4 | Dataverse region | Canada Central (`can`) | PP admin | Seed scripts |
 | Q5 | Email-from | Shared mailbox with `Send As` | Exchange admin + Heather | Email flows |
 | Q6 | Licensing | Hybrid: per-app users, per-user admins | Procurement | UAT release |
@@ -171,7 +183,7 @@ Two questions (Q6, Q7) are hard gates: no Code App without the environment toggl
 |---|--------|----------|----|----|
 | Q1 | Closed | Separate prefixes: `enmax_connref_*` for connection references, `enmax_envar_*` for environment variables | Rahul Akmol | 2026-05-17 |
 | Q2 | Closed | Approved — proceed with 1:1 adaptive card delivery to personal Teams chat | Rahul Akmol | 2026-05-17 |
-| Q3 | Closed | Generation Drawings site collection only (`Sites.Selected` least privilege) | Rahul Akmol | 2026-05-17 |
+| Q3 | Closed (re-decided 2026-05-18) | FullControl on Generation Drawings site collection. Override of original Sites.Selected READ recommendation per architecture review Finding 5.1. Risk acknowledged: compromised credential = full SP write blast radius. | Rahul Akmol | 2026-05-18 |
 | Q4 | Closed | Canada Central (`DATAVERSE_GEO=can`) for dev + UAT | Rahul Akmol | 2026-05-17 |
 | Q5 | Closed | Shared mailbox `noreply-autocad@enmax.com` (prod/UAT) and `noreply-autocad@tqnonline.onmicrosoft.com` (dev tenant), service account granted `Send As` on each | Rahul Akmol | 2026-05-17 |
 | Q6 | Closed | Per-user Premium for all users (admins, approvers, end users, search-only) | Rahul Akmol | 2026-05-17 |
@@ -180,7 +192,8 @@ Two questions (Q6, Q7) are hard gates: no Code App without the environment toggl
 ## Override Notes
 
 - **Q5:** PRD-assumed mailbox `gen-drawings@enmax.com` superseded by per-environment `noreply-autocad@*` addresses. Implication: outbound emails are no-reply; users must follow in-app/Teams call-to-action links instead of replying to email. Update notification flow child-flow templates to remove any "reply to this email" copy. Add explicit "Do not reply — open the app to respond" line to every email template (Appendix I).
-- **Q6:** Hybrid licensing recommendation (~$41K/yr) overridden in favour of per-user Premium for all (~$160K/yr list price). Trade-off accepted: higher operational cost in exchange for simplicity, future Phase 2 app coverage, and no per-user app-license bookkeeping. Procurement to confirm Enterprise Agreement discount.
+- **Q6:** Hybrid licensing recommendation (~$41K/yr) overridden in favour of per-user Premium for all (~$160K/yr list price). Trade-off accepted: higher operational cost in exchange for simplicity, future Phase 2 app coverage, and no per-user app-license bookkeeping. Procurement to confirm Enterprise Agreement discount. **Re-confirmed 2026-05-18 post architecture review (Finding 5.8) — status quo maintained.**
+- **Q3 (re-decided 2026-05-18):** Original `Sites.Selected` READ recommendation superseded by **FullControl** permanent grant on Generation Drawings site collection. Override accepted to unblock plan #06 SharePoint provisioning flow (Finding 5.1). Blast radius for credential compromise expands materially: full SP write access to drawing catalogue. Mitigations: Key Vault + quarterly rotation rehearsal + per-flow audit events + service account excluded from notification recipient lists. Note: synthetic SP-health monitor (originally proposed in PRD risk #2) was deprioritised — increases blind-spot window for permission regressions.
 
 ## Next Step
 

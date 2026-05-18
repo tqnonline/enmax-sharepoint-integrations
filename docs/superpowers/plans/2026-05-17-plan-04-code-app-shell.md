@@ -317,7 +317,7 @@ export function useUserRole(): Role {
     queryKey: ["user-teams", user?.id],
     enabled: !!user?.id,
     queryFn: () => fetchUserTeams(user!.id),       // Web API: GET teammemberships
-    staleTime: 5 * 60 * 1000,                      // re-check team membership every 5 min
+    staleTime: 60 * 1000,                          // 60s — bounded stale-role UX window per architecture review Finding 5.10
   });
 
   if (!teams) return "Unknown";

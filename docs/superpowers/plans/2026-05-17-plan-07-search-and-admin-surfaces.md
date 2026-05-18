@@ -5,7 +5,7 @@
 **Spec:** `2026-05-17-phase-1-cut-line-spec.md`
 **PRD refs:** sections 4 (F-17 through F-38), 5.4 (search journey), 6 (info arch), 7 (schema), 12 (security), 17 (two-app split)
 **Decisions:** `2026-05-17-open-questions-decision-memo.md`
-**Estimated effort:** 20–24 hours
+**Estimated effort:** 26–30 hours (was 20–24h; +6h added 2026-05-18 for `AuditEmitter` C# plug-in scope per architecture review decisions)
 **Branch:** `feat/007-search-and-admin-surfaces` → PR to `dev`
 **Blocked by:**
 - Plans #01–#06 merged
@@ -231,9 +231,58 @@ Per F-21, F-32. Admin-only (RequireRole={Admin}).
 - Asset-Unit: two Lookup pickers + optional SharePoint Library URL (read-only — populated by plan #06 provisioning flow)
 - System Scope: System picker + ScopeType select + ScopeValue text (with hint per ScopeType) + Active toggle
 
-**Every reference data change writes an Audit Event** per F-32; written automatically by the existing flow `On Reference Data Changed → Audit` (plan #05 didn't ship this — adding to this plan's Step 4b).
+**Every reference data change writes an Audit Event** per F-32; written automatically by the new `AuditEmitter` C# plug-in (Step 4b) — replaces the original 12-child-flows approach per architecture review decision 2026-05-18 (Anti-Pattern #1 + #5).
 
-**Step 4b: Flow `On Reference Data Changed → Audit`** (deferred from plan #05 due to dependency on UI). Single Power Automate flow triggered by any Create/Update/Delete on any of the 12 reference tables; writes one Audit Event row with `Event=ReferenceDataChanged`, `Source=Flow`, `Reason="{table} {operation}: {row Code}"`. Trigger is "When a row is added, modified or deleted" with multi-table filter (Power Automate supports OR triggers; if not, ship 12 child flows w/ shared logic).
+**Step 4b: `AuditEmitter` Dataverse plug-in (single C# class)** *(replaces the deferred-from-plan-#05 flow approach per architecture review 2026-05-18)*.
+
+Single C# plug-in (`solution/plugins/AuditEmitter/`) registered on Create/Update/Delete of every reference table AND on Update of Checkout (covers the Submit Revision Open→AwaitingValidation transition per architecture review Anti-Pattern #5). Reuses csproj + test infra patterns from plan #03 IssueNumbers.
+
+**Registered steps:**
+
+| Message | Entity | Stage | Mode |
+|---------|--------|-------|------|
+| Create | each of 12 reference tables | PostOperation | Synchronous |
+| Update | each of 12 reference tables | PostOperation | Synchronous |
+| Delete | each of 12 reference tables | PostOperation | Synchronous |
+| Update | `enmax_autocadcheckout` | PostOperation | Synchronous (filtered to status change only via filtering attributes) |
+
+**Plug-in behaviour:**
+
+```csharp
+public class AuditEmitter : PluginBase
+{
+  protected override void ExecuteDataversePlugin(ILocalPluginContext ctx)
+  {
+    var pluginCtx = ctx.PluginExecutionContext;
+    var orgSvc = ctx.OrgSvcFactory.CreateOrganizationService(pluginCtx.UserId);
+
+    var subjectTable = pluginCtx.PrimaryEntityName;
+    var subjectId = pluginCtx.PrimaryEntityId;
+    var (eventType, reason) = ClassifyEvent(pluginCtx, subjectTable);
+
+    var auditRow = new Entity("enmax_autocadauditevent")
+    {
+      ["enmax_acdnsubjecttable"] = subjectTable,
+      ["enmax_acdnsubjectid"] = subjectId.ToString(),
+      ["enmax_acdnevent"] = new OptionSetValue((int)eventType),
+      ["enmax_acdnreason"] = reason,
+      ["enmax_acdnsource"] = new OptionSetValue(4),  // Action / synchronous platform
+      ["enmax_acdnactedby"] = new EntityReference("systemuser", pluginCtx.UserId),
+    };
+    orgSvc.Create(auditRow);
+  }
+
+  // ClassifyEvent inspects message + table to return (eventType, reason)
+  // - Reference-table Create/Update/Delete → ReferenceDataChanged
+  // - Checkout Update with status change → StateChanged w/ from/to
+}
+```
+
+**Effort:** ~6h (csproj setup reuses plan #01 scaffolding; class is straightforward; unit tests via FakeXrmEasy similar to plan #03 pattern but simpler — no concurrency, no retry logic).
+
+**Why plug-in not 12 child flows:** maintenance (1 class vs 12 flow definitions), better performance (in-process write vs Power Automate run overhead), consistent w/ plan #03 plug-in infrastructure. Architecture review Anti-Pattern #1.
+
+**Tests:** ~10 unit tests via xUnit + FakeXrmEasy (one per reference table type + one per Checkout status transition). Single CODEOWNERS entry covers `solution/plugins/AuditEmitter/`; single-reviewer model per project decision.
 
 ## Step 5 — Number Sequences sub-destination
 
@@ -371,16 +420,9 @@ Per F-27, F-33. All roles.
 - Copyright per F-36 (from AppConfig.FooterCopyright)
 - Link to "Open in browser" play URL (for shareable links)
 
-## Step 8 — Audit Reference Data Changes Flow (deferred from #05)
+## Step 8 — ~~Audit Reference Data Changes Flow~~ → Superseded by Step 4b `AuditEmitter` Plug-in
 
-Single Power Automate flow listening on all 12 reference tables. Per F-32.
-
-**Trigger:** "When a row is added, modified or deleted" — if Power Automate's Dataverse trigger doesn't support multi-table OR triggers, ship as 12 simple child flows (or a single flow per table; minimal logic, mass-produced).
-
-**Steps:**
-1. Read changed row (or pre-change image for Update)
-2. Compose audit reason: `concat(table, ' ', operation, ': ', row.enmax_acdncode)`
-3. Create Audit Event row: `Event=ReferenceDataChanged`, `Source=Flow`, `SubjectTable=triggerTable`, `SubjectId=triggerRowId`, `Reason=composed`, `ActedBy=modifiedBy`
+*Original Step 8 (12-flow / single-flow Power Automate approach) was superseded by the C# `AuditEmitter` plug-in in Step 4b per architecture review decision 2026-05-18. See Step 4b for the full implementation. This Step retained as a stub to preserve step numbering.*
 
 ## Step 9 — Tests
 
@@ -525,7 +567,7 @@ python solution/scripts/import.py
 
 - **Add `enmax_autocaduserpreference` table to plan #02 schema** — one-time addition; columns User (lookup), EmailEnabled (bool default true), TeamsEnabled (bool default true), CreatedOn. Single row per user.
 - **`enmax_acdnSeedNumberSequence` custom action** — author in maker per Step 5b; bound to Number Sequence.
-- **Audit Reference Data Changed flow** — Step 8 single flow vs 12 child flows decision finalised at implementation when checking Dataverse multi-table trigger support.
+- ~~Audit Reference Data Changed flow — Step 8 single flow vs 12 child flows decision~~ **Resolved 2026-05-18: superseded by `AuditEmitter` C# plug-in (Step 4b).**
 - **CSV export Audit Event source type** — currently writes `Source=CodeApp` w/ Event=Created? Or new option `Source=Export`? Decide at implementation; consistent w/ existing audit taxonomy.
 - **Audit log retention monitoring** — runbook #009 addendum (deferred).
 - **Notification preferences integration with flows** — plans #05/#06 currently always send email + Teams; this plan adds preference table but flow updates happen in this plan or as small post-plan-07 fix. Decision: implement as Step 10 here (small flow update across the 6+ notification fan-outs). Document in implementation.

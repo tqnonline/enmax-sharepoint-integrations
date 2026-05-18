@@ -97,7 +97,7 @@ Transitions computed by a scheduled flow (Step 4) running nightly + on every Bro
 Per PRD section 10 `ENMAX AutoCAD: On Broadcast Published → Fan Out In-App Notifications`.
 
 **Trigger:** Two triggers (Power Automate supports multi-trigger in v3):
-1. Dataverse "When a row is created or updated" on `enmax_autocadbroadcast` (immediate fan-out when admin activates)
+1. Dataverse "When a row is created or updated" on `enmax_autocadbroadcast`. **Filter: `_modifiedby_value ne '<service-account-userid>'`** (excludes status-compute flow re-writes per architecture review Anti-Pattern #3) — admin edits only fire fan-out, not platform recursions.
 2. Scheduled recurrence every `AppConfig.BroadcastFanOutCadenceMinutes` (60 by default)
 
 **Steps:**
@@ -137,7 +137,7 @@ Replaces plan #04's empty `NotificationBell.tsx` panel stub with full feed.
 - Filter: `_enmax_acdnrecipient_value = currentUserId`
 - Sort: `createdon desc`
 - Limit: 50 most recent (older accessible via "Load more")
-- Poll cadence: 30s (PRD section 6 "30-second background refresh")
+- Poll cadence: **React Query `refetchOnWindowFocus: true` + 5-minute keepalive interval** *(was 30s; updated 2026-05-18 per architecture review Finding 5.4 to reduce idle-tab API load by ~10x)*. PRD section 6 "30-second background refresh" superseded — notification freshness on tab-focus is the dominant UX moment; idle tabs revalidate every 5 min as a safety net.
 
 **Layout (per PRD section 11.3):**
 
@@ -391,7 +391,7 @@ python solution/scripts/import.py
 | Markdown preview renders external link `<a href="javascript:...">` | react-markdown sanitises href via default schema; tested explicitly |
 | Critical-threshold broadcast spam if admin doesn't act on 9900 sequence | 7-day cooldown per sequence + RequiresAck=true keeps the broadcast pinned until admin acknowledges; only one broadcast per sequence per week |
 | Notification preference table query adds latency to every notify flow | Single Dataverse `List rows` w/ filter on user GUID; <100ms; cached for flow duration |
-| Bell panel poll cadence (30s) increases Dataverse load | 670 users × 2 polls/min × 60 min × 8 hrs/day = 643K calls/day shared across 670 users → ~1K calls/user/day, well within per-user quota. Service account uninvolved (each user authenticates via host SSO; bell query runs as caller). |
+| Bell panel poll cadence load | **Resolved 2026-05-18 (Finding 5.4):** switched from 30s interval to `refetchOnWindowFocus: true` + 5-min keepalive. ~10x reduction in idle-tab queries. Active-use freshness preserved via focus refetch. |
 | Mark-all-read on session w/ thousands of unread rows takes minutes | Cap mark-all-read to 50 most-recent (matches visible feed); older unread stays unread; documented in tooltip |
 | Pinned broadcast clutters Home for users in multiple audiences | Per-user dismissal + acknowledgement clears pinning for that user; "Pinned for everyone" is admin discretion + sparingly used by convention |
 

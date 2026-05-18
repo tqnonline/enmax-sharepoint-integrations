@@ -109,7 +109,7 @@ Every Choice column references a global option set (no local picklists, per PRD 
 | `enmax_acdn_auditsource`           | Audit Source            | 1=CodeApp, 2=AdminApp, 3=Flow, 4=Action                                                                                                                                     |
 | `enmax_acdn_recordstatus`          | Record Status           | 1=Active, 2=Inactive                                                                                                                                                        |
 | `enmax_acdn_notificationseverity`  | Notification Severity   | 0=None, 1=Info, 2=Success, 3=Warning, 4=Critical                                                                                                                            |
-| `enmax_acdn_sourceevent`           | Source Event            | 0=None, 1=ReservationApproved, 2=ReservationDeclined, 3=CheckinValidated, 4=CheckinDeclined, 5=StaleCheckoutReminder, 6=BroadcastPublished, 7=ForceCheckin, 8=SystemMessage |
+| `enmax_acdn_sourceevent`           | Source Event            | 0=None, 1=ReservationApproved, 2=ReservationDeclined, 3=CheckinValidated, 4=CheckinDeclined, 5=StaleCheckoutReminder, 6=BroadcastPublished, 7=ForceCheckin, 8=SystemMessage, 9=ReservationPending *(added 2026-05-18 per architecture review Finding 5.7)* |
 | `enmax_acdn_broadcastseverity`     | Broadcast Severity      | 0=None, 1=Info, 2=Warning, 3=Critical                                                                                                                                       |
 | `enmax_acdn_broadcastaudience`     | Broadcast Audience      | 0=None, 1=Users, 2=Approvers, 3=Admins, 4=Everyone (multi-select column)                                                                                                    |
 | `enmax_acdn_broadcaststatus`       | Broadcast Status        | 0=None, 1=Draft, 2=Scheduled, 3=Active, 4=Expired, 5=Retired                                                                                                                |
@@ -163,6 +163,7 @@ Tables to author:
 - `enmax_autocadinappnotification` (In-App Notification)
 - `enmax_autocadbroadcast` (Broadcast)
 - `enmax_autocadbroadcastdismissal` (Broadcast Dismissal)
+- `enmax_autocaduserpreference` (User Preference) — *added 2026-05-18 per architecture review Finding 5.7*
 
 **Autonumber configuration (Reservation):**
 
@@ -170,7 +171,28 @@ Tables to author:
 - Format: `RES-{SEQNUM:00000}`
 - Seed: 1 (so first reservation is `RES-00001`)
 
+**Drawing — additional column (added 2026-05-18 per architecture review Finding 5.7):**
+
+| Display name | Schema | Type | Notes |
+|---|---|---|---|
+| Missing Sheets | `enmax_acdnmissingsheets` | Multiline text (JSON) | Populated by the `On Revision Submitted` indexing flow (plan #06 Step 3) when uploaded SharePoint files don't cover all expected sheet numbers. JSON array of missing sheet integers, e.g. `[2, 5]`. Empty/null means all sheets present. Surfaced in approver validation panel (plan #06 ValidationDrawer). |
+
+**User Preference — new table (added 2026-05-18 per architecture review Finding 5.7):**
+
+`enmax_autocaduserpreference` — one row per user; owner-scoped (user owns own row).
+
+| Display name | Schema | Type | Notes |
+|---|---|---|---|
+| User | `enmax_acdnuser` | Lookup → SystemUser | Required; also Owner |
+| Email Enabled | `enmax_acdnemailenabled` | Yes/No | Default Yes |
+| Teams Enabled | `enmax_acdnteamsenabled` | Yes/No | Default Yes |
+| Created On | `createdon` | Date and Time | Standard |
+
+Alternate key: `enmax_acdnuser` (single-column unique). Notification flows in plans #05/#06/#08 read this row before sending email/Teams; in-app channel always writes regardless (per F-33).
+
 **Required fields, default values, max lengths:** match PRD section 7.2 columns table verbatim.
+
+**Retroactive amendment note (2026-05-18):** the three additions above (`enmax_acdn_sourceevent.ReservationPending` value, Drawing.MissingSheets column, enmax_autocaduserpreference table) were originally documented as TODOs in plans #05/#06/#07. Architecture review Finding 5.7 chose to amend plan #02 retroactively rather than carve a separate plan #02a. This preserves the "plan #02 owns schema" boundary at the cost of a confusing audit trail: the original plan #02 commit (`fcef265`) did not include these. Subsequent maker-UI authoring + export-unpack must include these additions in the same solution export.
 
 ## Step 5 — Indexes + alternate keys
 

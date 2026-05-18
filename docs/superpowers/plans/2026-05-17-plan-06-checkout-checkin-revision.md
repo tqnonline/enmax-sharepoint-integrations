@@ -11,7 +11,7 @@
 - Plans #01–#05 merged to `dev`
 - Runbook #004 executed: Generation Drawings site collection exists at `https://enmax.sharepoint.com/sites/GenerationDrawings`
 - Runbook #005 executed: `Generation Drawing Information` content type bound to site; `Systems` + `Vendors` term sets exist
-- Service account has `Sites.Selected` READ on the Generation Drawings site (per Q3 decision); transient Site Owner permission available during dev-tenant first provisioning run only
+- Service account has **`Sites.Selected` FullControl** on the Generation Drawings site (per Q3 re-decision 2026-05-18 post architecture review Finding 5.1). Override of original READ-only scope. Risk acknowledged: compromised credential = full SP write blast radius. Mitigated by Key Vault + quarterly rotation + per-flow audit events.
 
 ## Context
 
@@ -27,7 +27,7 @@ This plan does **not** ship: Search (plan #07), My Items grid (plan #07), full R
 - IssueNumbers plug-in (plan #03) deployed; concurrency test passing
 - Reservation flow (plan #05) produces Drawing + Sheet rows in `Available` / `PendingInitialUpload` states
 - App Configuration has `StaleCheckoutMonths` = `3,6,12` per plan #02 Step 9
-- Service account credential in Azure Key Vault with `Sites.Selected` READ scope granted on Generation Drawings site collection
+- Service account credential in Azure Key Vault with **`Sites.Selected` FullControl** scope granted on Generation Drawings site collection (per Q3 re-decision)
 - Test users seeded in 3 Entra groups; at least one Drawing exists in dev tenant via plan #05 smoke
 
 ## Out of Scope for This Plan
@@ -96,6 +96,8 @@ Submit-revision form writes:
 
 The `On Revision Submitted` flow (Step 3) triggers from that Checkout row update.
 
+**Audit event emission (per architecture review 2026-05-18 Anti-Pattern #5):** the `AuditEmitter` C# plug-in (authored in plan #07 Step 4b) is registered on Checkout Update PostOperation. On the Open→AwaitingValidation status transition, it writes an Audit Event with `Event=StateChanged`, `From=Open`, `To=AwaitingValidation`, `ActedBy=callingUser`. Plug-in registration listed in plan #07 Step 4b's registered-steps table.
+
 ## Step 2 — Flow: `On Asset-Unit Activated → Provision SharePoint Library`
 
 Per PRD section 8.3.
@@ -108,7 +110,7 @@ Per PRD section 8.3.
 2. **Compose friendly name:** `concat(Asset.DisplayName, ', ', Unit.DisplayName)` (e.g. `Calgary Energy Centre, Unit 01`)
 3. **HTTP request to SharePoint REST API** (`POST /_api/web/lists`):
    - Body: `{ "Title": "{{libraryCode}}", "BaseTemplate": 101, "Description": "{{friendlyName}}", "ContentTypesEnabled": true }`
-   - Auth: service account token via Azure AD (Sites.Selected scope; transient Site Owner during dev provisioning per Q3 + decision memo)
+   - Auth: service account token via Azure AD client-credentials flow with `Sites.Selected` FullControl scope (per Q3 re-decision 2026-05-18). Permission sufficient for list creation + content type binding + permission grants without transient elevation.
 4. **Bind content type** via second HTTP request: `POST /_api/web/lists/getbytitle('{{libraryCode}}')/contenttypes/addAvailableContentType` with `Generation Drawing Information` content type ID (`0x010100C593949...30` per PRD section 8.2)
 5. **Configure versioning:** `PATCH /_api/web/lists/getbytitle('{{libraryCode}}')` with `{ "EnableVersioning": true, "EnableMinorVersions": false, "ForceCheckout": false }`
 6. **Apply security-trimmed permissions:** break role inheritance + grant Read to all three Entra groups (`sg-enmax-autocad-users/approvers/admins`)
@@ -122,11 +124,11 @@ Per PRD section 8.3.
 
 ## Step 3 — Flow: `On Revision Submitted → Index SharePoint and Notify Approvers`
 
-**Trigger:** Dataverse "When a row is updated" on `enmax_autocadcheckout`. Filter: `enmax_acdnstatus eq 2` (AwaitingValidation).
+**Trigger:** Dataverse "When a row is updated" on `enmax_autocadcheckout`. Filter: `enmax_acdnstatus eq 2 and _modifiedby_value ne '<service-account-userid>'` (AwaitingValidation AND not service-account-modified). *Trigger-level filter per architecture review Finding 5.5.*
 
 **Steps:**
 
-1. **Guard against re-entry:** if `_modifiedby_value` = service account, exit
+1. ~~Guard against re-entry~~ *(now at trigger filter)*
 2. **Retrieve Drawing + Asset-Unit:** to get the library URL prefix
 3. **List SharePoint files** via REST: `GET {libraryUrl}/_api/web/lists/getbytitle('{{libraryCode}}')/items?$filter=startswith(FileLeafRef,'{{drawingPrefix}}')&$select=FileLeafRef,FileRef,ServerRelativeUrl,EncodedAbsoluteUrl,UniqueId,Modified`
    - Where `drawingPrefix` = `BB-AA-UU-DDD-SSS-KK-nnnn` (the parent Drawing's full ENMAX Number)
@@ -146,7 +148,7 @@ Per PRD section 8.3.
     - In-App Notification rows for every Approver + Admin
 12. **Audit Event:** `Event=StateChanged`, From=CheckedOut, To=AwaitingValidation
 
-**SharePoint API auth detail:** call uses service-account JWT acquired via Azure AD client-credentials flow with `Sites.Selected` resource scope on the specific site. Token cached for ~60 min within the flow run; refresh on expiry. Standard MSAL pattern in Power Automate HTTP action via Azure AD connector.
+**SharePoint API auth detail:** call uses service-account JWT acquired via Azure AD client-credentials flow with `Sites.Selected` FullControl scope on the specific site (per Q3 re-decision 2026-05-18). Token cached for ~60 min within the flow run; refresh on expiry. Standard MSAL pattern in Power Automate HTTP action via Azure AD connector.
 
 **Error handling:**
 - SharePoint API returns 403 → flow throws "SharePoint permission denied; check service account scope" + admin notification
@@ -155,11 +157,11 @@ Per PRD section 8.3.
 
 ## Step 4 — Flow: `On Checkin Approved → Finalise Drawing`
 
-**Trigger:** Dataverse "When a row is updated" on `enmax_autocadcheckout`. Filter: `enmax_acdnstatus eq 3` (ClosedApproved).
+**Trigger:** Dataverse "When a row is updated" on `enmax_autocadcheckout`. Filter: `enmax_acdnstatus eq 3 and _modifiedby_value ne '<service-account-userid>'` (ClosedApproved AND not service-account-modified). *Trigger-level filter per Finding 5.5.*
 
 **Steps:**
 
-1. **Guard against re-entry**
+1. ~~Guard against re-entry~~ *(at trigger filter)*
 2. **Retrieve Drawing + parent Checkout's captured NewRevision + NewPDFUrls**
 3. **Update each Sheet row:** `SharePointUrl` = corresponding URL from NewPDFUrls (canonical hot-link); `State = Available` (2)
 4. **Update Drawing row:**
@@ -181,11 +183,11 @@ Per PRD section 8.3.
 
 ## Step 5 — Flow: `On Checkin Declined → Revert to Checked Out`
 
-**Trigger:** Dataverse "When a row is updated" on `enmax_autocadcheckout`. Filter: `enmax_acdnstatus eq 4` (ClosedDeclined).
+**Trigger:** Dataverse "When a row is updated" on `enmax_autocadcheckout`. Filter: `enmax_acdnstatus eq 4 and _modifiedby_value ne '<service-account-userid>'` (ClosedDeclined AND not service-account-modified). *Trigger-level filter per Finding 5.5.*
 
 **Steps:**
 
-1. **Guard against re-entry**
+1. ~~Guard against re-entry~~ *(at trigger filter)*
 2. **Retrieve Drawing**
 3. **Clear captured Sheet URLs:** for each Sheet, set `SharePointUrl=null`, `SharePointItemId=null`, `State=CheckedOut` (3)
 4. **Re-open Checkout:** set `Status=Open` (1), clear `ClosedOn`, `ClosedBy`, `ValidationReason` stored in column
@@ -206,11 +208,11 @@ Same shared-mailbox `Send an email from a shared mailbox` action; same Q5 no-rep
 
 ## Step 7 — Flow: `On Force Checkin → Admin Override`
 
-**Trigger:** Dataverse "When a row is updated" on `enmax_autocadcheckout`. Filter: `enmax_acdnstatus eq 5` (ClosedForced).
+**Trigger:** Dataverse "When a row is updated" on `enmax_autocadcheckout`. Filter: `enmax_acdnstatus eq 5 and _modifiedby_value ne '<service-account-userid>'` (ClosedForced AND not service-account-modified). *Trigger-level filter per Finding 5.5.*
 
 **Steps:**
 
-1. **Guard against re-entry**
+1. ~~Guard against re-entry~~ *(at trigger filter)*
 2. **Retrieve Drawing + original Checkout.CheckedOutBy user**
 3. **Update Drawing.State** → Available (1)
 4. **Clear any captured NewPDFUrls** (force-checkin discards in-flight revision)
@@ -426,7 +428,8 @@ python solution/scripts/import.py         # imports 3 actions, 5 flows, 2 child 
 | User uploads PDF with wrong filename (e.g. typo in segment) | Indexing flow doesn't match → reports missing sheet; user re-uploads w/ correct name (SP allows rename via Edit properties); doesn't break the flow, just delays validation |
 | User checks out Drawing, leaves company, no one knows | Stale reminders escalate to admin in 3/6/12 month buckets; admin force-checks-in with audit reason |
 | SharePoint library missing for newly-approved Reservation's Asset-Unit | Plan #05 Step 5 already guards: if SP library URL null, Reservation reverts to Pending w/ admin notification. Resolved by running provisioning flow first. |
-| Service account loses Sites.Selected READ during quarterly secret rotation | Synthetic monitor flow runs hourly per PRD risk #2 mitigation; alerts admin on first 403; runbook #009 re-grant procedure |
+| Service account loses Sites.Selected FullControl during quarterly secret rotation | ~~Synthetic monitor flow runs hourly per PRD risk #2 mitigation~~ — **synthetic monitor deprioritised per project decision 2026-05-18 (Finding 5.14)**; permission regression detected reactively when next provisioning or indexing flow throws 403. Runbook #009 re-grant procedure. Quarterly rotation rehearsal in plan #09 partially mitigates. |
+| Compromised service-account credential w/ FullControl SP grant (Finding 5.1 trade-off) | Key Vault storage + quarterly rotation + per-flow Audit Event captures every SP write + service account excluded from notification recipient lists. **Increased blast radius accepted per project decision 2026-05-18.** |
 | `MissingSheets` flag column not in plan #02 schema | TODO below; add via maker UI export-unpack-commit; column is single Yes/No or JSON list of missing sheet numbers |
 | Force-checkin discards user's in-flight revision URLs | Acceptable per Force Checkin = Admin Override semantics; user is offline / unavailable so re-upload is irrelevant. If admin needs to preserve the URLs, they Approve the checkin instead. |
 
