@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/code-app/package-lock.json
+      - name: Install
+        working-directory: apps/code-app
+        run: npm ci
+      - name: Lint
+        working-directory: apps/code-app
+        run: npm run lint
+      - name: Test (Vitest)
+        working-directory: apps/code-app
+        run: npm test -- --coverage
+      - name: Build
+        working-directory: apps/code-app
+        run: npm run build
+      - name: Install Playwright browsers
+        working-directory: apps/code-app
+        run: npx playwright install chromium
+      - name: Playwright (axe-core a11y)
+        working-directory: apps/code-app
+        run: npx playwright test --reporter=line
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build plug-in (net462 via reference assemblies)
+        working-directory: solution/plugins/IssueNumbers
+        run: dotnet build --configuration Release
+      - name: Upload build artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-app-build
+          path: apps/code-app/dist
+          retention-days: 7

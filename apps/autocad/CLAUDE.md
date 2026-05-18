@@ -88,3 +88,15 @@ Hard caps per single error:
 
 Worked-example tables of common spirals + caps live in the build-trap sections of `2026-05-13-track-b-frontend.md` and `2026-05-13-convergence-rehearsal.md`. Read them before debugging a frontend or deploy issue — most "novel" errors are listed there.
 
+## Rule 14 — Concurrency-safe issuance is non-negotiable
+Number issuance must go through the Dataverse custom action backed by the
+plug-in. Never issue numbers from the client. Never issue numbers from a
+non-transactional flow. Tests must include a concurrent-request test that
+fires N parallel calls and asserts N distinct numbers.
+
+## Rule 15 — Code Apps cannot read environment variables
+Read every configuration value through the App Configuration table. Never
+attempt to read a Dataverse environment variable from the Code App. Power
+Automate flows may continue to use environment variables; the App Configuration
+table is the Code App side of the same idea.
+

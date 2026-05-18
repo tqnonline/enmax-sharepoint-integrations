@@ -1,0 +1,45 @@
+name: Bug report
+description: Report a defect in the ENMAX AutoCAD Drawing Numbering app
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing a bug, check the [existing issues](../issues) and the [runbooks](../tree/runbooks).
+  - type: input
+    id: spec_section
+    attributes:
+      label: PRD / spec section
+      description: Which PRD section or acceptance criterion (A1–A19) does this affect?
+      placeholder: "e.g. A2, F-02a, Plan #03"
+    validations:
+      required: false
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened vs. what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the app
+        2. Select Drawing…
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How will we know this is fixed?
+    validations:
+      required: true
+  - type: input
+    id: files
+    attributes:
+      label: Affected files (if known)
+      placeholder: "e.g. solution/plugins/IssueNumbers/Plugin1.cs"

@@ -1,0 +1,62 @@
+name: CD - Dev tenant
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+env:
+  DATAVERSE_GEO: can
+
+jobs:
+  deploy-dev:
+    runs-on: windows-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/code-app/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install uv
+        run: pip install uv
+      - name: Install PAC CLI
+        run: dotnet tool install --global Microsoft.PowerApps.CLI.Tool
+      - name: Install Code App deps
+        working-directory: apps/code-app
+        run: npm ci
+      - name: Build Code App
+        working-directory: apps/code-app
+        run: npm run build
+      - name: Install Python deps
+        run: uv pip install -r solution/scripts/requirements.txt --system
+      - name: Pack solution
+        run: python solution/scripts/pack.py
+      - name: Import solution
+        env:
+          DATAVERSE_URL: ${{ secrets.DEV_DATAVERSE_URL }}
+          DATAVERSE_CLIENT_ID: ${{ secrets.DEV_SP_CLIENT_ID }}
+          DATAVERSE_CLIENT_SECRET: ${{ secrets.DEV_SP_CLIENT_SECRET }}
+          DATAVERSE_TENANT_ID: ${{ secrets.DEV_TENANT_ID }}
+        run: python solution/scripts/import.py
+      - name: Seed deterministic master data
+        env:
+          DATAVERSE_URL: ${{ secrets.DEV_DATAVERSE_URL }}
+          DATAVERSE_CLIENT_ID: ${{ secrets.DEV_SP_CLIENT_ID }}
+          DATAVERSE_CLIENT_SECRET: ${{ secrets.DEV_SP_CLIENT_SECRET }}
+          DATAVERSE_TENANT_ID: ${{ secrets.DEV_TENANT_ID }}
+        run: python solution/scripts/seed.py
+      - name: Publish Code App
+        working-directory: apps/code-app
+        env:
+          POWER_APPS_ENV_ID: ${{ secrets.DEV_POWER_APPS_ENV_ID }}
+        run: npx power-apps push --environmentId "$env:POWER_APPS_ENV_ID"
+      - name: Smoke test
+        working-directory: apps/code-app
+        env:
+          SMOKE_URL: ${{ secrets.DEV_APP_PLAY_URL }}
+        run: npx playwright test --grep @smoke
