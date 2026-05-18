@@ -1,0 +1,13 @@
+schema_name: enmax_acdn_numbersequencestatus
+display_name: Number Sequence Status
+values:
+  - value: 0
+    label: None
+  - value: 1
+    label: Healthy
+  - value: 2
+    label: Warning
+  - value: 3
+    label: Critical
+  - value: 4
+    label: Exhausted

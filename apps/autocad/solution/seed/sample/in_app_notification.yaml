@@ -1,0 +1,186 @@
+table: enmax_autocadinappnotification
+natural_key_columns: [title]
+# Requires SEED_USER_EMAIL set in .env.local
+lookups:
+  recipient: {table: systemuser, key: internalemailaddress, source_column: user_email}
+rows:
+- title: Your reservation RES-S001 has been submitted
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: Your drawing reservation for DG-ST-ACC-GA (5 drawings) is pending approval.
+  enmax_acdnseverity: Info
+  enmax_acdnsourceevent: Reservation Pending
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnread: false
+
+- title: Your reservation RES-S002 has been approved
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: Your drawing reservation for DG-ST-ACB-SD (3 drawings) has been approved. Numbers will be issued shortly.
+  enmax_acdnseverity: Success
+  enmax_acdnsourceevent: Reservation Approved
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnread: true
+  enmax_acdnreadon: '2026-01-15T10:30:00Z'
+
+- title: Your reservation RES-S003 has been approved
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: Your drawing reservation for GG-CF-ACS-PD (8 drawings) has been approved.
+  enmax_acdnseverity: Success
+  enmax_acdnsourceevent: Reservation Approved
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnread: true
+  enmax_acdnreadon: '2026-01-20T15:00:00Z'
+
+- title: Your reservation RES-S005 has been declined
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: "Your drawing reservation for GG-CF-ABF-GA (6 drawings) has been declined — scope not aligned with current project budget."
+  enmax_acdnseverity: Warning
+  enmax_acdnsourceevent: Reservation Declined
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnread: true
+  enmax_acdnreadon: '2026-01-28T09:15:00Z'
+
+- title: Drawing GG-CF-ACS-PD-001 check-in approved
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: Your checked-in revision for GG-CF-ACS-PD-001 (revision B) has been approved and the drawing is now available.
+  enmax_acdnseverity: Success
+  enmax_acdnsourceevent: Check In Validated
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: GG-CF-ACS-PD-001
+  enmax_acdnread: true
+  enmax_acdnreadon: '2026-01-28T16:30:00Z'
+
+- title: Drawing GG-CF-ACS-PD-002 check-in approved
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: Your checked-in revision for GG-CF-ACS-PD-002 (revision B) has been approved.
+  enmax_acdnseverity: Success
+  enmax_acdnsourceevent: Check In Validated
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: GG-CF-ACS-PD-002
+  enmax_acdnread: true
+  enmax_acdnreadon: '2026-01-28T16:45:00Z'
+
+- title: Drawing DG-ST-ACB-SD-001 check-in declined
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: "Your check-in submission for DG-ST-ACB-SD-001 has been declined — revision did not meet markup requirements, resubmit with corrected title block."
+  enmax_acdnseverity: Critical
+  enmax_acdnsourceevent: Check In Declined
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: DG-ST-ACB-SD-001
+  enmax_acdnread: false
+
+- title: Stale checkout reminder – GG-CF-ACS-PD-005
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: Drawing GG-CF-ACS-PD-005 has been checked out for 14 days. Please submit your changes or return the drawing within 7 days to avoid forced check-in.
+  enmax_acdnseverity: Warning
+  enmax_acdnsourceevent: Stale Checkout Reminder
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: GG-CF-ACS-PD-005
+  enmax_acdnread: true
+  enmax_acdnreadon: '2026-02-08T09:30:00Z'
+
+- title: GG-CF-ACS-PD-005 was force checked in
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: Drawing GG-CF-ACS-PD-005 has been force checked in by the system administrator after an 18-day overdue period. The drawing is now available.
+  enmax_acdnseverity: Critical
+  enmax_acdnsourceevent: Force Check In
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: GG-CF-ACS-PD-005
+  enmax_acdnread: true
+  enmax_acdnreadon: '2026-02-12T09:30:00Z'
+
+- title: Your reservation RES-S006 has been approved
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: Your drawing reservation for GW-GN-ABB-PD (10 drawings) has been approved.
+  enmax_acdnseverity: Success
+  enmax_acdnsourceevent: Reservation Approved
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnread: true
+  enmax_acdnreadon: '2026-02-01T09:30:00Z'
+
+- title: Your reservation RES-S008 has been approved
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: Your drawing reservation for WD-KH-ACB-LD (4 drawings) has been approved.
+  enmax_acdnseverity: Success
+  enmax_acdnsourceevent: Reservation Approved
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnread: true
+  enmax_acdnreadon: '2026-02-10T11:30:00Z'
+
+- title: Drawing GW-GN-ABB-PD-001 check-in approved
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: Your checked-in revision for GW-GN-ABB-PD-001 (revision C) has been approved.
+  enmax_acdnseverity: Success
+  enmax_acdnsourceevent: Check In Validated
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: GW-GN-ABB-PD-001
+  enmax_acdnread: true
+  enmax_acdnreadon: '2026-02-10T15:00:00Z'
+
+- title: Stale checkout reminder – GW-GN-ABB-PD-004
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: Drawing GW-GN-ABB-PD-004 has been checked out for 14 days. Please submit or return within 7 days.
+  enmax_acdnseverity: Warning
+  enmax_acdnsourceevent: Stale Checkout Reminder
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: GW-GN-ABB-PD-004
+  enmax_acdnread: false
+
+- title: Broadcast published – Checkout Policy Update
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: A new system broadcast has been published regarding the checkout policy update. Please review it in the Broadcasts section.
+  enmax_acdnseverity: Info
+  enmax_acdnsourceevent: Broadcast Published
+  enmax_acdnsubjecttable: enmax_autocadbroadcast
+  enmax_acdnread: true
+  enmax_acdnreadon: '2026-02-25T09:00:00Z'
+
+- title: Your reservation RES-S012 has been approved
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: Your drawing reservation for GG-CV-ACB-LP (5 drawings) has been approved.
+  enmax_acdnseverity: Success
+  enmax_acdnsourceevent: Reservation Approved
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnread: false
+
+- title: Your reservation RES-S015 has been approved
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: Your drawing reservation for WD-TB-ACS-LD (6 drawings) has been approved.
+  enmax_acdnseverity: Success
+  enmax_acdnsourceevent: Reservation Approved
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnread: false
+
+- title: Stale checkout reminder – WD-KH-ACB-LD-003
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: Drawing WD-KH-ACB-LD-003 has been checked out for 14 days. Please submit or return within 7 days.
+  enmax_acdnseverity: Warning
+  enmax_acdnsourceevent: Stale Checkout Reminder
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: WD-KH-ACB-LD-003
+  enmax_acdnread: false
+
+- title: Drawing WD-KH-ACB-LD-001 check-in approved
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: Your checked-in revision for WD-KH-ACB-LD-001 (revision A) has been approved.
+  enmax_acdnseverity: Success
+  enmax_acdnsourceevent: Check In Validated
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: WD-KH-ACB-LD-001
+  enmax_acdnread: false
+
+- title: System message – maintenance window 2026-02-20
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: A mandatory system maintenance window is scheduled for 2026-02-20 midnight to 6:00 AM MST. Acknowledge this notification to confirm you have seen the schedule.
+  enmax_acdnseverity: Critical
+  enmax_acdnsourceevent: System Message
+  enmax_acdnsubjecttable: enmax_autocadbroadcast
+  enmax_acdnread: true
+  enmax_acdnreadon: '2026-02-19T17:00:00Z'
+
+- title: Reminder – year-end document audit due 2026-04-30
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnbody: The annual drawing register audit is due by 2026-04-30. Review your business unit drawings and flag any issues.
+  enmax_acdnseverity: Warning
+  enmax_acdnsourceevent: Broadcast Published
+  enmax_acdnsubjecttable: enmax_autocadbroadcast
+  enmax_acdnread: false

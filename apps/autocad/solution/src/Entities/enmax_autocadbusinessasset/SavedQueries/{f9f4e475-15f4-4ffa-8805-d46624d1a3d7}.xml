@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<savedqueries xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <savedquery>
+    <IsCustomizable>1</IsCustomizable>
+    <CanBeDeleted>0</CanBeDeleted>
+    <isquickfindquery>1</isquickfindquery>
+    <isprivate>0</isprivate>
+    <isdefault>1</isdefault>
+    <savedqueryid>{f9f4e475-15f4-4ffa-8805-d46624d1a3d7}</savedqueryid>
+    <layoutxml>
+      <grid name="resultset" jump="enmax_acdnname" select="1" icon="1" preview="1">
+        <row name="result" id="enmax_autocadbusinessassetid">
+          <cell name="enmax_acdnname" width="300" />
+          <cell name="createdon" width="125" />
+        </row>
+      </grid>
+    </layoutxml>
+    <querytype>4</querytype>
+    <fetchxml>
+      <fetch version="1.0" mapping="logical">
+        <entity name="enmax_autocadbusinessasset">
+          <attribute name="enmax_autocadbusinessassetid" />
+          <attribute name="enmax_acdnname" />
+          <attribute name="createdon" />
+          <order attribute="enmax_acdnname" descending="false" />
+          <filter type="and">
+            <condition attribute="statecode" operator="eq" value="0" />
+          </filter>
+          <filter type="or" isquickfindfields="1">
+            <condition attribute="enmax_acdnname" operator="like" value="{0}" />
+          </filter>
+        </entity>
+      </fetch>
+    </fetchxml>
+    <IntroducedVersion>1.0.0.0</IntroducedVersion>
+    <LocalizedNames>
+      <LocalizedName description="Quick Find Active Approved BB-AA Combinations" languagecode="1033" />
+    </LocalizedNames>
+  </savedquery>
+</savedqueries>

@@ -1,0 +1,6 @@
+table: enmax_autocadnumbersequence
+natural_key_columns: [sequence_key]
+rows: []
+# Number Sequence rows ship empty by default.
+# Dev tenant starts clean so concurrency tests can target fresh sequences.
+# UAT seeding and production legacy migration are runbook activities.

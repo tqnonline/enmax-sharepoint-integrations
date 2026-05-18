@@ -1,0 +1,17 @@
+schema_name: enmax_acdn_drawingstate
+display_name: Drawing State
+values:
+  - value: 0
+    label: None
+  - value: 1
+    label: Available
+  - value: 2
+    label: Checked Out
+  - value: 3
+    label: Awaiting Validation
+  - value: 4
+    label: Checked In
+  - value: 5
+    label: Obsolete
+  - value: 6
+    label: Void

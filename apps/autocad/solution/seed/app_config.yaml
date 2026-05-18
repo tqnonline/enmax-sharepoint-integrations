@@ -1,0 +1,87 @@
+table: enmax_autocadappconfig
+natural_key_columns: [key]
+rows:
+  - key: SharedMailboxAddress
+    value: "{{ APP_CONFIG_SHARED_MAILBOX | default('noreply-autocad@enmax.com') }}"
+    value_type: String
+    description: Outbound mailbox for Power Automate flows. Send-As on this mailbox. NO-REPLY — email copy must not invite replies.
+  - key: SingleAdminMode
+    value: "false"
+    value_type: Boolean
+    description: When true, only one admin may perform write operations at a time. Dev/UAT leave false.
+  - key: MaxDrawingsPerReservation
+    value: "10"
+    value_type: Integer
+    description: Maximum number of drawings that can be reserved in a single Reservation.
+  - key: MaxSheetsPerDrawing
+    value: "50"
+    value_type: Integer
+    description: Maximum number of sheets a single Drawing may have.
+  - key: DefaultSheetsPerDrawing
+    value: "1"
+    value_type: Integer
+    description: Default sheet count when a new Drawing is created.
+  - key: StaleCheckoutMonths
+    value: "3,6,12"
+    value_type: String
+    description: Comma-separated month thresholds for stale-checkout reminder notifications.
+  - key: ApproverTeamName
+    value: team-enmax-autocad-approvers
+    value_type: String
+    description: Dataverse team name holding the Approver role. Must exist before approvals work.
+  - key: AdminTeamName
+    value: team-enmax-autocad-admins
+    value_type: String
+    description: Dataverse team name holding the Admin role.
+  - key: SharePointSiteUrl
+    value: https://enmax.sharepoint.com/sites/GenerationDrawings
+    value_type: String
+    description: Root SharePoint site where drawing document libraries are provisioned.
+  - key: BusinessUnitName
+    value: Enmax AutoCAD
+    value_type: String
+    description: Dataverse Business Unit that owns the solution records.
+  - key: BrandPrimary
+    value: "#E1393E"
+    value_type: String
+    description: Cinnabar red — primary brand colour used in Code App header and CTAs.
+  - key: BrandSecondary
+    value: "#0F487A"
+    value_type: String
+    description: Chathams Blue — secondary brand colour.
+  - key: BrandAccent
+    value: "#F7DB9C"
+    value_type: String
+    description: Marzipan — accent / highlight colour.
+  - key: DefaultTheme
+    value: system
+    value_type: String
+    description: Code App colour scheme default. One of 'light', 'dark', 'system'.
+  - key: EnableTelemetry
+    value: "true"
+    value_type: Boolean
+    description: Enable Application Insights telemetry from the Code App.
+  - key: MaintenanceBannerTitle
+    value: Scheduled Maintenance
+    value_type: String
+    description: Title shown in the maintenance banner when active. Leave blank to suppress the banner.
+  - key: MaintenanceBannerBody
+    value: The drawing numbering system is temporarily unavailable. Please try again later.
+    value_type: String
+    description: Body copy for the maintenance banner. Must NOT invite replies — system uses a no-reply mailbox.
+  - key: MaintenanceBannerSeverity
+    value: Warning
+    value_type: String
+    description: Severity level of the maintenance banner. One of Info, Warning, Critical.
+  - key: FooterDisclaimer
+    value: This system manages official ENMAX engineering drawing numbers. All reservations are subject to review.
+    value_type: String
+    description: Disclaimer text shown in the Code App footer.
+  - key: FooterCopyright
+    value: "\xA9 ENMAX Corporation. All rights reserved."
+    value_type: String
+    description: Copyright line shown in the Code App footer.
+  - key: BroadcastFanOutCadenceMinutes
+    value: "60"
+    value_type: Integer
+    description: How often (minutes) the broadcast fan-out Power Automate flow runs.

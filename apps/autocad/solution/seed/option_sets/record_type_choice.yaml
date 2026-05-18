@@ -1,0 +1,7 @@
+schema_name: enmax_acdn_recordtypechoice
+display_name: Reservation Record Type
+values:
+  - value: 0
+    label: None
+  - value: 1
+    label: Drawing

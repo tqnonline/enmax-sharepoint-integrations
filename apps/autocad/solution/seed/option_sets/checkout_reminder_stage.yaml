@@ -1,0 +1,11 @@
+schema_name: enmax_acdn_checkoutreminderstage
+display_name: Checkout Reminder Stage
+values:
+  - value: 0
+    label: None
+  - value: 1
+    label: Three Month
+  - value: 2
+    label: Six Month
+  - value: 3
+    label: Twelve Month

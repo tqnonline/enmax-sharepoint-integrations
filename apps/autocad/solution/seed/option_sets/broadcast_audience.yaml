@@ -1,0 +1,13 @@
+schema_name: enmax_acdn_broadcastaudience
+display_name: Broadcast Audience
+values:
+  - value: 0
+    label: None
+  - value: 1
+    label: Users
+  - value: 2
+    label: Approvers
+  - value: 3
+    label: Admins
+  - value: 4
+    label: Everyone

@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<savedqueries xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <savedquery>
+    <IsCustomizable>1</IsCustomizable>
+    <CanBeDeleted>0</CanBeDeleted>
+    <isquickfindquery>0</isquickfindquery>
+    <isprivate>0</isprivate>
+    <isdefault>0</isdefault>
+    <savedqueryid>{020959e3-835f-4b24-9009-e2ad5a88f8e2}</savedqueryid>
+    <layoutxml>
+      <grid name="resultset" jump="enmax_acdnsequencekey" select="1" icon="1" preview="1">
+        <row name="result" id="enmax_autocadnumbersequenceid">
+          <cell name="enmax_acdnsequencekey" width="300" />
+          <cell name="createdon" width="125" />
+        </row>
+      </grid>
+    </layoutxml>
+    <querytype>0</querytype>
+    <fetchxml>
+      <fetch version="1.0" mapping="logical">
+        <entity name="enmax_autocadnumbersequence">
+          <attribute name="enmax_autocadnumbersequenceid" />
+          <attribute name="enmax_acdnsequencekey" />
+          <attribute name="createdon" />
+          <order attribute="enmax_acdnsequencekey" descending="false" />
+          <filter type="and">
+            <condition attribute="statecode" operator="eq" value="1" />
+          </filter>
+        </entity>
+      </fetch>
+    </fetchxml>
+    <IntroducedVersion>1.0.0.0</IntroducedVersion>
+    <LocalizedNames>
+      <LocalizedName description="Inactive Number Sequences" languagecode="1033" />
+    </LocalizedNames>
+  </savedquery>
+</savedqueries>

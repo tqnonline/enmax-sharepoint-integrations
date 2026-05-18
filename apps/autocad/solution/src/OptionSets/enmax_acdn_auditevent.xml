@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<optionset Name="enmax_acdn_auditevent" localizedName="Audit Event" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <OptionSetType>picklist</OptionSetType>
+  <IsGlobal>1</IsGlobal>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <IsCustomizable>1</IsCustomizable>
+  <displaynames>
+    <displayname description="Audit Event" languagecode="1033" />
+  </displaynames>
+  <options>
+    <option value="0" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="None" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="1" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Created" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="2" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="State Changed" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="3" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Approval Granted" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="4" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Approval Denied" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="5" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Override Used" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="6" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Force Checked In" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="7" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Config Changed" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="8" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Reference Data Changed" languagecode="1033" />
+      </labels>
+    </option>
+  </options>
+</optionset>

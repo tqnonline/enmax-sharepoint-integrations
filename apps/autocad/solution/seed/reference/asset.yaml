@@ -1,0 +1,84 @@
+table: enmax_autocadasset
+natural_key_columns:
+- code
+rows:
+- code: 9A
+  display_name: 9th Avenue Centre
+  status: 1
+  sort_order: 10
+- code: CF
+  display_name: Crossfield Energy Centre
+  status: 1
+  sort_order: 20
+- code: CG
+  display_name: Calgary Energy Centre
+  status: 1
+  sort_order: 30
+- code: CV
+  display_name: Cavalier Energy Centre
+  status: 1
+  sort_order: 40
+- code: DE
+  display_name: District Energy
+  status: 1
+  sort_order: 50
+- code: GG
+  display_name: Gas Generation
+  status: 1
+  sort_order: 60
+- code: GN
+  display_name: Generation (fleet-wide)
+  status: 1
+  sort_order: 70
+- code: GW
+  display_name: Generation
+  status: 1
+  sort_order: 80
+- code: SH
+  display_name: Shepard Energy Centre
+  status: 1
+  sort_order: 90
+- code: CHP
+  display_name: Combined Heat and Power
+  status: 1
+  sort_order: 100
+- code: CP
+  display_name: District Energy - Combined Heat & Power
+  status: 1
+  sort_order: 110
+- code: CS
+  display_name: Calgary Stampede
+  status: 1
+  sort_order: 120
+- code: ED
+  display_name: District Energy - Edmonton
+  status: 1
+  sort_order: 130
+- code: EN
+  display_name: Engineering
+  status: 1
+  sort_order: 140
+- code: KH
+  display_name: Kettles Hill Wind Energy
+  status: 1
+  sort_order: 150
+- code: ST
+  display_name: ST - Stoney Transit
+  status: 1
+  sort_order: 160
+- code: TB
+  display_name: Taber Wind Farm
+  status: 1
+  sort_order: 170
+- code: VS
+  display_name: Village Square
+  status: 1
+  sort_order: 180
+- code: WH
+  display_name: Wholesale Energy
+  status: 1
+  sort_order: 190
+- code: WS
+  display_name: Winspear Complex Edmonton
+  status: 1
+  sort_order: 200

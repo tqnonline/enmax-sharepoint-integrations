@@ -1,0 +1,131 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ImportExportXml version="9.2.26042.168" SolutionPackageVersion="9.2" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" OrganizationVersion="9.2.26042.168" OrganizationSchemaType="Standard" CRMServerServiceabilityVersion="9.2.26042.00168">
+  <SolutionManifest>
+    <UniqueName>enmax_autocadsln</UniqueName>
+    <LocalizedNames>
+      <LocalizedName description="Enmax AutoCAD Document Numbering System" languagecode="1033" />
+    </LocalizedNames>
+    <Descriptions />
+    <Version>1.0.0.0</Version>
+    <Managed>0</Managed>
+    <Publisher>
+      <UniqueName>enmax</UniqueName>
+      <LocalizedNames>
+        <LocalizedName description="Enmax" languagecode="1033" />
+      </LocalizedNames>
+      <Descriptions />
+      <EMailAddress xsi:nil="true"></EMailAddress>
+      <SupportingWebsiteUrl xsi:nil="true"></SupportingWebsiteUrl>
+      <CustomizationPrefix>enmax</CustomizationPrefix>
+      <CustomizationOptionValuePrefix>10000</CustomizationOptionValuePrefix>
+      <Addresses>
+        <Address>
+          <AddressNumber>1</AddressNumber>
+          <AddressTypeCode>1</AddressTypeCode>
+          <City xsi:nil="true"></City>
+          <County xsi:nil="true"></County>
+          <Country xsi:nil="true"></Country>
+          <Fax xsi:nil="true"></Fax>
+          <FreightTermsCode xsi:nil="true"></FreightTermsCode>
+          <ImportSequenceNumber xsi:nil="true"></ImportSequenceNumber>
+          <Latitude xsi:nil="true"></Latitude>
+          <Line1 xsi:nil="true"></Line1>
+          <Line2 xsi:nil="true"></Line2>
+          <Line3 xsi:nil="true"></Line3>
+          <Longitude xsi:nil="true"></Longitude>
+          <Name xsi:nil="true"></Name>
+          <PostalCode xsi:nil="true"></PostalCode>
+          <PostOfficeBox xsi:nil="true"></PostOfficeBox>
+          <PrimaryContactName xsi:nil="true"></PrimaryContactName>
+          <ShippingMethodCode>1</ShippingMethodCode>
+          <StateOrProvince xsi:nil="true"></StateOrProvince>
+          <Telephone1 xsi:nil="true"></Telephone1>
+          <Telephone2 xsi:nil="true"></Telephone2>
+          <Telephone3 xsi:nil="true"></Telephone3>
+          <TimeZoneRuleVersionNumber xsi:nil="true"></TimeZoneRuleVersionNumber>
+          <UPSZone xsi:nil="true"></UPSZone>
+          <UTCOffset xsi:nil="true"></UTCOffset>
+          <UTCConversionTimeZoneCode xsi:nil="true"></UTCConversionTimeZoneCode>
+        </Address>
+        <Address>
+          <AddressNumber>2</AddressNumber>
+          <AddressTypeCode>1</AddressTypeCode>
+          <City xsi:nil="true"></City>
+          <County xsi:nil="true"></County>
+          <Country xsi:nil="true"></Country>
+          <Fax xsi:nil="true"></Fax>
+          <FreightTermsCode xsi:nil="true"></FreightTermsCode>
+          <ImportSequenceNumber xsi:nil="true"></ImportSequenceNumber>
+          <Latitude xsi:nil="true"></Latitude>
+          <Line1 xsi:nil="true"></Line1>
+          <Line2 xsi:nil="true"></Line2>
+          <Line3 xsi:nil="true"></Line3>
+          <Longitude xsi:nil="true"></Longitude>
+          <Name xsi:nil="true"></Name>
+          <PostalCode xsi:nil="true"></PostalCode>
+          <PostOfficeBox xsi:nil="true"></PostOfficeBox>
+          <PrimaryContactName xsi:nil="true"></PrimaryContactName>
+          <ShippingMethodCode>1</ShippingMethodCode>
+          <StateOrProvince xsi:nil="true"></StateOrProvince>
+          <Telephone1 xsi:nil="true"></Telephone1>
+          <Telephone2 xsi:nil="true"></Telephone2>
+          <Telephone3 xsi:nil="true"></Telephone3>
+          <TimeZoneRuleVersionNumber xsi:nil="true"></TimeZoneRuleVersionNumber>
+          <UPSZone xsi:nil="true"></UPSZone>
+          <UTCOffset xsi:nil="true"></UTCOffset>
+          <UTCConversionTimeZoneCode xsi:nil="true"></UTCConversionTimeZoneCode>
+        </Address>
+      </Addresses>
+    </Publisher>
+    <RootComponents>
+      <RootComponent type="1" schemaName="enmax_autocadappconfig" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadasset" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadassetunit" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadauditevent" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadbroadcast" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadbroadcastdismissal" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadbusiness" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadbusinessasset" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadcheckout" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocaddomain" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocaddrawing" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadinappnotification" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadkind" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadnumbersequence" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadrecordphase" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadrecordtype" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadreservation" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadsheet" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadsystem" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadsystemscope" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadunit" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocaduserpreference" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadvendor" behavior="0" />
+      <RootComponent type="1" schemaName="systemuser" behavior="1" />
+      <RootComponent type="9" schemaName="enmax_acdn_appconfigvaluetype" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_auditevent" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_auditsource" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_broadcastaudience" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_broadcastseverity" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_broadcaststatus" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_checkoutreminderstage" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_checkoutstatus" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_drawingstate" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_notificationseverity" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_numbersequencestatus" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_recordstatus" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_recordtypechoice" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_reservationstatus" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_sequencetype" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_sheetstate" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_sourceevent" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_systemscopetype" behavior="0" />
+    </RootComponents>
+    <MissingDependencies>
+      <MissingDependency>
+        <Required type="1" schemaName="systemuser" displayName="SystemUser" parentSchemaName="" solution="msdyn_PowerAdminSettingsEmail (2.2.3377.2)" />
+        <Dependent type="1" schemaName="systemuser" displayName="SystemUser" />
+      </MissingDependency>
+    </MissingDependencies>
+  </SolutionManifest>
+</ImportExportXml>

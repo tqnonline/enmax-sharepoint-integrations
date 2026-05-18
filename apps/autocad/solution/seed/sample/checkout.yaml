@@ -1,0 +1,174 @@
+table: enmax_autocadcheckout
+natural_key_columns: [name]
+# Requires SEED_USER_EMAIL set in .env.local — rows silently skip the checkedoutby FK if unresolved,
+# causing a 400 from Dataverse (required field). Set SEED_USER_EMAIL to a valid AAD user email.
+lookups:
+  drawing:        {table: enmax_autocaddrawing, key: number, source_column: drawing_number}
+  checked_out_by: {table: systemuser, key: internalemailaddress, source_column: user_email}
+  closed_by:      {table: systemuser, key: internalemailaddress, source_column: closed_by_email}
+rows:
+- name: CHK-DG-ST-ACB-SD-003-001
+  drawing_number: DG-ST-ACB-SD-003
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-02-05T09:00:00Z'
+  enmax_acdnstatus: Open
+  enmax_acdnnewrevision: B
+
+- name: CHK-GW-GN-ABB-PD-004-001
+  drawing_number: GW-GN-ABB-PD-004
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-02-22T10:30:00Z'
+  enmax_acdnstatus: Open
+  enmax_acdnnewrevision: D
+
+- name: CHK-WD-KH-ACB-LD-003-001
+  drawing_number: WD-KH-ACB-LD-003
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-03-02T08:00:00Z'
+  enmax_acdnstatus: Awaiting Validation
+  enmax_acdnnewrevision: B
+
+- name: CHK-DG-VS-ACS-PD-005-001
+  drawing_number: DG-VS-ACS-PD-005
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-03-06T14:00:00Z'
+  enmax_acdnstatus: Open
+  enmax_acdnnewrevision: A
+
+- name: CHK-GG-CV-ACB-LP-004-001
+  drawing_number: GG-CV-ACB-LP-004
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-03-11T09:30:00Z'
+  enmax_acdnstatus: Open
+  enmax_acdnnewrevision: A
+
+- name: CHK-WD-TB-ACS-LD-005-001
+  drawing_number: WD-TB-ACS-LD-005
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-03-16T11:00:00Z'
+  enmax_acdnstatus: Open
+  enmax_acdnnewrevision: B
+
+- name: CHK-GG-CF-ACS-PD-005-001
+  drawing_number: GG-CF-ACS-PD-005
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-02-12T08:00:00Z'
+  enmax_acdnstatus: Awaiting Validation
+  enmax_acdnnewrevision: A
+
+- name: CHK-GG-CF-ACS-PD-006-001
+  drawing_number: GG-CF-ACS-PD-006
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-02-12T08:30:00Z'
+  enmax_acdnstatus: Awaiting Validation
+  enmax_acdnnewrevision: A
+
+# Closed checkouts (historical)
+- name: CHK-GG-CF-ACS-PD-001-001
+  drawing_number: GG-CF-ACS-PD-001
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  closed_by_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-01-20T09:00:00Z'
+  enmax_acdnstatus: Closed Approved
+  enmax_acdnnewrevision: B
+  enmax_acdnclosedon: '2026-01-28T16:00:00Z'
+
+- name: CHK-GG-CF-ACS-PD-002-001
+  drawing_number: GG-CF-ACS-PD-002
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  closed_by_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-01-20T09:00:00Z'
+  enmax_acdnstatus: Closed Approved
+  enmax_acdnnewrevision: B
+  enmax_acdnclosedon: '2026-01-28T16:15:00Z'
+
+- name: CHK-GW-GN-ABB-PD-001-001
+  drawing_number: GW-GN-ABB-PD-001
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  closed_by_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-02-01T10:00:00Z'
+  enmax_acdnstatus: Closed Approved
+  enmax_acdnnewrevision: C
+  enmax_acdnclosedon: '2026-02-10T14:00:00Z'
+
+- name: CHK-WD-KH-ACB-LD-001-001
+  drawing_number: WD-KH-ACB-LD-001
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  closed_by_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-02-15T08:00:00Z'
+  enmax_acdnstatus: Closed Approved
+  enmax_acdnnewrevision: A
+  enmax_acdnclosedon: '2026-02-20T11:00:00Z'
+
+- name: CHK-DG-VS-ACS-PD-001-001
+  drawing_number: DG-VS-ACS-PD-001
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  closed_by_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-02-16T09:00:00Z'
+  enmax_acdnstatus: Closed Approved
+  enmax_acdnnewrevision: A
+  enmax_acdnclosedon: '2026-02-25T15:00:00Z'
+
+- name: CHK-GG-CV-ACB-LP-001-001
+  drawing_number: GG-CV-ACB-LP-001
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  closed_by_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-02-20T10:00:00Z'
+  enmax_acdnstatus: Closed Approved
+  enmax_acdnnewrevision: A
+  enmax_acdnclosedon: '2026-03-01T16:30:00Z'
+
+- name: CHK-GG-CF-ACS-PD-005-000
+  drawing_number: GG-CF-ACS-PD-005
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  closed_by_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-01-25T08:00:00Z'
+  enmax_acdnstatus: Closed Forced
+  enmax_acdnclosedon: '2026-02-12T09:00:00Z'
+  enmax_acdnvalidationreason: Force checked in by admin after 18-day overdue period
+
+- name: CHK-WD-TB-ACS-LD-001-001
+  drawing_number: WD-TB-ACS-LD-001
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  closed_by_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-02-25T09:00:00Z'
+  enmax_acdnstatus: Closed Approved
+  enmax_acdnnewrevision: A
+  enmax_acdnclosedon: '2026-03-05T14:00:00Z'
+
+- name: CHK-GW-GN-ABB-PD-002-001
+  drawing_number: GW-GN-ABB-PD-002
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  closed_by_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-02-01T10:30:00Z'
+  enmax_acdnstatus: Closed Approved
+  enmax_acdnnewrevision: C
+  enmax_acdnclosedon: '2026-02-10T14:30:00Z'
+
+- name: CHK-GW-GN-ABB-PD-003-001
+  drawing_number: GW-GN-ABB-PD-003
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  closed_by_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-02-03T11:00:00Z'
+  enmax_acdnstatus: Closed Approved
+  enmax_acdnnewrevision: B
+  enmax_acdnclosedon: '2026-02-12T15:00:00Z'
+
+- name: CHK-DG-ST-ACB-SD-001-001
+  drawing_number: DG-ST-ACB-SD-001
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  closed_by_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-01-22T09:00:00Z'
+  enmax_acdnstatus: Closed Declined
+  enmax_acdnnewrevision: B
+  enmax_acdnclosedon: '2026-01-30T14:00:00Z'
+  enmax_acdnvalidationreason: Revision did not meet markup requirements — resubmit with corrected title block
+
+- name: CHK-GG-CF-ACS-PD-003-001
+  drawing_number: GG-CF-ACS-PD-003
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  closed_by_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdncheckedouton: '2026-02-08T08:00:00Z'
+  enmax_acdnstatus: Closed Approved
+  enmax_acdnnewrevision: A
+  enmax_acdnclosedon: '2026-02-16T15:00:00Z'

@@ -1,0 +1,13 @@
+schema_name: enmax_acdn_auditsource
+display_name: Audit Source
+values:
+  - value: 0
+    label: None
+  - value: 1
+    label: Code App
+  - value: 2
+    label: Admin App
+  - value: 3
+    label: Flow
+  - value: 4
+    label: Action

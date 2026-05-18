@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<optionset Name="enmax_acdn_sheetstate" localizedName="Sheet State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <OptionSetType>picklist</OptionSetType>
+  <IsGlobal>1</IsGlobal>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <IsCustomizable>1</IsCustomizable>
+  <displaynames>
+    <displayname description="Sheet State" languagecode="1033" />
+  </displaynames>
+  <options>
+    <option value="0" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="None" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="1" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Pending Initial Upload" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="2" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Available" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="3" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Checked Out" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="4" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Awaiting Validation" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="5" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Obsolete" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="6" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Void" languagecode="1033" />
+      </labels>
+    </option>
+  </options>
+</optionset>

@@ -1,0 +1,15 @@
+schema_name: enmax_acdn_broadcaststatus
+display_name: Broadcast Status
+values:
+  - value: 0
+    label: None
+  - value: 1
+    label: Draft
+  - value: 2
+    label: Scheduled
+  - value: 3
+    label: Active
+  - value: 4
+    label: Expired
+  - value: 5
+    label: Retired

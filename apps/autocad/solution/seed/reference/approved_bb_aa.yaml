@@ -1,0 +1,47 @@
+table: enmax_autocadbusinessasset
+natural_key_columns:
+- business_code
+- asset_code
+lookups:
+  business:
+    table: enmax_autocadbusiness
+    key: code
+    source_column: business_code
+  asset:
+    table: enmax_autocadasset
+    key: code
+    source_column: asset_code
+rows:
+- business_code: DG
+  asset_code: ST
+  name: DG-ST
+- business_code: DG
+  asset_code: VS
+  name: DG-VS
+- business_code: GG
+  asset_code: CF
+  name: GG-CF
+- business_code: GG
+  asset_code: CG
+  name: GG-CG
+- business_code: GG
+  asset_code: CV
+  name: GG-CV
+- business_code: GG
+  asset_code: SH
+  name: GG-SH
+- business_code: GW
+  asset_code: GN
+  name: GW-GN
+- business_code: GW
+  asset_code: GW
+  name: GW-GW
+- business_code: GW
+  asset_code: WH
+  name: GW-WH
+- business_code: WD
+  asset_code: KH
+  name: WD-KH
+- business_code: WD
+  asset_code: TB
+  name: WD-TB

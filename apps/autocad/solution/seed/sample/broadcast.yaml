@@ -1,0 +1,202 @@
+table: enmax_autocadbroadcast
+natural_key_columns: [title]
+rows:
+- title: Scheduled Maintenance – ENMAX AutoCAD DM 2026-01-20
+  enmax_acdnbody: The ENMAX AutoCAD Document Management system will be unavailable for scheduled maintenance from 10:00 PM to 2:00 AM MST. Please save and close all work before this window.
+  enmax_acdnseverity: Warning
+  enmax_acdnaudience: '4'
+  enmax_acdnstartsat: '2026-01-20T22:00:00Z'
+  enmax_acdnexpiresat: '2026-01-21T08:00:00Z'
+  enmax_acdnrequiresack: false
+  enmax_acdnstatus: Expired
+  enmax_acdnpinned: false
+
+- title: New Feature – Bulk Drawing Export Now Available
+  enmax_acdnbody: You can now export multiple drawings as a ZIP archive. Select drawings from the list view, then use Actions → Export Selected. Maximum 50 drawings per export.
+  enmax_acdnseverity: Info
+  enmax_acdnaudience: '4'
+  enmax_acdnstartsat: '2026-01-25T08:00:00Z'
+  enmax_acdnexpiresat: '2026-02-25T08:00:00Z'
+  enmax_acdnrequiresack: false
+  enmax_acdnstatus: Expired
+  enmax_acdnpinned: false
+
+- title: Reservation Approval SLA – Reminder
+  enmax_acdnbody: Approvers are reminded that reservation requests must be actioned within 5 business days. There are currently 3 reservations pending approval that are approaching the SLA threshold.
+  enmax_acdnseverity: Warning
+  enmax_acdnaudience: 2
+  enmax_acdnstartsat: '2026-02-01T08:00:00Z'
+  enmax_acdnexpiresat: '2026-02-08T08:00:00Z'
+  enmax_acdnrequiresack: false
+  enmax_acdnstatus: Expired
+  enmax_acdnpinned: false
+
+- title: SharePoint Integration Update – URL Format Change
+  enmax_acdnbody: Effective 2026-02-15, all SharePoint document URLs will use the new format. Existing drawing records have been migrated automatically. Please contact the document control team if you notice any broken links.
+  enmax_acdnseverity: Warning
+  enmax_acdnaudience: '4'
+  enmax_acdnstartsat: '2026-02-10T08:00:00Z'
+  enmax_acdnexpiresat: '2026-03-10T08:00:00Z'
+  enmax_acdnrequiresack: true
+  enmax_acdnstatus: Expired
+  enmax_acdnpinned: false
+
+- title: System Downtime – Dataverse Environment Migration
+  enmax_acdnbody: "CRITICAL – The ENMAX AutoCAD Document Management system will be migrated to a new Dataverse environment on 2026-02-20 from midnight to 6:00 AM MST. All data will be preserved. No action required."
+  enmax_acdnseverity: Critical
+  enmax_acdnaudience: '4'
+  enmax_acdnstartsat: '2026-02-19T18:00:00Z'
+  enmax_acdnexpiresat: '2026-02-21T08:00:00Z'
+  enmax_acdnrequiresack: true
+  enmax_acdnstatus: Expired
+  enmax_acdnpinned: true
+
+- title: Checkout Policy Update – Maximum Duration Extended to 21 Days
+  enmax_acdnbody: Following a review of engineering workflows, the maximum checkout duration has been extended from 14 to 21 days. Drawings checked out for longer than 21 days will still trigger a reminder notification.
+  enmax_acdnseverity: Info
+  enmax_acdnaudience: '4'
+  enmax_acdnstartsat: '2026-02-25T08:00:00Z'
+  enmax_acdnexpiresat: '2026-03-25T08:00:00Z'
+  enmax_acdnrequiresack: false
+  enmax_acdnstatus: Expired
+  enmax_acdnpinned: false
+
+- title: Training – Document Reservation Workflow (March 2026)
+  enmax_acdnbody: A refresher training session for the document reservation and approval workflow will be held on 2026-03-05 at 1:00 PM MST via Microsoft Teams. Link will be sent by email. Attendance is recommended for all new engineering staff.
+  enmax_acdnseverity: Info
+  enmax_acdnaudience: 1
+  enmax_acdnstartsat: '2026-02-28T08:00:00Z'
+  enmax_acdnexpiresat: '2026-03-06T08:00:00Z'
+  enmax_acdnrequiresack: false
+  enmax_acdnstatus: Expired
+  enmax_acdnpinned: false
+
+- title: Reminder – 5 Drawings Stale Checkout (>21 Days)
+  enmax_acdnbody: "5 drawings checked out >21 days without check-in — GG-CF-ACS-PD-005, GW-GN-ABB-PD-004, WD-KH-ACB-LD-003, DG-VS-ACS-PD-005, GG-CV-ACB-LP-004. Please submit or return promptly."
+  enmax_acdnseverity: Warning
+  enmax_acdnaudience: 2
+  enmax_acdnstartsat: '2026-03-15T08:00:00Z'
+  enmax_acdnexpiresat: '2026-03-22T08:00:00Z'
+  enmax_acdnrequiresack: false
+  enmax_acdnstatus: Expired
+  enmax_acdnpinned: false
+
+- title: New User Guide – Drawing Check-In and Validation
+  enmax_acdnbody: An updated user guide for the drawing check-in and validation process is now available in the SharePoint Engineering Resources library. The guide covers new validation rules introduced in the March 2026 release.
+  enmax_acdnseverity: Info
+  enmax_acdnaudience: 1
+  enmax_acdnstartsat: '2026-03-20T08:00:00Z'
+  enmax_acdnexpiresat: '2026-04-20T08:00:00Z'
+  enmax_acdnrequiresack: false
+  enmax_acdnstatus: Active
+  enmax_acdnpinned: false
+
+- title: Approver Delegation – April 2026 Coverage
+  enmax_acdnbody: During the period 2026-04-07 to 2026-04-18, reservation approvals will be handled by the delegate approver. Please allow up to 7 business days for approval during this period.
+  enmax_acdnseverity: Info
+  enmax_acdnaudience: 1
+  enmax_acdnstartsat: '2026-03-28T08:00:00Z'
+  enmax_acdnexpiresat: '2026-04-19T08:00:00Z'
+  enmax_acdnrequiresack: false
+  enmax_acdnstatus: Scheduled
+  enmax_acdnpinned: false
+
+- title: Security Notice – Service Account Credential Rotation
+  enmax_acdnbody: The ENMAX AutoCAD DM service account credentials will be rotated on 2026-04-01. This is a routine security maintenance activity. No user action is required. The system will remain available during this process.
+  enmax_acdnseverity: Warning
+  enmax_acdnaudience: 3
+  enmax_acdnstartsat: '2026-03-28T08:00:00Z'
+  enmax_acdnexpiresat: '2026-04-02T08:00:00Z'
+  enmax_acdnrequiresack: true
+  enmax_acdnstatus: Scheduled
+  enmax_acdnpinned: false
+
+- title: Performance Improvement – Search Now 3× Faster
+  enmax_acdnbody: Drawing search performance has been improved significantly. The advanced search with multiple filters now returns results in under 2 seconds on average, compared to 6 seconds previously.
+  enmax_acdnseverity: Info
+  enmax_acdnaudience: '4'
+  enmax_acdnstartsat: '2026-04-05T08:00:00Z'
+  enmax_acdnexpiresat: '2026-05-05T08:00:00Z'
+  enmax_acdnrequiresack: false
+  enmax_acdnstatus: Active
+  enmax_acdnpinned: false
+
+- title: Drawing Number Format – Clarification on Kind Code PD vs PF
+  enmax_acdnbody: "Naming convention clarification — use kind code PD for P&ID drawings, PF for Process Flow Diagrams. Incorrect kind codes should be updated via a new reservation using the Existing sequence type."
+  enmax_acdnseverity: Info
+  enmax_acdnaudience: 1
+  enmax_acdnstartsat: '2026-04-10T08:00:00Z'
+  enmax_acdnexpiresat: '2026-05-10T08:00:00Z'
+  enmax_acdnrequiresack: false
+  enmax_acdnstatus: Active
+  enmax_acdnpinned: false
+
+- title: Reminder – Year-End Document Audit Due 2026-04-30
+  enmax_acdnbody: The annual drawing register audit is due by 2026-04-30. Document control leads for each business unit should review their drawing lists and flag any obsolete or missing drawings for corrective action.
+  enmax_acdnseverity: Warning
+  enmax_acdnaudience: 2
+  enmax_acdnstartsat: '2026-04-15T08:00:00Z'
+  enmax_acdnexpiresat: '2026-05-01T08:00:00Z'
+  enmax_acdnrequiresack: true
+  enmax_acdnstatus: Active
+  enmax_acdnpinned: true
+
+- title: Hotfix – Fixed Issue with Multi-Sheet Drawing Export
+  enmax_acdnbody: A defect was identified where drawings with more than 10 sheets were not exporting correctly in ZIP format. This has been resolved in the hotfix deployed on 2026-04-18.
+  enmax_acdnseverity: Info
+  enmax_acdnaudience: '4'
+  enmax_acdnstartsat: '2026-04-18T08:00:00Z'
+  enmax_acdnexpiresat: '2026-05-18T08:00:00Z'
+  enmax_acdnrequiresack: false
+  enmax_acdnstatus: Active
+  enmax_acdnpinned: false
+
+- title: New Business Unit – DE (District Energy) Now Active
+  enmax_acdnbody: The District Energy business unit is now active in the drawing management system. Drawings can now be reserved and managed under the DE business code. Contact the document control team for migration assistance.
+  enmax_acdnseverity: Info
+  enmax_acdnaudience: '4'
+  enmax_acdnstartsat: '2026-05-01T08:00:00Z'
+  enmax_acdnexpiresat: '2026-06-01T08:00:00Z'
+  enmax_acdnrequiresack: false
+  enmax_acdnstatus: Active
+  enmax_acdnpinned: false
+
+- title: Upcoming Training – Advanced Reservation Workflow
+  enmax_acdnbody: An advanced training session for the reservation workflow, including override procedures and batch approvals, is scheduled for 2026-05-15 at 10:00 AM MST. Registration through the ENMAX Learning Portal.
+  enmax_acdnseverity: Info
+  enmax_acdnaudience: 1
+  enmax_acdnstartsat: '2026-05-10T08:00:00Z'
+  enmax_acdnexpiresat: '2026-05-16T08:00:00Z'
+  enmax_acdnrequiresack: false
+  enmax_acdnstatus: Active
+  enmax_acdnpinned: false
+
+- title: Draft – Q3 2026 Feature Roadmap for Review
+  enmax_acdnbody: The Q3 2026 feature roadmap is ready for stakeholder review. Key items include batch checkout, SharePoint integration enhancements, and a mobile-friendly drawing viewer. Feedback due by 2026-06-01.
+  enmax_acdnseverity: Info
+  enmax_acdnaudience: 3
+  enmax_acdnstartsat: '2026-05-20T08:00:00Z'
+  enmax_acdnexpiresat: '2026-06-02T08:00:00Z'
+  enmax_acdnrequiresack: false
+  enmax_acdnstatus: Draft
+  enmax_acdnpinned: false
+
+- title: Warning – Legacy Drawing Numbers in Use
+  enmax_acdnbody: Several drawings have been identified with legacy number formats that do not conform to the current ENMAX-ASSET-SYS-KIND-NNN convention. A full audit will be completed by 2026-06-30. No action required from end users.
+  enmax_acdnseverity: Warning
+  enmax_acdnaudience: 2
+  enmax_acdnstartsat: '2026-05-18T08:00:00Z'
+  enmax_acdnexpiresat: '2026-07-01T08:00:00Z'
+  enmax_acdnrequiresack: false
+  enmax_acdnstatus: Active
+  enmax_acdnpinned: false
+
+- title: System Message – Seed Data Loaded for Dev Testing
+  enmax_acdnbody: Sample data has been seeded in this development environment for testing and validation purposes. All reservations, drawings, sheets, and audit events are synthetic test records. Do not use this data for production workflows.
+  enmax_acdnseverity: Warning
+  enmax_acdnaudience: 3
+  enmax_acdnstartsat: '2026-01-01T00:00:00Z'
+  enmax_acdnexpiresat: '2027-01-01T00:00:00Z'
+  enmax_acdnrequiresack: false
+  enmax_acdnstatus: Active
+  enmax_acdnpinned: true

@@ -1,0 +1,21 @@
+schema_name: enmax_acdn_auditevent
+display_name: Audit Event
+values:
+  - value: 0
+    label: None
+  - value: 1
+    label: Created
+  - value: 2
+    label: State Changed
+  - value: 3
+    label: Approval Granted
+  - value: 4
+    label: Approval Denied
+  - value: 5
+    label: Override Used
+  - value: 6
+    label: Force Checked In
+  - value: 7
+    label: Config Changed
+  - value: 8
+    label: Reference Data Changed
