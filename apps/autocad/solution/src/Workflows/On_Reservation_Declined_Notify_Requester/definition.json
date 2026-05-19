@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "1.0.0.0",
+  "triggers": {
+    "When_Reservation_Updated_Declined": {
+      "type": "OpenApiConnectionWebhook",
+      "metadata": {
+        "description": "Trigger filter: Status=Declined(3) AND modifiedby ne service-account-id — prevents loop (Finding 5.5)"
+      },
+      "inputs": {
+        "host": {
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "SubscribeWebhookTrigger",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        },
+        "parameters": {
+          "subscriptionRequest/message": 3,
+          "subscriptionRequest/entityname": "enmax_autocadreservation",
+          "subscriptionRequest/scope": 4,
+          "subscriptionRequest/filterexpression": "enmax_acdnstatus eq 3 and _modifiedby_value ne '@{parameters('ServiceAccountUserId')}'"
+        }
+      }
+    }
+  },
+  "actions": {
+    "Send_Declined_Email": {
+      "type": "Workflow",
+      "runAfter": {},
+      "inputs": {
+        "host": { "workflowReferenceName": "Child_Send_Approval_Result_Email" },
+        "body": {
+          "RecipientEmail":       "@{triggerOutputs()?['body/_createdby_value@OData.Community.Display.V1.FormattedValue']}",
+          "Decision":             "Declined",
+          "ReservationId":        "@{triggerOutputs()?['body/enmax_acdnreservationnumber']}",
+          "DeclineReason":        "@{triggerOutputs()?['body/enmax_acdndeclinereason']}",
+          "ApproverDisplayName":  "@{triggerOutputs()?['body/_modifiedby_value@OData.Community.Display.V1.FormattedValue']}"
+        }
+      }
+    },
+    "Create_InApp_Notification_Declined": {
+      "type": "OpenApiConnection",
+      "runAfter": { "Send_Declined_Email": ["Succeeded", "Failed"] },
+      "inputs": {
+        "host": { "connectionName": "shared_commondataserviceforapps", "operationId": "CreateRecord", "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps" },
+        "parameters": {
+          "entityName": "enmax_autocadinappnotifications",
+          "item/enmax_acdntitle": "Declined: @{triggerOutputs()?['body/enmax_acdnreservationnumber']}",
+          "item/enmax_acdnbody": "Reason: @{replace(replace(triggerOutputs()?['body/enmax_acdndeclinereason'], '<', '&lt;'), '>', '&gt;')}",
+          "item/enmax_acdnseverity": 4,
+          "item/enmax_acdnsourceevent": 2,
+          "item/enmax_acdnsubjecttable": "enmax_autocadreservation",
+          "item/enmax_acdnsubjectid": "@{triggerOutputs()?['body/enmax_acdnreservationid']}",
+          "item/enmax_acdndeeplinkpath": "my-items/reservations/@{triggerOutputs()?['body/enmax_acdnreservationid']}",
+          "item/enmax_acdnread": false,
+          "item/enmax_acdnrecipient@odata.bind": "/systemusers(@{triggerOutputs()?['body/_createdby_value']})",
+          "item/enmax_acdnsubjectreservation@odata.bind": "/enmax_autocadreservations(@{triggerOutputs()?['body/enmax_acdnreservationid']})"
+        }
+      }
+    },
+    "Log_Audit_Declined": {
+      "type": "OpenApiConnection",
+      "runAfter": { "Create_InApp_Notification_Declined": ["Succeeded"] },
+      "inputs": {
+        "host": { "connectionName": "shared_commondataserviceforapps", "operationId": "CreateRecord", "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps" },
+        "parameters": {
+          "entityName": "enmax_autocadauditevents",
+          "item/enmax_acdnevent": 3,
+          "item/enmax_acdnsource": 2,
+          "item/enmax_acdnsubjectreservation@odata.bind": "/enmax_autocadreservations(@{triggerOutputs()?['body/enmax_acdnreservationid']})"
+        }
+      }
+    }
+  }
+}

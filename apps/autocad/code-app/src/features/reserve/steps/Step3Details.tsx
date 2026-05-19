@@ -1,0 +1,124 @@
+import { useFormContext, Controller } from "react-hook-form";
+import {
+  Field,
+  Input,
+  Textarea,
+  RadioGroup,
+  Radio,
+  tokens,
+  makeStyles,
+} from "@fluentui/react-components";
+import type { ReserveForm } from "../schema";
+
+const useStyles = makeStyles({
+  row: { display: "flex", gap: tokens.spacingHorizontalM },
+  half: { flex: 1 },
+});
+
+interface Props {
+  maxCount: number;
+  maxSheets: number;
+  onNext: () => void;
+  onBack: () => void;
+}
+
+export function Step3Details({ maxCount, maxSheets, onNext, onBack }: Props) {
+  const styles = useStyles();
+  const { control, formState: { errors }, trigger } = useFormContext<ReserveForm>();
+
+  async function handleNext() {
+    const ok = await trigger(["count", "sheetsPerDrawing", "sequenceType", "reason"]);
+    if (ok) onNext();
+  }
+
+  return (
+    <div>
+      <div className={styles.row}>
+        <div className={styles.half}>
+          <Controller
+            name="count"
+            control={control}
+            render={({ field }) => (
+              <Field
+                label={`Number of drawings (1–${maxCount})`}
+                validationMessage={errors.count?.message}
+                required
+              >
+                <Input
+                  type="number"
+                  min={1}
+                  max={maxCount}
+                  {...field}
+                  value={String(field.value ?? "")}
+                  onChange={(_, data) => field.onChange(data.value)}
+                />
+              </Field>
+            )}
+          />
+        </div>
+        <div className={styles.half}>
+          <Controller
+            name="sheetsPerDrawing"
+            control={control}
+            render={({ field }) => (
+              <Field
+                label={`Sheets per drawing (1–${maxSheets})`}
+                validationMessage={errors.sheetsPerDrawing?.message}
+                required
+              >
+                <Input
+                  type="number"
+                  min={1}
+                  max={maxSheets}
+                  {...field}
+                  value={String(field.value ?? "")}
+                  onChange={(_, data) => field.onChange(data.value)}
+                />
+              </Field>
+            )}
+          />
+        </div>
+      </div>
+
+      <Controller
+        name="sequenceType"
+        control={control}
+        render={({ field }) => (
+          <Field label="Sequence type" validationMessage={errors.sequenceType?.message} required>
+            <RadioGroup
+              value={field.value}
+              onChange={(_, data) => field.onChange(data.value)}
+              layout="horizontal"
+            >
+              <Radio value="New"      label="New sequence" />
+              <Radio value="Existing" label="Existing sequence" />
+            </RadioGroup>
+          </Field>
+        )}
+      />
+
+      <Controller
+        name="reason"
+        control={control}
+        render={({ field }) => (
+          <Field
+            label="Reason for reservation"
+            validationMessage={errors.reason?.message}
+            required
+          >
+            <Textarea
+              {...field}
+              placeholder="Describe the purpose of these drawing numbers (min 10 chars)"
+              rows={4}
+            />
+          </Field>
+        )}
+      />
+
+      <div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem" }}>
+        <button type="button" onClick={onBack}>Back</button>
+        <button type="button" onClick={() => void handleNext()}>Next</button>
+      </div>
+    </div>
+  );
+}

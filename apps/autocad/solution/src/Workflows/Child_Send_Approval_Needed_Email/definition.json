@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "1.0.0.0",
+  "triggers": {
+    "manual": {
+      "type": "Request",
+      "kind": "PowerAppV2",
+      "inputs": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "RecipientEmail":       { "type": "string" },
+            "RecipientDisplayName": { "type": "string" },
+            "ReservationId":        { "type": "string" },
+            "RequesterDisplayName": { "type": "string" },
+            "CompositionPreview":   { "type": "string" },
+            "Count":                { "type": "string" },
+            "Reason":               { "type": "string" },
+            "OverrideText":         { "type": "string" },
+            "DeepLink":             { "type": "string" }
+          },
+          "required": ["RecipientEmail", "ReservationId"]
+        }
+      }
+    }
+  },
+  "actions": {
+    "Get_Template": {
+      "type": "OpenApiConnection",
+      "runAfter": {},
+      "inputs": {
+        "host": {
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "GetItem",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        },
+        "parameters": {
+          "entityName": "webresourceset",
+          "$filter": "name eq 'enmax_approval_needed'"
+        }
+      }
+    },
+    "Substitute_Template": {
+      "type": "Compose",
+      "runAfter": { "Get_Template": ["Succeeded"] },
+      "inputs": "@{replace(replace(replace(replace(replace(replace(replace(replace(replace(base64ToString(outputs('Get_Template')?['body/content']), '{{ReservationId}}', triggerBody()?['ReservationId']), '{{RequesterDisplayName}}', replace(replace(triggerBody()?['RequesterDisplayName'], '<', '&lt;'), '>', '&gt;')), '{{CompositionPreview}}', replace(replace(triggerBody()?['CompositionPreview'], '<', '&lt;'), '>', '&gt;')), '{{Count}}', triggerBody()?['Count']), '{{Reason}}', replace(replace(triggerBody()?['Reason'], '<', '&lt;'), '>', '&gt;')), '{{OverrideText}}', replace(replace(triggerBody()?['OverrideText'], '<', '&lt;'), '>', '&gt;')), '{{DeepLink}}', triggerBody()?['DeepLink']), '{{ApproveUrl}}', triggerBody()?['DeepLink']), '{{DeclineUrl}}', triggerBody()?['DeepLink'])}"
+    },
+    "Send_Email": {
+      "type": "OpenApiConnection",
+      "runAfter": { "Substitute_Template": ["Succeeded"] },
+      "inputs": {
+        "host": {
+          "connectionName": "shared_office365",
+          "operationId": "SendEmailFromSharedMailbox_V2",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+        },
+        "parameters": {
+          "MailboxAddress": "@parameters('SharedMailboxAddress')",
+          "To": "@{triggerBody()?['RecipientEmail']}",
+          "Subject": "Reservation pending: @{triggerBody()?['ReservationId']}: @{triggerBody()?['CompositionPreview']}",
+          "Body": "@{outputs('Substitute_Template')}",
+          "IsHtml": true,
+          "Importance": "Normal"
+        }
+      },
+      "retryPolicy": { "type": "fixed", "count": 1, "interval": "PT30S" }
+    }
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "Reservation pending approval",
+      "weight": "Bolder",
+      "size": "Medium"
+    },
+    {
+      "type": "FactSet",
+      "facts": [
+        { "title": "Reservation ID",  "value": "{{ReservationId}}" },
+        { "title": "Requested by",    "value": "{{RequesterDisplayName}}" },
+        { "title": "Composition",     "value": "{{CompositionPreview}}" },
+        { "title": "Count",           "value": "{{Count}} drawing(s)" },
+        { "title": "Reason",          "value": "{{Reason}}" },
+        { "title": "Override",        "value": "{{OverrideText}}" }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.Submit",
+      "title": "Approve",
+      "style": "positive",
+      "data": {
+        "verb": "approve",
+        "id": "{{ReservationId}}"
+      }
+    },
+    {
+      "type": "Action.ShowCard",
+      "title": "Decline",
+      "card": {
+        "type": "AdaptiveCard",
+        "body": [
+          {
+            "type": "Input.Text",
+            "id": "declineReason",
+            "isMultiline": true,
+            "placeholder": "Reason (min 10 chars)",
+            "isRequired": true,
+            "errorMessage": "Reason required (min 10 chars)"
+          }
+        ],
+        "actions": [
+          {
+            "type": "Action.Submit",
+            "title": "Confirm decline",
+            "style": "destructive",
+            "data": {
+              "verb": "decline",
+              "id": "{{ReservationId}}"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Action.OpenUrl",
+      "title": "Open in app",
+      "url": "{{DeepLink}}"
+    }
+  ]
+}

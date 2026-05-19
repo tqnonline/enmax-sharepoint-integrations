@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Declined: {{ReservationId}}</title>
+<style>
+  body { font-family: Segoe UI, Arial, sans-serif; color: #1a1a1a; margin: 0; padding: 0; background: #f5f5f5; }
+  .wrapper { max-width: 600px; margin: 32px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .header { background: #C4262E; color: #fff; padding: 24px 32px; }
+  .header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  .body { padding: 32px; }
+  .field-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  .field-table th { text-align: left; width: 150px; color: #666; font-weight: 600; padding: 6px 0; vertical-align: top; }
+  .field-table td { padding: 6px 0 6px 12px; }
+  .actions { margin: 24px 0; }
+  .btn { display: inline-block; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-size: 14px; font-weight: 600; background: #0F487A; color: #fff; }
+  .footer { padding: 16px 32px; background: #f0f0f0; font-size: 12px; color: #666; border-top: 1px solid #ddd; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Declined: {{ReservationId}}</h1>
+  </div>
+  <div class="body">
+    <p>Your reservation has been declined.</p>
+    <table class="field-table">
+      <tr><th>Reason</th><td>{{DeclineReason}}</td></tr>
+      <tr><th>By</th><td>{{ApproverDisplayName}}</td></tr>
+    </table>
+    <p>You can edit and resubmit your reservation from the app:</p>
+    <div class="actions">
+      <a class="btn" href="{{ResubmitUrl}}">Edit and resubmit →</a>
+    </div>
+  </div>
+  <div class="footer">
+    This message was sent from a no-reply address. Replies are not monitored.<br />
+    To discuss the decision, contact the approver via Teams.
+  </div>
+</div>
+</body>
+</html>
