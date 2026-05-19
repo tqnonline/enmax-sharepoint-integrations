@@ -50,6 +50,13 @@ jobs:
           DATAVERSE_CLIENT_SECRET: ${{ secrets.DEV_SP_CLIENT_SECRET }}
           DATAVERSE_TENANT_ID: ${{ secrets.DEV_TENANT_ID }}
         run: python solution/scripts/seed.py
+      - name: Provision security roles
+        env:
+          DATAVERSE_URL: ${{ secrets.DEV_DATAVERSE_URL }}
+          DATAVERSE_CLIENT_ID: ${{ secrets.DEV_SP_CLIENT_ID }}
+          DATAVERSE_CLIENT_SECRET: ${{ secrets.DEV_SP_CLIENT_SECRET }}
+          DATAVERSE_TENANT_ID: ${{ secrets.DEV_TENANT_ID }}
+        run: python solution/scripts/provision_roles.py
       - name: Publish Code App
         working-directory: apps/code-app
         env:
@@ -60,3 +67,14 @@ jobs:
         env:
           SMOKE_URL: ${{ secrets.DEV_APP_PLAY_URL }}
         run: npx playwright test --grep @smoke
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Concurrency integration tests (IssueNumbers)
+        working-directory: solution/plugins
+        env:
+          DATAVERSE_URL: ${{ secrets.DEV_DATAVERSE_URL }}
+          DATAVERSE_CLIENT_ID: ${{ secrets.DEV_SP_CLIENT_ID }}
+          DATAVERSE_CLIENT_SECRET: ${{ secrets.DEV_SP_CLIENT_SECRET }}
+          DATAVERSE_TENANT_ID: ${{ secrets.DEV_TENANT_ID }}
+        run: dotnet test IssueNumbers.Tests/IssueNumbers.Tests.csproj --filter "Category=Integration" --configuration Release

@@ -39,6 +39,9 @@ jobs:
       - name: Build plug-in (net462 via reference assemblies)
         working-directory: solution/plugins/IssueNumbers
         run: dotnet build --configuration Release
+      - name: Test plug-in (IssueNumbers unit tests)
+        working-directory: solution/plugins
+        run: dotnet test IssueNumbers.Tests/IssueNumbers.Tests.csproj --filter "Category!=Integration" --configuration Release
       - name: Upload build artefact
         uses: actions/upload-artifact@v4
         with:

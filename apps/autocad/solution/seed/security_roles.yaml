@@ -1,0 +1,362 @@
+# Security roles for Enmax AutoCAD Document Numbering System
+#
+# PRD reference: section 12 (Security model)
+#
+# business_unit: name of the child BU all teams are scoped to.
+#   Change here to retarget a different environment without touching code.
+#
+# Privilege depth levels:
+#   none   = no access
+#   basic  = User (own records only)
+#   local  = Business Unit
+#   deep   = Parent-Child Business Unit
+#   global = Organisation-wide
+#
+# Operations: create, read, write, delete, append, appendto, assign, share
+#
+# These roles STACK on top of the out-of-the-box Basic User role, which every
+# user must hold to open a Power Apps Code App (PRD section 12.3).
+#
+# Provisioned by: solution/scripts/provision_roles.py
+# Run order:      after solution import, after seed.py
+
+business_unit: enmax-autocad-app
+
+roles:
+  # ---------------------------------------------------------------------------
+  # 1. Enmax AutoCAD User
+  #    ~600 read / ~70 active. Own-record access on transactional tables.
+  #    Stacks on Basic User.
+  # ---------------------------------------------------------------------------
+  - name: Enmax AutoCAD User
+    description: >
+      Regular drawing system users. Can submit reservations, initiate check-outs,
+      and view their own records. All approvals flow through Approvers or Admins.
+    privileges:
+      enmax_autocadreservation:
+        create: basic
+        read: basic
+        write: basic
+        delete: none
+        append: basic
+        appendto: basic
+        assign: basic
+        share: basic
+      enmax_autocaddrawing:
+        read: basic
+        append: basic
+        appendto: basic
+        share: basic
+      enmax_autocadsheet:
+        read: basic
+        append: basic
+        appendto: basic
+        share: basic
+      enmax_autocadcheckout:
+        create: basic
+        read: basic
+        write: basic
+        append: basic
+        appendto: basic
+      enmax_autocadinappnotification:
+        read: basic
+        write: basic        # mark-as-read
+      enmax_autocadnumbersequence:
+        read: global        # plug-in runs as service; users see sequence state
+      enmax_autocadappconfiguration:
+        read: global
+      enmax_autocadauditevent:
+        read: basic         # own subject rows only
+      enmax_autocadbroadcast:
+        read: global
+      # Reference / dimension tables — read-only for all
+      enmax_autocadbusiness:    { read: global }
+      enmax_autocadasset:       { read: global }
+      enmax_autocadunit:        { read: global }
+      enmax_autocaddomain:      { read: global }
+      enmax_autocadsystem:      { read: global }
+      enmax_autocadkind:        { read: global }
+      enmax_autocadrecordtype:  { read: global }
+      enmax_autocadrecordphase: { read: global }
+      enmax_autocadvendor:      { read: global }
+      enmax_autocadunitasset:   { read: global }
+      enmax_autocadsystemscope: { read: global }
+
+  # ---------------------------------------------------------------------------
+  # 2. Enmax AutoCAD Approver
+  #    Small designated group. Read-only at the row level on all transactional
+  #    tables. All writes go through bound custom actions only.
+  # ---------------------------------------------------------------------------
+  - name: Enmax AutoCAD Approver
+    description: >
+      Designated approvers. Read-only at the row level. All approval writes are
+      performed exclusively through the custom actions enmax_acdnApproveReservation
+      and enmax_acdnApproveCheckin, which encapsulate state transitions and audit
+      logging. This keeps the approval surface narrow and fully auditable.
+    privileges:
+      enmax_autocadreservation:
+        read: global
+        append: global
+        appendto: global
+      enmax_autocaddrawing:
+        read: global
+        append: global
+        appendto: global
+      enmax_autocadsheet:
+        read: global
+        append: global
+        appendto: global
+      enmax_autocadcheckout:
+        read: global
+        append: global
+        appendto: global
+      enmax_autocadinappnotification:
+        read: basic
+        write: basic
+      enmax_autocadnumbersequence:
+        read: global
+      enmax_autocadappconfiguration:
+        read: global
+      enmax_autocadauditevent:
+        read: global
+      enmax_autocadbroadcast:
+        read: global
+      enmax_autocadbusiness:    { read: global }
+      enmax_autocadasset:       { read: global }
+      enmax_autocadunit:        { read: global }
+      enmax_autocaddomain:      { read: global }
+      enmax_autocadsystem:      { read: global }
+      enmax_autocadkind:        { read: global }
+      enmax_autocadrecordtype:  { read: global }
+      enmax_autocadrecordphase: { read: global }
+      enmax_autocadvendor:      { read: global }
+      enmax_autocadunitasset:   { read: global }
+      enmax_autocadsystemscope: { read: global }
+
+  # ---------------------------------------------------------------------------
+  # 3. Enmax AutoCAD Admin
+  #    Heather Quinn, PBK. Full organisation-wide access + reference data
+  #    management, App Configuration, and force overrides.
+  # ---------------------------------------------------------------------------
+  - name: Enmax AutoCAD Admin
+    description: >
+      System administrators. Full organisation-wide access to all tables.
+      Manage reference data, App Configuration, and perform force overrides
+      such as force check-in and Reservation cancel. Stacks on Basic User.
+    privileges:
+      enmax_autocadreservation:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+      enmax_autocaddrawing:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+      enmax_autocadsheet:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+      enmax_autocadcheckout:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+      enmax_autocadinappnotification:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+      enmax_autocadnumbersequence:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+      enmax_autocadappconfiguration:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+      enmax_autocadauditevent:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+      enmax_autocadbroadcast:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+      # Reference dimension tables — full CRUD for admins (self-serve, fully audited)
+      enmax_autocadbusiness:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+      enmax_autocadasset:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+      enmax_autocadunit:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+      enmax_autocaddomain:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+      enmax_autocadsystem:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+      enmax_autocadkind:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+      enmax_autocadrecordtype:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+      enmax_autocadrecordphase:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+      enmax_autocadvendor:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+      enmax_autocadunitasset:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+      enmax_autocadsystemscope:
+        create: global
+        read: global
+        write: global
+        delete: global
+        append: global
+        appendto: global
+        assign: global
+        share: global
+
+  # ---------------------------------------------------------------------------
+  # 4. Enmax AutoCAD Read Only
+  #    Auditors, compliance reviewers, and temporary observers.
+  #    Organisation-wide read on all tables — no write access of any kind.
+  #    Not in the original PRD 1:1:1 chain; assigned directly or via a
+  #    separate Entra group as needed.
+  # ---------------------------------------------------------------------------
+  - name: Enmax AutoCAD Read Only
+    description: >
+      Auditors, compliance reviewers, and temporary observers.
+      Organisation-wide read across all tables. No write access.
+      Use for external reviews, audit cycles, or support escalations.
+      Stacks on Basic User.
+    privileges:
+      enmax_autocadreservation:    { read: global }
+      enmax_autocaddrawing:        { read: global }
+      enmax_autocadsheet:          { read: global }
+      enmax_autocadcheckout:       { read: global }
+      enmax_autocadinappnotification: { read: basic }
+      enmax_autocadnumbersequence: { read: global }
+      enmax_autocadappconfiguration: { read: global }
+      enmax_autocadauditevent:     { read: global }
+      enmax_autocadbroadcast:      { read: global }
+      enmax_autocadbusiness:       { read: global }
+      enmax_autocadasset:          { read: global }
+      enmax_autocadunit:           { read: global }
+      enmax_autocaddomain:         { read: global }
+      enmax_autocadsystem:         { read: global }
+      enmax_autocadkind:           { read: global }
+      enmax_autocadrecordtype:     { read: global }
+      enmax_autocadrecordphase:    { read: global }
+      enmax_autocadvendor:         { read: global }
+      enmax_autocadunitasset:      { read: global }
+      enmax_autocadsystemscope:    { read: global }

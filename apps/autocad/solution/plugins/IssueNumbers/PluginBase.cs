@@ -1,6 +1,9 @@
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Extensions;
-using Microsoft.Xrm.Sdk.PluginTelemetry;
+// ILogger (Microsoft.Xrm.Sdk.PluginTelemetry) is not available in the SDK 9.0.0.5
+// assembly that FakeXrmEasy.9 v1.58.1 ships at runtime. Removed to prevent
+// TypeLoadException in the unit-test harness.
+// using Microsoft.Xrm.Sdk.PluginTelemetry;
 using System;
 using System.Runtime.CompilerServices;
 using System.ServiceModel;
@@ -118,11 +121,6 @@ namespace IssueNumbers
         IOrganizationServiceFactory OrgSvcFactory { get; }
 
         /// <summary>
-        /// ILogger for this plugin.
-        /// </summary>
-        ILogger Logger { get;  }
-
-        /// <summary>
         /// Writes a trace message to the trace log.
         /// </summary>
         /// <param name="message">Message name to trace.</param>
@@ -171,11 +169,6 @@ namespace IssueNumbers
         public IOrganizationServiceFactory OrgSvcFactory { get; }
 
         /// <summary>
-        /// ILogger for this plugin.
-        /// </summary>
-        public ILogger Logger { get; }
-
-        /// <summary>
         /// Helper object that stores the services available in this plug-in.
         /// </summary>
         /// <param name="serviceProvider"></param>
@@ -187,8 +180,6 @@ namespace IssueNumbers
             }
 
             ServiceProvider = serviceProvider;
-
-            Logger = serviceProvider.Get<ILogger>();
 
             PluginExecutionContext = serviceProvider.Get<IPluginExecutionContext>();
 
