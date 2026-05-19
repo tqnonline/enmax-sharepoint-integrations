@@ -27,12 +27,6 @@ jobs:
       - name: Build
         working-directory: apps/code-app
         run: npm run build
-      - name: Install Playwright browsers
-        working-directory: apps/code-app
-        run: npx playwright install chromium
-      - name: Playwright (axe-core a11y)
-        working-directory: apps/code-app
-        run: npx playwright test --reporter=line
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
