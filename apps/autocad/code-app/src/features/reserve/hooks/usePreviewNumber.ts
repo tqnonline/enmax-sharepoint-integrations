@@ -9,12 +9,12 @@ export interface PreviewSegments {
 
 export function buildPreviewNumber(segments: Partial<PreviewSegments>): string {
   const s = segments;
-  const b  = s.businessCode || "??";
-  const a  = s.assetCode    || "??";
-  const u  = s.unitCode     || "??";
-  const d  = s.domainCode   || "???";
-  const sy = s.systemCode   || "???";
-  const k  = s.kindCode     || "??";
+  const b  = s.businessCode || "BB";
+  const a  = s.assetCode    || "AA";
+  const u  = s.unitCode     || "UU";
+  const d  = s.domainCode   || "DDD";
+  const sy = s.systemCode   || "SSS";
+  const k  = s.kindCode     || "KK";
   return `${b}-${a}-${u}-${d}-${sy}-${k}-????`;
 }
 

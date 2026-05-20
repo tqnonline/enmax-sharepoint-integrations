@@ -8,7 +8,7 @@ using System;
 using System.Runtime.CompilerServices;
 using System.ServiceModel;
 
-namespace IssueNumbers
+namespace Enmax.AutoCAD
 {
     /// <summary>
     /// Base class for all plug-in classes.

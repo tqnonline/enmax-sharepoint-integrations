@@ -5,12 +5,13 @@ import {
   MessageBarBody,
   Tooltip,
   Spinner,
+  Button,
   tokens,
   makeStyles,
 } from "@fluentui/react-components";
 import type { ReserveForm } from "../schema";
 import type { ReferenceData } from "../hooks/useReferenceData";
-import { buildPreviewNumber, SEQUENCE_TOOLTIP } from "../hooks/usePreviewNumber";
+import { SEQUENCE_TOOLTIP } from "../hooks/usePreviewNumber";
 
 const useStyles = makeStyles({
   table: {
@@ -48,15 +49,6 @@ export function Step4Review({ refData, onBack, onSubmit, isSubmitting }: Props) 
   const domain   = refData.domains.find((d) => d.id === form.domain);
   const system   = refData.systems.find((s) => s.id === form.system);
   const kind     = refData.kinds.find((k) => k.id === form.kind);
-
-  const preview = buildPreviewNumber({
-    businessCode: business?.code,
-    assetCode:    asset?.code,
-    unitCode:     unit?.code,
-    domainCode:   domain?.code,
-    systemCode:   system?.code,
-    kindCode:     kind?.code,
-  });
 
   return (
     <div>
@@ -96,8 +88,16 @@ export function Step4Review({ refData, onBack, onSubmit, isSubmitting }: Props) 
 
         <span className={styles.label}>Number preview</span>
         <Tooltip content={SEQUENCE_TOOLTIP} relationship="description">
-          <span className={styles.preview}>
-            {preview.replace("????", "")}
+          <span className={styles.preview} style={{ fontFamily: "monospace" }}>
+            {[
+              business?.code,
+              asset?.code,
+              unit?.code,
+              domain?.code,
+              system?.code,
+              kind?.code,
+            ].join("-")}
+            {"-"}
             <span className={styles.seqPlaceholder}>????</span>
           </span>
         </Tooltip>
@@ -115,10 +115,10 @@ export function Step4Review({ refData, onBack, onSubmit, isSubmitting }: Props) 
       )}
 
       <div className={styles.actions}>
-        <button type="button" onClick={onBack} disabled={isSubmitting}>Back</button>
-        <button type="button" onClick={onSubmit} disabled={isSubmitting}>
-          {isSubmitting ? <Spinner size="tiny" label="Submitting…" /> : "Submit reservation"}
-        </button>
+        <Button appearance="secondary" onClick={onBack} disabled={isSubmitting}>Back</Button>
+        <Button appearance="primary" onClick={onSubmit} disabled={isSubmitting} icon={isSubmitting ? <Spinner size="tiny" /> : undefined}>
+          {isSubmitting ? "Submitting…" : "Submit reservation"}
+        </Button>
       </div>
     </div>
   );

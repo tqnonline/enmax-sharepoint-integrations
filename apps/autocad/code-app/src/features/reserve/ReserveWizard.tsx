@@ -8,8 +8,10 @@ import {
   Spinner,
   tokens,
   makeStyles,
+  mergeClasses,
   Text,
 } from "@fluentui/react-components";
+import { CheckmarkCircle20Filled, Circle20Regular } from "@fluentui/react-icons";
 import { reserveSchema, type ReserveForm } from "./schema";
 import { Step1RecordType } from "./steps/Step1RecordType";
 import { Step2Composition } from "./steps/Step2Composition";
@@ -20,23 +22,78 @@ import { useApprovedCombinations } from "./hooks/useApprovedCombinations";
 import { useCreateReservation } from "./hooks/useCreateReservation";
 import { useAppConfig } from "../../config/useAppConfig";
 
+// Step 0 (RecordType) auto-advances immediately; users only interact with steps 1-3.
+const USER_STEPS = ["Composition", "Details", "Review"];
+
 const useStyles = makeStyles({
   stepper: {
     display: "flex",
-    gap: tokens.spacingHorizontalM,
-    marginBottom: tokens.spacingVerticalL,
+    alignItems: "center",
+    gap: "0",
+    marginBottom: tokens.spacingVerticalXL,
+    paddingBottom: tokens.spacingVerticalM,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-    paddingBottom: tokens.spacingVerticalS,
   },
-  step: { cursor: "default", padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}` },
-  activeStep: {
+  stepItem: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: tokens.spacingVerticalXS,
+    position: "relative",
+    flex: "1",
+  },
+  connector: {
+    flex: "1",
+    height: "2px",
+    backgroundColor: tokens.colorNeutralStroke1,
+    marginBottom: tokens.spacingVerticalL,
+    alignSelf: "center",
+    maxWidth: "80px",
+  },
+  connectorComplete: {
+    backgroundColor: tokens.colorBrandBackground,
+  },
+  circle: {
+    width: "32px",
+    height: "32px",
+    borderRadius: "50%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    border: `2px solid ${tokens.colorNeutralStroke1}`,
+    backgroundColor: tokens.colorNeutralBackground1,
+    fontSize: tokens.fontSizeBase200,
     fontWeight: tokens.fontWeightSemibold,
-    borderBottom: `2px solid ${tokens.colorBrandForeground1}`,
+    color: tokens.colorNeutralForeground3,
+    userSelect: "none",
+  },
+  circleActive: {
+    border: `2px solid ${tokens.colorBrandBackground}`,
+    backgroundColor: tokens.colorBrandBackground,
+    color: tokens.colorNeutralForegroundOnBrand,
+  },
+  circleComplete: {
+    border: `2px solid ${tokens.colorBrandBackground}`,
+    backgroundColor: tokens.colorBrandBackground,
+    color: tokens.colorNeutralForegroundOnBrand,
+  },
+  stepLabel: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+    textAlign: "center",
+    whiteSpace: "nowrap",
+  },
+  stepLabelActive: {
     color: tokens.colorBrandForeground1,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  stepLabelComplete: {
+    color: tokens.colorNeutralForeground2,
+  },
+  content: {
+    paddingTop: tokens.spacingVerticalS,
   },
 });
-
-const STEP_LABELS = ["Record type", "Composition", "Details", "Review"];
 
 export function ReserveWizard() {
   const styles = useStyles();
@@ -68,7 +125,7 @@ export function ReserveWizard() {
       const result = await createMutation.mutateAsync(values);
       navigate(`/reserve/success?id=${result.enmax_acdnreservationid}`);
     } catch {
-      // error surfaced via createMutation.error
+      // error surfaced via createMutation.error below
     }
   }
 
@@ -87,53 +144,96 @@ export function ReserveWizard() {
   const refData = refDataQuery.data!;
   const combos  = combosQuery.data!;
 
+  // step 0 = RecordType (auto-advances); userStep maps steps 1-3 to 0-2 for the stepper display
+  const userStep = Math.max(step - 1, 0);
+
   return (
     <FormProvider {...methods}>
-      <div role="tablist" className={styles.stepper} aria-label="Reservation wizard steps">
-        {STEP_LABELS.map((label, i) => (
-          <Text
-            key={label}
-            role="tab"
-            aria-selected={i === step}
-            aria-label={`Step ${i + 1}: ${label}`}
-            className={`${styles.step} ${i === step ? styles.activeStep : ""}`}
-          >
-            {i + 1}. {label}
-          </Text>
-        ))}
-      </div>
+      {/* Stepper */}
+      <nav aria-label="Reservation wizard steps" style={{ display: "flex", alignItems: "center", marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: `1px solid ${tokens.colorNeutralStroke1}` }}>
+        {USER_STEPS.map((label, i) => {
+          const isComplete = i < userStep;
+          const isActive   = i === userStep;
 
+          return (
+            <div key={label} style={{ display: "flex", alignItems: "center", flex: i < USER_STEPS.length - 1 ? "1" : "0" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+                <div
+                  className={mergeClasses(
+                    styles.circle,
+                    isActive   && styles.circleActive,
+                    isComplete && styles.circleComplete,
+                  )}
+                  aria-current={isActive ? "step" : undefined}
+                >
+                  {isComplete
+                    ? <CheckmarkCircle20Filled style={{ fontSize: "18px" }} />
+                    : isActive
+                      ? <span>{i + 1}</span>
+                      : <Circle20Regular style={{ fontSize: "18px", opacity: 0.4 }} />
+                  }
+                </div>
+                <Text
+                  size={100}
+                  className={mergeClasses(
+                    styles.stepLabel,
+                    isActive   && styles.stepLabelActive,
+                    isComplete && styles.stepLabelComplete,
+                  )}
+                >
+                  {label}
+                </Text>
+              </div>
+
+              {i < USER_STEPS.length - 1 && (
+                <div
+                  style={{
+                    flex: 1,
+                    height: "2px",
+                    backgroundColor: isComplete ? tokens.colorBrandBackground : tokens.colorNeutralStroke1,
+                    alignSelf: "flex-start",
+                    marginTop: "15px",
+                    marginLeft: "8px",
+                    marginRight: "8px",
+                  }}
+                />
+              )}
+            </div>
+          );
+        })}
+      </nav>
+
+      {/* Submission error */}
       {createMutation.isError && (
-        <MessageBar
-          intent={(createMutation.error as { status?: number })?.status === 403 ? "error" : "error"}
-          style={{ marginBottom: "1rem" }}
-        >
+        <MessageBar intent="error" style={{ marginBottom: "1rem" }}>
           <MessageBarBody>
             {(createMutation.error as { status?: number })?.status === 403
               ? "Permission denied. You do not have access to create reservations."
-              : `Submission failed: ${createMutation.error?.message}`}
+              : `Submission failed: ${(createMutation.error as Error)?.message ?? "Unknown error"}`}
           </MessageBarBody>
         </MessageBar>
       )}
 
-      {step === 0 && <Step1RecordType onNext={next} />}
-      {step === 1 && <Step2Composition refData={refData} combos={combos} onNext={next} />}
-      {step === 2 && (
-        <Step3Details
-          maxCount={config.MaxDrawingsPerReservation}
-          maxSheets={config.MaxSheetsPerDrawing}
-          onNext={next}
-          onBack={back}
-        />
-      )}
-      {step === 3 && (
-        <Step4Review
-          refData={refData}
-          onBack={back}
-          onSubmit={() => void handleSubmit()}
-          isSubmitting={createMutation.isPending}
-        />
-      )}
+      <div className={styles.content}>
+        {step === 0 && <Step1RecordType onNext={next} />}
+        {step === 1 && <Step2Composition refData={refData} combos={combos} onNext={next} />}
+        {step === 2 && (
+          <Step3Details
+            maxCount={config.MaxDrawingsPerReservation}
+            maxSheets={config.MaxSheetsPerDrawing}
+            onNext={next}
+            onBack={back}
+          />
+        )}
+        {step === 3 && (
+          <Step4Review
+            refData={refData}
+            onBack={back}
+            onSubmit={() => void handleSubmit()}
+            isSubmitting={createMutation.isPending}
+          />
+        )}
+      </div>
     </FormProvider>
   );
 }

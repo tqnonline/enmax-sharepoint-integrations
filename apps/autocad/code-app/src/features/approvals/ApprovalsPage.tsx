@@ -4,10 +4,14 @@ import {
   Spinner,
   MessageBar,
   MessageBarBody,
+  TabList,
+  Tab,
   useToastController,
   Toast,
   ToastTitle,
   Toaster,
+  tokens,
+  makeStyles,
 } from "@fluentui/react-components";
 import { usePendingReservations, type PendingReservation } from "./hooks/usePendingReservations";
 import { useApproveReservation } from "./hooks/useApproveReservation";
@@ -17,14 +21,28 @@ import { BulkApproveDialog } from "./BulkApproveDialog";
 
 const TOASTER_ID = "approvals-toaster";
 
-export function ApprovalsPage() {
-  const [selectedReservation, setSelectedReservation] = useState<PendingReservation | null>(null);
-  const [bulkApproveList, setBulkApproveList] = useState<PendingReservation[]>([]);
-  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+type TabValue = "pending" | "approved" | "rejected";
+const TAB_STATUS: Record<TabValue, 1 | 2 | 3> = { pending: 1, approved: 2, rejected: 3 };
 
-  const pendingQuery   = usePendingReservations();
+const useStyles = makeStyles({
+  tabs: { marginBottom: tokens.spacingVerticalL },
+});
+
+export function ApprovalsPage() {
+  const styles = useStyles();
+  const [activeTab, setActiveTab]               = useState<TabValue>("pending");
+  const [selectedReservation, setSelectedReservation] = useState<PendingReservation | null>(null);
+  const [bulkApproveList, setBulkApproveList]   = useState<PendingReservation[]>([]);
+  const [bulkDialogOpen, setBulkDialogOpen]     = useState(false);
+
+  const currentQuery   = usePendingReservations(TAB_STATUS[activeTab]);
   const approveMutation = useApproveReservation();
   const { dispatchToast } = useToastController(TOASTER_ID);
+
+  function handleTabChange(_: unknown, data: { value: unknown }) {
+    setActiveTab(data.value as TabValue);
+    setSelectedReservation(null);
+  }
 
   async function handleBulkApprove() {
     let successCount = 0;
@@ -34,7 +52,14 @@ export function ApprovalsPage() {
       try {
         await approveMutation.mutateAsync({
           reservationId: reservation.enmax_acdnreservationid,
-          decision: "Approved",
+          decision:      "Approved",
+          businessCode:  reservation.businessCode,
+          assetCode:     reservation.assetCode,
+          unitCode:      reservation.unitCode,
+          domainCode:    reservation.domainCode,
+          systemCode:    reservation.systemCode,
+          kindCode:      reservation.kindCode,
+          drawingCount:  reservation.enmax_acdndrawingcount,
         });
         successCount++;
       } catch {
@@ -56,30 +81,58 @@ export function ApprovalsPage() {
     );
   }
 
+  const isPending = activeTab === "pending";
+
   return (
     <div>
       <Toaster toasterId={TOASTER_ID} />
-      <Title2 as="h1" style={{ marginBottom: "1.5rem" }}>Approvals Queue</Title2>
+      <Title2 as="h1" style={{ marginBottom: tokens.spacingVerticalL }}>Approvals</Title2>
 
-      {pendingQuery.isPending && <Spinner label="Loading reservations…" />}
+      <TabList
+        className={styles.tabs}
+        selectedValue={activeTab}
+        onTabSelect={handleTabChange}
+      >
+        <Tab value="pending">Pending Approvals</Tab>
+        <Tab value="approved">Approved</Tab>
+        <Tab value="rejected">Rejected</Tab>
+      </TabList>
 
-      {pendingQuery.isError && (
+      {currentQuery.isPending && <Spinner label="Loading…" />}
+
+      {currentQuery.isError && (
         <MessageBar intent="error">
-          <MessageBarBody>Failed to load pending reservations. Please refresh.</MessageBarBody>
+          <MessageBarBody>Failed to load reservations. Please refresh.</MessageBarBody>
         </MessageBar>
       )}
 
-      {pendingQuery.data && (
+      {currentQuery.data && (
         <ReservationQueueGrid
-          reservations={pendingQuery.data}
+          reservations={currentQuery.data}
           onSelect={(r) => setSelectedReservation(r)}
-          onBulkApprove={(list) => { setBulkApproveList(list); setBulkDialogOpen(true); }}
+          onBulkApprove={isPending
+            ? (list) => { setBulkApproveList(list); setBulkDialogOpen(true); }
+            : undefined
+          }
         />
       )}
 
       <ReservationDetailPanel
         reservation={selectedReservation}
         onClose={() => setSelectedReservation(null)}
+        readonly={!isPending}
+        onApproved={(num) =>
+          dispatchToast(
+            <Toast><ToastTitle>{num} approved — numbers issued.</ToastTitle></Toast>,
+            { intent: "success" },
+          )
+        }
+        onDeclined={(num) =>
+          dispatchToast(
+            <Toast><ToastTitle>{num} declined.</ToastTitle></Toast>,
+            { intent: "warning" },
+          )
+        }
       />
 
       <BulkApproveDialog

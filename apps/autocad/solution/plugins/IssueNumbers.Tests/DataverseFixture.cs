@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.ServiceModel;
 using System.Threading.Tasks;
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk;
@@ -19,6 +20,13 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         public string SequenceKey    { get; set; }
         public int    NewLastIssued  { get; set; }
         public int    Status         { get; set; }
+    }
+
+    public class ReservationSnapshot
+    {
+        public int      Status     { get; set; }
+        public DateTime? ApprovedOn { get; set; }
+        public Guid?    Approver   { get; set; }
     }
 
     /// <summary>
@@ -42,9 +50,17 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         // Constants – match the Dataverse schema
         // -----------------------------------------------------------------------
 
-        private const string EntityName     = "enmax_autocadnumbersequence";
-        private const string ColSequenceKey = "enmax_acdnsequencekey";
-        private const string ActionName     = "enmax_acdnIssueNumbers";
+        private const string EntityName          = "enmax_autocadnumbersequence";
+        private const string ColSequenceKey      = "enmax_acdnsequencekey";
+        private const string ActionName          = "enmax_acdnIssueNumbers";
+
+        private const string ReservationEntity   = "enmax_autocadreservation";
+        private const string ColResStatus        = "enmax_acdnstatus";
+        private const string ColResApprovedOn    = "enmax_acdnapprovedon";
+        private const string ColResApprover      = "enmax_acdnapprover";
+        private const string ApproveActionName   = "enmax_acdnApproveReservation";
+        private const int    StatusPending       = 1;
+        private const int    StatusApproved      = 2;
 
         // -----------------------------------------------------------------------
         // Fields
@@ -59,10 +75,10 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 
         public DataverseFixture()
         {
-            var url      = Environment.GetEnvironmentVariable("DATAVERSE_URL");
-            var clientId = Environment.GetEnvironmentVariable("DATAVERSE_CLIENT_ID");
-            var secret   = Environment.GetEnvironmentVariable("DATAVERSE_CLIENT_SECRET");
-            var tenantId = Environment.GetEnvironmentVariable("DATAVERSE_TENANT_ID");
+            var url      = Environment.GetEnvironmentVariable("ENVIRONMENT_URL");
+            var clientId = Environment.GetEnvironmentVariable("CLIENT_ID");
+            var secret   = Environment.GetEnvironmentVariable("CLIENT_SECRET");
+            var tenantId = Environment.GetEnvironmentVariable("TENANT_ID");
 
             if (string.IsNullOrWhiteSpace(url)      ||
                 string.IsNullOrWhiteSpace(clientId) ||
@@ -70,8 +86,8 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 string.IsNullOrWhiteSpace(tenantId))
             {
                 _failureReason =
-                    "Integration tests require DATAVERSE_URL, DATAVERSE_CLIENT_ID, " +
-                    "DATAVERSE_CLIENT_SECRET, and DATAVERSE_TENANT_ID environment variables.";
+                    "Integration tests require ENVIRONMENT_URL, CLIENT_ID, " +
+                    "CLIENT_SECRET, and TENANT_ID environment variables (same keys as .env.dev).";
                 return;
             }
 
@@ -100,15 +116,26 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 
         /// <summary>
         /// Invokes the enmax_acdnIssueNumbers custom action on the Dataverse org.
-        /// Throws <see cref="InvalidOperationException"/> when env vars are missing.
+        /// Retries up to 20 times with exponential backoff + jitter on concurrency conflicts
+        /// (ConcurrencyVersionMismatch and DuplicateDetected).  The plugin intentionally
+        /// does not retry internally — Dataverse's transaction count tracking prohibits
+        /// catch-and-continue in synchronous plugin context.
         /// </summary>
-        public async Task<IssueNumbersResult> InvokeIssueNumbersAsync(
+        public Task<IssueNumbersResult> InvokeIssueNumbersAsync(
             string business, string asset,  string unit,
             string domain,   string system, string kind,
             int    count)
         {
             EnsureReady();
+            return InvokeWithRetryAsync(
+                () => InvokeIssueNumbersOnceAsync(business, asset, unit, domain, system, kind, count));
+        }
 
+        private async Task<IssueNumbersResult> InvokeIssueNumbersOnceAsync(
+            string business, string asset,  string unit,
+            string domain,   string system, string kind,
+            int    count)
+        {
             var request = new OrganizationRequest(ActionName)
             {
                 Parameters =
@@ -175,37 +202,104 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         /// <summary>
-        /// Deletes the sequence row for <paramref name="sequenceKey"/> if it exists.
-        /// Idempotent — does not throw when the row is absent.
+        /// Resets the sequence row for <paramref name="sequenceKey"/> to lastIssued=0,
+        /// creating it if it does not exist. Using Upsert (not delete+recreate) ensures
+        /// the row is present before parallel callers fire, eliminating the Create race.
         /// </summary>
         public Task ResetSequenceAsync(string sequenceKey)
         {
             EnsureReady();
 
-            var query = new QueryExpression(EntityName)
+            var entity = new Entity(EntityName);
+            entity.KeyAttributes[ColSequenceKey] = sequenceKey;
+            entity["enmax_acdnlastissued"]        = 0;
+            entity["enmax_acdnseedvalue"]          = 0;
+            entity["enmax_acdnstatus"]             = new OptionSetValue(1); // StatusHealthy
+
+            _client.Execute(new UpsertRequest { Target = entity });
+
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Creates a minimal pending reservation (status=1) for use in integration tests.
+        /// Returns the new row's GUID. Caller is responsible for cleanup via
+        /// <see cref="DeleteReservationAsync"/>.
+        /// </summary>
+        public async Task<Guid> CreatePendingReservationAsync()
+        {
+            EnsureReady();
+
+            var entity = new Entity(ReservationEntity);
+            entity[ColResStatus] = new OptionSetValue(StatusPending);
+
+            // ExecuteAsync wraps Create so the call is awaitable
+            var createRequest = new CreateRequest { Target = entity };
+            var response      = (CreateResponse) await _client.ExecuteAsync(createRequest).ConfigureAwait(false);
+            return response.id;
+        }
+
+        /// <summary>
+        /// Invokes the enmax_acdnApproveReservation bound Custom API for the given reservation.
+        /// Throws on HTTP error (non-204 from Dataverse).
+        /// </summary>
+        public async Task InvokeApproveReservationAsync(Guid reservationId)
+        {
+            EnsureReady();
+
+            var request = new OrganizationRequest(ApproveActionName)
             {
-                ColumnSet  = new ColumnSet("enmax_autocadnumbersequenceid"),
-                TopCount   = 1,
-                Criteria   =
+                Parameters =
                 {
-                    Conditions =
-                    {
-                        new ConditionExpression(
-                            ColSequenceKey,
-                            ConditionOperator.Equal,
-                            sequenceKey)
-                    }
+                    ["Target"] = new EntityReference(ReservationEntity, reservationId),
                 }
             };
 
-            var result = _client.RetrieveMultiple(query);
+            await _client.ExecuteAsync(request).ConfigureAwait(false);
+        }
 
-            foreach (var entity in result.Entities)
+        /// <summary>
+        /// Retrieves the current status, approvedOn, and approver fields for a reservation.
+        /// </summary>
+        public async Task<ReservationSnapshot> GetReservationSnapshotAsync(Guid reservationId)
+        {
+            EnsureReady();
+
+            var retrieveRequest = new RetrieveRequest
             {
-                _client.Delete(EntityName, entity.Id);
+                Target    = new EntityReference(ReservationEntity, reservationId),
+                ColumnSet = new ColumnSet(ColResStatus, ColResApprovedOn, ColResApprover),
+            };
+
+            var response = (RetrieveResponse) await _client.ExecuteAsync(retrieveRequest).ConfigureAwait(false);
+            var entity   = response.Entity;
+
+            return new ReservationSnapshot
+            {
+                Status     = entity.GetAttributeValue<OptionSetValue>(ColResStatus)?.Value ?? 0,
+                ApprovedOn = entity.GetAttributeValue<DateTime?>(ColResApprovedOn),
+                Approver   = entity.GetAttributeValue<EntityReference>(ColResApprover)?.Id,
+            };
+        }
+
+        /// <summary>
+        /// Deletes a reservation row. Idempotent — does not throw if the row is absent.
+        /// </summary>
+        public Task DeleteReservationAsync(Guid reservationId)
+        {
+            EnsureReady();
+
+            try
+            {
+                _client.Delete(ReservationEntity, reservationId);
+            }
+            catch (Exception ex) when (ex.Message.Contains("Does Not Exist") ||
+                                        ex.Message.Contains("0x80040217"))
+            {
+                // already deleted — idempotent
             }
 
-            return System.Threading.Tasks.Task.CompletedTask;
+            return Task.CompletedTask;
         }
 
         // -----------------------------------------------------------------------
@@ -225,6 +319,45 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         {
             if (_failureReason != null)
                 throw new InvalidOperationException(_failureReason);
+        }
+
+        /// <summary>
+        /// Retries <paramref name="action"/> up to 20 times on concurrency conflicts.
+        /// Backoff: 50 ms × 2^attempt + random jitter (capped at 2 000 ms).
+        /// </summary>
+        private static async Task<T> InvokeWithRetryAsync<T>(Func<Task<T>> action)
+        {
+            var rng = new Random();
+            for (var attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    return await action().ConfigureAwait(false);
+                }
+                catch (Exception ex) when (attempt < 20 && IsRetriableConcurrencyError(ex))
+                {
+                    var baseMs  = Math.Min(50 * (int)Math.Pow(2, attempt), 2000);
+                    var jitterMs = rng.Next(0, Math.Max(1, baseMs / 2));
+                    await Task.Delay(baseMs + jitterMs).ConfigureAwait(false);
+                }
+            }
+        }
+
+        private static bool IsRetriableConcurrencyError(Exception ex)
+        {
+            if (ex is FaultException<OrganizationServiceFault> fault)
+            {
+                var code = fault.Detail?.ErrorCode;
+                if (code == -2147088254 || code == 2147319761)
+                    return true;
+            }
+            // Dataverse wraps unhandled plugin faults; match on the system message text as fallback.
+            var text = ex.ToString();
+            return text.Contains("ConcurrencyVersionMismatch")
+                || text.Contains("DuplicateDetected")
+                || text.Contains("-2147088254")
+                || text.Contains("RowVersion")
+                || text.Contains("version of the existing record");
         }
     }
 }

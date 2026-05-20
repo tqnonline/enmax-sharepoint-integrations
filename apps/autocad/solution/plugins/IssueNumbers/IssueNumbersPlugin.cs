@@ -4,10 +4,8 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.ServiceModel;
-using System.Threading;
 
-namespace IssueNumbers
+namespace Enmax.AutoCAD
 {
     /// <summary>
     /// Dataverse plug-in for concurrency-safe drawing number issuance.
@@ -28,32 +26,12 @@ namespace IssueNumbers
         private const int StatusWarning       = 2;
         private const int StatusCritical      = 3;
         private const int StatusExhausted     = 4;
-        private const int MaxRetries          = 3;
-        private const int ConcurrencyVersionMismatchCode = -2147088254;
-        private const int DuplicateDetectedCode          =  2147319761;
-
-        private static readonly int[] BackoffMs = { 100, 200, 400 };
-
         private const string EntityName      = "enmax_autocadnumbersequence";
         private const string ColSequenceKey  = "enmax_acdnsequencekey";
         private const string ColLastIssued   = "enmax_acdnlastissued";
         private const string ColSeedValue    = "enmax_acdnseedvalue";
         private const string ColLastIssuedAt = "enmax_acdnlastissuedat";
         private const string ColStatus       = "enmax_acdnstatus";
-
-        // -----------------------------------------------------------------------
-        // Sleep injection (for test #19 backoff verification)
-        // -----------------------------------------------------------------------
-
-        private static readonly Action<int> DefaultSleep = ms => Thread.Sleep(ms);
-
-        /// <summary>
-        /// Tests set this before calling ExecutePluginWith to inject a fake sleep.
-        /// Reset to null after the call to avoid cross-test contamination.
-        /// </summary>
-        public static Action<int> SleepOverride { get; set; } = null;
-
-        private Action<int> Sleep => SleepOverride ?? DefaultSleep;
 
         // -----------------------------------------------------------------------
         // Constructors
@@ -110,60 +88,37 @@ namespace IssueNumbers
                 newRow[ColLastIssued]  = 0;
                 newRow[ColSeedValue]   = 0;
                 newRow[ColStatus]      = new OptionSetValue(StatusHealthy);
-
-                try
-                {
-                    Guid rowId = service.Create(newRow);
-                    row = service.Retrieve(EntityName, rowId, new ColumnSet(true));
-                }
-                catch (FaultException<OrganizationServiceFault> ex)
-                    when (ex.Detail?.ErrorCode == DuplicateDetectedCode)
-                {
-                    // Another caller won the race — retrieve the row they created
-                    row = FindRow(service, sequenceKey);
-                }
+                Guid rowId = service.Create(newRow);
+                row = service.Retrieve(EntityName, rowId, new ColumnSet(true));
             }
 
-            // Step 6 — Compute base value
-            int currentLastIssued = row.GetAttributeValue<int>(ColLastIssued);
-            int seedValue         = row.GetAttributeValue<int>(ColSeedValue);
-            int baseValue         = Math.Max(currentLastIssued, seedValue);
-
-            // Step 7 — Ceiling check
+            // Steps 6–11 — Compute range and update with optimistic locking.
+            // IfRowVersionMatches rejects a stale write; on version conflict the exception
+            // propagates and the caller must retry the entire invocation.
+            // Do NOT catch exceptions from service calls — Dataverse's transaction count
+            // tracking prohibits catch-and-continue in synchronous plugin context.
+            int seedValue          = row.GetAttributeValue<int>(ColSeedValue);
+            int currentLastIssued  = row.GetAttributeValue<int>(ColLastIssued);
+            int baseValue          = Math.Max(currentLastIssued, seedValue);
             int proposedLastIssued = baseValue + count;
+
             if (proposedLastIssued > MaxNumber)
                 throw new InvalidPluginExecutionException(
                     $"Issuing {count} numbers from {baseValue} would exceed {MaxNumber}");
 
-            // Step 8 — Issued array
             int[] issued = Enumerable.Range(baseValue + 1, count).ToArray();
 
-            // Step 10 — Build update entity
             var updateEntity = new Entity(EntityName, row.Id);
-            updateEntity[ColLastIssued]  = proposedLastIssued;
+            updateEntity.RowVersion       = row.RowVersion;
+            updateEntity[ColLastIssued]   = proposedLastIssued;
             updateEntity[ColLastIssuedAt] = DateTime.UtcNow;
-            updateEntity[ColStatus]      = new OptionSetValue(ComputeStatus(proposedLastIssued));
+            updateEntity[ColStatus]       = new OptionSetValue(ComputeStatus(proposedLastIssued));
 
-            // Step 11 — Retry update loop (ALL inside ExecuteDataversePlugin)
-            // Use Execute(UpdateRequest) so FakeXrmEasy message executors intercept it in tests.
-            int attempt = 0;
-            while (true)
+            service.Execute(new Microsoft.Xrm.Sdk.Messages.UpdateRequest
             {
-                try
-                {
-                    service.Execute(new Microsoft.Xrm.Sdk.Messages.UpdateRequest { Target = updateEntity });
-                    break;
-                }
-                catch (FaultException<OrganizationServiceFault> ex)
-                    when (ex.Detail?.ErrorCode == ConcurrencyVersionMismatchCode)
-                {
-                    attempt++;
-                    if (attempt >= MaxRetries)
-                        throw new InvalidPluginExecutionException(
-                            "Could not issue numbers after 3 retries; please try again.");
-                    Sleep(BackoffMs[attempt - 1]);
-                }
-            }
+                Target              = updateEntity,
+                ConcurrencyBehavior = ConcurrencyBehavior.IfRowVersionMatches,
+            });
 
             // Step 12 — Write output parameters
             context.OutputParameters["IssuedNumbers"]   = JsonConvert.SerializeObject(issued);
@@ -181,12 +136,17 @@ namespace IssueNumbers
             var query = new QueryExpression(EntityName)
             {
                 TopCount  = 1,
-                ColumnSet = new ColumnSet(true)
+                ColumnSet = new ColumnSet("enmax_autocadnumbersequenceid")
             };
             query.Criteria.AddCondition(ColSequenceKey, ConditionOperator.Equal, sequenceKey);
 
             var results = service.RetrieveMultiple(query);
-            return results.Entities.Count > 0 ? results.Entities[0] : null;
+            if (results.Entities.Count == 0) return null;
+
+            // Retrieve by ID so that Entity.RowVersion is populated.
+            // RetrieveMultiple via the plugin's WCF service does not reliably set RowVersion;
+            // Retrieve by ID always does, which is required for ConcurrencyBehavior.IfRowVersionMatches.
+            return service.Retrieve(EntityName, results.Entities[0].Id, new ColumnSet(true));
         }
 
         private static int ComputeStatus(int lastIssued)

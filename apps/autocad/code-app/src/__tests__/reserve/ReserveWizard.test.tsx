@@ -1,10 +1,10 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { http, HttpResponse } from "msw";
-import { setupServer } from "msw/node";
 import { renderWithProviders } from "../helpers/renderWithProviders";
 import { ReserveWizard } from "../../features/reserve/ReserveWizard";
 import type { AppConfig } from "../../config/AppConfigSchema";
+import type { ApprovedCombinations } from "../../features/reserve/hooks/useApprovedCombinations";
+import type { ReferenceData } from "../../features/reserve/hooks/useReferenceData";
 
 const MOCK_CONFIG: AppConfig = {
   SingleAdminMode: false,
@@ -35,69 +35,62 @@ vi.mock("../../config/useAppConfig", () => ({
   useAppConfig: () => MOCK_CONFIG,
 }));
 
-const BUSINESSES = [
-  { enmax_acdnid: "bus-1", enmax_acdncode: "GG", enmax_acdnname: "Generation" },
-  { enmax_acdnid: "bus-2", enmax_acdncode: "TX", enmax_acdnname: "Transmission" },
-];
-const ASSETS = [
-  { enmax_acdnid: "asset-a", enmax_acdncode: "CG", enmax_acdnname: "Clover Bar Gas" },
-  { enmax_acdnid: "asset-b", enmax_acdncode: "DC", enmax_acdnname: "Downtown Calgary" },
-];
-const UNITS = [
-  { enmax_acdnid: "unit-1", enmax_acdncode: "00", enmax_acdnname: "Unit 00" },
-];
-const DOMAINS = [{ enmax_acdnid: "dom-1", enmax_acdncode: "ECS", enmax_acdnname: "Electrical Control" }];
-const SYSTEMS = [{ enmax_acdnid: "sys-1", enmax_acdncode: "AST", enmax_acdnname: "Asset" }];
-const KINDS   = [{ enmax_acdnid: "kind-1", enmax_acdncode: "DD", enmax_acdnname: "Design Drawing" }];
+const MOCK_REF_DATA: ReferenceData = {
+  businesses: [
+    { id: "bus-1", code: "GG", name: "Generation" },
+    { id: "bus-2", code: "TX", name: "Transmission" },
+  ],
+  assets: [
+    { id: "asset-a", code: "CG", name: "Clover Bar Gas" },
+    { id: "asset-b", code: "DC", name: "Downtown Calgary" },
+  ],
+  units:   [{ id: "unit-1",  code: "00",  name: "Unit 00" }],
+  domains: [{ id: "dom-1",   code: "ECS", name: "Electrical Control" }],
+  systems: [{ id: "sys-1",   code: "AST", name: "Asset" }],
+  kinds:   [{ id: "kind-1",  code: "DD",  name: "Design Drawing" }],
+};
 
-const BA_COMBOS = [
-  { _enmax_acdnbusiness_value: "bus-1", _enmax_acdnasset_value: "asset-a" },
-];
-const AU_COMBOS = [
-  { _enmax_acdnasset_value: "asset-a", _enmax_acdnunit_value: "unit-1" },
-];
+const MOCK_COMBOS: ApprovedCombinations = {
+  businessAssets: [{ businessId: "bus-1", assetId: "asset-a" }],
+  assetUnits:     [{ assetId: "asset-a", unitId: "unit-1" }],
+  systemScopes:   [],
+};
 
-const server = setupServer(
-  http.get("*/enmax_autocadbusinesses",        () => HttpResponse.json({ value: BUSINESSES })),
-  http.get("*/enmax_autocadassets",            () => HttpResponse.json({ value: ASSETS })),
-  http.get("*/enmax_autocadunits",             () => HttpResponse.json({ value: UNITS })),
-  http.get("*/enmax_autocaddomains",           () => HttpResponse.json({ value: DOMAINS })),
-  http.get("*/enmax_autocadsystems",           () => HttpResponse.json({ value: SYSTEMS })),
-  http.get("*/enmax_autocadkinds",             () => HttpResponse.json({ value: KINDS })),
-  http.get("*/enmax_autocadbusinessassets",    () => HttpResponse.json({ value: BA_COMBOS })),
-  http.get("*/enmax_autocadassetunits",        () => HttpResponse.json({ value: AU_COMBOS })),
-  http.get("*/enmax_autocadsystemscopes",      () => HttpResponse.json({ value: [] })),
-  http.post("*/enmax_autocadreservations",     () => HttpResponse.json(
-    { enmax_acdnreservationid: "res-id-001", enmax_acdnreservationnumber: "RES-00001" },
-    { status: 201 },
-  )),
-);
+vi.mock("../../features/reserve/hooks/useReferenceData", () => ({
+  useReferenceData: () => ({ data: MOCK_REF_DATA, isPending: false, isError: false }),
+}));
 
-beforeAll(() => server.listen({ onUnhandledRequest: "bypass" }));
-afterAll(() => server.close());
-afterEach(() => server.resetHandlers());
+vi.mock("../../features/reserve/hooks/useApprovedCombinations", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../../features/reserve/hooks/useApprovedCombinations")>();
+  return {
+    ...original,
+    useApprovedCombinations: () => ({ data: MOCK_COMBOS, isPending: false, isError: false }),
+  };
+});
+
+vi.mock("../../generated/services/Enmax_autocadreservationsService", () => ({
+  Enmax_autocadreservationsService: { create: vi.fn() },
+}));
+
+import { Enmax_autocadreservationsService } from "../../generated/services/Enmax_autocadreservationsService";
+const mockCreate = vi.mocked(Enmax_autocadreservationsService.create);
+
+beforeEach(() => {
+  mockCreate.mockResolvedValue({
+    success: true,
+    data: { enmax_autocadreservationid: "res-id-001", enmax_acdnreservationid: "RES-00001" },
+  });
+});
 
 // Test 7 — Submit calls Dataverse create with mapped columns
 test("submitting valid form POSTs to enmax_autocadreservations with correct body shape", async () => {
-  const capturedBodies: unknown[] = [];
-  server.use(
-    http.post("*/enmax_autocadreservations", async ({ request }) => {
-      capturedBodies.push(await request.json());
-      return HttpResponse.json(
-        { enmax_acdnreservationid: "res-id-001", enmax_acdnreservationnumber: "RES-00001" },
-        { status: 201 },
-      );
-    }),
-  );
+  mockCreate.mockClear();
 
   const user = userEvent.setup();
   renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
 
-  // Wait for reference data to load (step auto-advances from step 1 to step 2)
-  await waitFor(() => expect(screen.queryByText(/Loading reference data/i)).not.toBeInTheDocument(), { timeout: 3000 });
   await waitFor(() => expect(screen.getByLabelText("Business")).toBeInTheDocument(), { timeout: 3000 });
 
-  // Step 2: select all dropdowns
   await user.selectOptions(screen.getByLabelText("Business"), "bus-1");
   await waitFor(() => expect(screen.getByLabelText("Asset")).not.toBeDisabled());
   await user.selectOptions(screen.getByLabelText("Asset"), "asset-a");
@@ -109,7 +102,6 @@ test("submitting valid form POSTs to enmax_autocadreservations with correct body
   await user.selectOptions(screen.getByLabelText("Kind"), "kind-1");
   await user.click(screen.getByRole("button", { name: /next/i }));
 
-  // Step 3: fill details
   await waitFor(() => expect(screen.getByLabelText(/Number of drawings/i)).toBeInTheDocument());
   const countInput = screen.getByLabelText(/Number of drawings/i);
   await user.clear(countInput);
@@ -119,15 +111,13 @@ test("submitting valid form POSTs to enmax_autocadreservations with correct body
   await user.type(reasonInput, "test reservation per plan #05");
   await user.click(screen.getByRole("button", { name: /next/i }));
 
-  // Step 4: review + submit
   await waitFor(() => expect(screen.getByRole("button", { name: /Submit reservation/i })).toBeInTheDocument());
   await user.click(screen.getByRole("button", { name: /Submit reservation/i }));
 
-  await waitFor(() => expect(capturedBodies.length).toBe(1));
+  await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
 
-  const body = capturedBodies[0] as Record<string, unknown>;
-  expect(body.enmax_acdnrecordtype).toBe(1);
-  expect(body["enmax_acdnbusiness@odata.bind"]).toContain("bus-1");
+  const body = mockCreate.mock.calls[0][0] as Record<string, unknown>;
+  expect(body["enmax_acdnBusiness@odata.bind"]).toBe("/enmax_autocadbusinesses(bus-1)");
   expect(body.enmax_acdndrawingcount).toBe(3);
   expect(body.enmax_acdnstatus).toBe(1);
   expect(body.enmax_acdnoverride).toBe(false);
@@ -138,7 +128,6 @@ test("successful submission navigates to /reserve/success with reservation id", 
   const user = userEvent.setup();
   const { container } = renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
 
-  await waitFor(() => expect(screen.queryByText(/Loading reference data/i)).not.toBeInTheDocument(), { timeout: 3000 });
   await waitFor(() => expect(screen.getByLabelText("Business")).toBeInTheDocument(), { timeout: 3000 });
 
   await user.selectOptions(screen.getByLabelText("Business"), "bus-1");
@@ -163,24 +152,22 @@ test("successful submission navigates to /reserve/success with reservation id", 
   await waitFor(() => expect(screen.getByRole("button", { name: /Submit reservation/i })).toBeInTheDocument());
   await user.click(screen.getByRole("button", { name: /Submit reservation/i }));
 
-  // After navigate, the URL should contain /reserve/success
   await waitFor(() => {
     const html = container.innerHTML;
-    // Success page should appear — checking by router navigation happened
     expect(window.location.hash || html).toBeTruthy();
   });
 });
 
-// Test 9 — Submit surfaces error toast on 403
+// Test 9 — Submit surfaces error on service failure
 test("surfaces permission-denied error when create returns 403", async () => {
-  server.use(
-    http.post("*/enmax_autocadreservations", () => HttpResponse.json({ error: { code: "Forbidden" } }, { status: 403 })),
-  );
+  mockCreate.mockResolvedValue({
+    success: false,
+    error: Object.assign(new Error("Forbidden"), { status: 403 }),
+  });
 
   const user = userEvent.setup();
   renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
 
-  await waitFor(() => expect(screen.queryByText(/Loading reference data/i)).not.toBeInTheDocument(), { timeout: 3000 });
   await waitFor(() => expect(screen.getByLabelText("Business")).toBeInTheDocument(), { timeout: 3000 });
 
   await user.selectOptions(screen.getByLabelText("Business"), "bus-1");
@@ -215,7 +202,6 @@ test("live preview shows ???? placeholder with tooltip — never a sequence numb
   const user = userEvent.setup();
   renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
 
-  await waitFor(() => expect(screen.queryByText(/Loading reference data/i)).not.toBeInTheDocument(), { timeout: 3000 });
   await waitFor(() => expect(screen.getByLabelText("Business")).toBeInTheDocument(), { timeout: 3000 });
 
   await user.selectOptions(screen.getByLabelText("Business"), "bus-1");
@@ -228,10 +214,8 @@ test("live preview shows ???? placeholder with tooltip — never a sequence numb
   await user.selectOptions(screen.getByLabelText("System"), "sys-1");
   await user.selectOptions(screen.getByLabelText("Kind"), "kind-1");
 
-  // Preview visible on step 2 — should show ???? not a number
   const previewEl = screen.getByText("????");
   expect(previewEl).toBeInTheDocument();
-  // Must not show any 4-digit sequence number
   expect(screen.queryByText(/\b\d{4}\b/)).not.toBeInTheDocument();
 });
 
@@ -240,7 +224,6 @@ test("changing Business filters Asset dropdown to approved combinations only", a
   const user = userEvent.setup();
   renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
 
-  await waitFor(() => expect(screen.queryByText(/Loading reference data/i)).not.toBeInTheDocument(), { timeout: 3000 });
   await waitFor(() => expect(screen.getByLabelText("Business")).toBeInTheDocument(), { timeout: 3000 });
 
   await user.selectOptions(screen.getByLabelText("Business"), "bus-1");
@@ -251,30 +234,29 @@ test("changing Business filters Asset dropdown to approved combinations only", a
     .filter((o) => o.value !== "")
     .map((o) => o.value);
 
-  // bus-1 is approved with asset-a only (per BA_COMBOS fixture)
+  // bus-1 is approved with asset-a only (per MOCK_COMBOS fixture)
   expect(visibleOptions).toContain("asset-a");
   expect(visibleOptions).not.toContain("asset-b");
-  expect(visibleOptions).not.toContain("asset-c");
 });
 
 // Test 2 — Override toggle appears for invalid BB-AA
 test("override warning and toggle appear when Business+Asset combo is not in approved list", async () => {
-  // Replace BA_COMBOS with empty so no combos are approved
-  server.use(
-    http.get("*/enmax_autocadbusinessassets", () => HttpResponse.json({ value: [] })),
-  );
-
   const user = userEvent.setup();
   renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
 
-  await waitFor(() => expect(screen.queryByText(/Loading reference data/i)).not.toBeInTheDocument(), { timeout: 3000 });
   await waitFor(() => expect(screen.getByLabelText("Business")).toBeInTheDocument(), { timeout: 3000 });
 
   await user.selectOptions(screen.getByLabelText("Business"), "bus-1");
-  // With no approved combos, all assets are filtered out; but the override UI should appear when asset is selected
-  // Since filterAssetsByBusiness returns empty, we won't be able to select an asset — but the component shows the warning when isBusinessAssetApproved returns false
-  // Instead just verify the approved combos is empty means no asset options
+  // With MOCK_COMBOS, bus-1 only has asset-a approved
   const assetSelect = screen.getByLabelText("Asset") as HTMLSelectElement;
   const visibleOptions = Array.from(assetSelect.options).filter((o) => o.value !== "");
-  expect(visibleOptions).toHaveLength(0);
+  expect(visibleOptions).toHaveLength(1);
+  expect(visibleOptions[0].value).toBe("asset-a");
+
+  // bus-2 has no combos → no assets
+  await user.selectOptions(screen.getByLabelText("Business"), "bus-2");
+  await waitFor(() => {
+    const opts = Array.from((screen.getByLabelText("Asset") as HTMLSelectElement).options).filter(o => o.value !== "");
+    expect(opts).toHaveLength(0);
+  });
 });

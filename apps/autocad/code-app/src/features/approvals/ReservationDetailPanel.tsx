@@ -1,78 +1,176 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
+  OverlayDrawer,
   DrawerBody,
   DrawerHeader,
   DrawerHeaderTitle,
-  InlineDrawer,
   Button,
   Text,
   Badge,
-  Accordion,
-  AccordionItem,
-  AccordionHeader,
-  AccordionPanel,
+  Divider,
+  Persona,
   Spinner,
   tokens,
   makeStyles,
 } from "@fluentui/react-components";
 import { Dismiss24Regular, Warning24Regular } from "@fluentui/react-icons";
 import type { PendingReservation } from "./hooks/usePendingReservations";
+import { formatComposition, formatNumberRange } from "./compositionUtils";
 import { useApproveReservation } from "./hooks/useApproveReservation";
 import { useApprovalAudit } from "./hooks/useApprovalAudit";
 import { DeclineDialog } from "./DeclineDialog";
 
+function formatAuditLabel(event: number, formatted: string): string {
+  const map: Record<number, string> = { 1: "Submitted", 3: "Approval Granted", 4: "Approval Denied" };
+  return map[event] ?? formatted.replace(/([a-z])([A-Z])/g, "$1 $2");
+}
+
+function auditDotColor(event: number): string {
+  if (event === 3) return tokens.colorPaletteGreenForeground2;
+  if (event === 4) return tokens.colorPaletteRedForeground1;
+  return tokens.colorBrandForeground1;
+}
+
+function useScreenWidth(): number {
+  const [width, setWidth] = useState(() => window.innerWidth);
+  useEffect(() => {
+    const handler = () => setWidth(window.innerWidth);
+    window.addEventListener("resize", handler, { passive: true });
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return width;
+}
+
 const useStyles = makeStyles({
   field: {
     display: "grid",
-    gridTemplateColumns: "140px 1fr",
+    gridTemplateColumns: "130px 1fr",
     gap: tokens.spacingHorizontalM,
     marginBottom: tokens.spacingVerticalS,
+    alignItems: "start",
+    "@media (max-width: 480px)": {
+      gridTemplateColumns: "1fr",
+      gap: tokens.spacingVerticalXS,
+    },
   },
-  label:   { fontWeight: tokens.fontWeightSemibold, color: tokens.colorNeutralForeground2 },
-  actions: { display: "flex", gap: tokens.spacingHorizontalS, marginTop: tokens.spacingVerticalL },
-  auditRow: {
-    display: "grid",
-    gridTemplateColumns: "1fr auto",
+  label: {
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground2,
+    paddingTop: "4px",
+    "@media (max-width: 480px)": { paddingTop: 0 },
+  },
+  actions: {
+    display: "flex",
     gap: tokens.spacingHorizontalS,
-    padding: `${tokens.spacingVerticalXS} 0`,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    marginTop: tokens.spacingVerticalL,
+    flexWrap: "wrap",
+  },
+  auditSection: { marginTop: tokens.spacingVerticalXL },
+  timeline: { marginTop: tokens.spacingVerticalS },
+  timelineItem: {
+    display: "flex",
+    gap: tokens.spacingHorizontalM,
+  },
+  timelineTrack: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    width: "14px",
+    flexShrink: 0,
+  },
+  timelineDot: {
+    width: "14px",
+    height: "14px",
+    borderRadius: "50%",
+    flexShrink: 0,
+    marginTop: "3px",
+    border: `2px solid ${tokens.colorNeutralBackground1}`,
+    boxSizing: "border-box",
+  },
+  timelineConnector: {
+    flex: 1,
+    width: "2px",
+    minHeight: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorNeutralStroke2,
+    marginTop: "2px",
+  },
+  timelineContent: {
+    flex: 1,
+    paddingBottom: tokens.spacingVerticalL,
+  },
+  timelineLabel: {
+    display: "block",
+    fontWeight: tokens.fontWeightSemibold,
+    marginBottom: tokens.spacingVerticalXS,
+  },
+  timelineMeta: {
+    color: tokens.colorNeutralForeground3,
+    display: "block",
+  },
+  errorText: {
+    color: tokens.colorPaletteRedForeground1,
+    display: "block",
+    marginTop: tokens.spacingVerticalS,
   },
 });
 
 interface Props {
   reservation: PendingReservation | null;
   onClose: () => void;
+  readonly?: boolean;
+  onApproved?: (reservationNumber: string) => void;
+  onDeclined?: (reservationNumber: string) => void;
 }
 
-export function ReservationDetailPanel({ reservation, onClose }: Props) {
+export function ReservationDetailPanel({ reservation, onClose, readonly = false, onApproved, onDeclined }: Props) {
   const styles = useStyles();
   const [declineOpen, setDeclineOpen] = useState(false);
+  const screenWidth = useScreenWidth();
   const approveMutation = useApproveReservation();
   const auditQuery = useApprovalAudit(reservation?.enmax_acdnreservationid ?? null);
 
+  // "small" = 320px at tablet portrait; "medium" = 592px at desktop/landscape
+  const drawerSize = screenWidth >= 1024 ? "medium" : "small";
+
   function handleApprove() {
     if (!reservation) return;
+    const num = reservation.enmax_acdnreservationnumber;
     approveMutation.mutate(
-      { reservationId: reservation.enmax_acdnreservationid, decision: "Approved" },
-      { onSuccess: onClose },
+      {
+        reservationId: reservation.enmax_acdnreservationid,
+        decision:      "Approved",
+        businessCode:  reservation.businessCode,
+        assetCode:     reservation.assetCode,
+        unitCode:      reservation.unitCode,
+        domainCode:    reservation.domainCode,
+        systemCode:    reservation.systemCode,
+        kindCode:      reservation.kindCode,
+        drawingCount:  reservation.enmax_acdndrawingcount,
+      },
+      { onSuccess: () => { onClose(); onApproved?.(num); } },
     );
   }
 
   function handleDecline(reason: string) {
     if (!reservation) return;
+    const num = reservation.enmax_acdnreservationnumber;
     approveMutation.mutate(
       { reservationId: reservation.enmax_acdnreservationid, decision: "Declined", reason },
-      { onSuccess: () => { setDeclineOpen(false); onClose(); } },
+      { onSuccess: () => { setDeclineOpen(false); onClose(); onDeclined?.(num); } },
     );
   }
 
-  const compositionPreview = reservation
-    ? `${reservation.businessCode}-${reservation.assetCode}-${reservation.unitCode}-${reservation.domainCode}-${reservation.systemCode}-${reservation.kindCode}-????`
-    : "";
+  const compositionPreview = reservation ? formatComposition(reservation) : "";
 
   return (
     <>
-      <InlineDrawer open={!!reservation} position="end" style={{ width: "480px" }}>
+      <OverlayDrawer
+        open={!!reservation}
+        onOpenChange={(_, data) => { if (!data.open) onClose(); }}
+        position="end"
+        size={drawerSize}
+        modalType="non-modal"
+      >
         <DrawerHeader>
           <DrawerHeaderTitle
             action={
@@ -82,27 +180,50 @@ export function ReservationDetailPanel({ reservation, onClose }: Props) {
             {reservation?.enmax_acdnreservationnumber ?? "Reservation"}
           </DrawerHeaderTitle>
         </DrawerHeader>
+
         <DrawerBody>
           {reservation && (
             <>
               {reservation.enmax_acdnoverride && (
-                <Badge icon={<Warning24Regular />} color="warning" style={{ marginBottom: "0.5rem" }}>
+                <Badge
+                  icon={<Warning24Regular />}
+                  color="warning"
+                  style={{ marginBottom: tokens.spacingVerticalM }}
+                >
                   Validation override
                 </Badge>
               )}
 
-              <div className={styles.field}>
-                <span className={styles.label}>Requester</span>
-                <span>{reservation._createdby_value_Formatted}</span>
+              <div style={{ marginBottom: tokens.spacingVerticalM }}>
+                <Persona
+                  name={reservation._createdby_value_Formatted}
+                  secondaryText={reservation.createdByJobTitle || ""}
+                  size="medium"
+                />
               </div>
+
+              <Divider style={{ marginBottom: tokens.spacingVerticalM }} />
+
               <div className={styles.field}>
                 <span className={styles.label}>Composition</span>
-                <span style={{ fontFamily: "monospace" }}>{compositionPreview}</span>
+                <Text
+                  style={{ fontFamily: "monospace", overflowWrap: "break-word", wordBreak: "break-all" }}
+                >
+                  {compositionPreview}
+                </Text>
               </div>
               <div className={styles.field}>
-                <span className={styles.label}>Count</span>
+                <span className={styles.label}>Drawings</span>
                 <span>{reservation.enmax_acdndrawingcount}</span>
               </div>
+              {reservation.enmax_acdnissuednumbers && (
+                <div className={styles.field}>
+                  <span className={styles.label}>Issued numbers</span>
+                  <span style={{ fontFamily: "monospace" }}>
+                    {formatNumberRange(reservation.enmax_acdnissuednumbers)}
+                  </span>
+                </div>
+              )}
               <div className={styles.field}>
                 <span className={styles.label}>Reason</span>
                 <span>{reservation.enmax_acdnreason}</span>
@@ -112,27 +233,38 @@ export function ReservationDetailPanel({ reservation, onClose }: Props) {
                 <span>{new Date(reservation.createdon).toLocaleString()}</span>
               </div>
 
+              {reservation.enmax_acdndeclinereason && (
+                <div className={styles.field}>
+                  <span className={styles.label}>Decline reason</span>
+                  <span>{reservation.enmax_acdndeclinereason}</span>
+                </div>
+              )}
+
               {approveMutation.isError && (
-                <Text style={{ color: tokens.colorPaletteRedForeground1 }}>
+                <Text className={styles.errorText}>
                   Action failed: {approveMutation.error?.message}
                 </Text>
               )}
 
               <div className={styles.actions}>
-                <Button
-                  appearance="primary"
-                  onClick={handleApprove}
-                  disabled={approveMutation.isPending}
-                >
-                  {approveMutation.isPending ? <Spinner size="tiny" /> : "Approve"}
-                </Button>
-                <Button
-                  appearance="secondary"
-                  onClick={() => setDeclineOpen(true)}
-                  disabled={approveMutation.isPending}
-                >
-                  Decline
-                </Button>
+                {!readonly && (
+                  <>
+                    <Button
+                      appearance="primary"
+                      onClick={handleApprove}
+                      disabled={approveMutation.isPending}
+                    >
+                      {approveMutation.isPending ? <Spinner size="tiny" /> : "Approve"}
+                    </Button>
+                    <Button
+                      appearance="secondary"
+                      onClick={() => setDeclineOpen(true)}
+                      disabled={approveMutation.isPending}
+                    >
+                      Decline
+                    </Button>
+                  </>
+                )}
                 <Button
                   appearance="subtle"
                   as="a"
@@ -144,25 +276,61 @@ export function ReservationDetailPanel({ reservation, onClose }: Props) {
                 </Button>
               </div>
 
-              <Accordion collapsible style={{ marginTop: "1rem" }}>
-                <AccordionItem value="audit">
-                  <AccordionHeader>Audit history</AccordionHeader>
-                  <AccordionPanel>
-                    {auditQuery.isPending && <Spinner size="tiny" />}
-                    {auditQuery.data?.map((e) => (
-                      <div key={e.enmax_acdnauditeventid} className={styles.auditRow}>
-                        <Text>{e.enmax_acdnevent_Formatted} by {e._modifiedby_value_Formatted}</Text>
-                        <Text size={200}>{new Date(e.modifiedon).toLocaleString()}</Text>
+              <div className={styles.auditSection}>
+                <Divider style={{ marginBottom: tokens.spacingVerticalM }} />
+                <Text
+                  weight="semibold"
+                  size={300}
+                  style={{ display: "block", marginBottom: tokens.spacingVerticalS }}
+                >
+                  Audit history
+                </Text>
+
+                {auditQuery.isPending && <Spinner size="tiny" label="Loading audit…" />}
+
+                {!auditQuery.isPending && (auditQuery.data?.length ?? 0) === 0 && (
+                  <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                    No audit events yet.
+                  </Text>
+                )}
+
+                <div className={styles.timeline}>
+                  {auditQuery.data?.map((e, i) => {
+                    const isLast = i === (auditQuery.data?.length ?? 0) - 1;
+                    return (
+                      <div key={e.enmax_acdnauditeventid} className={styles.timelineItem}>
+                        <div className={styles.timelineTrack}>
+                          <div
+                            className={styles.timelineDot}
+                            style={{ backgroundColor: auditDotColor(e.enmax_acdnevent) }}
+                          />
+                          {!isLast && <div className={styles.timelineConnector} />}
+                        </div>
+                        <div className={styles.timelineContent}>
+                          <Text className={styles.timelineLabel}>
+                            {formatAuditLabel(e.enmax_acdnevent, e.enmax_acdnevent_Formatted)}
+                          </Text>
+                          {e.actedBy_Formatted && (
+                            <Text size={200} className={styles.timelineMeta}>
+                              by {e.actedBy_Formatted}
+                            </Text>
+                          )}
+                          <Text size={200} className={styles.timelineMeta}>
+                            {new Date(e.createdon).toLocaleString(undefined, {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            })}
+                          </Text>
+                        </div>
                       </div>
-                    ))}
-                    {auditQuery.data?.length === 0 && <Text>No audit history yet.</Text>}
-                  </AccordionPanel>
-                </AccordionItem>
-              </Accordion>
+                    );
+                  })}
+                </div>
+              </div>
             </>
           )}
         </DrawerBody>
-      </InlineDrawer>
+      </OverlayDrawer>
 
       <DeclineDialog
         open={declineOpen}

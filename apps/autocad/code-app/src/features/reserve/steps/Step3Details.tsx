@@ -5,6 +5,7 @@ import {
   Textarea,
   RadioGroup,
   Radio,
+  Button,
   tokens,
   makeStyles,
 } from "@fluentui/react-components";
@@ -115,9 +116,9 @@ export function Step3Details({ maxCount, maxSheets, onNext, onBack }: Props) {
         )}
       />
 
-      <div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem" }}>
-        <button type="button" onClick={onBack}>Back</button>
-        <button type="button" onClick={() => void handleNext()}>Next</button>
+      <div style={{ marginTop: "1.5rem", display: "flex", gap: tokens.spacingHorizontalS }}>
+        <Button appearance="secondary" onClick={onBack}>Back</Button>
+        <Button appearance="primary" onClick={() => void handleNext()}>Next: Review</Button>
       </div>
     </div>
   );

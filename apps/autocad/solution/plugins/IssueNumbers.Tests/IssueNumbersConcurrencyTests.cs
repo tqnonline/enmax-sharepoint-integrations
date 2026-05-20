@@ -148,10 +148,10 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         /// </summary>
         private static void SkipIfNoDataverse()
         {
-            var url      = Environment.GetEnvironmentVariable("DATAVERSE_URL");
-            var clientId = Environment.GetEnvironmentVariable("DATAVERSE_CLIENT_ID");
-            var secret   = Environment.GetEnvironmentVariable("DATAVERSE_CLIENT_SECRET");
-            var tenantId = Environment.GetEnvironmentVariable("DATAVERSE_TENANT_ID");
+            var url      = Environment.GetEnvironmentVariable("ENVIRONMENT_URL");
+            var clientId = Environment.GetEnvironmentVariable("CLIENT_ID");
+            var secret   = Environment.GetEnvironmentVariable("CLIENT_SECRET");
+            var tenantId = Environment.GetEnvironmentVariable("TENANT_ID");
 
             bool missing =
                 string.IsNullOrWhiteSpace(url)      ||
@@ -162,8 +162,8 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             if (missing)
             {
                 const string reason =
-                    "Requires Dataverse connection: set DATAVERSE_URL, " +
-                    "DATAVERSE_CLIENT_ID, DATAVERSE_CLIENT_SECRET, DATAVERSE_TENANT_ID.";
+                    "Requires Dataverse connection: set ENVIRONMENT_URL, CLIENT_ID, " +
+                    "CLIENT_SECRET, TENANT_ID (same keys as .env.dev).";
 
                 // xUnit 2.x does not expose a public Skip.If() API but does recognise
                 // a [Fact(Skip = "...")] attribute. For runtime skipping we throw the

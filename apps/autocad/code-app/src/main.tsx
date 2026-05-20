@@ -14,7 +14,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 3,
-      throwOnError: true,
+      throwOnError: false,
     },
   },
 });

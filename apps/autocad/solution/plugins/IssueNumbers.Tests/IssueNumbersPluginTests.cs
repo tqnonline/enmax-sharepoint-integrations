@@ -4,7 +4,7 @@ using System.ServiceModel;
 using FakeXrmEasy;
 using FakeXrmEasy.FakeMessageExecutors;
 using FluentAssertions;
-using IssueNumbers;
+using Enmax.AutoCAD;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;
 using Newtonsoft.Json;
@@ -86,37 +86,8 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
     }
 
     /// <summary>
-    /// IFakeMessageExecutor that throws a given exception on every Create call.
-    /// Used to drive the auto-create race-lost path (DuplicateDetected).
-    /// </summary>
-    internal sealed class AlwaysThrowCreateExecutor : IFakeMessageExecutor
-    {
-        private readonly Exception _exception;
-
-        public AlwaysThrowCreateExecutor(Exception exception)
-        {
-            _exception = exception;
-        }
-
-        public bool CanExecute(OrganizationRequest request)
-        {
-            return request is Microsoft.Xrm.Sdk.Messages.CreateRequest;
-        }
-
-        public OrganizationResponse Execute(OrganizationRequest request, XrmFakedContext ctx)
-        {
-            throw _exception;
-        }
-
-        public Type GetResponsibleRequestType()
-        {
-            return typeof(Microsoft.Xrm.Sdk.Messages.CreateRequest);
-        }
-    }
-
-    /// <summary>
     /// IFakeMessageExecutor implementation that throws a given exception on every Update call.
-    /// Used to drive retry-path tests.
+    /// Used to verify that version-mismatch exceptions propagate out of the plugin.
     /// </summary>
     internal sealed class AlwaysThrowUpdateExecutor : IFakeMessageExecutor
     {
@@ -137,44 +108,6 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         {
             CallCount++;
             throw _exception;
-        }
-
-        public Type GetResponsibleRequestType()
-        {
-            return typeof(UpdateRequest);
-        }
-    }
-
-    /// <summary>
-    /// IFakeMessageExecutor that throws on the first N calls, then delegates to default behaviour.
-    /// </summary>
-    internal sealed class ThrowNThenSucceedUpdateExecutor : IFakeMessageExecutor
-    {
-        private readonly Exception _exception;
-        private readonly int       _throwCount;
-        public int CallCount { get; private set; }
-
-        public ThrowNThenSucceedUpdateExecutor(Exception exception, int throwCount)
-        {
-            _exception  = exception;
-            _throwCount = throwCount;
-        }
-
-        public bool CanExecute(OrganizationRequest request)
-        {
-            return request is UpdateRequest;
-        }
-
-        public OrganizationResponse Execute(OrganizationRequest request, XrmFakedContext ctx)
-        {
-            CallCount++;
-            if (CallCount <= _throwCount)
-                throw _exception;
-
-            // Delegate to the default update logic: update entity in faked data store
-            var updateReq = (UpdateRequest)request;
-            ctx.GetFakedOrganizationService().Update(updateReq.Target);
-            return new UpdateResponse();
         }
 
         public Type GetResponsibleRequestType()
@@ -476,37 +409,13 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         // -----------------------------------------------------------------------
-        // Test 17 – Concurrency retry: 1st Update throws, 2nd succeeds → 2 Update calls
+        // Test 17 – Concurrency conflict: ConcurrencyVersionMismatch propagates to caller
+        //           Plugin must NOT catch service exceptions — Dataverse's transaction
+        //           count tracking prohibits catch-and-continue in synchronous context.
+        //           Retry belongs at the caller (fixture / Code App), not in the plugin.
         // -----------------------------------------------------------------------
         [Fact]
-        public void Issue_ConcurrencyVersionMismatch_RetriesOnce_Succeeds()
-        {
-            var fxCtx  = new XrmFakedContext();
-            var row    = PluginContextFactory.BuildSequenceRow(lastIssued: 0);
-            fxCtx.Initialize(new List<Entity> { row });
-
-            // Build a concurrency fault
-            var fault = new OrganizationServiceFault { ErrorCode = -2147088254, Message = "ConcurrencyVersionMismatch" };
-            var orgEx = new FaultException<OrganizationServiceFault>(fault, fault.Message);
-
-            var executor = new ThrowNThenSucceedUpdateExecutor(orgEx, throwCount: 1);
-            fxCtx.AddFakeMessageExecutor<UpdateRequest>(executor);
-
-            var plugCtx = PluginContextFactory.BuildDefaultContext(fxCtx, count: 1);
-
-            Action act = () => fxCtx.ExecutePluginWith<IssueNumbersPlugin>(plugCtx);
-            act.Should().NotThrow<NotImplementedException>("plugin must have real logic"); // will fail
-
-            executor.CallCount.Should().Be(2);
-            var issued = JsonConvert.DeserializeObject<int[]>((string)plugCtx.OutputParameters["IssuedNumbers"]);
-            issued.Should().BeEquivalentTo(new[] { 1 });
-        }
-
-        // -----------------------------------------------------------------------
-        // Test 18 – Concurrency retry: all 3 Updates throw → InvalidPluginExecutionException
-        // -----------------------------------------------------------------------
-        [Fact]
-        public void Issue_ConcurrencyVersionMismatch_RetriesUpTo3Times_ThenThrows()
+        public void Issue_ConcurrencyVersionMismatch_Propagates()
         {
             var fxCtx  = new XrmFakedContext();
             var row    = PluginContextFactory.BuildSequenceRow(lastIssued: 0);
@@ -521,46 +430,12 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var plugCtx = PluginContextFactory.BuildDefaultContext(fxCtx, count: 1);
 
             Action act = () => fxCtx.ExecutePluginWith<IssueNumbersPlugin>(plugCtx);
+            // PluginBase wraps FaultException<OrganizationServiceFault> in InvalidPluginExecutionException.
+            // The important invariant: the plugin does NOT catch and swallow the fault — it propagates
+            // so the caller can retry.
             act.Should().Throw<InvalidPluginExecutionException>()
-               .WithMessage("*Could not issue numbers after 3 retries*");
-        }
-
-        // -----------------------------------------------------------------------
-        // Test 19 – Concurrency backoff: gaps between retries ≥ 100ms and 200ms
-        // -----------------------------------------------------------------------
-        [Fact]
-        public void Issue_ConcurrencyVersionMismatch_BackoffApplied()
-        {
-            // Exponential backoff between retries prevents thundering herd under contention.
-            // Verify the plugin requests delays of >= 100ms and >= 200ms between attempts.
-            var sleepDelays = new List<int>();
-            Action<int> fakeSleep = ms => sleepDelays.Add(ms);
-
-            var fxCtx = new XrmFakedContext();
-            var row = PluginContextFactory.BuildSequenceRow(lastIssued: 0);
-            fxCtx.Initialize(new List<Entity> { row });
-
-            var fault = new OrganizationServiceFault { ErrorCode = -2147088254, Message = "ConcurrencyVersionMismatch" };
-            var orgEx = new FaultException<OrganizationServiceFault>(fault, fault.Message);
-            var executor = new ThrowNThenSucceedUpdateExecutor(orgEx, throwCount: 2);
-            fxCtx.AddFakeMessageExecutor<UpdateRequest>(executor);
-
-            var plugCtx = PluginContextFactory.BuildDefaultContext(fxCtx, count: 1);
-
-            // Inject fake sleep via static override; reset after the call to avoid cross-test contamination
-            IssueNumbersPlugin.SleepOverride = fakeSleep;
-            try
-            {
-                fxCtx.ExecutePluginWith<IssueNumbersPlugin>(plugCtx);
-            }
-            finally
-            {
-                IssueNumbersPlugin.SleepOverride = null;
-            }
-
-            sleepDelays.Should().HaveCount(2, "two retries should sleep twice");
-            sleepDelays[0].Should().BeGreaterOrEqualTo(100, "first backoff >= 100ms");
-            sleepDelays[1].Should().BeGreaterOrEqualTo(200, "second backoff >= 200ms");
+               .WithMessage("*ConcurrencyVersionMismatch*",
+                   "version-mismatch fault must propagate so the caller can retry");
         }
 
         // -----------------------------------------------------------------------
@@ -589,37 +464,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         // -----------------------------------------------------------------------
-        // Test 21 – Row auto-create race lost: Create throws DuplicateDetected → plugin retries Retrieve
-        // -----------------------------------------------------------------------
-        [Fact]
-        public void Issue_RowAutoCreate_RaceLost_RetriesRetrieve()
-        {
-            // Auto-create race: two concurrent first-callers; our Create fails with DuplicateDetected
-            // (ErrorCode 2147319761) because the other caller created the row first.
-            // Plugin must catch DuplicateDetected and retry Retrieve to get the row.
-            var fxCtx = new XrmFakedContext();
-
-            // The "winner's" row already exists in the store (simulates the other caller's row)
-            var competingRow = PluginContextFactory.BuildSequenceRow(lastIssued: 0);
-            fxCtx.Initialize(new List<Entity> { competingRow });
-
-            // Register Create-throws executor so our plugin's Create attempt fails with DuplicateDetected
-            var duplicateFault = new OrganizationServiceFault { ErrorCode = 2147319761, Message = "DuplicateDetected" };
-            var createEx = new FaultException<OrganizationServiceFault>(duplicateFault, duplicateFault.Message);
-            fxCtx.AddFakeMessageExecutor<Microsoft.Xrm.Sdk.Messages.CreateRequest>(new AlwaysThrowCreateExecutor(createEx));
-
-            var plugCtx = PluginContextFactory.BuildDefaultContext(fxCtx, count: 1);
-
-            // Should NOT throw — plugin recovers from DuplicateDetected and uses the competitor's row
-            Action act = () => fxCtx.ExecutePluginWith<IssueNumbersPlugin>(plugCtx);
-            act.Should().NotThrow("plugin must recover from auto-create race via retry-retrieve");
-
-            var issued = JsonConvert.DeserializeObject<int[]>((string)plugCtx.OutputParameters["IssuedNumbers"]);
-            issued.Should().NotBeEmpty("issued numbers must come from the winning caller's row");
-        }
-
-        // -----------------------------------------------------------------------
-        // Test 22 – Audit attribution: plugin reads calling user from PluginExecutionContext.UserId
+        // Test 18 – Audit attribution: plugin reads calling user from PluginExecutionContext.UserId
         // -----------------------------------------------------------------------
         [Fact]
         public void Issue_AuditAttribution_UsesCallingUser()

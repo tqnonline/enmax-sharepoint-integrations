@@ -1,4 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
+import {
+  Enmax_autocadbusinessassetsService,
+  Enmax_autocadassetunitsService,
+  Enmax_autocadsystemscopesService,
+} from "../../../generated";
 
 export interface ApprovedBusinessAsset {
   businessId: string;
@@ -22,46 +27,38 @@ export interface ApprovedCombinations {
   systemScopes:   SystemScope[];
 }
 
-async function fetchApprovedCombinations(): Promise<ApprovedCombinations> {
-  const base = (window as unknown as Record<string, string>).__dataverseBaseUrl ??
-    "/api/data/v9.2";
-
-  const [baRes, auRes, ssRes] = await Promise.all([
-    fetch(`${base}/enmax_autocadbusinessassets?$select=_enmax_acdnbusiness_value,_enmax_acdnasset_value`,
-      { headers: { Accept: "application/json", "OData-MaxVersion": "4.0", "OData-Version": "4.0" } }),
-    fetch(`${base}/enmax_autocadassetunits?$select=_enmax_acdnasset_value,_enmax_acdnunit_value`,
-      { headers: { Accept: "application/json", "OData-MaxVersion": "4.0", "OData-Version": "4.0" } }),
-    fetch(`${base}/enmax_autocadsystemscopes?$select=_enmax_acdnsystem_value,enmax_acdnscopetype,enmax_acdnscopevalue`,
-      { headers: { Accept: "application/json", "OData-MaxVersion": "4.0", "OData-Version": "4.0" } }),
-  ]);
-
-  if (!baRes.ok || !auRes.ok || !ssRes.ok) {
-    throw new Error("Approved combinations fetch failed");
-  }
-
-  const SCOPE_MAP: Record<number, SystemScope["scopeType"]> = { 1: "AssetOnly", 2: "DomainOnly", 3: "Global" };
-
-  const [ba, au, ss] = await Promise.all([
-    baRes.json() as Promise<{ value: Array<{ _enmax_acdnbusiness_value: string; _enmax_acdnasset_value: string }> }>,
-    auRes.json() as Promise<{ value: Array<{ _enmax_acdnasset_value: string; _enmax_acdnunit_value: string }> }>,
-    ssRes.json() as Promise<{ value: Array<{ _enmax_acdnsystem_value: string; enmax_acdnscopetype: number; enmax_acdnscopevalue: string }> }>,
-  ]);
-
-  return {
-    businessAssets: ba.value.map((r) => ({ businessId: r._enmax_acdnbusiness_value, assetId: r._enmax_acdnasset_value })),
-    assetUnits:     au.value.map((r) => ({ assetId: r._enmax_acdnasset_value, unitId: r._enmax_acdnunit_value })),
-    systemScopes:   ss.value.map((r) => ({
-      systemId:   r._enmax_acdnsystem_value,
-      scopeType:  SCOPE_MAP[r.enmax_acdnscopetype] ?? "Global",
-      scopeValue: r.enmax_acdnscopevalue,
-    })),
-  };
-}
+const SCOPE_MAP: Record<number, SystemScope["scopeType"]> = { 1: "AssetOnly", 2: "DomainOnly", 3: "Global" };
 
 export function useApprovedCombinations() {
   return useQuery<ApprovedCombinations>({
     queryKey: ["approved-combinations"],
-    queryFn: fetchApprovedCombinations,
+    queryFn: async () => {
+      const [ba, au, ss] = await Promise.all([
+        Enmax_autocadbusinessassetsService.getAll({ select: ['enmax_autocadbusinessassetid', '_enmax_acdnbusiness_value', '_enmax_acdnasset_value'], filter: 'statecode eq 0' }),
+        Enmax_autocadassetunitsService.getAll({ select: ['enmax_autocadassetunitid', '_enmax_acdnasset_value', '_enmax_acdnunit_value'], filter: 'statecode eq 0' }),
+        Enmax_autocadsystemscopesService.getAll({ select: ['enmax_autocadsystemscopeid', '_enmax_acdnsystem_value', 'enmax_acdnscopetype', 'enmax_acdnscopevalue'], filter: 'statecode eq 0' }),
+      ]);
+
+      if (!ba.success) throw new Error('businessassets fetch failed');
+      if (!au.success) throw new Error('assetunits fetch failed');
+      if (!ss.success) throw new Error('systemscopes fetch failed');
+
+      return {
+        businessAssets: ba.data!
+          .filter(r => r._enmax_acdnbusiness_value && r._enmax_acdnasset_value)
+          .map(r => ({ businessId: r._enmax_acdnbusiness_value!, assetId: r._enmax_acdnasset_value! })),
+        assetUnits: au.data!
+          .filter(r => r._enmax_acdnasset_value && r._enmax_acdnunit_value)
+          .map(r => ({ assetId: r._enmax_acdnasset_value!, unitId: r._enmax_acdnunit_value! })),
+        systemScopes: ss.data!
+          .filter(r => r._enmax_acdnsystem_value)
+          .map(r => ({
+            systemId:   r._enmax_acdnsystem_value!,
+            scopeType:  SCOPE_MAP[r.enmax_acdnscopetype ?? 3] ?? "Global",
+            scopeValue: r.enmax_acdnscopevalue ?? '',
+          })),
+      };
+    },
     staleTime: 5 * 60 * 1000,
   });
 }
