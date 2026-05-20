@@ -45,16 +45,7 @@ Bound to `enmax_autocaddrawing`. Authored in maker; export+unpack+commit per pla
 | Inputs | `Reason` (String, max 2000, required when `ReleaseRequiresReason=true`) |
 | Outputs | `DrawingId`, `NewState`, `SequenceKeyBurned` |
 
-**Implementation:** flow triggered by action message. Steps:
-
-1. Read `AppConfig.ReleaseRequiresReason`; if true and Reason empty → throw "Reason required (min 10 chars)"
-2. Guard: if `Drawing.State != Available` → throw "Drawing must be Available to release; current state is {{state}}"
-3. Guard: caller must be Drawing.Owner OR Admin role member; otherwise throw "Permission denied"
-4. Update Drawing: `State = Void` (6 per plan #02 option set)
-5. Update all child Sheets: `State = Void` (6)
-6. Audit Event: written by `AuditEmitter` plug-in on Drawing.State Update (automatic per plan #07 Step 4b registration)
-7. Notify Owner Reservation owner (if different from caller — admin force-release path) across 3 channels
-8. Return `SequenceKeyBurned` = composed `BB-AA-UU-DDD-SSS-KK-nnnn` of released drawing
+**Flow implementation:** deferred to **Plan #11 Step D1**. The full flow implementation (guards, state transitions, notifications, Audit Event) is specified there.
 
 ## Step 2 — Code App UI
 
@@ -114,14 +105,7 @@ Add to plan #02 retroactively per same pattern as `MissingSheets` etc., OR add t
 | 5 | Admin force-release dialog shows "on behalf of" warning | |
 | 6 | Multi-release calls action sequentially per Drawing | |
 
-**Integration tests (~4):**
-
-| # | Test | Asserts |
-|---|------|---------|
-| 7 | User releases own Drawing → State=Void, Sheets all Void, audit StateChanged | |
-| 8 | User cannot release another user's Drawing → 403 | Permission boundary |
-| 9 | Admin releases another user's Drawing → State=Void, audit OverrideUsed w/ on-behalf-of | |
-| 10 | Released Drawing cannot be checked out (state guard from plan #06 Step 1.1 holds) | |
+**Integration tests (flow-dependent):** moved to Plan #11 Tests section (tests 24–27). Run after flows are deployed.
 
 ## Verification — End-to-End Checklist
 
@@ -133,25 +117,20 @@ npx playwright test src/features/release
 npm run build
 npx power-apps push --environmentId $env:DEV_POWER_APPS_ENV_ID
 
-Set-Location ../..
-python solution/scripts/pack.py
-python solution/scripts/import.py     # imports enmax_acdnReleaseDrawing + flow + AppConfig key
-
-# Manual smoke (User + Admin)
-# 1. As User: open own Approved Drawing in side panel → Release button visible → click → enter reason → confirm
-#    Expect: Drawing State=Void; Sheets all Void; audit log shows StateChanged Available->Void w/ Reason
-# 2. As Admin: open another user's Approved Drawing → Release button visible w/ "on behalf of" warning → confirm
-#    Expect: original owner gets 3-channel notification w/ admin's reason
-# 3. As User: try to check out a Void Drawing → expect "Drawing must be Available" error (plan #06 guard)
+# CI verification
+git push -u origin feat/010-release-numbers
+gh pr create --base dev --title "feat(release): release drawing UI components per plan #10"
+gh pr checks                                          # ci.yml green
 ```
 
 **Acceptance:**
-- 10 tests pass
-- Manual smoke passes for User + Admin paths
-- Audit log captures both transition + on-behalf-of attribution
-- Sequence value remains burned (Number Sequence.LastIssued unchanged)
+- All 6 Code App component tests pass
+- ReleaseDrawingButton visibility correct per state + role
+- ReleaseReasonDialog enforces min 10 chars when ReleaseRequiresReason=true
+- Admin force-release dialog shows on-behalf-of warning
 - PR reviewed by Rahul, squash-merged to `dev`
-- After merge, run UAT release-numbers smoke pass against UAT tenant
+
+**Note:** Full end-to-end smoke (Drawing State=Void, Sheets void, audit capture, 3-channel notification) requires the `enmax_acdnReleaseDrawing` flow from Plan #11 Step D1 to be deployed first.
 
 ## Risks + Mitigations
 

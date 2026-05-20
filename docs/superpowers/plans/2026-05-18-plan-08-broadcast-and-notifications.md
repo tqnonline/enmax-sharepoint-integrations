@@ -92,40 +92,9 @@ Per F-34. Admin-only (RequireRole={Admin}). Replaces plan #04 placeholder.
 
 Transitions computed by a scheduled flow (Step 4) running nightly + on every Broadcast row edit (trigger flow at end of edit dialog).
 
-## Step 2 — Broadcast Fan-Out Flow
+## Step 2 — Broadcast Fan-Out Flow — Deferred to Plan #11
 
-Per PRD section 10 `ENMAX AutoCAD: On Broadcast Published → Fan Out In-App Notifications`.
-
-**Trigger:** Two triggers (Power Automate supports multi-trigger in v3):
-1. Dataverse "When a row is created or updated" on `enmax_autocadbroadcast`. **Filter: `_modifiedby_value ne '<service-account-userid>'`** (excludes status-compute flow re-writes per architecture review Anti-Pattern #3) — admin edits only fire fan-out, not platform recursions.
-2. Scheduled recurrence every `AppConfig.BroadcastFanOutCadenceMinutes` (60 by default)
-
-**Steps:**
-
-1. **List active broadcasts:** `Status=Active AND StartsAt ≤ now AND ExpiresAt > now`
-2. **For each active broadcast:**
-   - **Resolve audience users:** for each Audience value in the broadcast:
-     - Users → team `team-enmax-autocad-users` membership
-     - Approvers → `team-enmax-autocad-approvers`
-     - Admins → `team-enmax-autocad-admins`
-     - Everyone → union of all three
-   - **For each user in audience:**
-     - **Check existing In-App Notification:** `Recipient=user AND SubjectTable=enmax_autocadbroadcast AND SubjectId=broadcastId`
-     - If exists → skip (idempotent per PRD)
-     - If not → create In-App Notification row:
-       - Title = Broadcast.Title
-       - Body = Broadcast.Body (truncated to 500 chars; full body in panel expansion)
-       - Severity = Broadcast.Severity
-       - SourceEvent = `BroadcastPublished` (6 per plan #02 Step 2 option set)
-       - SubjectTable = `enmax_autocadbroadcast`
-       - SubjectId = broadcastId
-       - DeepLinkPath = `broadcasts/{broadcastId}` (admin) or `/?broadcast={broadcastId}` (end users — opens Home with broadcast pinned)
-       - Read = false
-3. **Audit Event** per fan-out run: `Event=Created`, `Source=Flow`, `Reason="BroadcastFanOut: {broadcastCount} broadcasts × {userCount} users = {createdCount} rows"`
-
-**Idempotency:** the existence-check in step 2 prevents duplicates. Re-running every hour is safe; new users added to a security group post-broadcast-activation pick up the broadcast at next run.
-
-**Performance:** worst case = 1 broadcast × 670 users = 670 row checks + ≤670 creates. Run completes in <30s. Dataverse API quota safely within 40K/day for service account (1 fan-out run = ~1400 calls; 24 runs/day = ~33K).
+Moved to **Plan #11 Step C1**. Flow development deferred until non-flow work from Plans #05–#10 is merged.
 
 ## Step 3 — Bell Panel Feed (full UX)
 
@@ -187,19 +156,9 @@ Replaces plan #04's empty `NotificationBell.tsx` panel stub with full feed.
 
 **Empty state:** "You're all caught up." w/ Fluent v9 illustration.
 
-## Step 4 — Broadcast Status Computation Flow
+## Step 4 — Broadcast Status Computation Flow — Deferred to Plan #11
 
-**Trigger:** Scheduled daily 00:30 MT + Dataverse "When a row is updated" on `enmax_autocadbroadcast` (immediate transition on admin edit).
-
-**Steps:**
-
-1. **List all broadcasts in Draft/Scheduled/Active/Expired statuses** (excludes Retired):
-2. **For each:**
-   - If StartsAt > now → Status=Scheduled
-   - Else if ExpiresAt > now → Status=Active
-   - Else → Status=Expired
-3. **Update row** if Status changed
-4. **Trigger fan-out flow** (Step 2) on Status=Active transitions
+Moved to **Plan #11 Step C2**. Flow development deferred until non-flow work from Plans #05–#10 is merged.
 
 ## Step 5 — Home Dashboard
 
@@ -245,54 +204,13 @@ Replaces plan #04's `Home.tsx` placeholder. Per PRD section 6 ("Personal dashboa
 
 **Open Check-Outs card:** user's own Checkouts (Status=Open or AwaitingValidation), sorted by CheckedOutOn desc.
 
-## Step 6 — Number Sequence Critical Threshold Broadcast (deferred from plan #03)
+## Step 6 — Number Sequence Critical Threshold Broadcast — Deferred to Plan #11
 
-Per PRD section 9.4 ("System raises a Critical broadcast at the 9900 threshold to give admins time to react").
+Moved to **Plan #11 Step C3**. Flow development deferred until non-flow work from Plans #05–#10 is merged.
 
-**Flow:** `Number Sequence Status Watcher` (scheduled hourly, separate from broadcast fan-out).
+## Step 7 — Notification Preferences Integration — Deferred to Plan #11
 
-**Steps:**
-
-1. **Query** Number Sequence rows where `Status in (Critical, Exhausted)`
-2. **For each:**
-   - **Check existing broadcast** for this Sequence Key within last 7 days (`Title contains '{SequenceKey}' AND Status=Active`)
-   - If exists → skip (avoid daily spam for same sequence)
-   - If not → **create Broadcast row**:
-     - Title = `Sequence {SequenceKey} approaching exhaustion`
-     - Body = "Sequence {SequenceKey} has issued {LastIssued} of 9999 numbers ({RemainingCapacity} remaining). Critical action required: rotate to a new (Business, Asset, Unit, Domain, System, Kind) combination per PRD section 9.5 ceiling rule."
-     - Severity = Critical (if 9999 Exhausted) or Critical (if 9900+ Critical)
-     - Audience = Admins
-     - StartsAt = now
-     - ExpiresAt = now + 7 days
-     - RequiresAcknowledgement = true
-     - Pinned = true
-     - Author = service account
-   - Status compute flow (Step 4) immediately transitions to Active; fan-out (Step 2) materialises to admin In-App Notifications
-3. **Audit Event:** `Event=Created`, Source=Flow, Reason="SequenceCriticalBroadcast: {SequenceKey}"
-
-**Idempotency:** 7-day skip window prevents duplicate broadcasts; admin must acknowledge to dismiss + start a 7-day cooldown.
-
-## Step 7 — Notification Preferences Integration (deferred from plan #07)
-
-Per plan #07 Step 7.2 TODO: plans #05/#06/#08 currently always send email + Teams; the user preference table (`enmax_autocaduserpreference`) added in plan #07 controls per-channel opt-out.
-
-**Update existing flows** in plans #05, #06, #08 to consult preferences before sending:
-
-**Pattern** (added at top of each notify-recipient loop iteration):
-
-```
-1. List rows: enmax_autocaduserpreferences where User = currentRecipient
-2. If result empty: use defaults (Email=true, Teams=true)
-3. If EmailEnabled=true: invoke email child flow
-4. Else: skip email send
-5. If TeamsEnabled=true: post adaptive card
-6. Else: skip Teams card
-7. ALWAYS create In-App Notification row (cannot be disabled per F-33)
-```
-
-**Audit Event for preference-driven skips:** none. Skips are intentional user choice, not events worth auditing.
-
-**Migration backfill:** the preference table is opt-in (no row = defaults). Users who want to opt out must visit Settings and toggle. No backfill needed.
+Moved to **Plan #11 Step C4**. Updates all notification flows (Groups A, B, C) to consult `enmax_autocaduserpreference` table before sending email or Teams card. Deferred with the rest of flow development.
 
 ## Step 8 — Tests
 
@@ -316,18 +234,7 @@ Per plan #07 Step 7.2 TODO: plans #05/#06/#08 currently always send email + Team
 | 14 | Pinned broadcasts render at top of Home | |
 | 15 | Pinned dismiss writes Broadcast Dismissal row | |
 
-**Integration tests (real Dataverse):**
-
-| # | Test | Asserts |
-|---|------|---------|
-| 16 | Fan-out flow creates In-App Notification per user in audience | |
-| 17 | Fan-out flow skips users w/ existing notification (idempotent) | |
-| 18 | Status compute flow transitions Draft→Active when StartsAt passes | |
-| 19 | Status compute triggers fan-out on Active transition | |
-| 20 | Number Sequence at LastIssued=9905 → critical broadcast created | |
-| 21 | Repeated runs within 7d don't duplicate the broadcast | |
-| 22 | Notify flow respects user preference EmailEnabled=false | |
-| 23 | Notify flow ALWAYS writes In-App row regardless of preferences | F-33 enforcement |
+**Integration tests (flow-dependent):** moved to Plan #11 Tests section (tests 16–23). Run after flows are deployed.
 
 ## Verification — End-to-End Checklist
 
@@ -340,30 +247,21 @@ npx playwright test src/features/broadcasts
 npm run build
 npx power-apps push --environmentId $env:DEV_POWER_APPS_ENV_ID
 
-# Solution import (broadcast fan-out flow, status compute flow, sequence critical watcher flow)
-Set-Location ../..
-python solution/scripts/pack.py
-python solution/scripts/import.py
-
-# Manual smoke
-# 1. Admin creates Broadcast: Title="Test maintenance", Severity=Warning, Audience=Everyone,
-#    StartsAt=now, ExpiresAt=now+1h, Pinned=true → expect immediate fan-out
-# 2. User account: refresh → bell badge shows 1; open panel → Today group has broadcast;
-#    Home dashboard shows pinned card; click Acknowledge → card disappears
-# 3. Admin: Edit broadcast → StartsAt=now-1h, ExpiresAt=now-1m → expect transition to Expired
-#    on next status-compute flow run (or trigger manually)
-# 4. Admin: in Settings, set notification prefs EmailEnabled=false → create new reservation
-#    as User → admin should receive Teams card + in-app notification but NO email
-# 5. Manual seed: update Number Sequence ZZ-ZZ-ZZ-ZZZ-ZZZ-ZZ LastIssued=9905 →
-#    trigger sequence-watcher flow → expect Critical broadcast created + admin In-App
-#    notification
+# CI verification
+git push -u origin feat/008-broadcast-and-notifications
+gh pr create --base dev --title "feat(broadcast): broadcast author UI + bell feed + home dashboard per plan #08"
+gh pr checks                                          # ci.yml green
 ```
 
 **Acceptance:**
-- All 23 tests pass
-- Phase 1 Acceptance Criteria covered: A15 (in-app feed end-to-end), A16 (broadcast author/fan-out/dismiss/acknowledge end-to-end), A12 (maintenance banner from plan #04 still works)
-- All Phase 1 features now shipped — plan #09 is UAT promotion only
+- All 15 Code App component tests pass
+- Broadcast author UI (create/edit/retire) functions correctly
+- Bell panel feed groups notifications; mark-all-read works; badge clamps at 99+
+- Home dashboard renders correct cards per role; pinned broadcasts render
+- Markdown preview renders allowed tags; strips disallowed (XSS defence)
 - PR reviewed by Rahul, squash-merged to `dev`
+
+**Note:** Fan-out, status computation, and critical-threshold broadcast watcher (steps 2, 4, 6, 7) require flows from Plan #11. Full end-to-end bell notification smoke depends on Plan #11 deployment.
 
 ## Critical Files to Read Before Starting
 

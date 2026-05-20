@@ -55,15 +55,7 @@ Per PRD section 12.4: end users check out drawings via custom action (not direct
 | Inputs | (none beyond the bound row) |
 | Outputs | `CheckoutId` (String) |
 
-**Implementation:** flow triggered by the action message. Steps:
-1. Guard: if `Drawing.State ≠ Available`, throw with message "Drawing must be Available; current state is {{state}}"
-2. Guard: if any Checkout row exists with `(Drawing = triggerRowId, Status = Open)`, throw "Drawing already checked out by {{otherUser.displayName}}"
-3. Create Checkout row: `Drawing=triggerRowId`, `CheckedOutBy=callingUser`, `CheckedOutOn=utcNow()`, `Status=Open` (1), `ReminderStage=None` (0)
-4. Update Drawing: `State=CheckedOut` (2)
-5. Write Audit Event: `Event=StateChanged`, From=Available, To=CheckedOut, ActedBy=callingUser
-6. Return new CheckoutId
-
-**Alt-key safety:** the `(Drawing, Status)` alternate key on Checkout (plan #02 Step 5) prevents two parallel `Open` rows even if two users race. Loser's Create fails w/ duplicate-key error; flow catches and throws "Drawing already checked out".
+**Flow implementation:** deferred to **Plan #11 Step B1**.
 
 ### 1.2 `enmax_acdnApproveCheckin` (bound to Checkout)
 
@@ -73,7 +65,7 @@ Per PRD section 12.4: end users check out drawings via custom action (not direct
 | Inputs | `Decision` (OptionSet: Approved/Declined), `Reason` (String, required when Declined) |
 | Outputs | `CheckoutId`, `NewStatus`, `DrawingState` |
 
-**Implementation:** flow updates Checkout.Status → ClosedApproved (3) or ClosedDeclined (4); the downstream `On Checkin Approved` / `On Checkin Declined` flows (Step 4, Step 5) fire from that update. No revision math here.
+**Flow implementation:** deferred to **Plan #11 Step B2**.
 
 ### 1.3 `enmax_acdnForceCheckin` (bound to Checkout)
 
@@ -83,7 +75,7 @@ Per PRD section 12.4: end users check out drawings via custom action (not direct
 | Inputs | `Reason` (String, required) |
 | Outputs | `CheckoutId`, `DrawingState` |
 
-**Implementation:** flow updates Checkout.Status → ClosedForced (5), Drawing.State → Available (1). Admin-only via Dataverse role privilege; the action message is registered with `Privilege Required = Admin role`.
+**Flow implementation:** deferred to **Plan #11 Step B3**.
 
 ### 1.4 Submit Revision (NO custom action — direct Checkout update)
 
@@ -98,167 +90,21 @@ The `On Revision Submitted` flow (Step 3) triggers from that Checkout row update
 
 **Audit event emission (per architecture review 2026-05-18 Anti-Pattern #5):** the `AuditEmitter` C# plug-in (authored in plan #07 Step 4b) is registered on Checkout Update PostOperation. On the Open→AwaitingValidation status transition, it writes an Audit Event with `Event=StateChanged`, `From=Open`, `To=AwaitingValidation`, `ActedBy=callingUser`. Plug-in registration listed in plan #07 Step 4b's registered-steps table.
 
-## Step 2 — Flow: `On Asset-Unit Activated → Provision SharePoint Library`
+## Steps 2–8 — Deferred to Plan #11
 
-Per PRD section 8.3.
+All Power Automate flow work has been moved to **Plan #11 — Power Automate Flows** (`2026-05-20-plan-11-power-automate-flows.md`):
 
-**Trigger:** Dataverse "When a row is added or modified" on `enmax_autocadassetunit`. Filter: `enmax_acdnstatus eq 1` (Active) AND `_enmax_acdnsplibraryurl_value` is null.
+| Original step | Plan #11 section | Description |
+|---|---|---|
+| Step 2 | B4 | Flow `On Asset-Unit Activated → Provision SharePoint Library` |
+| Step 3 | B5 | Flow `On Revision Submitted → Index SharePoint and Notify Approvers` |
+| Step 4 | B6 | Flow `On Checkin Approved → Finalise Drawing` |
+| Step 5 | B7 | Flow `On Checkin Declined → Revert to Checked Out` |
+| Step 6 | B8 | Child flows `Send_Validation_Needed_Email` + `Send_Validation_Result_Email` |
+| Step 7 | B9 | Flow `On Force Checkin → Admin Override` |
+| Step 8 | B10 | Flow `Stale Checkout Reminder` (scheduled) |
 
-**Steps:**
-
-1. **Compose library code:** `concat(Asset.Code, '-', Unit.Code)` (e.g. `CG-01`). NOTE: PRD section 8.2 says `BB-AA-UU` (3-segment) — confirm in implementation whether Business code prefix is included. Likely yes (libraries scoped by Business too). Verify by re-reading section 8.2 against existing reference data; this plan documents the choice as `concat(Business.Code, '-', Asset.Code, '-', Unit.Code)` matching the PRD example `GG-CG-01`.
-2. **Compose friendly name:** `concat(Asset.DisplayName, ', ', Unit.DisplayName)` (e.g. `Calgary Energy Centre, Unit 01`)
-3. **HTTP request to SharePoint REST API** (`POST /_api/web/lists`):
-   - Body: `{ "Title": "{{libraryCode}}", "BaseTemplate": 101, "Description": "{{friendlyName}}", "ContentTypesEnabled": true }`
-   - Auth: service account token via Azure AD client-credentials flow with `Sites.Selected` FullControl scope (per Q3 re-decision 2026-05-18). Permission sufficient for list creation + content type binding + permission grants without transient elevation.
-4. **Bind content type** via second HTTP request: `POST /_api/web/lists/getbytitle('{{libraryCode}}')/contenttypes/addAvailableContentType` with `Generation Drawing Information` content type ID (`0x010100C593949...30` per PRD section 8.2)
-5. **Configure versioning:** `PATCH /_api/web/lists/getbytitle('{{libraryCode}}')` with `{ "EnableVersioning": true, "EnableMinorVersions": false, "ForceCheckout": false }`
-6. **Apply security-trimmed permissions:** break role inheritance + grant Read to all three Entra groups (`sg-enmax-autocad-users/approvers/admins`)
-7. **Construct library URL:** `concat(AppConfig.SharePointSiteUrl, '/', libraryCode)`
-8. **Update Asset-Unit row** with `enmax_acdnsplibraryurl` = computed URL
-9. **Audit Event:** `Event=Created`, Source=Flow, Reason="SharePoint library provisioned"
-
-**Idempotency:** the trigger filter `_enmax_acdnsplibraryurl_value is null` prevents re-runs. If a manual re-run is needed (recovery), an admin clears the URL column first.
-
-**Permission flow:** the service account holds Read on the site collection permanently. The transient Site Owner permission (for list creation) is granted via runbook during dev-tenant first build and removed afterward. **Phase 1 design assumption:** all libraries are pre-provisioned during dev-tenant bootstrap; subsequent UAT/prod provisioning is also a runbook activity, not a runtime flow. If the runtime flow is required (e.g. mid-Phase-1 new Asset-Unit added), the runbook documents the temporary grant procedure.
-
-## Step 3 — Flow: `On Revision Submitted → Index SharePoint and Notify Approvers`
-
-**Trigger:** Dataverse "When a row is updated" on `enmax_autocadcheckout`. Filter: `enmax_acdnstatus eq 2 and _modifiedby_value ne '<service-account-userid>'` (AwaitingValidation AND not service-account-modified). *Trigger-level filter per architecture review Finding 5.5.*
-
-**Steps:**
-
-1. ~~Guard against re-entry~~ *(now at trigger filter)*
-2. **Retrieve Drawing + Asset-Unit:** to get the library URL prefix
-3. **List SharePoint files** via REST: `GET {libraryUrl}/_api/web/lists/getbytitle('{{libraryCode}}')/items?$filter=startswith(FileLeafRef,'{{drawingPrefix}}')&$select=FileLeafRef,FileRef,ServerRelativeUrl,EncodedAbsoluteUrl,UniqueId,Modified`
-   - Where `drawingPrefix` = `BB-AA-UU-DDD-SSS-KK-nnnn` (the parent Drawing's full ENMAX Number)
-4. **Parse results:** extract one entry per matching file
-5. **Match files to Sheet rows:**
-   - Each Sheet row has `Filename = BB-AA-UU-DDD-SSS-KK-nnnn-sss.pdf`
-   - Match by exact `FileLeafRef = Sheet.Filename`
-6. **For each matched Sheet (apply to each):**
-   - Update `enmax_autocadsheet`: `SharePointUrl = EncodedAbsoluteUrl`, `SharePointItemId = UniqueId`, `State = AwaitingValidation` (4)
-7. **Compute missing sheets:** any Sheet row whose Filename had no SharePoint match
-8. **If any sheets missing:** flag on Drawing row (add to `Notes` column or separate `MissingSheets` JSON column — TODO: add column to plan #02 schema if not present). Surface to approver in validation panel.
-9. **Update Drawing.State** → AwaitingValidation (3)
-10. **Update Checkout** with `NewPDFUrls` = JSON array of captured EncodedAbsoluteUrl values
-11. **Notify approvers + admins** via three channels (mirror plan #05 Step 4 pattern):
-    - Email via child flow `Send_Validation_Needed_Email` (Step 6) using template (Step 8 below)
-    - Teams adaptive card (Step 8 below)
-    - In-App Notification rows for every Approver + Admin
-12. **Audit Event:** `Event=StateChanged`, From=CheckedOut, To=AwaitingValidation
-
-**SharePoint API auth detail:** call uses service-account JWT acquired via Azure AD client-credentials flow with `Sites.Selected` FullControl scope on the specific site (per Q3 re-decision 2026-05-18). Token cached for ~60 min within the flow run; refresh on expiry. Standard MSAL pattern in Power Automate HTTP action via Azure AD connector.
-
-**Error handling:**
-- SharePoint API returns 403 → flow throws "SharePoint permission denied; check service account scope" + admin notification
-- SharePoint API returns 404 (library not found) → admin notification "Library not provisioned for Asset-Unit X-Y"; Checkout reverted to Open
-- Zero files matched prefix → flag all sheets as missing; proceed to approver with empty NewPDFUrls (approver sees "No files found; user must upload before resubmitting")
-
-## Step 4 — Flow: `On Checkin Approved → Finalise Drawing`
-
-**Trigger:** Dataverse "When a row is updated" on `enmax_autocadcheckout`. Filter: `enmax_acdnstatus eq 3 and _modifiedby_value ne '<service-account-userid>'` (ClosedApproved AND not service-account-modified). *Trigger-level filter per Finding 5.5.*
-
-**Steps:**
-
-1. ~~Guard against re-entry~~ *(at trigger filter)*
-2. **Retrieve Drawing + parent Checkout's captured NewRevision + NewPDFUrls**
-3. **Update each Sheet row:** `SharePointUrl` = corresponding URL from NewPDFUrls (canonical hot-link); `State = Available` (2)
-4. **Update Drawing row:**
-   - `CurrentRevision` = Checkout.NewRevision
-   - `RevisionDate` = utcNow()
-   - `State` = CheckedIn (4) — terminal post-validation state per PRD section 27
-   - Then immediately transition `State` → Available (1) to return to general availability (per glossary: "CheckedIn — The terminal post-validation state that returns the Drawing to general availability with the bumped revision")
-   - **Why two writes:** CheckedIn is the audit marker; Available is the post-validation operational state. Audit log captures both transitions for traceability.
-5. **Update Checkout:** `ClosedOn=utcNow()`, `ClosedBy=approver` (already set by action in Step 1.2)
-6. **Notify requester (Checkout.CheckedOutBy):** email + Teams + in-app
-   - Template subject: `Validated: {{DrawingNumber}} — Revision {{NewRevision}}`
-   - Body: "Your revision was approved. Drawing is back in service at Revision {{NewRevision}}."
-7. **Audit Events** (multiple):
-   - Drawing: StateChanged AwaitingValidation → CheckedIn → Available
-   - Each Sheet: StateChanged AwaitingValidation → Available
-   - Checkout: ApprovalGranted
-
-**No SharePoint writes.** The PDFs already exist in SharePoint at their canonical URLs; this flow just finalises the Dataverse references.
-
-## Step 5 — Flow: `On Checkin Declined → Revert to Checked Out`
-
-**Trigger:** Dataverse "When a row is updated" on `enmax_autocadcheckout`. Filter: `enmax_acdnstatus eq 4 and _modifiedby_value ne '<service-account-userid>'` (ClosedDeclined AND not service-account-modified). *Trigger-level filter per Finding 5.5.*
-
-**Steps:**
-
-1. ~~Guard against re-entry~~ *(at trigger filter)*
-2. **Retrieve Drawing**
-3. **Clear captured Sheet URLs:** for each Sheet, set `SharePointUrl=null`, `SharePointItemId=null`, `State=CheckedOut` (3)
-4. **Re-open Checkout:** set `Status=Open` (1), clear `ClosedOn`, `ClosedBy`, `ValidationReason` stored in column
-5. **Update Drawing.State** → CheckedOut (2)
-6. **Notify requester** with declined reason verbatim across 3 channels
-7. **Audit Event:** `Event=ApprovalDenied`, Reason=Checkout.ValidationReason
-
-The user fixes their PDFs in SharePoint (uploads new versions w/ same filenames; SP creates new major versions natively) and clicks Submit Revision again.
-
-## Step 6 — Child Flows: Validation Emails
-
-Two new child flows mirroring plan #05's pattern:
-
-- `Send_Validation_Needed_Email` — to approvers/admins when revision submitted
-- `Send_Validation_Result_Email` — to requester when approved or declined
-
-Same shared-mailbox `Send an email from a shared mailbox` action; same Q5 no-reply footer; templates in Step 8.
-
-## Step 7 — Flow: `On Force Checkin → Admin Override`
-
-**Trigger:** Dataverse "When a row is updated" on `enmax_autocadcheckout`. Filter: `enmax_acdnstatus eq 5 and _modifiedby_value ne '<service-account-userid>'` (ClosedForced AND not service-account-modified). *Trigger-level filter per Finding 5.5.*
-
-**Steps:**
-
-1. ~~Guard against re-entry~~ *(at trigger filter)*
-2. **Retrieve Drawing + original Checkout.CheckedOutBy user**
-3. **Update Drawing.State** → Available (1)
-4. **Clear any captured NewPDFUrls** (force-checkin discards in-flight revision)
-5. **For each Sheet currently in CheckedOut or AwaitingValidation:** revert to Available (2) if it was previously Available, or PendingInitialUpload (1) if it was never indexed
-6. **Notify original CheckedOutBy user** w/ admin's typed reason
-7. **Audit Event:** `Event=ForceCheckedIn`, Reason=action.Reason, ActedBy=admin
-
-**No SharePoint writes.** Force-checkin is a Dataverse state correction; the user's PDFs in SharePoint remain. The admin's reason in the audit log explains why the override was needed.
-
-## Step 8 — Flow: `Stale Checkout Reminder` (Scheduled)
-
-**Trigger:** Scheduled — daily 06:00 MT (Mountain Time, Calgary local). Power Automate's recurrence trigger w/ `Time zone = (UTC-07:00) Mountain Time (US & Canada)`.
-
-**Steps:**
-
-1. **Read AppConfig.StaleCheckoutMonths** → split on `,` → `[3, 6, 12]`
-2. **For each threshold months in list:**
-   - **List Checkout rows** where `Status=Open` AND `CheckedOutOn ≤ utcNow() - monthsToMs(threshold)` AND `ReminderStage < thresholdStage`
-   - Where thresholdStage = ThreeMonth (1) for 3, SixMonth (2) for 6, TwelveMonth (3) for 12
-3. **For each stale Checkout (apply to each):**
-   - **Notify CheckedOutBy user** w/ email + Teams + in-app
-   - **Notify all Admins** w/ in-app only (volume control)
-   - **Update Checkout.ReminderStage** to current threshold stage
-4. **Audit Event** per reminder: `Event=Created`, Source=Flow, Subject=Checkout, Reason="StaleCheckoutReminder Stage={{stage}}"
-
-**Why thresholds idempotent:** the `ReminderStage` column on Checkout tracks the most recent reminder sent. A Checkout at 7 months that's never been reminded gets both the 3-month and 6-month reminders in succession on first run (since ReminderStage was None) — handled by the loop iterating stages in order. Subsequent daily runs send only NEW reminders (those above current ReminderStage).
-
-**Email template** (`reminder_stale_checkout.html`):
-
-```
-Subject: Reminder: {{DrawingNumber}} checked out for {{Months}} months
-
-Body:
-You checked out {{DrawingNumber}} on {{CheckedOutOn}} and have not yet submitted a revision.
-
-  Months out: {{Months}}
-  Library:    {{SharePointLibraryUrl}}
-
-If you no longer need this checkout, ask an admin to force check-in.
-
-[Submit revision →]    [Open in app →]
-
----
-This message was sent from a no-reply address. Replies are not monitored.
-Contact the document controller for help.
-```
+Flow development is deferred until non-flow work from Plans #05–#10 is merged.
 
 ## Step 9 — UI Components (Code App)
 
@@ -336,21 +182,9 @@ function DrawingActionsPanel({ drawing, openCheckout }: Props) {
 | 10 | ForceCheckInDialog requires reason min 10 chars | |
 | 11 | DrawingActionsPanel returns ReadOnlyStateLabel when no actions available | E.g. Available but viewer not allowed |
 
-**Integration tests (real Dataverse + SharePoint, runs in cd-dev.yml):**
+**Integration tests (flow-dependent):** moved to Plan #11 Tests section (tests 7–15). Run after flows are deployed.
 
-| # | Test | Asserts |
-|---|------|---------|
-| 1 | Check out → Drawing.state=CheckedOut, Checkout row created with Status=Open | |
-| 2 | Check out twice → second call throws "already checked out" | Alt-key race protection |
-| 3 | SP provisioning flow creates library on Asset-Unit activation | SP REST list call returns the new library |
-| 4 | Revision submit with all files uploaded → all Sheet URLs captured, Drawing.state=AwaitingValidation | |
-| 5 | Revision submit with one file missing → Drawing has MissingSheets flag set | |
-| 6 | Approve checkin → Drawing.CurrentRevision bumped, state=Available | |
-| 7 | Decline checkin → Sheet URLs cleared, Drawing.state=CheckedOut | |
-| 8 | Force checkin → Drawing.state=Available, audit log records ForceCheckedIn event | |
-| 9 | Stale reminder scheduled flow fires at 3-month boundary | Mock clock; assert ReminderStage updated and notification sent |
-
-**SharePoint provisioning smoke** (manual, runbook #004 verifies):
+**SharePoint provisioning smoke** (manual, runbook #004 verifies — can be done independently of flow deployment):
 - Create new Asset-Unit row → library appears at `{site}/BB-AA-UU` within 60s
 - Content type bound; versioning enabled; minor versions disabled
 - Three Entra groups have Read
@@ -362,41 +196,24 @@ function DrawingActionsPanel({ drawing, openCheckout }: Props) {
 Set-Location apps/code-app
 npm test -- src/features/checkout         # all 11 component tests pass
 
-# Pack + import
-Set-Location ../..
-python solution/scripts/pack.py
-python solution/scripts/import.py         # imports 3 actions, 5 flows, 2 child flows
+# Build + push
+npm run build
+npx power-apps push --environmentId $env:DEV_POWER_APPS_ENV_ID
 
-# Manual smoke (3 test accounts; needs a Drawing in Available state from plan #05)
-#
-# 1. As User:
-#    - Open Drawing → Check Out → expect Drawing.state=CheckedOut visible in panel
-#    - Navigate to SP library URL (surfaced) → upload one PDF named per deterministic pattern
-#    - Click Submit Revision → enter "B" → confirm checkbox → submit
-#    - Expect notification "Revision submitted; awaiting validation"
-#
-# 2. As Approver:
-#    - In app, see in-app notification + email + Teams card
-#    - Open ValidationDrawer → see uploaded file link + missing-sheets summary
-#    - Approve → expect Drawing.state=Available, CurrentRevision=B
-#
-# 3. As Admin (force-checkin):
-#    - Find a CheckedOut Drawing → ForceCheckInDialog → enter reason → confirm
-#    - Expect Drawing back to Available; original user notified
-#
-# 4. Stale reminder (manual time-shift):
-#    - In dev tenant, manually update a Checkout row: CheckedOutOn = utcNow() - 4 months
-#    - Trigger the scheduled flow manually via maker UI Run-now
-#    - Expect ReminderStage=ThreeMonth, in-app notification appears for user
+# CI verification
+git push -u origin feat/006-checkout-checkin-revision
+gh pr create --base dev --title "feat(checkout): checkout/checkin UI components + custom action defs per plan #06"
+gh pr checks                                          # ci.yml green
 ```
 
 **Acceptance:**
-- All 11 Code App tests + 9 integration tests pass
-- End-to-end smoke completes through full revision cycle
-- Force-checkin works; audit log captures override
-- Stale reminder fires correctly at boundary
+- All 11 Code App component tests pass
+- DrawingActionsPanel renders correct action buttons per Drawing state + user role
+- Custom action API definitions (CheckOutDrawing, ApproveCheckin, ForceCheckin) authored in maker and exported
 - Plug-in concurrency test still passes (regression)
 - PR reviewed by Rahul, squash-merged to `dev`
+
+**Note:** Full end-to-end smoke (SP provisioning, revision indexing, checkin approval, stale reminders) requires flows from Plan #11 to be deployed first.
 
 ## Critical Files to Read Before Starting
 
