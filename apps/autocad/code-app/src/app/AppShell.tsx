@@ -31,17 +31,25 @@ const useStyles = makeStyles({
     display: "flex",
     flex: 1,
     overflow: "hidden",
+    minHeight: 0,
   },
   main: {
     display: "flex",
     flexDirection: "column",
     flex: 1,
     overflow: "hidden",
+    minHeight: 0,
   },
   content: {
     flex: 1,
     overflow: "auto",
-    padding: tokens.spacingVerticalL,
+    minHeight: 0,
+    padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalXL}`,
+  },
+  contentInner: {
+    width: "100%",
+    maxWidth: "1600px",
+    margin: "0 auto",
   },
 });
 
@@ -62,7 +70,9 @@ export function AppShell({ children }: AppShellProps) {
         <main className={styles.main}>
           <CommandBar />
           <div className={styles.content} id="main-content">
-            {children}
+            <div className={styles.contentInner}>
+              {children}
+            </div>
           </div>
         </main>
       </div>

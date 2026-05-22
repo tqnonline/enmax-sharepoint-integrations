@@ -46,9 +46,7 @@ export function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
           <MessageBarBody>
             <MessageBarTitle>App configuration unavailable</MessageBarTitle>
             Could not load application configuration. Contact your admin.
-            {import.meta.env.DEV && (
-              <pre className={styles.pre}>{error.message}</pre>
-            )}
+            <pre className={styles.pre}>{error.message}</pre>
             <div className={styles.retryWrapper}>
               <Button appearance="primary" onClick={handleRetry}>
                 Retry

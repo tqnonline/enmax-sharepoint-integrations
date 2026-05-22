@@ -20,8 +20,7 @@ import {
 import { Warning16Regular, ChevronLeft16Regular, ChevronRight16Regular } from "@fluentui/react-icons";
 import type { PendingReservation } from "./hooks/usePendingReservations";
 import { formatComposition } from "./compositionUtils";
-
-const PAGE_SIZE = 25;
+import { usePageSize } from "../../config/usePageSize";
 
 // Column visibility breakpoints:
 //   < 900 px  — show: id, requester, composition, reason, submitted
@@ -29,6 +28,16 @@ const PAGE_SIZE = 25;
 //   ≥ 1024 px — all (+ override)
 const useStyles = makeStyles({
   root: { display: "flex", flexDirection: "column", minWidth: 0 },
+  emptyState: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: `${tokens.spacingVerticalXXL} ${tokens.spacingHorizontalXL}`,
+    color: tokens.colorNeutralForeground3,
+    gap: tokens.spacingVerticalS,
+    minHeight: "160px",
+  },
   toolbar: {
     display: "flex",
     alignItems: "center",
@@ -73,6 +82,8 @@ interface Props {
   reservations: PendingReservation[];
   onSelect: (reservation: PendingReservation) => void;
   onBulkApprove?: (selected: PendingReservation[]) => void; // undefined = read-only mode, no checkboxes
+  countLabel?: string; // override default "N pending" label
+  emptyMessage?: string; // shown when reservations list is empty and no active search
 }
 
 type SelectionSet = Set<string>;
@@ -86,9 +97,10 @@ function visibleColumns(screenWidth: number): Set<ColumnId> {
   return new Set(["id", "requester", "composition", "reason", "submitted"] as ColumnId[]);
 }
 
-export function ReservationQueueGrid({ reservations, onSelect, onBulkApprove }: Props) {
+export function ReservationQueueGrid({ reservations, onSelect, onBulkApprove, countLabel, emptyMessage }: Props) {
   const styles = useStyles();
   const screenWidth = useScreenWidth();
+  const pageSize = usePageSize();
   const [search, setSearch]           = useState("");
   const [selected, setSelected]       = useState<SelectionSet>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
@@ -108,9 +120,9 @@ export function ReservationQueueGrid({ reservations, onSelect, onBulkApprove }: 
   // Clear selection whenever the data source changes (e.g. after approval/refetch)
   useEffect(() => { setSelected(new Set()); }, [reservations]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage   = Math.min(currentPage, totalPages);
-  const paged      = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const paged      = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const visible = visibleColumns(screenWidth);
 
@@ -203,7 +215,7 @@ export function ReservationQueueGrid({ reservations, onSelect, onBulkApprove }: 
           </Button>
         )}
         <Text size={200} style={{ marginLeft: "auto" }}>
-          {filtered.length} pending
+          {countLabel ?? `${filtered.length} pending`}
         </Text>
       </div>
 
@@ -247,6 +259,22 @@ export function ReservationQueueGrid({ reservations, onSelect, onBulkApprove }: 
         </DataGrid>
       </div>
 
+      {paged.length === 0 && (
+        <div className={styles.emptyState}>
+          {search
+            ? (
+              <>
+                <Text weight="semibold">No results for "{search}"</Text>
+                <Text size={200}>Try a different ID, requester name, or reason.</Text>
+              </>
+            )
+            : (
+              <Text weight="semibold">{emptyMessage ?? "No reservations found."}</Text>
+            )
+          }
+        </div>
+      )}
+
       {totalPages > 1 && (
         <div className={styles.pagination}>
           <Button
@@ -259,7 +287,7 @@ export function ReservationQueueGrid({ reservations, onSelect, onBulkApprove }: 
           <Text size={200}>
             Page {safePage} of {totalPages}
             {" "}·{" "}
-            {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}
+            {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)} of {filtered.length}
           </Text>
           <Button
             icon={<ChevronRight16Regular />}

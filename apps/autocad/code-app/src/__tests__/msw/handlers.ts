@@ -24,6 +24,7 @@ export const VALID_CONFIG: AppConfig = {
   FooterDisclaimer: "For internal use only",
   FooterCopyright: "© 2026 ENMAX Corporation",
   BroadcastFanOutCadenceMinutes: 60,
+  GridPageSize: 10,
 };
 
 function configToRows(cfg: AppConfig) {

@@ -37,5 +37,6 @@ Thumbs.db
 # Secrets
 .env
 .env.local
+.env.dev
 *.pem
 *.pfx

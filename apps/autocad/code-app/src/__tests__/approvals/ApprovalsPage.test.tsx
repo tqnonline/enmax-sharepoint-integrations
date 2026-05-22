@@ -15,6 +15,16 @@ vi.mock("../../auth/useUserRole", () => ({
   useUserRole: () => ({ role: mockRole.value, isPending: false }),
 }));
 
+vi.mock("../../config/useAppConfig", () => ({
+  useAppConfig: () => ({
+    GridPageSize: 10,
+    RequireCheckInApproval: false,
+    AdminTeamId: undefined,
+    UserTeamId: undefined,
+    ApproverTeamId: undefined,
+  }),
+}));
+
 vi.mock("../../features/approvals/hooks/useApproveReservation", () => ({
   useApproveReservation: () => ({
     mutate:      vi.fn(),

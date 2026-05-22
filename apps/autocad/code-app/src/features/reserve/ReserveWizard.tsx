@@ -150,7 +150,8 @@ export function ReserveWizard() {
   return (
     <FormProvider {...methods}>
       {/* Stepper */}
-      <nav aria-label="Reservation wizard steps" style={{ display: "flex", alignItems: "center", marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: `1px solid ${tokens.colorNeutralStroke1}` }}>
+      <nav aria-label="Reservation wizard steps" style={{ display: "flex", flexDirection: "column", marginBottom: "1.5rem" }}>
+      <div style={{ display: "flex", alignItems: "center", paddingBottom: "1rem", borderBottom: `1px solid ${tokens.colorNeutralStroke1}` }}>
         {USER_STEPS.map((label, i) => {
           const isComplete = i < userStep;
           const isActive   = i === userStep;
@@ -201,6 +202,17 @@ export function ReserveWizard() {
             </div>
           );
         })}
+      </div>
+      <Text
+        size={100}
+        style={{
+          color: tokens.colorNeutralForeground3,
+          alignSelf: "flex-end",
+          marginTop: tokens.spacingVerticalXS,
+        }}
+      >
+        Step {userStep + 1} of {USER_STEPS.length}
+      </Text>
       </nav>
 
       {/* Submission error */}

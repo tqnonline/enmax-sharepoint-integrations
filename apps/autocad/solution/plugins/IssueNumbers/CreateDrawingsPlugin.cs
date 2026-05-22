@@ -1,0 +1,130 @@
+using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Query;
+using Newtonsoft.Json;
+using System;
+
+namespace Enmax.AutoCAD
+{
+    /// <summary>
+    /// Dataverse plug-in for creating Drawing and Sheet records after number issuance.
+    /// Custom API: enmax_acdnCreateDrawings (bound to enmax_autocadreservation)
+    ///
+    /// Creates one Drawing per issued number and N Sheet records per drawing,
+    /// where N = enmax_acdnsheetsperdrawing on the reservation (defaults to 1).
+    /// Owner of all created records is set to the reservation owner so drawings
+    /// belong to the requester, not the approver.
+    /// </summary>
+    public class CreateDrawingsPlugin : PluginBase
+    {
+        private const string ReservationEntity = "enmax_autocadreservation";
+        private const string DrawingEntity     = "enmax_autocaddrawing";
+        private const string SheetEntity       = "enmax_autocadsheet";
+
+        private const int StateAvailable = 1;
+
+        public CreateDrawingsPlugin() : base(typeof(CreateDrawingsPlugin)) { }
+
+        public CreateDrawingsPlugin(string unsecureConfiguration, string secureConfiguration)
+            : base(typeof(CreateDrawingsPlugin)) { }
+
+        protected override void ExecuteDataversePlugin(ILocalPluginContext localPluginContext)
+        {
+            var context = localPluginContext.PluginExecutionContext;
+            var service = localPluginContext.InitiatingUserService;
+
+            // ── Validate inputs ──────────────────────────────────────────────────
+            if (!context.InputParameters.Contains("Target"))
+                throw new InvalidPluginExecutionException("Missing required input: Target");
+            var target = context.InputParameters["Target"] as EntityReference;
+            if (target == null)
+                throw new InvalidPluginExecutionException("Missing required input: Target");
+            if (!string.Equals(target.LogicalName, ReservationEntity, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidPluginExecutionException(
+                    $"Target must be {ReservationEntity}, got {target.LogicalName}");
+
+            if (!context.InputParameters.Contains("IssuedNumbers"))
+                throw new InvalidPluginExecutionException("Missing required input: IssuedNumbers");
+            var issuedNumbersJson = context.InputParameters["IssuedNumbers"] as string;
+            if (string.IsNullOrWhiteSpace(issuedNumbersJson))
+                throw new InvalidPluginExecutionException("IssuedNumbers must not be empty");
+
+            if (!context.InputParameters.Contains("SequenceKey"))
+                throw new InvalidPluginExecutionException("Missing required input: SequenceKey");
+            var sequenceKey = context.InputParameters["SequenceKey"] as string;
+            if (string.IsNullOrWhiteSpace(sequenceKey))
+                throw new InvalidPluginExecutionException("SequenceKey must not be empty");
+
+            int[] numbers;
+            try { numbers = JsonConvert.DeserializeObject<int[]>(issuedNumbersJson); }
+            catch (Exception ex)
+            {
+                throw new InvalidPluginExecutionException(
+                    $"IssuedNumbers is not valid JSON: {ex.Message}", ex);
+            }
+            if (numbers == null || numbers.Length == 0)
+                throw new InvalidPluginExecutionException(
+                    "IssuedNumbers must contain at least one number");
+
+            // ── Retrieve reservation ─────────────────────────────────────────────
+            Entity reservation = service.Retrieve(ReservationEntity, target.Id, new ColumnSet(
+                "ownerid",
+                "enmax_acdnsheetsperdrawing",
+                "enmax_acdnbusiness",
+                "enmax_acdnasset",
+                "enmax_acdnunit",
+                "enmax_acdndomain",
+                "enmax_acdnsystem",
+                "enmax_acdnkind"));
+
+            var owner = reservation.GetAttributeValue<EntityReference>("ownerid");
+
+            int sheetsPer = reservation.Contains("enmax_acdnsheetsperdrawing")
+                ? reservation.GetAttributeValue<int>("enmax_acdnsheetsperdrawing")
+                : 0;
+            int sheetCount = sheetsPer > 0 ? sheetsPer : 1;
+
+            // ── Create drawings + sheets ─────────────────────────────────────────
+            int drawingsCreated = 0;
+            foreach (int number in numbers)
+            {
+                var drawing = new Entity(DrawingEntity)
+                {
+                    ["enmax_acdnnumber"]         = $"{sequenceKey}-{number:D4}",
+                    ["enmax_acdnsequencenumber"] = number,
+                    ["enmax_acdnstate"]          = new OptionSetValue(StateAvailable),
+                    ["enmax_acdnreservation"]    = new EntityReference(ReservationEntity, target.Id),
+                };
+
+                if (owner != null)                                    drawing["ownerid"]          = owner;
+                CopyLookup(reservation, drawing, "enmax_acdnbusiness");
+                CopyLookup(reservation, drawing, "enmax_acdnasset");
+                CopyLookup(reservation, drawing, "enmax_acdnunit");
+                CopyLookup(reservation, drawing, "enmax_acdndomain");
+                CopyLookup(reservation, drawing, "enmax_acdnsystem");
+                CopyLookup(reservation, drawing, "enmax_acdnkind");
+
+                Guid drawingId = service.Create(drawing);
+                drawingsCreated++;
+
+                for (int i = 1; i <= sheetCount; i++)
+                {
+                    var sheet = new Entity(SheetEntity)
+                    {
+                        ["enmax_acdndrawing"]     = new EntityReference(DrawingEntity, drawingId),
+                        ["enmax_acdnsheetnumber"] = i,
+                    };
+                    if (owner != null) sheet["ownerid"] = owner;
+                    service.Create(sheet);
+                }
+            }
+
+            context.OutputParameters["DrawingsCreated"] = drawingsCreated;
+        }
+
+        private static void CopyLookup(Entity source, Entity target, string attribute)
+        {
+            if (source.Contains(attribute))
+                target[attribute] = source[attribute];
+        }
+    }
+}

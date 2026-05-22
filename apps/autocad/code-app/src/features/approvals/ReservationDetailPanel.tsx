@@ -13,12 +13,13 @@ import {
   tokens,
   makeStyles,
 } from "@fluentui/react-components";
-import { Dismiss24Regular, Warning24Regular } from "@fluentui/react-icons";
+import { Dismiss24Regular, Warning24Regular, ArrowSquareUpRightRegular } from "@fluentui/react-icons";
 import type { PendingReservation } from "./hooks/usePendingReservations";
 import { formatComposition, formatNumberRange } from "./compositionUtils";
 import { useApproveReservation } from "./hooks/useApproveReservation";
 import { useApprovalAudit } from "./hooks/useApprovalAudit";
 import { DeclineDialog } from "./DeclineDialog";
+import { useCurrentUser } from "../../auth/useCurrentUser";
 
 function formatAuditLabel(event: number, formatted: string): string {
   const map: Record<number, string> = { 1: "Submitted", 3: "Approval Granted", 4: "Approval Denied" };
@@ -128,6 +129,7 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
   const screenWidth = useScreenWidth();
   const approveMutation = useApproveReservation();
   const auditQuery = useApprovalAudit(reservation?.enmax_acdnreservationid ?? null);
+  const { data: currentUser } = useCurrentUser();
 
   // "small" = 320px at tablet portrait; "medium" = 592px at desktop/landscape
   const drawerSize = screenWidth >= 1024 ? "medium" : "small";
@@ -174,7 +176,24 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
         <DrawerHeader>
           <DrawerHeaderTitle
             action={
-              <Button appearance="subtle" icon={<Dismiss24Regular />} onClick={onClose} aria-label="Close panel" />
+              <div style={{ display: "flex", gap: "4px" }}>
+                {reservation && currentUser && (
+                  <Button
+                    appearance="subtle"
+                    icon={<ArrowSquareUpRightRegular />}
+                    onClick={() => {
+                      const { appId, environmentId, tenantId } = currentUser;
+                      window.open(
+                        `https://apps.powerapps.com/play/e/${environmentId}/app/${appId}?tenantId=${tenantId}#/reservations/${reservation.enmax_acdnreservationid}`,
+                        "_blank",
+                        "noopener,noreferrer",
+                      );
+                    }}
+                    aria-label="Open in new tab"
+                  />
+                )}
+                <Button appearance="subtle" icon={<Dismiss24Regular />} onClick={onClose} aria-label="Close panel" />
+              </div>
             }
           >
             {reservation?.enmax_acdnreservationnumber ?? "Reservation"}
@@ -265,15 +284,6 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
                     </Button>
                   </>
                 )}
-                <Button
-                  appearance="subtle"
-                  as="a"
-                  href={`#/reservations/${reservation.enmax_acdnreservationid}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Open in new tab
-                </Button>
               </div>
 
               <div className={styles.auditSection}>

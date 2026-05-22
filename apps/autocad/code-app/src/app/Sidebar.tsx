@@ -98,7 +98,7 @@ const NAV_GROUPS: NavGroup[] = [
     destinations: [
       { label: "Home",      path: "/",          roles: ["All"],               icon: <Home24Regular /> },
       { label: "Reserve",   path: "/reserve",   roles: ["User", "Admin"],     icon: <DocumentAdd24Regular /> },
-      { label: "My Items",  path: "/my-items",  roles: ["All"],               icon: <BookmarkMultiple24Regular /> },
+      { label: "My Reservations", path: "/my-items", roles: ["All"], icon: <BookmarkMultiple24Regular /> },
       { label: "Search",    path: "/search",    roles: ["All"],               icon: <Search24Regular /> },
       { label: "Approvals", path: "/approvals", roles: ["Approver", "Admin"], icon: <Checkmark24Regular /> },
     ],

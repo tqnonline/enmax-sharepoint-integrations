@@ -36,7 +36,7 @@ test("hides Approvals from sidebar for User role — role gating removes, not di
 test("shows all 9 destinations to Admin role", () => {
   mockRole.value = "Admin";
   renderSidebar();
-  const destinations = ["Home", "Reserve", "Search", "My Items", "Approvals", "Reference Data", "Audit", "Broadcasts", "Settings"];
+  const destinations = ["Home", "Reserve", "My Reservations", "Search", "Approvals", "Reference Data", "Audit", "Broadcasts", "Settings"];
   for (const d of destinations) {
     expect(screen.getByText(d)).toBeInTheDocument();
   }

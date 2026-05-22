@@ -10,7 +10,6 @@ import {
   Tooltip,
   Text,
   Button,
-  Divider,
   makeStyles,
   mergeClasses,
   tokens,
@@ -28,6 +27,50 @@ import { SEQUENCE_TOOLTIP } from "../hooks/usePreviewNumber";
 
 const useStyles = makeStyles({
   root: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalL },
+
+  // Composition chip bar (live preview at top)
+  compBar: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+    padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalL}`,
+    overflowX: "auto",
+    cursor: "default",
+  },
+  seg: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+  },
+  segLabel: {
+    fontSize: tokens.fontSizeBase100,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground3,
+    letterSpacing: "0.06em",
+    textTransform: "uppercase",
+    lineHeight: "1",
+    marginBottom: "3px",
+  },
+  segCode: {
+    fontFamily: "monospace",
+    fontSize: tokens.fontSizeBase300,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+  },
+  segCodeEmpty: { color: tokens.colorNeutralForeground4 },
+  segCodeSeq:   { color: tokens.colorPaletteYellowForeground1 },
+  segSep: {
+    fontFamily: "monospace",
+    fontSize: tokens.fontSizeBase300,
+    color: tokens.colorNeutralForeground3,
+    paddingTop: "17px",
+    alignSelf: "flex-start",
+  },
+
+  // Form layout
   columns: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
@@ -39,23 +82,6 @@ const useStyles = makeStyles({
     marginBottom: tokens.spacingVerticalXS,
   },
   groupColumn: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalM },
-  preview: {
-    padding: tokens.spacingVerticalM,
-    backgroundColor: tokens.colorNeutralBackground2,
-    borderRadius: tokens.borderRadiusMedium,
-    display: "flex",
-    alignItems: "center",
-    gap: tokens.spacingHorizontalM,
-  },
-  previewNumber: {
-    fontFamily: "monospace",
-    fontSize: tokens.fontSizeBase500,
-    fontWeight: tokens.fontWeightSemibold,
-    letterSpacing: "0.05em",
-  },
-  segFilled: { color: tokens.colorNeutralForeground1 },
-  segEmpty:  { color: tokens.colorNeutralForeground4 },
-  segSeq:    { color: tokens.colorPaletteYellowForeground1 },
   actions:   { display: "flex", gap: tokens.spacingHorizontalS },
 });
 
@@ -159,13 +185,14 @@ export function Step2Composition({ refData, combos, onNext }: Props) {
     );
   }
 
-  function PreviewSegment({ code, placeholder }: { code: string; placeholder: string }) {
-    return (
-      <span className={mergeClasses(styles.previewNumber, code ? styles.segFilled : styles.segEmpty)}>
-        {code || placeholder}
-      </span>
-    );
-  }
+  const segments = [
+    { label: "BUS",   code: businessCode, placeholder: "BB"  },
+    { label: "ASSET", code: assetCode,    placeholder: "AA"  },
+    { label: "UNIT",  code: unitCode,     placeholder: "UU"  },
+    { label: "DOM",   code: domainCode,   placeholder: "DDD" },
+    { label: "SYS",   code: systemCode,   placeholder: "SSS" },
+    { label: "KIND",  code: kindCode,     placeholder: "KK"  },
+  ];
 
   async function handleNext() {
     const ok = await trigger(["business", "asset", "unit", "domain", "system", "kind"]);
@@ -174,6 +201,28 @@ export function Step2Composition({ refData, combos, onNext }: Props) {
 
   return (
     <div className={styles.root}>
+      {/* Live number preview at top */}
+      <Tooltip content={SEQUENCE_TOOLTIP} relationship="description">
+        <div className={styles.compBar} tabIndex={0} role="img" aria-label="Drawing number preview">
+          {segments.map((seg, i) => (
+            <span key={seg.label} style={{ display: "contents" }}>
+              <div className={styles.seg}>
+                <span className={styles.segLabel}>{seg.label}</span>
+                <span className={mergeClasses(styles.segCode, seg.code ? styles.segCode : styles.segCodeEmpty)}>
+                  {seg.code || seg.placeholder}
+                </span>
+              </div>
+              {i < segments.length - 1 && <span className={styles.segSep}>-</span>}
+            </span>
+          ))}
+          <span className={styles.segSep}>-</span>
+          <div className={styles.seg}>
+            <span className={styles.segLabel}>SEQ</span>
+            <span className={mergeClasses(styles.segCode, styles.segCodeSeq)}>????</span>
+          </div>
+        </div>
+      </Tooltip>
+
       {/* Two-column layout: left = site identification chain, right = technical classification chain */}
       <div className={styles.columns}>
         {/* Left: Business → Asset → Unit (cascade chain) */}
@@ -238,32 +287,6 @@ export function Step2Composition({ refData, combos, onNext }: Props) {
           )}
         />
       )}
-
-      <Divider />
-
-      {/* Live number preview */}
-      <div className={styles.preview}>
-        <Text weight="semibold" size={200} style={{ color: tokens.colorNeutralForeground2, minWidth: "90px" }}>
-          Number preview:
-        </Text>
-        <Tooltip content={SEQUENCE_TOOLTIP} relationship="description">
-          <span style={{ display: "flex", alignItems: "center", gap: "1px" }}>
-            <PreviewSegment code={businessCode} placeholder="BB" />
-            <span className={styles.previewNumber} style={{ color: tokens.colorNeutralForeground3 }}>-</span>
-            <PreviewSegment code={assetCode}    placeholder="AA" />
-            <span className={styles.previewNumber} style={{ color: tokens.colorNeutralForeground3 }}>-</span>
-            <PreviewSegment code={unitCode}     placeholder="UU" />
-            <span className={styles.previewNumber} style={{ color: tokens.colorNeutralForeground3 }}>-</span>
-            <PreviewSegment code={domainCode}   placeholder="DDD" />
-            <span className={styles.previewNumber} style={{ color: tokens.colorNeutralForeground3 }}>-</span>
-            <PreviewSegment code={systemCode}   placeholder="SSS" />
-            <span className={styles.previewNumber} style={{ color: tokens.colorNeutralForeground3 }}>-</span>
-            <PreviewSegment code={kindCode}     placeholder="KK" />
-            <span className={styles.previewNumber} style={{ color: tokens.colorNeutralForeground3 }}>-</span>
-            <span className={mergeClasses(styles.previewNumber, styles.segSeq)}>????</span>
-          </span>
-        </Tooltip>
-      </div>
 
       {/* Navigation */}
       <div className={styles.actions}>

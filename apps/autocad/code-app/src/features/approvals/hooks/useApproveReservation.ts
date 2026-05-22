@@ -45,6 +45,7 @@ async function invokeApproveAction(input: ApproveInput): Promise<void> {
 
     // Step 2 — Issue drawing numbers (requires all 6 composition codes)
     const { businessCode, assetCode, unitCode, domainCode, systemCode, kindCode, drawingCount } = input;
+
     if (businessCode && assetCode && unitCode && domainCode && systemCode && kindCode && drawingCount) {
       const issueResult = await client.executeAsync<Record<string, unknown>, Record<string, unknown>>({
         dataverseRequest: {
@@ -67,13 +68,17 @@ async function invokeApproveAction(input: ApproveInput): Promise<void> {
 
       if (issueResult.success && issueResult.data) {
         const issuedNumbers = issueResult.data["IssuedNumbers"] as string | undefined;
+
         if (issuedNumbers) {
-          // Step 3 — Write issued numbers back to the reservation record
+          // Write issued numbers to the reservation — the AutoCreateDrawingsPlugin fires
+          // asynchronously on this update and creates the Drawing + Sheet records.
           await Enmax_autocadreservationsService.update(
             input.reservationId,
             { enmax_acdnissuednumbers: issuedNumbers } as Parameters<typeof Enmax_autocadreservationsService.update>[1],
           );
         }
+      } else {
+        console.error("[IssueNumbers] failed or returned no data:", issueResult.error);
       }
       // Number issuance failure is non-fatal — approval already succeeded
     }
@@ -109,6 +114,7 @@ export function useApproveReservation() {
     mutationFn: invokeApproveAction,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["reservations"] });
+      void queryClient.invalidateQueries({ queryKey: ["my-reservations"] });
     },
   });
 }

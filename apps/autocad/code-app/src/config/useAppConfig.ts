@@ -22,14 +22,21 @@ async function fetchAppConfig(): Promise<AppConfig> {
     select: ["enmax_acdnkey", "enmax_acdnvalue", "enmax_acdnvaluetype"],
   });
   if (!result.success || !result.data) {
-    throw new Error("App Config fetch failed");
+    console.error("[AppConfig] Fetch failed. result:", result);
+    throw new Error(`App Config fetch failed: ${JSON.stringify(result.error ?? { success: result.success })}`);
   }
   const raw: Record<string, unknown> = {};
   for (const row of result.data) {
     if (row.enmax_acdnkey) raw[row.enmax_acdnkey] = coerceValue(row);
   }
   // Throws ZodError on validation failure — fail-loud per CLAUDE.md Rule 12.
-  return AppConfigSchema.parse(raw);
+  try {
+    return AppConfigSchema.parse(raw);
+  } catch (e) {
+    console.error("[AppConfig] Zod validation failed. Raw config keys:", Object.keys(raw));
+    console.error("[AppConfig] Zod error:", e);
+    throw e;
+  }
 }
 
 export function useAppConfig(): AppConfig {

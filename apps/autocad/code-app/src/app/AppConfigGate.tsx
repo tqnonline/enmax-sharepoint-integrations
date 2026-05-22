@@ -16,7 +16,7 @@ export function AppConfigGate({ children }: AppConfigGateProps) {
   const theme = useThemeMode(config.DefaultTheme);
 
   return (
-    <FluentProvider theme={theme} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+    <FluentProvider theme={theme} style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
       {children}
     </FluentProvider>
   );

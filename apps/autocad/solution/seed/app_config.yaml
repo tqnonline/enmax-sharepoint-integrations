@@ -85,3 +85,7 @@ rows:
     value: "60"
     value_type: Integer
     description: How often (minutes) the broadcast fan-out Power Automate flow runs.
+  - key: GridPageSize
+    value: "10"
+    value_type: Integer
+    description: Number of rows per page in all Code App grids and lists. Increase for power users, decrease for low-bandwidth environments.

@@ -30,6 +30,8 @@ export const AppConfigSchema = z.object({
   FooterDisclaimer:               z.string(),
   FooterCopyright:                z.string(),
   BroadcastFanOutCadenceMinutes:  z.number().int().min(1),
+  GridPageSize:                   z.number().int().min(1).default(10),
+  RequireCheckInApproval:         z.boolean().default(false),
 });
 
 export type AppConfig = z.infer<typeof AppConfigSchema>;

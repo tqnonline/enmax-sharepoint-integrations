@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound";
 import { ReservePage } from "./features/reserve/ReservePage";
 import { ReserveSuccess } from "./features/reserve/ReserveSuccess";
 import { ApprovalsPage } from "./features/approvals/ApprovalsPage";
+import ReservationDetail from "./pages/ReservationDetail";
 
 // Browser router — Power Apps host serves Code App at a deep URL with ?env=...
 // query string. Browser router uses path segments; env query stays attached.
@@ -31,7 +32,8 @@ export const router = createHashRouter([
         ],
       },
       { path: "search",         element: <Search /> },
-      { path: "my-items",       element: <MyItems /> },
+      { path: "my-items",            element: <MyItems /> },
+      { path: "reservations/:reservationId", element: <ReservationDetail /> },
       { path: "approvals",      element: <RequireRole roles={["Approver", "Admin"]}><ApprovalsPage /></RequireRole> },
       { path: "reference-data", element: <RequireRole roles={["Admin"]}><ReferenceData /></RequireRole> },
       { path: "audit",          element: <RequireRole roles={["Admin"]}><Audit /></RequireRole> },

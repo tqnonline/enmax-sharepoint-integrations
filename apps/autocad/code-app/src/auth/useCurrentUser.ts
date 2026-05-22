@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getContext } from "@microsoft/power-apps/app";
 import { WhoAmIService } from "../generated/services/WhoAmIService";
+import { SystemusersService } from "../generated/services/SystemusersService";
 
 async function fetchCurrentUser() {
   const [context, whoAmI] = await Promise.all([
@@ -14,11 +15,25 @@ async function fetchCurrentUser() {
   if (typeof userId !== "string" || !userId) {
     throw new Error("WhoAmI response missing UserId");
   }
+
+  let jobTitle: string | undefined;
+  try {
+    const sys = await SystemusersService.getAll({
+      select: ["systemuserid", "jobtitle"],
+      filter: `systemuserid eq '${userId}'`,
+    });
+    jobTitle = sys.data?.[0]?.jobtitle ?? undefined;
+  } catch { /* non-fatal — header shows without job title */ }
+
   return {
     id: userId,
     azureObjectId: context.user.objectId ?? "",
     userPrincipalName: context.user.userPrincipalName ?? "",
     displayName: context.user.fullName ?? "",
+    jobTitle,
+    appId: context.app.appId ?? "",
+    environmentId: context.app.environmentId ?? "",
+    tenantId: context.user.tenantId ?? "",
   };
 }
 

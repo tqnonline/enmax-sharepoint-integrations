@@ -44,7 +44,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
     /// which will throw <see cref="InvalidOperationException"/> with a clear message.
     /// The integration tests catch the missing-env-var state and skip themselves.
     /// </summary>
-    public class DataverseFixture : IDisposable
+    public partial class DataverseFixture : IDisposable
     {
         // -----------------------------------------------------------------------
         // Constants – match the Dataverse schema
