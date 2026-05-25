@@ -45,6 +45,14 @@ jobs:
         run: uv pip install -r solution/scripts/requirements.txt --system
       - name: Pack solution
         run: python solution/scripts/pack.py
+      - name: Authenticate PAC CLI
+        shell: pwsh
+        env:
+          DATAVERSE_URL: ${{ secrets.PROD_DATAVERSE_URL }}
+          DATAVERSE_CLIENT_ID: ${{ secrets.PROD_SP_CLIENT_ID }}
+          DATAVERSE_CLIENT_SECRET: ${{ secrets.PROD_SP_CLIENT_SECRET }}
+          DATAVERSE_TENANT_ID: ${{ secrets.PROD_TENANT_ID }}
+        run: pac auth create --url $env:DATAVERSE_URL --applicationId $env:DATAVERSE_CLIENT_ID --clientSecret $env:DATAVERSE_CLIENT_SECRET --tenant $env:DATAVERSE_TENANT_ID
       - name: Import solution
         env:
           DATAVERSE_URL: ${{ secrets.PROD_DATAVERSE_URL }}
