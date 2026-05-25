@@ -219,6 +219,7 @@ export function Header() {
   }, [value]);
 
   // Reset highlight when results change
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional highlight reset when result set changes
   useEffect(() => { setHighlighted(-1); }, [debounced, activeTab]);
 
   // Click outside → close

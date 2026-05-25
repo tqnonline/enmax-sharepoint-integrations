@@ -35,6 +35,11 @@ namespace Enmax.AutoCAD
         private const int    AuditEventStateChanged = 2;
         private const int    AuditSourceAction      = 4;
 
+        private const string SheetEntity          = "enmax_autocadsheet";
+        private const string ColSheetDrawing      = "enmax_acdndrawing";
+        private const string ColSheetState        = "enmax_acdnstate";
+        private const int    SheetStateCheckedOut = 3;
+
         private const int StateAvailable  = 1;
         private const int StateCheckedOut = 2;
         private const int StatusOpen      = 1;
@@ -115,6 +120,12 @@ namespace Enmax.AutoCAD
             }
 
             localPluginContext.Trace($"Drawing {target.Id} transitioned to CheckedOut.");
+
+            // Propagate state to sheets (drawing update above serialized concurrent access — no RowVersion needed)
+            var sheetQuery = new QueryExpression(SheetEntity) { ColumnSet = new ColumnSet("enmax_autocadsheetid") };
+            sheetQuery.Criteria.AddCondition(ColSheetDrawing, ConditionOperator.Equal, target.Id);
+            foreach (var sheet in service.RetrieveMultiple(sheetQuery).Entities)
+                service.Update(new Entity(SheetEntity, sheet.Id) { [ColSheetState] = new OptionSetValue(SheetStateCheckedOut) });
 
             // Create the checkout row
             var checkout = new Entity(CheckoutEntity)

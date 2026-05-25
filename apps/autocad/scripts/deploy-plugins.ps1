@@ -17,28 +17,43 @@ $EnvFile    = Join-Path $CodeApp ".env.dev"
 $PluginProj = Join-Path $RepoRoot "solution\plugins\IssueNumbers\IssueNumbers.csproj"
 $DllPath    = Join-Path $RepoRoot "solution\plugins\IssueNumbers\bin\Release\net462\Enmax.AutoCAD.dll"
 
-# ── Fallback .env.dev for worktree layout ────────────────────────────────────
-if (-not (Test-Path $EnvFile)) {
-    $GitCommonDir = & git -C $RepoRoot rev-parse --git-common-dir 2>$null
-    if ($GitCommonDir) {
-        $MainRoot    = Split-Path ([System.IO.Path]::GetFullPath($GitCommonDir)) -Parent
-        $FallbackEnv = Join-Path $MainRoot "apps\code-app\.env.dev"
-        if (Test-Path $FallbackEnv) { $EnvFile = $FallbackEnv }
-    }
-}
-if (-not (Test-Path $EnvFile)) { Write-Error ".env.dev not found at $EnvFile" }
+# ── Resolve credentials ───────────────────────────────────────────────────────
+# Prefer environment variables (CI/CD passes these as secrets); fall back to the
+# local apps/code-app/.env.dev file (worktree-aware) for developer machines.
+$tenantId     = $env:DATAVERSE_TENANT_ID
+$clientId     = $env:DATAVERSE_CLIENT_ID
+$clientSecret = $env:DATAVERSE_CLIENT_SECRET
+$envUrl       = $env:DATAVERSE_URL
 
-$env = @{}
-foreach ($line in Get-Content $EnvFile) {
-    if ($line -match '^\s*#' -or $line.Trim() -eq '') { continue }
-    if ($line -match '^([^=]+)=(.*)$') {
-        $env[$Matches[1].Trim()] = $Matches[2].Trim().Trim('"')
+if (-not ($tenantId -and $clientId -and $clientSecret -and $envUrl)) {
+    if (-not (Test-Path $EnvFile)) {
+        $GitCommonDir = & git -C $RepoRoot rev-parse --git-common-dir 2>$null
+        if ($GitCommonDir) {
+            $MainRoot    = Split-Path ([System.IO.Path]::GetFullPath($GitCommonDir)) -Parent
+            $FallbackEnv = Join-Path $MainRoot "apps\code-app\.env.dev"
+            if (Test-Path $FallbackEnv) { $EnvFile = $FallbackEnv }
+        }
     }
+    if (-not (Test-Path $EnvFile)) {
+        Write-Error "Credentials not in environment (DATAVERSE_*) and .env.dev not found at $EnvFile"
+    }
+    $envMap = @{}
+    foreach ($line in Get-Content $EnvFile) {
+        if ($line -match '^\s*#' -or $line.Trim() -eq '') { continue }
+        if ($line -match '^([^=]+)=(.*)$') {
+            $envMap[$Matches[1].Trim()] = $Matches[2].Trim().Trim('"')
+        }
+    }
+    if (-not $tenantId)     { $tenantId     = $envMap['TENANT_ID'] }
+    if (-not $clientId)     { $clientId     = $envMap['CLIENT_ID'] }
+    if (-not $clientSecret) { $clientSecret = $envMap['CLIENT_SECRET'] }
+    if (-not $envUrl)       { $envUrl       = $envMap['ENVIRONMENT_URL'] }
 }
-$tenantId     = $env['TENANT_ID']
-$clientId     = $env['CLIENT_ID']
-$clientSecret = $env['CLIENT_SECRET']
-$envUrl       = $env['ENVIRONMENT_URL'].TrimEnd('/')
+
+if (-not ($tenantId -and $clientId -and $clientSecret -and $envUrl)) {
+    Write-Error "Missing one or more credentials (TENANT_ID/CLIENT_ID/CLIENT_SECRET/ENVIRONMENT_URL)."
+}
+$envUrl = $envUrl.TrimEnd('/')
 
 # ── Plugin definitions ────────────────────────────────────────────────────────
 #
@@ -152,12 +167,66 @@ $CustomAPIDefs = @(
         BindingType = 1
         BoundEntity = "enmax_autocadcheckout"
         Params = @(
-            @{ Name="Reason"; Type=10; Optional=$false }
+            @{ Name="NewRevision"; Type=10; Optional=$false }
+            @{ Name="Reason";      Type=10; Optional=$false }
         )
         Response = @(
             @{ Name="CheckoutId";   Type=10 }
             @{ Name="DrawingState"; Type=7  }
         )
+    }
+
+    # ── Entity-bound: Drawing lifecycle (plan-12) ────────────────────────────
+    [ordered]@{
+        UniqueName  = "enmax_acdnSubmitRevision"
+        DisplayName = "Submit Revision"
+        PluginClass = "Enmax.AutoCAD.SubmitRevisionPlugin"
+        BindingType = 1
+        BoundEntity = "enmax_autocadcheckout"
+        Params = @(
+            @{ Name="NewRevision"; Type=10; Optional=$false }
+            @{ Name="Reason";      Type=10; Optional=$true  }
+        )
+        Response = @(
+            @{ Name="NewStatus";    Type=7 }
+            @{ Name="DrawingState"; Type=7 }
+        )
+    }
+
+    [ordered]@{
+        UniqueName  = "enmax_acdnFinalizeDrawing"
+        DisplayName = "Finalize Drawing"
+        PluginClass = "Enmax.AutoCAD.FinalizeDrawingPlugin"
+        BindingType = 1
+        BoundEntity = "enmax_autocaddrawing"
+        Params = @(
+            @{ Name="Reason"; Type=10; Optional=$false }
+        )
+        Response = @()
+    }
+
+    [ordered]@{
+        UniqueName  = "enmax_acdnMarkObsolete"
+        DisplayName = "Mark Drawing Obsolete"
+        PluginClass = "Enmax.AutoCAD.MarkObsoletePlugin"
+        BindingType = 1
+        BoundEntity = "enmax_autocaddrawing"
+        Params = @(
+            @{ Name="Reason"; Type=10; Optional=$true }
+        )
+        Response = @()
+    }
+
+    [ordered]@{
+        UniqueName  = "enmax_acdnMarkVoid"
+        DisplayName = "Mark Drawing Void"
+        PluginClass = "Enmax.AutoCAD.MarkVoidPlugin"
+        BindingType = 1
+        BoundEntity = "enmax_autocaddrawing"
+        Params = @(
+            @{ Name="Reason"; Type=10; Optional=$false }
+        )
+        Response = @()
     }
 )
 

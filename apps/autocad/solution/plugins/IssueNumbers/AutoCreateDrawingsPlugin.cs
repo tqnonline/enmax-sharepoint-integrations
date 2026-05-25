@@ -17,11 +17,15 @@ namespace Enmax.AutoCAD
     /// </summary>
     public class AutoCreateDrawingsPlugin : PluginBase
     {
-        private const string DrawingEntity     = "enmax_autocaddrawing";
-        private const string SheetEntity       = "enmax_autocadsheet";
-        private const string ReservationEntity = "enmax_autocadreservation";
-        private const int    StatusApproved    = 2;
-        private const int    StateAvailable    = 1;
+        private const string DrawingEntity      = "enmax_autocaddrawing";
+        private const string SheetEntity        = "enmax_autocadsheet";
+        private const string ReservationEntity  = "enmax_autocadreservation";
+        private const string AuditEntity        = "enmax_autocadauditevent";
+        private const int    StatusApproved     = 2;
+        private const int    StateAvailable     = 1;
+        private const int    AuditEventCreated  = 1;
+        private const int    AuditSourceAction  = 4;
+        private const int    SheetStateAvailable = 2;
 
         public AutoCreateDrawingsPlugin() : base(typeof(AutoCreateDrawingsPlugin)) { }
 
@@ -118,10 +122,21 @@ namespace Enmax.AutoCAD
                     {
                         ["enmax_acdndrawing"]     = new EntityReference(DrawingEntity, drawingId),
                         ["enmax_acdnsheetnumber"] = i,
+                        ["enmax_acdnstate"]       = new OptionSetValue(SheetStateAvailable),
                     };
                     if (owner != null) sheet["ownerid"] = owner;
                     service.Create(sheet);
                 }
+
+                service.Create(new Entity(AuditEntity)
+                {
+                    ["enmax_acdnevent"]        = new OptionSetValue(AuditEventCreated),
+                    ["enmax_acdnsource"]       = new OptionSetValue(AuditSourceAction),
+                    ["enmax_acdnsubjectid"]    = drawingId.ToString(),
+                    ["enmax_acdnsubjecttable"] = DrawingEntity,
+                    ["enmax_acdnactedby"]      = new EntityReference("systemuser", context.InitiatingUserId),
+                    ["enmax_acdnname"]         = $"Drawing {drawingId} created",
+                });
             }
 
             tracing.Trace($"AutoCreateDrawings: created {created} drawings × {sheetCount} sheet(s) each.");

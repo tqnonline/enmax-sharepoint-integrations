@@ -42,6 +42,12 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         public string CurrentRevision { get; set; }
     }
 
+    public class FinalizeResult
+    {
+        public bool   Success { get; set; }
+        public string Error   { get; set; }
+    }
+
     // ---------------------------------------------------------------------------
     // Extended fixture helpers for checkout flow
     // ---------------------------------------------------------------------------
@@ -69,9 +75,11 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         private const int StatusClosedApproved  = 3;
         private const int StatusClosedForced    = 5;
 
-        private const string CheckOutAction     = "enmax_acdnCheckOutDrawing";
+        private const string CheckOutAction      = "enmax_acdnCheckOutDrawing";
         private const string ApproveAction      = "enmax_acdnApproveCheckin";
         private const string ForceAction        = "enmax_acdnForceCheckin";
+        private const string SubmitRevisionAction = "enmax_acdnSubmitRevision";
+        private const string FinalizeAction       = "enmax_acdnFinalizeDrawing";
 
         /// <summary>Creates a drawing in Available(1) state. Caller must clean up.</summary>
         public async Task<Guid> CreateAvailableDrawingAsync(string number = null, string revision = "A")
@@ -149,6 +157,42 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             request.Parameters["Target"] = new EntityReference(CheckoutEntity, checkoutId);
             request.Parameters["Reason"] = reason;
             await _client.ExecuteAsync(request).ConfigureAwait(false);
+        }
+
+        /// <summary>Invokes enmax_acdnSubmitRevision (bound to checkout).</summary>
+        public async Task InvokeSubmitRevisionAsync(Guid checkoutId, string newRevision, string reason = "")
+        {
+            EnsureReady();
+            var request = new OrganizationRequest(SubmitRevisionAction);
+            request.Parameters["Target"]      = new EntityReference(CheckoutEntity, checkoutId);
+            request.Parameters["NewRevision"] = newRevision;
+            request.Parameters["Reason"]      = reason ?? string.Empty;
+            await _client.ExecuteAsync(request).ConfigureAwait(false);
+        }
+
+        /// <summary>Invokes enmax_acdnFinalizeDrawing (bound to drawing). Returns (success, error).</summary>
+        public async Task<FinalizeResult> InvokeFinalizeAsync(Guid drawingId, string reason)
+        {
+            EnsureReady();
+            try
+            {
+                var request = new OrganizationRequest(FinalizeAction);
+                request.Parameters["Target"] = new EntityReference(DrawingEntity, drawingId);
+                request.Parameters["Reason"] = reason;
+                await _client.ExecuteAsync(request).ConfigureAwait(false);
+                return new FinalizeResult { Success = true };
+            }
+            catch (Exception ex) { return new FinalizeResult { Success = false, Error = ex.Message }; }
+        }
+
+        /// <summary>Counts sheets in a given sheet-state for a drawing.</summary>
+        public int CountSheetsInState(Guid drawingId, int sheetState)
+        {
+            EnsureReady();
+            var q = new QueryExpression("enmax_autocadsheet") { ColumnSet = new ColumnSet("enmax_acdnstate") };
+            q.Criteria.AddCondition("enmax_acdndrawing", ConditionOperator.Equal, drawingId);
+            return _client.RetrieveMultiple(q).Entities
+                .Count(s => s.GetAttributeValue<OptionSetValue>("enmax_acdnstate")?.Value == sheetState);
         }
 
         public async Task<DrawingSnapshot> GetDrawingSnapshotAsync(Guid drawingId)
@@ -453,6 +497,79 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             finally
             {
                 if (checkoutId != Guid.Empty) await _fx.DeleteCheckoutAsync(checkoutId);
+                await _fx.DeleteDrawingAsync(drawingId);
+            }
+        }
+
+        // -----------------------------------------------------------------------
+        // INT-06: SubmitRevision (approval OFF) then Finalize locks drawing + sheets
+        // -----------------------------------------------------------------------
+
+        [Fact]
+        [Trait("Category", "Integration")]
+        public async Task SubmitRevision_then_Finalize_locks_drawing_and_sheets()
+        {
+            SkipIfNoDataverse();
+
+            var drawingId   = await _fx.CreateAvailableDrawingAsync(revision: "A");
+            Guid checkoutId = Guid.Empty;
+            try
+            {
+                var co = await _fx.InvokeCheckOutAsync(drawingId);
+                co.Success.Should().BeTrue();
+                Guid.TryParse(co.CheckoutId, out checkoutId).Should().BeTrue();
+
+                await _fx.InvokeSubmitRevisionAsync(checkoutId, "B");
+
+                var afterSubmit = await _fx.GetDrawingSnapshotAsync(drawingId);
+                afterSubmit.State.Should().Be(1, "approval-off submit returns the drawing to Available");
+                afterSubmit.CurrentRevision.Should().Be("B");
+
+                var fin = await _fx.InvokeFinalizeAsync(drawingId, "Final issued-for-construction revision.");
+                fin.Success.Should().BeTrue();
+
+                var afterFinal = await _fx.GetDrawingSnapshotAsync(drawingId);
+                afterFinal.State.Should().Be(7, "finalized is terminal");
+                _fx.CountSheetsInState(drawingId, 7).Should().BeGreaterThan(0,
+                    "sheets must mirror the drawing into Finalized = 7");
+
+                var co2 = await _fx.InvokeCheckOutAsync(drawingId);
+                co2.Success.Should().BeFalse("a finalized drawing cannot be checked out");
+            }
+            finally
+            {
+                if (checkoutId != Guid.Empty) await _fx.DeleteCheckoutAsync(checkoutId);
+                await _fx.DeleteDrawingAsync(drawingId);
+            }
+        }
+
+        // -----------------------------------------------------------------------
+        // INT-07: Concurrent finalize — exactly one winner (Rule 14)
+        // -----------------------------------------------------------------------
+
+        [Fact]
+        [Trait("Category", "Integration")]
+        public async Task Concurrent_finalize_on_same_drawing_produces_exactly_one_winner()
+        {
+            SkipIfNoDataverse();
+            const int ParallelCallers = 8;
+
+            var drawingId = await _fx.CreateAvailableDrawingAsync(revision: "A");
+            try
+            {
+                var tasks = Enumerable.Range(0, ParallelCallers)
+                    .Select(_ => _fx.InvokeFinalizeAsync(drawingId, "Concurrent finalize attempt — only one may win."))
+                    .ToList();
+                var results = await Task.WhenAll(tasks);
+
+                results.Count(r => r.Success).Should().Be(1,
+                    because: "RowVersion concurrency must let exactly one finalize succeed; the guard rejects the rest");
+                results.Count(r => !r.Success).Should().Be(ParallelCallers - 1);
+
+                (await _fx.GetDrawingSnapshotAsync(drawingId)).State.Should().Be(7);
+            }
+            finally
+            {
                 await _fx.DeleteDrawingAsync(drawingId);
             }
         }

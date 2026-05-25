@@ -1,0 +1,88 @@
+name: CD - Prod tenant
+
+# Progressive promotion: this runs automatically after "CD - UAT tenant" succeeds,
+# and is gated by the `prod` GitHub Environment (manual approval). It can also be
+# launched manually via the Actions tab.
+on:
+  workflow_run:
+    workflows: ["CD - UAT tenant"]
+    types: [completed]
+  workflow_dispatch:
+
+env:
+  DATAVERSE_GEO: can
+
+jobs:
+  deploy-prod:
+    runs-on: windows-latest
+    environment: prod   # Requires manual approval via GitHub Environments
+    # Only promote to prod when the upstream UAT deploy succeeded (or on manual dispatch).
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/code-app/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install uv
+        run: pip install uv
+      - name: Install PAC CLI
+        run: dotnet tool install --global Microsoft.PowerApps.CLI.Tool
+      - name: Install Code App deps
+        working-directory: apps/code-app
+        run: npm ci
+      - name: Build Code App
+        working-directory: apps/code-app
+        run: npm run build
+      - name: Install Python deps
+        run: uv pip install -r solution/scripts/requirements.txt --system
+      - name: Pack solution
+        run: python solution/scripts/pack.py
+      - name: Import solution
+        env:
+          DATAVERSE_URL: ${{ secrets.PROD_DATAVERSE_URL }}
+          DATAVERSE_CLIENT_ID: ${{ secrets.PROD_SP_CLIENT_ID }}
+          DATAVERSE_CLIENT_SECRET: ${{ secrets.PROD_SP_CLIENT_SECRET }}
+          DATAVERSE_TENANT_ID: ${{ secrets.PROD_TENANT_ID }}
+        run: python solution/scripts/import.py
+      - name: Register plugins & Custom APIs
+        shell: pwsh
+        env:
+          DATAVERSE_URL: ${{ secrets.PROD_DATAVERSE_URL }}
+          DATAVERSE_CLIENT_ID: ${{ secrets.PROD_SP_CLIENT_ID }}
+          DATAVERSE_CLIENT_SECRET: ${{ secrets.PROD_SP_CLIENT_SECRET }}
+          DATAVERSE_TENANT_ID: ${{ secrets.PROD_TENANT_ID }}
+        run: ./scripts/deploy-plugins.ps1
+      - name: Patch option set labels
+        env:
+          DATAVERSE_URL: ${{ secrets.PROD_DATAVERSE_URL }}
+          DATAVERSE_CLIENT_ID: ${{ secrets.PROD_SP_CLIENT_ID }}
+          DATAVERSE_CLIENT_SECRET: ${{ secrets.PROD_SP_CLIENT_SECRET }}
+          DATAVERSE_TENANT_ID: ${{ secrets.PROD_TENANT_ID }}
+        run: python solution/scripts/patch_optionsets.py
+      - name: Seed deterministic master data
+        env:
+          DATAVERSE_URL: ${{ secrets.PROD_DATAVERSE_URL }}
+          DATAVERSE_CLIENT_ID: ${{ secrets.PROD_SP_CLIENT_ID }}
+          DATAVERSE_CLIENT_SECRET: ${{ secrets.PROD_SP_CLIENT_SECRET }}
+          DATAVERSE_TENANT_ID: ${{ secrets.PROD_TENANT_ID }}
+        run: python solution/scripts/seed.py
+      - name: Provision security roles
+        env:
+          DATAVERSE_URL: ${{ secrets.PROD_DATAVERSE_URL }}
+          DATAVERSE_CLIENT_ID: ${{ secrets.PROD_SP_CLIENT_ID }}
+          DATAVERSE_CLIENT_SECRET: ${{ secrets.PROD_SP_CLIENT_SECRET }}
+          DATAVERSE_TENANT_ID: ${{ secrets.PROD_TENANT_ID }}
+        run: python solution/scripts/provision_roles.py
+      - name: Publish Code App
+        working-directory: apps/code-app
+        env:
+          POWER_APPS_ENV_ID: ${{ secrets.PROD_POWER_APPS_ENV_ID }}
+        run: npx power-apps push --environmentId "$env:POWER_APPS_ENV_ID"

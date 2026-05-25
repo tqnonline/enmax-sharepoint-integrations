@@ -8,6 +8,7 @@ import {
   DialogActions,
   Button,
   Field,
+  Input,
   Textarea,
   Text,
   Spinner,
@@ -16,6 +17,7 @@ import {
 } from "@fluentui/react-components";
 import { Warning24Regular } from "@fluentui/react-icons";
 import { useForceCheckin } from "../hooks/useForceCheckin";
+import { nextRevision } from "../api/checkoutClient";
 
 const useStyles = makeStyles({
   warningStripe: {
@@ -37,39 +39,50 @@ const useStyles = makeStyles({
 
 interface Props {
   checkoutId: string;
+  drawingId: string;
+  currentRevision?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }
 
-export function ForceCheckInDialog({ checkoutId }: Props) {
+export function ForceCheckInDialog({ checkoutId, drawingId, currentRevision, open, onOpenChange, hideTrigger }: Props) {
   const styles = useStyles();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = open ?? internalOpen;
+  const setOpen = (o: boolean) => { if (onOpenChange) onOpenChange(o); else setInternalOpen(o); };
   const [reason, setReason] = useState("");
+  const [newRevision, setNewRevision] = useState("");
   const mutation = useForceCheckin();
 
   function handleOpen() {
     setReason("");
+    setNewRevision(nextRevision(currentRevision));
     mutation.reset();
     setOpen(true);
   }
 
   function handleConfirm() {
-    if (reason.length < 10) return;
+    if (reason.length < 10 || !newRevision.trim()) return;
     mutation.mutate(
-      { checkoutId, reason },
+      { checkoutId, drawingId, newRevision: newRevision.trim(), reason },
       { onSuccess: () => setOpen(false) },
     );
   }
 
   return (
     <>
-      <Button
-        appearance="outline"
-        style={{ color: tokens.colorPaletteRedForeground1, borderColor: tokens.colorPaletteRedForeground1 }}
-        onClick={handleOpen}
-      >
-        Force Check-In
-      </Button>
+      {!hideTrigger && (
+        <Button
+          appearance="outline"
+          style={{ color: tokens.colorPaletteRedForeground1, borderColor: tokens.colorPaletteRedForeground1 }}
+          onClick={handleOpen}
+        >
+          Force Check-In
+        </Button>
+      )}
 
-      <Dialog open={open} onOpenChange={(_, d) => { if (!d.open) setOpen(false); }}>
+      <Dialog open={isOpen} onOpenChange={(_, d) => { if (!d.open) setOpen(false); }}>
         <DialogSurface>
           <DialogTitle>Force Check-In</DialogTitle>
           <DialogBody>
@@ -78,6 +91,15 @@ export function ForceCheckInDialog({ checkoutId }: Props) {
                 <Warning24Regular />
                 <Text weight="semibold">Admin override — the checked-out user will be notified.</Text>
               </div>
+
+              <Field label="Final revision number (required)" required>
+                <Input
+                  value={newRevision}
+                  onChange={(_, d) => setNewRevision(d.value)}
+                  placeholder="e.g. C or 03"
+                  aria-label="Final revision number"
+                />
+              </Field>
 
               <Field
                 label="Reason (required)"
@@ -115,7 +137,7 @@ export function ForceCheckInDialog({ checkoutId }: Props) {
                   backgroundColor: tokens.colorPaletteRedBackground3,
                   color: tokens.colorNeutralForegroundOnBrand,
                 }}
-                disabled={reason.length < 10 || mutation.isPending}
+                disabled={reason.length < 10 || !newRevision.trim() || mutation.isPending}
                 onClick={handleConfirm}
               >
                 {mutation.isPending ? <Spinner size="tiny" /> : "Confirm Force Check-In"}

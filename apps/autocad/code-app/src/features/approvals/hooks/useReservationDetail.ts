@@ -29,6 +29,7 @@ export interface ReservationDetail {
   createdon: string;
   override: boolean;
   issuedNumbers?: string;
+  submitterId?: string;
   submitterName?: string;
   submitterJobTitle?: string;
   businessCode?: string;
@@ -129,6 +130,7 @@ async function fetchReservationDetail(reservationId: string): Promise<Reservatio
     createdon: r.createdon ?? "",
     override: r.enmax_acdnoverride ?? false,
     issuedNumbers: r.enmax_acdnissuednumbers,
+    submitterId: r._createdby_value ?? undefined,
     submitterName: submitter?.fullname ?? undefined,
     submitterJobTitle: submitter?.jobtitle ?? undefined,
     businessCode: r._enmax_acdnbusiness_value ? bizMap.get(r._enmax_acdnbusiness_value)       : undefined,

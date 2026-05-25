@@ -53,5 +53,10 @@
         <label description="Reference Data Changed" languagecode="1033" />
       </labels>
     </option>
+    <option value="9" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Finalized" languagecode="1033" />
+      </labels>
+    </option>
   </options>
 </optionset>

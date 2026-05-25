@@ -2,8 +2,10 @@ using Enmax.AutoCAD;
 using FakeXrmEasy;
 using FluentAssertions;
 using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Query;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Xunit;
 
@@ -296,6 +298,44 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             // Still only 1 drawing (the pre-existing one), not 3
             ctx.CreateQuery(DrawingEntity).ToList().Should().HaveCount(1,
                 because: "if drawings already exist for the reservation the plugin must skip to prevent duplicate creation");
+        }
+
+        // ── Audit events ─────────────────────────────────────────────────────────
+
+        [Fact]
+        public void Each_created_drawing_gets_a_Created_audit_event_keyed_to_the_drawing()
+        {
+            var (ctx, pluginCtx, _) = BuildContext(numbers: new[] { 1, 2 }, sheetsPer: 1);
+
+            ctx.ExecutePluginWith<AutoCreateDrawingsPlugin>(pluginCtx);
+
+            var svc    = ctx.GetFakedOrganizationService();
+            var audits = svc.RetrieveMultiple(new QueryExpression("enmax_autocadauditevent") { ColumnSet = new ColumnSet(true) });
+
+            audits.Entities.Should().HaveCount(2, because: "one Created audit must be written per drawing");
+            audits.Entities.Should().OnlyContain(a => a.GetAttributeValue<OptionSetValue>("enmax_acdnevent").Value == 1,
+                because: "event type 1 = Created");
+            audits.Entities.Should().OnlyContain(a => a.GetAttributeValue<string>("enmax_acdnsubjecttable") == "enmax_autocaddrawing",
+                because: "audit subject table must be the drawing");
+
+            var drawings   = svc.RetrieveMultiple(new QueryExpression("enmax_autocaddrawing") { ColumnSet = new ColumnSet("enmax_autocaddrawingid") });
+            var drawingIds = new HashSet<string>(drawings.Entities.Select(d => d.Id.ToString()));
+            audits.Entities.Should().OnlyContain(a => drawingIds.Contains(a.GetAttributeValue<string>("enmax_acdnsubjectid")),
+                because: "each audit subjectid must be a real drawing id");
+        }
+
+        [Fact]
+        public void Created_sheets_start_in_sheet_Available_state()
+        {
+            var (ctx, pluginCtx, _) = BuildContext(numbers: new[] { 1 }, sheetsPer: 2);
+
+            ctx.ExecutePluginWith<AutoCreateDrawingsPlugin>(pluginCtx);
+
+            var sheets = ctx.GetFakedOrganizationService()
+                .RetrieveMultiple(new QueryExpression("enmax_autocadsheet") { ColumnSet = new ColumnSet("enmax_acdnstate") });
+            sheets.Entities.Should().HaveCount(2);
+            sheets.Entities.Should().OnlyContain(s => s.GetAttributeValue<OptionSetValue>("enmax_acdnstate").Value == 2,
+                because: "sheet Available = 2 mirrors the drawing's Available = 1");
         }
     }
 }

@@ -105,6 +105,18 @@ interface Props {
 
 interface SegProps { label: string; code: string; seq?: boolean; }
 
+function Seg({ label, code, seq }: SegProps) {
+  const styles = useStyles();
+  return (
+    <div className={styles.seg}>
+      <span className={styles.segLabel}>{label}</span>
+      <span className={mergeClasses(styles.segCode, seq ? styles.segCodeSeq : undefined)}>
+        {code}
+      </span>
+    </div>
+  );
+}
+
 export function Step4Review({ refData, onBack, onSubmit, isSubmitting }: Props) {
   const styles = useStyles();
   const { watch } = useFormContext<ReserveForm>();
@@ -116,17 +128,6 @@ export function Step4Review({ refData, onBack, onSubmit, isSubmitting }: Props) 
   const domain   = refData.domains.find((d) => d.id === form.domain);
   const system   = refData.systems.find((s) => s.id === form.system);
   const kind     = refData.kinds.find((k) => k.id === form.kind);
-
-  function Seg({ label, code, seq }: SegProps) {
-    return (
-      <div className={styles.seg}>
-        <span className={styles.segLabel}>{label}</span>
-        <span className={mergeClasses(styles.segCode, seq ? styles.segCodeSeq : undefined)}>
-          {code}
-        </span>
-      </div>
-    );
-  }
 
   const segments: SegProps[] = [
     { label: "BUS",   code: business?.code ?? "??"  },

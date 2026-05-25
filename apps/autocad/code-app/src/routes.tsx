@@ -6,6 +6,7 @@ import Search from "./pages/Search";
 import MyItems from "./pages/MyItems";
 import ReferenceData from "./pages/ReferenceData";
 import Audit from "./pages/Audit";
+import AppConfig from "./pages/AppConfig";
 import Broadcasts from "./pages/Broadcasts";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -37,6 +38,7 @@ export const router = createHashRouter([
       { path: "approvals",      element: <RequireRole roles={["Approver", "Admin"]}><ApprovalsPage /></RequireRole> },
       { path: "reference-data", element: <RequireRole roles={["Admin"]}><ReferenceData /></RequireRole> },
       { path: "audit",          element: <RequireRole roles={["Admin"]}><Audit /></RequireRole> },
+      { path: "app-config",     element: <RequireRole roles={["Admin"]}><AppConfig /></RequireRole> },
       { path: "broadcasts",     element: <RequireRole roles={["Admin"]}><Broadcasts /></RequireRole> },
       { path: "settings",       element: <Settings /> },
       { path: "*",              element: <NotFound /> },

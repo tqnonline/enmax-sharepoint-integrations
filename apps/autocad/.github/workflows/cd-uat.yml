@@ -22,6 +22,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
       - name: Install uv
         run: pip install uv
       - name: Install PAC CLI
@@ -43,6 +46,21 @@ jobs:
           DATAVERSE_CLIENT_SECRET: ${{ secrets.UAT_SP_CLIENT_SECRET }}
           DATAVERSE_TENANT_ID: ${{ secrets.UAT_TENANT_ID }}
         run: python solution/scripts/import.py
+      - name: Register plugins & Custom APIs
+        shell: pwsh
+        env:
+          DATAVERSE_URL: ${{ secrets.UAT_DATAVERSE_URL }}
+          DATAVERSE_CLIENT_ID: ${{ secrets.UAT_SP_CLIENT_ID }}
+          DATAVERSE_CLIENT_SECRET: ${{ secrets.UAT_SP_CLIENT_SECRET }}
+          DATAVERSE_TENANT_ID: ${{ secrets.UAT_TENANT_ID }}
+        run: ./scripts/deploy-plugins.ps1
+      - name: Patch option set labels
+        env:
+          DATAVERSE_URL: ${{ secrets.UAT_DATAVERSE_URL }}
+          DATAVERSE_CLIENT_ID: ${{ secrets.UAT_SP_CLIENT_ID }}
+          DATAVERSE_CLIENT_SECRET: ${{ secrets.UAT_SP_CLIENT_SECRET }}
+          DATAVERSE_TENANT_ID: ${{ secrets.UAT_TENANT_ID }}
+        run: python solution/scripts/patch_optionsets.py
       - name: Seed deterministic master data
         env:
           DATAVERSE_URL: ${{ secrets.UAT_DATAVERSE_URL }}
@@ -50,6 +68,13 @@ jobs:
           DATAVERSE_CLIENT_SECRET: ${{ secrets.UAT_SP_CLIENT_SECRET }}
           DATAVERSE_TENANT_ID: ${{ secrets.UAT_TENANT_ID }}
         run: python solution/scripts/seed.py
+      - name: Provision security roles
+        env:
+          DATAVERSE_URL: ${{ secrets.UAT_DATAVERSE_URL }}
+          DATAVERSE_CLIENT_ID: ${{ secrets.UAT_SP_CLIENT_ID }}
+          DATAVERSE_CLIENT_SECRET: ${{ secrets.UAT_SP_CLIENT_SECRET }}
+          DATAVERSE_TENANT_ID: ${{ secrets.UAT_TENANT_ID }}
+        run: python solution/scripts/provision_roles.py
       - name: Publish Code App
         working-directory: apps/code-app
         env:

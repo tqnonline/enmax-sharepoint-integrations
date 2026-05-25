@@ -45,6 +45,12 @@ namespace Enmax.AutoCAD
         private const int DecisionApproved         = 1;
         private const int DecisionDeclined         = 2;
 
+        private const string SheetEntity           = "enmax_autocadsheet";
+        private const string ColSheetDrawing       = "enmax_acdndrawing";
+        private const string ColSheetState         = "enmax_acdnstate";
+        private const int    SheetStateAvailable   = 2;
+        private const int    SheetStateCheckedOut  = 3;
+
         // -----------------------------------------------------------------------
         // Constructors
         // -----------------------------------------------------------------------
@@ -108,6 +114,15 @@ namespace Enmax.AutoCAD
 
             int currentStatus = checkout.GetAttributeValue<OptionSetValue>(ColCheckoutStatus)?.Value ?? 0;
 
+            if (currentStatus == StatusClosedApproved)
+            {
+                localPluginContext.Trace($"Checkout {target.Id} already ClosedApproved — idempotent no-op.");
+                context.OutputParameters["CheckoutId"]   = target.Id.ToString();
+                context.OutputParameters["NewStatus"]    = StatusClosedApproved;
+                context.OutputParameters["DrawingState"] = StateAvailable;
+                return;
+            }
+
             if (currentStatus != StatusAwaitingValidation)
                 throw new InvalidPluginExecutionException(
                     $"Checkout {target.Id} cannot be reviewed from status {currentStatus}. " +
@@ -141,6 +156,8 @@ namespace Enmax.AutoCAD
                 };
                 service.Update(drawingUpdate);
 
+                PropagateSheetState(service, drawingRef.Id, SheetStateAvailable);
+
                 newStatus   = StatusClosedApproved;
                 drawingState = StateAvailable;
                 auditEvent  = AuditEventApproved;
@@ -162,6 +179,8 @@ namespace Enmax.AutoCAD
                     [ColDrawingState] = new OptionSetValue(StateCheckedOut),
                 });
 
+                PropagateSheetState(service, drawingRef.Id, SheetStateCheckedOut);
+
                 newStatus    = StatusOpen;
                 drawingState = StateCheckedOut;
                 auditEvent   = AuditEventDeclined;
@@ -174,10 +193,10 @@ namespace Enmax.AutoCAD
             {
                 ["enmax_acdnevent"]        = new OptionSetValue(auditEvent),
                 ["enmax_acdnsource"]       = new OptionSetValue(AuditSourceAction),
-                ["enmax_acdnsubjectid"]    = target.Id.ToString(),
-                ["enmax_acdnsubjecttable"] = CheckoutEntity,
+                ["enmax_acdnsubjectid"]    = drawingRef.Id.ToString(),
+                ["enmax_acdnsubjecttable"] = DrawingEntity,
                 ["enmax_acdnfromstate"]    = "AwaitingValidation",
-                ["enmax_acdntostate"]      = decision == DecisionApproved ? "ClosedApproved" : "Open",
+                ["enmax_acdntostate"]      = decision == DecisionApproved ? "Available" : "CheckedOut",
                 ["enmax_acdnactedby"]      = new EntityReference("systemuser", context.InitiatingUserId),
                 ["enmax_acdnname"]         = $"Checkout {target.Id} {(decision == DecisionApproved ? "approved" : "declined")}",
             });
@@ -185,6 +204,14 @@ namespace Enmax.AutoCAD
             context.OutputParameters["CheckoutId"]  = target.Id.ToString();
             context.OutputParameters["NewStatus"]   = newStatus;
             context.OutputParameters["DrawingState"] = drawingState;
+        }
+
+        private static void PropagateSheetState(IOrganizationService service, Guid drawingId, int sheetState)
+        {
+            var q = new QueryExpression(SheetEntity) { ColumnSet = new ColumnSet("enmax_autocadsheetid") };
+            q.Criteria.AddCondition(ColSheetDrawing, ConditionOperator.Equal, drawingId);
+            foreach (var sheet in service.RetrieveMultiple(q).Entities)
+                service.Update(new Entity(SheetEntity, sheet.Id) { [ColSheetState] = new OptionSetValue(sheetState) });
         }
     }
 }

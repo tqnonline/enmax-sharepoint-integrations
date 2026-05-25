@@ -1,4 +1,5 @@
 using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Messages;
 using Microsoft.Xrm.Sdk.Query;
 using System;
 using System.ServiceModel;
@@ -38,6 +39,12 @@ namespace Enmax.AutoCAD
 
         private const int StateAvailable = 1;
 
+        private const string ColCurrentRevision  = "enmax_acdncurrentrevision";
+        private const string SheetEntity          = "enmax_autocadsheet";
+        private const string ColSheetDrawing      = "enmax_acdndrawing";
+        private const string ColSheetState        = "enmax_acdnstate";
+        private const int    SheetStateAvailable  = 2;
+
         // -----------------------------------------------------------------------
         // Constructors
         // -----------------------------------------------------------------------
@@ -73,6 +80,12 @@ namespace Enmax.AutoCAD
 
             if (string.IsNullOrWhiteSpace(reason))
                 throw new InvalidPluginExecutionException("Reason is required for Force Check-In.");
+
+            string newRevision = context.InputParameters.Contains("NewRevision")
+                ? context.InputParameters["NewRevision"] as string : null;
+            if (string.IsNullOrWhiteSpace(newRevision))
+                throw new InvalidPluginExecutionException("Missing required input: NewRevision");
+            newRevision = newRevision.Trim();
 
             localPluginContext.Trace(
                 $"ForceCheckin: checkout={target.Id}, user={context.InitiatingUserId}");
@@ -117,11 +130,34 @@ namespace Enmax.AutoCAD
                 [ColValidationReason] = reason,
             });
 
-            // Return drawing to Available
-            service.Update(new Entity(DrawingEntity, drawingRef.Id)
+            // Return drawing to Available with RowVersion guard + bump revision
+            var drawing = service.Retrieve(DrawingEntity, drawingRef.Id, new ColumnSet(ColDrawingState));
+            try
             {
-                [ColDrawingState] = new OptionSetValue(StateAvailable),
-            });
+                service.Execute(new UpdateRequest
+                {
+                    Target = new Entity(DrawingEntity, drawingRef.Id)
+                    {
+                        RowVersion           = drawing.RowVersion,
+                        [ColDrawingState]    = new OptionSetValue(StateAvailable),
+                        [ColCurrentRevision] = newRevision,
+                    },
+                    ConcurrencyBehavior = ConcurrencyBehavior.IfRowVersionMatches,
+                });
+            }
+            catch (FaultException<OrganizationServiceFault> ex)
+                when (ex.Detail?.ErrorCode == -2147088254 ||
+                      (ex.Message != null && ex.Message.Contains("ConcurrencyVersionMismatch")))
+            {
+                throw new InvalidPluginExecutionException(
+                    $"Drawing {drawingRef.Id} was concurrently modified (ConcurrencyVersionMismatch). Retry.", ex);
+            }
+
+            // Propagate state to sheets
+            var sheetQuery = new QueryExpression(SheetEntity) { ColumnSet = new ColumnSet("enmax_autocadsheetid") };
+            sheetQuery.Criteria.AddCondition(ColSheetDrawing, ConditionOperator.Equal, drawingRef.Id);
+            foreach (var sheet in service.RetrieveMultiple(sheetQuery).Entities)
+                service.Update(new Entity(SheetEntity, sheet.Id) { [ColSheetState] = new OptionSetValue(SheetStateAvailable) });
 
             localPluginContext.Trace($"Checkout {target.Id} force-closed; drawing {drawingRef.Id} Available.");
 
@@ -130,10 +166,10 @@ namespace Enmax.AutoCAD
             {
                 ["enmax_acdnevent"]        = new OptionSetValue(AuditEventForced),
                 ["enmax_acdnsource"]       = new OptionSetValue(AuditSourceAction),
-                ["enmax_acdnsubjectid"]    = target.Id.ToString(),
-                ["enmax_acdnsubjecttable"] = CheckoutEntity,
-                ["enmax_acdnfromstate"]    = currentStatus.ToString(),
-                ["enmax_acdntostate"]      = "ClosedForced",
+                ["enmax_acdnsubjectid"]    = drawingRef.Id.ToString(),
+                ["enmax_acdnsubjecttable"] = DrawingEntity,
+                ["enmax_acdnfromstate"]    = "CheckedOut",
+                ["enmax_acdntostate"]      = "Available",
                 ["enmax_acdnactedby"]      = new EntityReference("systemuser", context.InitiatingUserId),
                 ["enmax_acdnname"]         = $"Checkout {target.Id} force closed by admin",
             });

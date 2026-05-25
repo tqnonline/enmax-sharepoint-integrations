@@ -66,8 +66,9 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             pluginCtx.InitiatingUserId = userId;
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
-            pluginCtx.InputParameters["Target"] = new EntityReference(CheckoutEntity, checkoutId);
-            pluginCtx.InputParameters["Reason"] = ValidReason;
+            pluginCtx.InputParameters["Target"]      = new EntityReference(CheckoutEntity, checkoutId);
+            pluginCtx.InputParameters["Reason"]      = ValidReason;
+            pluginCtx.InputParameters["NewRevision"] = "C";
 
             return (ctx, pluginCtx, checkoutId, drawingId);
         }
@@ -239,6 +240,78 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 
             act.Should().Throw<InvalidPluginExecutionException>()
                .WithMessage($"*{CheckoutEntity}*");
+        }
+
+        // -----------------------------------------------------------------------
+        // New spec tests
+        // -----------------------------------------------------------------------
+
+        [Fact]
+        public void ForceCheckin_bumps_revision_on_drawing()
+        {
+            var (ctx, pluginCtx, _, drawingId) = BuildContext(StatusOpen);
+            ctx.ExecutePluginWith<ForceCheckinPlugin>(pluginCtx);
+            var drawing = ctx.GetFakedOrganizationService()
+                .Retrieve(DrawingEntity, drawingId, new ColumnSet("enmax_acdncurrentrevision"));
+            drawing.GetAttributeValue<string>("enmax_acdncurrentrevision").Should().Be("C",
+                because: "force check-in must stamp the admin-provided revision on the drawing");
+        }
+
+        [Fact]
+        public void ForceCheckin_audit_is_keyed_to_the_drawing()
+        {
+            var (ctx, pluginCtx, _, drawingId) = BuildContext(StatusOpen);
+            ctx.ExecutePluginWith<ForceCheckinPlugin>(pluginCtx);
+            var audit = ctx.GetFakedOrganizationService()
+                .RetrieveMultiple(new QueryExpression("enmax_autocadauditevent") { ColumnSet = new ColumnSet(true) })
+                .Entities[0];
+            audit.GetAttributeValue<string>("enmax_acdnsubjectid").Should().Be(drawingId.ToString(),
+                because: "force check-in audit must appear on the drawing timeline");
+            audit.GetAttributeValue<string>("enmax_acdnsubjecttable").Should().Be(DrawingEntity);
+        }
+
+        [Fact]
+        public void ForceCheckin_moves_sheets_to_Available()
+        {
+            var ctx        = new XrmFakedContext();
+            var drawingId  = Guid.NewGuid();
+            var checkoutId = Guid.NewGuid();
+            var drawing  = new Entity(DrawingEntity, drawingId)  { [ColDrawingState] = new OptionSetValue(StateCheckedOut) };
+            var checkout = new Entity(CheckoutEntity, checkoutId)
+            {
+                [ColCheckoutStatus]  = new OptionSetValue(StatusOpen),
+                [ColCheckoutDrawing] = new EntityReference(DrawingEntity, drawingId),
+            };
+            var sheet = new Entity("enmax_autocadsheet", Guid.NewGuid())
+            {
+                ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
+                ["enmax_acdnstate"]   = new OptionSetValue(3),
+            };
+            ctx.Initialize(new[] { drawing, checkout, sheet });
+            var pluginCtx = ctx.GetDefaultPluginContext();
+            pluginCtx.MessageName      = "enmax_acdnForceCheckin";
+            pluginCtx.Stage            = 40;
+            pluginCtx.InitiatingUserId = Guid.NewGuid();
+            pluginCtx.InputParameters  = new ParameterCollection();
+            pluginCtx.OutputParameters = new ParameterCollection();
+            pluginCtx.InputParameters["Target"]      = new EntityReference(CheckoutEntity, checkoutId);
+            pluginCtx.InputParameters["Reason"]      = ValidReason;
+            pluginCtx.InputParameters["NewRevision"] = "C";
+            ctx.ExecutePluginWith<ForceCheckinPlugin>(pluginCtx);
+            var sheets = ctx.GetFakedOrganizationService()
+                .RetrieveMultiple(new QueryExpression("enmax_autocadsheet") { ColumnSet = new ColumnSet("enmax_acdnstate") });
+            sheets.Entities.Should().OnlyContain(s => s.GetAttributeValue<OptionSetValue>("enmax_acdnstate").Value == 2,
+                because: "force check-in returns sheets to sheet Available = 2");
+        }
+
+        [Fact]
+        public void Missing_NewRevision_throws()
+        {
+            var (ctx, pluginCtx, _, _) = BuildContext(StatusOpen);
+            pluginCtx.InputParameters["NewRevision"] = string.Empty;
+            Action act = () => ctx.ExecutePluginWith<ForceCheckinPlugin>(pluginCtx);
+            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*NewRevision*",
+                because: "an admin force check-in must record the revision being finalised");
         }
     }
 }

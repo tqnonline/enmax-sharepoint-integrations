@@ -15,7 +15,6 @@ import {
 } from "@fluentui/react-components";
 import { Dismiss24Regular, DocumentEdit24Regular } from "@fluentui/react-icons";
 import { useSubmitRevision } from "../hooks/useSubmitRevision";
-import { useCheckIn } from "../hooks/useCheckIn";
 import { nextRevision } from "../api/checkoutClient";
 import { useAppConfig } from "../../../config/useAppConfig";
 
@@ -61,9 +60,7 @@ export function SubmitRevisionDrawer({ checkoutId, drawingId, currentRevision, s
   const [open, setOpen] = useState(false);
   const [newRevision, setNewRevision] = useState(() => nextRevision(currentRevision));
   const [filesConfirmed, setFilesConfirmed] = useState(false);
-  const submitMutation = useSubmitRevision();
-  const checkInMutation = useCheckIn();
-  const mutation = RequireCheckInApproval ? submitMutation : checkInMutation;
+  const mutation = useSubmitRevision();
 
   function handleOpen() {
     setNewRevision(nextRevision(currentRevision));

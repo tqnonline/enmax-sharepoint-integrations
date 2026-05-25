@@ -16,6 +16,7 @@ import {
   Database24Regular,
   History24Regular,
   Megaphone24Regular,
+  Options24Regular,
   Settings24Regular,
 } from "@fluentui/react-icons";
 import { type Role, useUserRole } from "../auth/useUserRole";
@@ -109,6 +110,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Reference Data", path: "/reference-data", roles: ["Admin"], icon: <Database24Regular /> },
       { label: "Audit",          path: "/audit",          roles: ["Admin"], icon: <History24Regular /> },
       { label: "Broadcasts",     path: "/broadcasts",     roles: ["Admin"], icon: <Megaphone24Regular /> },
+      { label: "App Configuration", path: "/app-config", roles: ["Admin"], icon: <Options24Regular /> },
       { label: "Settings",       path: "/settings",       roles: ["All"],   icon: <Settings24Regular /> },
     ],
   },

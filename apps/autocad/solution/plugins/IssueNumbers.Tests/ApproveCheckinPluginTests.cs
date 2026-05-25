@@ -278,5 +278,73 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             audits.Entities[0].GetAttributeValue<OptionSetValue>("enmax_acdnevent").Value
                   .Should().Be(4, because: "event type 4 = ApprovalDenied");
         }
+
+        // -----------------------------------------------------------------------
+        // Drawing-centric audit / sheet propagation / idempotency (plan-12)
+        // -----------------------------------------------------------------------
+
+        private static (XrmFakedContext ctx, XrmFakedPluginExecutionContext pluginCtx, Guid checkoutId, Guid drawingId)
+            BuildContextWithSheet(int checkoutStatus = StatusAwaitingValidation, string newRevision = "B")
+        {
+            var (ctx, pluginCtx, checkoutId, drawingId) = BuildContext(checkoutStatus, newRevision);
+            var sheet = new Entity("enmax_autocadsheet", Guid.NewGuid())
+            {
+                ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
+                ["enmax_acdnstate"]   = new OptionSetValue(4), // sheet AwaitingValidation
+            };
+            ctx.GetFakedOrganizationService().Create(sheet);
+            return (ctx, pluginCtx, checkoutId, drawingId);
+        }
+
+        [Fact]
+        public void Approve_audit_is_keyed_to_the_drawing()
+        {
+            var (ctx, pluginCtx, _, drawingId) = BuildContext();
+            pluginCtx.InputParameters["Decision"] = DecisionApproved;
+            ctx.ExecutePluginWith<ApproveCheckinPlugin>(pluginCtx);
+            var audit = ctx.GetFakedOrganizationService()
+                .RetrieveMultiple(new QueryExpression("enmax_autocadauditevent") { ColumnSet = new ColumnSet(true) })
+                .Entities[0];
+            audit.GetAttributeValue<string>("enmax_acdnsubjectid").Should().Be(drawingId.ToString(),
+                because: "audit must reference the drawing, not the checkout, so it appears on the drawing timeline");
+            audit.GetAttributeValue<string>("enmax_acdnsubjecttable").Should().Be(DrawingEntity);
+        }
+
+        [Fact]
+        public void Approve_moves_sheets_to_Available()
+        {
+            var (ctx, pluginCtx, _, drawingId) = BuildContextWithSheet();
+            pluginCtx.InputParameters["Decision"] = DecisionApproved;
+            ctx.ExecutePluginWith<ApproveCheckinPlugin>(pluginCtx);
+            var sheets = ctx.GetFakedOrganizationService()
+                .RetrieveMultiple(new QueryExpression("enmax_autocadsheet") { ColumnSet = new ColumnSet("enmax_acdnstate") });
+            sheets.Entities.Should().OnlyContain(s => s.GetAttributeValue<OptionSetValue>("enmax_acdnstate").Value == 2,
+                because: "approved revision returns sheets to sheet Available = 2");
+        }
+
+        [Fact]
+        public void Decline_moves_sheets_back_to_CheckedOut()
+        {
+            var (ctx, pluginCtx, _, _) = BuildContextWithSheet();
+            pluginCtx.InputParameters["Decision"] = DecisionDeclined;
+            pluginCtx.InputParameters["Reason"]   = "Missing revision marks on pages 3 and 4.";
+            ctx.ExecutePluginWith<ApproveCheckinPlugin>(pluginCtx);
+            var sheets = ctx.GetFakedOrganizationService()
+                .RetrieveMultiple(new QueryExpression("enmax_autocadsheet") { ColumnSet = new ColumnSet("enmax_acdnstate") });
+            sheets.Entities.Should().OnlyContain(s => s.GetAttributeValue<OptionSetValue>("enmax_acdnstate").Value == 3,
+                because: "declined revision reverts sheets to sheet CheckedOut = 3");
+        }
+
+        [Fact]
+        public void Already_ClosedApproved_checkout_is_idempotent_noop()
+        {
+            var (ctx, pluginCtx, checkoutId, _) = BuildContext(checkoutStatus: StatusClosedApproved);
+            pluginCtx.InputParameters["Decision"] = DecisionApproved;
+            Action act = () => ctx.ExecutePluginWith<ApproveCheckinPlugin>(pluginCtx);
+            act.Should().NotThrow(because: "re-approving an already-approved checkout must be a silent success (idempotent)");
+            var checkout = ctx.GetFakedOrganizationService()
+                .Retrieve(CheckoutEntity, checkoutId, new ColumnSet(ColCheckoutStatus));
+            checkout.GetAttributeValue<OptionSetValue>(ColCheckoutStatus).Value.Should().Be(StatusClosedApproved);
+        }
     }
 }

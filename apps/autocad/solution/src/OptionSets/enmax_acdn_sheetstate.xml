@@ -43,5 +43,10 @@
         <label description="Void" languagecode="1033" />
       </labels>
     </option>
+    <option value="7" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Finalized" languagecode="1033" />
+      </labels>
+    </option>
   </options>
 </optionset>

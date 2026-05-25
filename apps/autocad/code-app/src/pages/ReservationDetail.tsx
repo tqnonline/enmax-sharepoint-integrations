@@ -21,6 +21,17 @@ import {
   AccordionPanel,
   TabList,
   Tab,
+  Dialog,
+  DialogSurface,
+  DialogTitle,
+  DialogBody,
+  DialogContent,
+  DialogActions,
+  Toast,
+  ToastTitle,
+  Toaster,
+  useToastController,
+  useId,
   tokens,
   makeStyles,
 } from "@fluentui/react-components";
@@ -33,18 +44,22 @@ import {
   ArrowClockwise20Regular,
   ChevronLeft16Regular,
   ChevronRight16Regular,
+  DismissCircle20Regular,
 } from "@fluentui/react-icons";
 import { useReservationDetail, type DrawingDetail } from "../features/approvals/hooks/useReservationDetail";
 import { useDrawingSheets } from "../features/approvals/hooks/useDrawingSheets";
+import { useCancelReservation } from "../features/myitems/useMyReservations";
 import { formatNumberRange } from "../features/approvals/compositionUtils";
 import { usePageSize } from "../config/usePageSize";
+import { useCurrentUser } from "../auth/useCurrentUser";
 
 type BadgeColor = "success" | "warning" | "informative" | "subtle" | "danger";
 
 const STATUS_MAP: Record<number, { label: string; color: BadgeColor; accentToken: string }> = {
-  1: { label: "Pending",  color: "informative", accentToken: tokens.colorBrandForeground1 },
-  2: { label: "Approved", color: "success",     accentToken: tokens.colorPaletteGreenForeground2 },
-  3: { label: "Declined", color: "subtle",      accentToken: tokens.colorNeutralForeground3 },
+  1: { label: "Pending",   color: "informative", accentToken: tokens.colorBrandForeground1 },
+  2: { label: "Approved",  color: "success",     accentToken: tokens.colorPaletteGreenForeground2 },
+  3: { label: "Declined",  color: "subtle",      accentToken: tokens.colorNeutralForeground3 },
+  4: { label: "Cancelled", color: "subtle",      accentToken: tokens.colorNeutralForeground3 },
 };
 
 const DRAWING_STATE_MAP: Record<number, { label: string; color: BadgeColor }> = {
@@ -279,6 +294,24 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground3,
     textAlign: "center",
   },
+  warningStripe: {
+    display: "flex",
+    alignItems: "center",
+    gap: tokens.spacingHorizontalS,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    backgroundColor: tokens.colorPaletteRedBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+    color: tokens.colorPaletteRedForeground1,
+  },
+  cancelError: {
+    color: tokens.colorPaletteRedForeground1,
+    display: "block",
+    marginTop: tokens.spacingVerticalXS,
+  },
+  cancelConfirm: {
+    backgroundColor: tokens.colorPaletteRedBackground3,
+    color: tokens.colorNeutralForegroundOnBrand,
+  },
 });
 
 function DrawingSheetList({ drawingId }: { drawingId: string }) {
@@ -379,6 +412,71 @@ function DrawingRow({ drawing, isOpen, checkout, missingSheets }: {
   );
 }
 
+function CancelReservationControl({ reservationId }: { reservationId: string }) {
+  const styles = useStyles();
+  const [open, setOpen] = useState(false);
+  const mutation = useCancelReservation();
+  const toasterId = useId("cancel-reservation-toaster");
+  const { dispatchToast } = useToastController(toasterId);
+
+  function handleConfirm() {
+    mutation.mutate(reservationId, {
+      onSuccess: () => {
+        setOpen(false);
+        dispatchToast(
+          <Toast><ToastTitle>Reservation cancelled</ToastTitle></Toast>,
+          { intent: "success" },
+        );
+      },
+    });
+  }
+
+  return (
+    <>
+      <Button
+        appearance="outline"
+        icon={<DismissCircle20Regular />}
+        style={{ marginLeft: "auto", color: tokens.colorPaletteRedForeground1, borderColor: tokens.colorPaletteRedForeground1 }}
+        onClick={() => { mutation.reset(); setOpen(true); }}
+      >
+        Cancel Reservation
+      </Button>
+      <Toaster toasterId={toasterId} />
+      <Dialog open={open} onOpenChange={(_, d) => { if (!d.open) setOpen(false); }}>
+        <DialogSurface>
+          <DialogTitle>Cancel reservation</DialogTitle>
+          <DialogBody>
+            <DialogContent>
+              <div className={styles.warningStripe}>
+                <Warning24Regular />
+                <Text weight="semibold">Cancelling withdraws this pending reservation. This cannot be undone.</Text>
+              </div>
+              {mutation.isError && (
+                <Text className={styles.cancelError} size={200}>
+                  {mutation.error?.message ?? "Cancel failed. Try again."}
+                </Text>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setOpen(false)} disabled={mutation.isPending}>
+                Keep Reservation
+              </Button>
+              <Button
+                appearance="primary"
+                className={styles.cancelConfirm}
+                disabled={mutation.isPending}
+                onClick={handleConfirm}
+              >
+                {mutation.isPending ? <Spinner size="tiny" /> : "Confirm Cancel"}
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+    </>
+  );
+}
+
 export default function ReservationDetail() {
   const { reservationId } = useParams<{ reservationId: string }>();
   const navigate = useNavigate();
@@ -387,6 +485,7 @@ export default function ReservationDetail() {
   const query = useReservationDetail(reservationId);
   const queryClient = useQueryClient();
   const pageSize = usePageSize();
+  const { data: currentUser } = useCurrentUser();
   const expandDrawingId = (location.state as { expandDrawingId?: string } | null)?.expandDrawingId;
   const [openItems, setOpenItems] = useState<string[]>(() => expandDrawingId ? [expandDrawingId] : []);
   const [drawingPage, setDrawingPage] = useState(1);
@@ -422,6 +521,7 @@ export default function ReservationDetail() {
 
   const res = query.data;
   const status = STATUS_MAP[res.status] ?? STATUS_MAP[1];
+  const canCancel = res.status === 1 && !!currentUser?.id && currentUser.id === res.submitterId;
   const numberRange = formatNumberRange(res.issuedNumbers);
   const hasComposition = [res.businessCode, res.assetCode, res.unitCode, res.domainCode, res.systemCode, res.kindCode].some(Boolean);
 
@@ -471,6 +571,7 @@ export default function ReservationDetail() {
           {res.override && (
             <Badge icon={<Warning24Regular />} color="warning" shape="rounded">Validation Override</Badge>
           )}
+          {canCancel && <CancelReservationControl reservationId={res.id} />}
         </div>
 
         {/* Info grid */}

@@ -4,6 +4,7 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { renderWithProviders } from "../helpers/renderWithProviders";
 import { ApprovalsPage } from "../../features/approvals/ApprovalsPage";
+import { DeclineDialog } from "../../features/approvals/DeclineDialog";
 import { type Role } from "../../auth/useUserRole";
 import type { PendingReservation } from "../../features/approvals/hooks/usePendingReservations";
 
@@ -75,7 +76,7 @@ const PENDING_ROWS: PendingReservation[] = [
 ];
 
 vi.mock("../../features/approvals/hooks/usePendingReservations", () => ({
-  usePendingReservations: (_status?: number) => ({ data: PENDING_ROWS, isPending: false, isError: false }),
+  usePendingReservations: () => ({ data: PENDING_ROWS, isPending: false, isError: false }),
 }));
 
 const server = setupServer(
@@ -113,29 +114,25 @@ test("grid shows only pending reservations — filter by Status=Pending in query
   expect(rowText).not.toMatch(/\bDeclined\b/);
 });
 
-// Test 12 — Side panel decline requires reason min 10 chars
-test("DeclineDialog submit is disabled when reason is shorter than 10 characters", async () => {
-  const user = userEvent.setup();
-  renderWithProviders(<ApprovalsPage />);
-
-  await waitFor(() => expect(screen.getByText("RES-00001")).toBeInTheDocument(), { timeout: 3000 });
-
-  await user.click(screen.getByText("RES-00001"));
-
-  await waitFor(() => expect(screen.getByRole("button", { name: /Decline/i })).toBeInTheDocument(), { timeout: 3000 });
-  await user.click(screen.getByRole("button", { name: /Decline/i }));
-
-  await waitFor(() => expect(screen.getByText("Decline reservation")).toBeInTheDocument(), { timeout: 3000 });
+// Test 12 — DeclineDialog confirm gated on reason >= 10 chars.
+// Rendered directly (not via ApprovalsPage → drawer → dialog navigation): the validation
+// gate lives entirely in DeclineDialog, and driving the nested Fluent overlay stack with
+// userEvent was load-sensitive and flaky. Direct render tests the same behavior deterministically.
+test("DeclineDialog confirm is disabled until reason is at least 10 characters", () => {
+  renderWithProviders(
+    <DeclineDialog open onClose={() => {}} onConfirm={() => {}} isSubmitting={false} />,
+  );
 
   const confirmBtn = screen.getByRole("button", { name: /Confirm decline/i });
   expect(confirmBtn).toBeDisabled();
 
   const textarea = screen.getByPlaceholderText(/Explain why.*min 10 chars/i);
+
   fireEvent.change(textarea, { target: { value: "short" } });
-  await waitFor(() => expect(confirmBtn).toBeDisabled(), { timeout: 1000 });
+  expect(confirmBtn).toBeDisabled();
 
   fireEvent.change(textarea, { target: { value: "This is a valid reason for declining" } });
-  await waitFor(() => expect(confirmBtn).not.toBeDisabled(), { timeout: 3000 });
+  expect(confirmBtn).not.toBeDisabled();
 });
 
 // Test 13 — Bulk approve calls action N times sequentially

@@ -27,8 +27,8 @@ import { usePageSize } from "../../../config/usePageSize";
 import type { PendingReservation } from "../../approvals/hooks/usePendingReservations";
 import { useReservationDrawings, type ReservationDrawingRow } from "../hooks/useReservationDrawings";
 import { DrawingActionsPanel } from "./DrawingActionsPanel";
-import { DrawingState } from "../api/checkoutClient";
-import type { DrawingStateValue } from "../api/checkoutClient";
+import { DrawingState, DRAWING_STATE_LABELS, DRAWING_STATE_BADGE_COLOR } from "../api/checkoutClient";
+import type { BadgeColor } from "../api/checkoutClient";
 import { formatComposition } from "../../approvals/compositionUtils";
 
 function checkedOutSince(iso: string): string {
@@ -40,26 +40,6 @@ function checkedOutSince(iso: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-const STATE_LABEL: Record<DrawingStateValue, string> = {
-  [DrawingState.None]: "Unknown",
-  [DrawingState.Available]: "Available",
-  [DrawingState.CheckedOut]: "Checked Out",
-  [DrawingState.AwaitingValidation]: "Awaiting Validation",
-  [DrawingState.CheckedIn]: "Checked In",
-  [DrawingState.Obsolete]: "Obsolete",
-  [DrawingState.Void]: "Void",
-};
-
-type BadgeColor = "success" | "warning" | "informative" | "brand" | "subtle";
-const STATE_COLOR: Record<DrawingStateValue, BadgeColor> = {
-  [DrawingState.None]: "subtle",
-  [DrawingState.Available]: "success",
-  [DrawingState.CheckedOut]: "warning",
-  [DrawingState.AwaitingValidation]: "informative",
-  [DrawingState.CheckedIn]: "brand",
-  [DrawingState.Obsolete]: "subtle",
-  [DrawingState.Void]: "subtle",
-};
 
 
 function useScreenWidth(): number {
@@ -124,8 +104,8 @@ export function ReservationDrawingsPanel({ reservation, onClose }: Props) {
       renderHeaderCell: () => "Status",
       renderCell: ({ drawing }) => (
         <TableCellLayout>
-          <Badge appearance="filled" color={STATE_COLOR[drawing.state]} shape="rounded">
-            {STATE_LABEL[drawing.state]}
+          <Badge appearance="filled" color={DRAWING_STATE_BADGE_COLOR[drawing.state] ?? "subtle"} shape="rounded">
+            {DRAWING_STATE_LABELS[drawing.state] ?? "Unknown"}
           </Badge>
         </TableCellLayout>
       ),
@@ -143,7 +123,7 @@ export function ReservationDrawingsPanel({ reservation, onClose }: Props) {
       renderCell: ({ drawing, checkout }) => (
         <TableCellLayout>
           <div>
-            <DrawingActionsPanel drawing={drawing} openCheckout={checkout} adminMode />
+            <DrawingActionsPanel drawing={drawing} openCheckout={checkout} variant="split" />
             {drawing.state === DrawingState.CheckedOut && checkout?.checkedOutOn && (
               <Text
                 size={100}
@@ -162,6 +142,7 @@ export function ReservationDrawingsPanel({ reservation, onClose }: Props) {
     reservation?.enmax_acdnstatus === 2 ? reservation.enmax_acdnreservationid : null,
   );
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- reset to page 1 when the selected reservation changes
   useEffect(() => { setDrawingPage(1); }, [reservation?.enmax_acdnreservationid]);
 
   const { pagedDrawings, totalDrawingPages } = useMemo(() => {
@@ -202,15 +183,28 @@ export function ReservationDrawingsPanel({ reservation, onClose }: Props) {
             <Text className={styles.meta} style={{ fontFamily: "monospace" }}>
               {formatComposition(reservation)}
             </Text>
+
+            {statusBadge && (
+              <Badge appearance="filled" color={statusBadge.color} shape="rounded"
+                style={{ marginBottom: tokens.spacingVerticalS }}>
+                {statusBadge.label}
+              </Badge>
+            )}
+
             <Text className={styles.meta}>
               {reservation.enmax_acdndrawingcount} drawing{reservation.enmax_acdndrawingcount !== 1 ? "s" : ""}
             </Text>
 
-            {statusBadge && (
-              <Badge appearance="filled" color={statusBadge.color} shape="rounded"
-                style={{ marginBottom: tokens.spacingVerticalM }}>
-                {statusBadge.label}
-              </Badge>
+            {reservation._createdby_value_Formatted && (
+              <Text className={styles.meta}>
+                Submitted by {reservation._createdby_value_Formatted}
+              </Text>
+            )}
+
+            {reservation.createdon && (
+              <Text className={styles.meta}>
+                {new Date(reservation.createdon).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+              </Text>
             )}
 
             {reservation.enmax_acdnstatus === 3 && reservation.enmax_acdndeclinereason && (

@@ -225,5 +225,35 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                  .Should().Be(drawingId.ToString(),
                      because: "audit subject must reference the drawing that was checked out");
         }
+
+        [Fact]
+        public void CheckOut_transitions_related_sheets_to_CheckedOut()
+        {
+            var ctx       = new XrmFakedContext();
+            var drawingId = Guid.NewGuid();
+            var userId    = Guid.NewGuid();
+
+            var drawing = new Entity(DrawingEntity, drawingId) { [ColDrawingState] = new OptionSetValue(StateAvailable) };
+            var sheet1  = new Entity("enmax_autocadsheet", Guid.NewGuid())
+                { ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId), ["enmax_acdnstate"] = new OptionSetValue(2) };
+            var sheet2  = new Entity("enmax_autocadsheet", Guid.NewGuid())
+                { ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId), ["enmax_acdnstate"] = new OptionSetValue(2) };
+            ctx.Initialize(new[] { drawing, sheet1, sheet2 });
+
+            var pluginCtx = ctx.GetDefaultPluginContext();
+            pluginCtx.MessageName      = "enmax_acdnCheckOutDrawing";
+            pluginCtx.Stage            = 40;
+            pluginCtx.InitiatingUserId = userId;
+            pluginCtx.InputParameters  = new ParameterCollection();
+            pluginCtx.OutputParameters = new ParameterCollection();
+            pluginCtx.InputParameters["Target"] = new EntityReference(DrawingEntity, drawingId);
+
+            ctx.ExecutePluginWith<CheckOutDrawingPlugin>(pluginCtx);
+
+            var sheets = ctx.GetFakedOrganizationService()
+                .RetrieveMultiple(new QueryExpression("enmax_autocadsheet") { ColumnSet = new ColumnSet("enmax_acdnstate") });
+            sheets.Entities.Should().OnlyContain(s => s.GetAttributeValue<OptionSetValue>("enmax_acdnstate").Value == 3,
+                because: "all sheets of a checked-out drawing must move to sheet CheckedOut = 3");
+        }
     }
 }

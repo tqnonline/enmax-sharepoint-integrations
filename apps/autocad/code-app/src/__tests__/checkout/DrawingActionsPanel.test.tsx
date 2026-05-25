@@ -26,11 +26,12 @@ vi.mock("../../auth/useUserRole", () => ({
 }));
 
 const mockCheckOutMutate = vi.hoisted(() => vi.fn());
+const mockCheckOutState: { isPending: boolean; isError: boolean } = { isPending: false, isError: false };
 vi.mock("../../features/checkout/hooks/useCheckOut", () => ({
   useCheckOut: () => ({
     mutate: mockCheckOutMutate,
-    isPending: false,
-    isError: false,
+    isPending: mockCheckOutState.isPending,
+    isError: mockCheckOutState.isError,
     error: null,
     reset: vi.fn(),
   }),
@@ -69,15 +70,17 @@ vi.mock("../../features/checkout/hooks/useForceCheckin", () => ({
   }),
 }));
 
-const mockCheckInMutate = vi.hoisted(() => vi.fn());
-vi.mock("../../features/checkout/hooks/useCheckIn", () => ({
-  useCheckIn: () => ({
-    mutate: mockCheckInMutate,
-    isPending: false,
-    isError: false,
-    error: null,
-    reset: vi.fn(),
-  }),
+const mockFinalizeMutate = vi.hoisted(() => vi.fn());
+vi.mock("../../features/checkout/hooks/useFinalizeDrawing", () => ({
+  useFinalizeDrawing: () => ({ mutate: mockFinalizeMutate, isPending: false, isError: false, error: null, reset: vi.fn() }),
+}));
+const mockObsoleteMutate = vi.hoisted(() => vi.fn());
+vi.mock("../../features/checkout/hooks/useMarkObsolete", () => ({
+  useMarkObsolete: () => ({ mutate: mockObsoleteMutate, isPending: false, isError: false, error: null, reset: vi.fn() }),
+}));
+const mockVoidMutate = vi.hoisted(() => vi.fn());
+vi.mock("../../features/checkout/hooks/useMarkVoid", () => ({
+  useMarkVoid: () => ({ mutate: mockVoidMutate, isPending: false, isError: false, error: null, reset: vi.fn() }),
 }));
 
 // Default: RequireCheckInApproval=false → trigger="Check In", confirm="Confirm Check In"
@@ -98,11 +101,15 @@ afterEach(() => {
   server.resetHandlers();
   mockRole.value = "User";
   mockConfig.RequireCheckInApproval = false;
+  mockCheckOutState.isPending = false;
+  mockCheckOutState.isError = false;
   mockCheckOutMutate.mockClear();
   mockSubmitMutate.mockClear();
   mockApproveMutate.mockClear();
   mockForceMutate.mockClear();
-  mockCheckInMutate.mockClear();
+  mockFinalizeMutate.mockClear();
+  mockObsoleteMutate.mockClear();
+  mockVoidMutate.mockClear();
 });
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -136,6 +143,7 @@ test("CheckOutButton renders when drawing state is Available", () => {
 });
 
 // Test 1b — CheckOutButton absent when Drawing is not Available
+// New matrix: CheckedOut by another user + User role → ReadOnlyStateLabel (no check out)
 test("CheckOutButton absent when drawing is CheckedOut by another user", () => {
   renderWithProviders(
     <DrawingActionsPanel
@@ -311,7 +319,8 @@ test("ValidationDrawer Approve button is disabled when drawing has missing sheet
   expect(screen.getByRole("button", { name: /approve/i })).toBeDisabled();
 });
 
-// Test 9 — ForceCheckInDialog visible to Admin only
+// Test 9 — ForceCheckInDialog visible to Admin/Approver when CheckedOut by another user
+// New matrix: Admin or Approver (not admin-only) sees Force Check-In
 test("ForceCheckInDialog trigger visible to Admin when drawing is CheckedOut by another user", () => {
   mockRole.value = "Admin";
   renderWithProviders(
@@ -323,7 +332,7 @@ test("ForceCheckInDialog trigger visible to Admin when drawing is CheckedOut by 
   expect(screen.getByRole("button", { name: /force check-in/i })).toBeInTheDocument();
 });
 
-test("ForceCheckInDialog trigger not visible to non-Admin", () => {
+test("ForceCheckInDialog trigger not visible to non-Admin non-Approver", () => {
   mockRole.value = "User";
   renderWithProviders(
     <DrawingActionsPanel
@@ -334,7 +343,8 @@ test("ForceCheckInDialog trigger not visible to non-Admin", () => {
   expect(screen.queryByRole("button", { name: /force check-in/i })).not.toBeInTheDocument();
 });
 
-// Test 10 — ForceCheckInDialog requires reason min 10 chars
+// Test 10 — ForceCheckInDialog requires revision + reason min 10 chars
+// New: confirm button also requires newRevision to be non-empty
 test("ForceCheckInDialog confirm button disabled when reason is shorter than 10 characters", async () => {
   mockRole.value = "Admin";
   const user = userEvent.setup();
@@ -353,6 +363,7 @@ test("ForceCheckInDialog confirm button disabled when reason is shorter than 10 
   );
 
   const confirmBtn = screen.getByRole("button", { name: /confirm force check-in/i });
+  // Initially disabled (reason empty, even if revision pre-filled)
   expect(confirmBtn).toBeDisabled();
 
   const textarea = screen.getByPlaceholderText(/min 10 chars/i);
@@ -366,7 +377,7 @@ test("ForceCheckInDialog confirm button disabled when reason is shorter than 10 
 // Test 11 — DrawingActionsPanel returns ReadOnlyStateLabel when no actions available
 test("DrawingActionsPanel shows state badge (ReadOnlyStateLabel) when user has no valid action", () => {
   mockRole.value = "User";
-  // CheckedOut by someone else, not an Admin — no action available
+  // CheckedOut by someone else, not an Admin/Approver — no action available
   renderWithProviders(
     <DrawingActionsPanel
       drawing={makeDrawing(DrawingState.CheckedOut)}
@@ -379,4 +390,125 @@ test("DrawingActionsPanel shows state badge (ReadOnlyStateLabel) when user has n
   expect(screen.queryByRole("button", { name: /check out/i })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /check in/i })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /force check-in/i })).not.toBeInTheDocument();
+});
+
+// Test 12 — New: Finalize button visible when drawing is Available
+test("Finalize button visible when drawing is Available", () => {
+  renderWithProviders(<DrawingActionsPanel drawing={makeDrawing(DrawingState.Available)} />);
+  expect(screen.getByRole("button", { name: /finalize/i })).toBeInTheDocument();
+});
+
+// Test 13 — New: Admin sees Mark Obsolete and Mark Void on an Available drawing
+test("Admin sees Mark Obsolete and Mark Void on an Available drawing", () => {
+  mockRole.value = "Admin";
+  renderWithProviders(<DrawingActionsPanel drawing={makeDrawing(DrawingState.Available)} />);
+  expect(screen.getByRole("button", { name: /mark obsolete/i })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /mark void/i })).toBeInTheDocument();
+});
+
+// Test 14 — New: Non-admin does NOT see Mark Obsolete / Mark Void on an Available drawing
+test("Non-admin does NOT see Mark Obsolete / Mark Void on an Available drawing", () => {
+  mockRole.value = "User";
+  renderWithProviders(<DrawingActionsPanel drawing={makeDrawing(DrawingState.Available)} />);
+  expect(screen.queryByRole("button", { name: /mark obsolete/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /mark void/i })).not.toBeInTheDocument();
+});
+
+// Test 15 — New: Finalized drawing is read-only with no action buttons
+test("Finalized drawing is read-only with no action buttons", () => {
+  mockRole.value = "Admin";
+  renderWithProviders(<DrawingActionsPanel drawing={makeDrawing(DrawingState.Finalized)} />);
+  expect(screen.getByText("Finalized")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /check out/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /finalize/i })).not.toBeInTheDocument();
+});
+
+// ─── variant="split" tests ────────────────────────────────────────────────────
+
+// Test 16 — Split mode: Admin Available drawing shows "Check Out" primary button
+test("split mode: Admin Available drawing shows Check Out primary and More actions caret", () => {
+  mockRole.value = "Admin";
+  renderWithProviders(
+    <DrawingActionsPanel drawing={makeDrawing(DrawingState.Available)} variant="split" />,
+  );
+  expect(screen.getByRole("button", { name: /^check out$/i })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /more actions/i })).toBeInTheDocument();
+});
+
+// Test 17 — Split mode: clicking "More actions" opens menu with Finalize/Mark Obsolete/Mark Void for Admin
+test("split mode: Admin Available drawing More actions menu lists Finalize, Mark Obsolete, Mark Void", async () => {
+  mockRole.value = "Admin";
+  const user = userEvent.setup();
+  renderWithProviders(
+    <DrawingActionsPanel drawing={makeDrawing(DrawingState.Available)} variant="split" />,
+  );
+
+  await user.click(screen.getByRole("button", { name: /more actions/i }));
+
+  expect(await screen.findByRole("menuitem", { name: /finalize/i })).toBeInTheDocument();
+  expect(screen.getByRole("menuitem", { name: /mark obsolete/i })).toBeInTheDocument();
+  expect(screen.getByRole("menuitem", { name: /mark void/i })).toBeInTheDocument();
+});
+
+// Test 18 — Split mode: clicking "Mark Void" in the overflow menu opens the void dialog
+test("split mode: clicking Mark Void in overflow opens the void dialog", async () => {
+  mockRole.value = "Admin";
+  const user = userEvent.setup();
+  renderWithProviders(
+    <DrawingActionsPanel drawing={makeDrawing(DrawingState.Available)} variant="split" />,
+  );
+
+  await user.click(screen.getByRole("button", { name: /more actions/i }));
+  const voidItem = await screen.findByRole("menuitem", { name: /mark void/i });
+  await user.click(voidItem);
+
+  // Void dialog title should appear
+  expect(await screen.findByText(/confirm void/i)).toBeInTheDocument();
+});
+
+// Test 19 — Split mode: clicking primary "Check Out" calls useCheckOut mutate
+test("split mode: clicking Check Out primary calls useCheckOut mutate with drawingId", async () => {
+  mockRole.value = "User";
+  const user = userEvent.setup();
+  renderWithProviders(
+    <DrawingActionsPanel drawing={makeDrawing(DrawingState.Available)} variant="split" />,
+  );
+
+  await user.click(screen.getByRole("button", { name: /^check out$/i }));
+  expect(mockCheckOutMutate).toHaveBeenCalledWith("drawing-id-001");
+});
+
+// Test 20 — Split mode: non-Admin Available drawing overflow only shows Finalize (no Obsolete/Void)
+test("split mode: non-Admin Available drawing overflow only has Finalize", async () => {
+  mockRole.value = "User";
+  const user = userEvent.setup();
+  renderWithProviders(
+    <DrawingActionsPanel drawing={makeDrawing(DrawingState.Available)} variant="split" />,
+  );
+
+  await user.click(screen.getByRole("button", { name: /more actions/i }));
+
+  expect(await screen.findByRole("menuitem", { name: /finalize/i })).toBeInTheDocument();
+  expect(screen.queryByRole("menuitem", { name: /mark obsolete/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole("menuitem", { name: /mark void/i })).not.toBeInTheDocument();
+});
+
+// Test 21 — Split mode: Check Out primary is disabled and shows "Checking out…" while pending
+test("split mode: Check Out primary is disabled and shows Checking out… while isPending", () => {
+  mockCheckOutState.isPending = true;
+  renderWithProviders(
+    <DrawingActionsPanel drawing={makeDrawing(DrawingState.Available)} variant="split" />,
+  );
+  const btn = screen.getByRole("button", { name: /checking out/i });
+  expect(btn).toBeInTheDocument();
+  expect(btn).toBeDisabled();
+});
+
+// Test 22 — Split mode: error message appears when checkOut.isError is true
+test("split mode: error message appears when checkOut.isError is true", () => {
+  mockCheckOutState.isError = true;
+  renderWithProviders(
+    <DrawingActionsPanel drawing={makeDrawing(DrawingState.Available)} variant="split" />,
+  );
+  expect(screen.getByText(/check out failed/i)).toBeInTheDocument();
 });
