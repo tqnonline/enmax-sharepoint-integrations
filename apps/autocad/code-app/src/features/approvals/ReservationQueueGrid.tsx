@@ -7,6 +7,7 @@ import {
 import { Warning16Regular } from "@fluentui/react-icons";
 import { EnmaxDataGrid } from "../../components/DataGrid";
 import type { ColumnDef, GridFetchParams } from "../../components/DataGrid";
+import { clientPage } from "../../components/DataGrid/clientPage";
 import type { PendingReservation } from "./hooks/usePendingReservations";
 import { formatComposition } from "./compositionUtils";
 import { usePageSize } from "../../config/usePageSize";
@@ -91,34 +92,17 @@ const COLUMNS: ColumnDef<PendingReservation>[] = [
 export function ReservationQueueGrid({ reservations, onSelect, onBulkApprove, emptyMessage }: Props) {
   const pageSize = usePageSize();
 
-  const fetcher = useCallback(async (params: GridFetchParams): Promise<{ rows: PendingReservation[]; totalCount: number }> => {
-    let rows = reservations;
-
-    if (params.search) {
-      const q = params.search.toLowerCase();
-      rows = rows.filter(r =>
-        r.enmax_acdnreservationnumber?.toLowerCase().includes(q) ||
-        r._createdby_value_Formatted?.toLowerCase().includes(q) ||
-        r.enmax_acdnreason?.toLowerCase().includes(q),
-      );
-    }
-
-    if (params.sort) {
-      const { column, direction } = params.sort;
-      rows = [...rows].sort((a, b) => {
-        const av = (a as unknown as Record<string, unknown>)[column];
-        const bv = (b as unknown as Record<string, unknown>)[column];
-        const cmp = typeof av === "number" && typeof bv === "number"
-          ? av - bv
-          : String(av ?? "").localeCompare(String(bv ?? ""));
-        return direction === "asc" ? cmp : -cmp;
-      });
-    }
-
-    const totalCount = rows.length;
-    const start = params.page * params.pageSize;
-    return { rows: rows.slice(start, start + params.pageSize), totalCount };
-  }, [reservations]);
+  const fetcher = useCallback(
+    async (params: GridFetchParams): Promise<{ rows: PendingReservation[]; totalCount: number }> =>
+      clientPage(reservations, params, {
+        searchText: r => [
+          r.enmax_acdnreservationnumber ?? "",
+          r._createdby_value_Formatted ?? "",
+          r.enmax_acdnreason ?? "",
+        ],
+      }),
+    [reservations],
+  );
 
   const queryKey = useMemo(
     () => ["reservation-queue", reservations.map(r => r.enmax_acdnreservationid).join(",")],

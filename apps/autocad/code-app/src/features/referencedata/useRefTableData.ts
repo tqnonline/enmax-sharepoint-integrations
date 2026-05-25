@@ -4,6 +4,17 @@ import { dataSourcesInfo } from "../../../.power/schemas/appschemas/dataSourcesI
 import type { RefTableConfig } from "./tableConfig";
 import type { CompositionMaps } from "../approvals/hooks/useCompositionLookups";
 import type { GridFetchParams } from "../../components/DataGrid";
+import { clientPage } from "../../components/DataGrid/clientPage";
+import { logDataverseError } from "../../components/DataGrid/dataverseError";
+
+/** statecode column filter → predicate (shared by the row + junction fetchers). */
+function statecodePredicate(params: GridFetchParams): ((r: RefRow) => boolean) | undefined {
+  const scFilter = params.filters["statecode"];
+  const scStr = Array.isArray(scFilter) ? scFilter[0] : scFilter;
+  if (scStr === null || scStr === undefined || scStr === "") return undefined;
+  const sc = Number(scStr);
+  return r => r.statecode === sc;
+}
 
 export interface RefRow {
   id: string;
@@ -42,6 +53,7 @@ export function useSaveRefRow(config: RefTableConfig) {
       }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["ref-table", config.entityName] }),
+    onError: (e) => logDataverseError(`RefData/${config.entityName} save`, e),
   });
 }
 
@@ -51,8 +63,11 @@ export function makeRefTableFetcher(config: RefTableConfig) {
       select:  [config.entityIdField, "enmax_acdncode", "enmax_acdndisplayname", "enmax_acdndescription", "enmax_acdnsortorder", "statecode"],
       orderBy: ["enmax_acdnsortorder asc", "enmax_acdncode asc"],
     });
-    if (!result.success) throw new Error(`Failed to fetch ${config.entityName}`);
-    let rows: RefRow[] = (result.data ?? []).map(r => ({
+    if (!result.success) {
+      logDataverseError(`RefData/${config.entityName}`, result.error);
+      throw new Error(`Failed to fetch ${config.entityName}`);
+    }
+    const rows: RefRow[] = (result.data ?? []).map(r => ({
       id:          (r as Record<string, string>)[config.entityIdField],
       code:        (r as Record<string, string>)["enmax_acdncode"] ?? "",
       displayName: (r as Record<string, string>)["enmax_acdndisplayname"] ?? "",
@@ -62,37 +77,10 @@ export function makeRefTableFetcher(config: RefTableConfig) {
       ...(r as Record<string, unknown>),
     }));
 
-    if (params.search) {
-      const q = params.search.toLowerCase();
-      rows = rows.filter(r =>
-        r.code.toLowerCase().includes(q) ||
-        r.displayName.toLowerCase().includes(q) ||
-        r.description.toLowerCase().includes(q),
-      );
-    }
-
-    const scFilter = params.filters["statecode"];
-    const scStr = Array.isArray(scFilter) ? scFilter[0] : scFilter;
-    if (scStr !== null && scStr !== undefined && scStr !== "") {
-      const sc = Number(scStr);
-      rows = rows.filter(r => r.statecode === sc);
-    }
-
-    if (params.sort) {
-      const { column, direction } = params.sort;
-      rows = [...rows].sort((a, b) => {
-        const av = (a as Record<string, unknown>)[column];
-        const bv = (b as Record<string, unknown>)[column];
-        const cmp = typeof av === "number" && typeof bv === "number"
-          ? av - bv
-          : String(av ?? "").localeCompare(String(bv ?? ""));
-        return direction === "asc" ? cmp : -cmp;
-      });
-    }
-
-    const totalCount = rows.length;
-    const start = params.page * params.pageSize;
-    return { rows: rows.slice(start, start + params.pageSize), totalCount };
+    return clientPage(rows, params, {
+      filter: statecodePredicate(params),
+      searchText: r => [r.code, r.displayName, r.description],
+    });
   };
 }
 
@@ -115,9 +103,12 @@ export function makeJunctionFetcher(config: RefTableConfig, maps?: CompositionMa
     const result = await client.retrieveMultipleRecordsAsync(config.entityName, {
       select: [config.entityIdField, ...fields, "statecode"],
     });
-    if (!result.success) throw new Error(`Failed to fetch ${config.entityName}`);
+    if (!result.success) {
+      logDataverseError(`RefData/${config.entityName}`, result.error);
+      throw new Error(`Failed to fetch ${config.entityName}`);
+    }
 
-    let rows: RefRow[] = (result.data ?? []).map(rec => {
+    const rows: RefRow[] = (result.data ?? []).map(rec => {
       const o = rec as Record<string, unknown>;
       const code = fields
         .map(f => {
@@ -140,30 +131,10 @@ export function makeJunctionFetcher(config: RefTableConfig, maps?: CompositionMa
       };
     });
 
-    if (params.search) {
-      const q = params.search.toLowerCase();
-      rows = rows.filter(r => r.code.toLowerCase().includes(q) || r.displayName.toLowerCase().includes(q));
-    }
-
-    const scFilter = params.filters["statecode"];
-    const scStr = Array.isArray(scFilter) ? scFilter[0] : scFilter;
-    if (scStr !== null && scStr !== undefined && scStr !== "") {
-      const sc = Number(scStr);
-      rows = rows.filter(r => r.statecode === sc);
-    }
-
-    if (params.sort) {
-      const { column, direction } = params.sort;
-      rows = [...rows].sort((a, b) => {
-        const cmp = String((a as Record<string, unknown>)[column] ?? "")
-          .localeCompare(String((b as Record<string, unknown>)[column] ?? ""));
-        return direction === "asc" ? cmp : -cmp;
-      });
-    }
-
-    const totalCount = rows.length;
-    const start = params.page * params.pageSize;
-    return { rows: rows.slice(start, start + params.pageSize), totalCount };
+    return clientPage(rows, params, {
+      filter: statecodePredicate(params),
+      searchText: r => [r.code, r.displayName],
+    });
   };
 }
 
@@ -188,8 +159,14 @@ export async function fetchRefTableSummary(config: RefTableConfig): Promise<{ to
       filter:  "statecode eq 1",
     }),
   ]);
-  const active   = activeResult.success   ? (activeResult.data   ?? []).length : 0;
-  const inactive = inactiveResult.success ? (inactiveResult.data ?? []).length : 0;
+  if (!activeResult.success || !inactiveResult.success) {
+    // Don't coerce a failed/denied count to 0 — that reads as "empty table" and an
+    // admin could act on a lie. Surface the failure instead.
+    logDataverseError(`RefData/${config.entityName} summary`, activeResult.error ?? inactiveResult.error);
+    throw new Error(`Failed to load ${config.entityName} summary`);
+  }
+  const active   = (activeResult.data   ?? []).length;
+  const inactive = (inactiveResult.data ?? []).length;
   return { total: active + inactive, active, inactive };
 }
 
@@ -200,5 +177,6 @@ export function useDeactivateRefRow(config: RefTableConfig) {
       await client.updateRecordAsync(config.entityName, id, { statecode: activate ? 0 : 1 } as Record<string, unknown>);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["ref-table", config.entityName] }),
+    onError: (e) => logDataverseError(`RefData/${config.entityName} status`, e),
   });
 }

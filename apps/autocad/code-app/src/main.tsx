@@ -1,16 +1,48 @@
 import { StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
 import { FluentProvider } from "@fluentui/react-components";
 import { enmaxLightTheme } from "./theme/brand";
 import { AppConfigGate } from "./app/AppConfigGate";
 import { AppLoadingSplash } from "./app/AppLoadingSplash";
 import { AppErrorBoundary } from "./app/AppErrorBoundary";
 import { router } from "./routes";
+import { isDiagnosticsOn, diagLog, applyDebugQueryParam } from "./lib/diagnostics";
 import "./index.css";
 
+// Enable from a ?debug=1 link before anything queries.
+applyDebugQueryParam();
+
+const keyName = (key: unknown): string =>
+  Array.isArray(key) && key.length > 0 ? String(key[0]) : "query";
+
+// Diagnostics Mode backbone: every read/write flows through this client, so the
+// cache handlers are the single place to log all data + integration operations.
+// They early-return when the mode is off (zero overhead otherwise).
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onSuccess: (data, query) => {
+      if (!isDiagnosticsOn()) return;
+      const rows = (data as { rows?: unknown[] })?.rows ?? (Array.isArray(data) ? data : undefined);
+      const count = Array.isArray(rows) ? ` (${rows.length} rows)` : "";
+      diagLog("read", `${keyName(query.queryKey)}${count}`, { key: query.queryKey, result: data });
+    },
+    onError: (error, query) => {
+      if (!isDiagnosticsOn()) return;
+      diagLog("read:error", keyName(query.queryKey), { key: query.queryKey, error });
+    },
+  }),
+  mutationCache: new MutationCache({
+    onSuccess: (data, variables, _ctx, mutation) => {
+      if (!isDiagnosticsOn()) return;
+      diagLog("write", keyName(mutation.options.mutationKey), { key: mutation.options.mutationKey, variables, result: data });
+    },
+    onError: (error, variables, _ctx, mutation) => {
+      if (!isDiagnosticsOn()) return;
+      diagLog("write:error", keyName(mutation.options.mutationKey), { key: mutation.options.mutationKey, variables, error });
+    },
+  }),
   defaultOptions: {
     queries: {
       retry: 3,

@@ -1,6 +1,7 @@
 import { Enmax_autocadreservationsService } from "../../generated/services/Enmax_autocadreservationsService";
 import type { GridFetchParams } from "../../components/DataGrid";
 import { pagedGetAllOptions, pagedResult } from "../../components/DataGrid/serverPaging";
+import { logDataverseError } from "../../components/DataGrid/dataverseError";
 
 export interface ReservationRow {
   id: string;
@@ -57,7 +58,10 @@ export async function fetchSearchReservations(
   });
   const result = await Enmax_autocadreservationsService.getAll(options);
 
-  if (!result.success) throw new Error("Reservations fetch failed");
+  if (!result.success) {
+    logDataverseError("Search/Reservations", result.error);
+    throw new Error("Reservations fetch failed");
+  }
 
   const raw = (result.data ?? []) as ReservationRaw[];
   const rows: ReservationRow[] = raw.map(r => {

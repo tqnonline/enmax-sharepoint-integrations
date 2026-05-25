@@ -67,7 +67,7 @@ export function SearchPage() {
         filterable: true,
         filterType: "text",
         visibleByDefault: true,
-        cell: r => r.enmax_acdnsplibraryurl
+        cell: r => /^https?:\/\//i.test(r.enmax_acdnsplibraryurl ?? "")
           ? <Link href={r.enmax_acdnsplibraryurl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>{r.enmax_acdntitle}</Link>
           : <span>{r.enmax_acdntitle}</span>,
       },

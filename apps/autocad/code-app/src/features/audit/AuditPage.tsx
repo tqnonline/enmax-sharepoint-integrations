@@ -18,6 +18,7 @@ import { EnmaxDataGrid } from "../../components/DataGrid";
 import type { ColumnDef, GridFetchParams } from "../../components/DataGrid";
 import { auditEventColor } from "./auditPills";
 import { buildAuditFilter, type AppliedFilters } from "./auditFilter";
+import { logDataverseError } from "../../components/DataGrid/dataverseError";
 
 const EVENTS: Record<number, string> = {
   0: "None",
@@ -168,14 +169,7 @@ export function AuditPage() {
       top:     MAX_AUDIT_ROWS,
     });
     if (!result.success) {
-      // Surface the real Dataverse error (fail-loud per Rule 12) — the grid only
-      // shows a generic message. Stringify so the message/code print inline
-      // (error props are non-enumerable and otherwise collapse to {…}).
-      const err = result.error;
-      console.error(
-        "[Audit] fetch failed. filter:", filter,
-        "| error:", err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : "(none)",
-      );
+      logDataverseError("Audit", result.error, `filter: ${filter}`);
       throw new Error("Audit fetch failed");
     }
     const allRows = (result.data ?? []).map(r => toAuditRow(r as AuditRaw));

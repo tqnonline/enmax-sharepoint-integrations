@@ -2,7 +2,7 @@ import type { ColumnDef, GridFetchParams } from "./types";
 
 export async function exportToCsv<T>(
   columns: ColumnDef<T>[],
-  fetcher: (params: GridFetchParams) => Promise<{ rows: T[]; totalCount: number }>,
+  fetcher: (params: GridFetchParams) => Promise<{ rows: T[]; totalCount: number; skipToken?: string }>,
   fetchParams: GridFetchParams,
   maxRows: number,
   filename: string,
@@ -13,11 +13,16 @@ export async function exportToCsv<T>(
   const allRows: T[] = [];
   let page = 0;
   const pageSize = 500;
+  // Server-paged fetchers ignore `page` and page off skipToken (Dataverse rejects
+  // $skip); client-side fetchers ignore skipToken and slice by `page`. Threading
+  // both keeps export correct for either kind.
+  let skipToken: string | undefined;
 
   while (allRows.length < maxRows) {
-    const { rows, totalCount } = await fetcher({ ...fetchParams, page, pageSize });
-    allRows.push(...rows);
-    if (allRows.length >= totalCount || rows.length < pageSize) break;
+    const res = await fetcher({ ...fetchParams, page, pageSize, skipToken });
+    allRows.push(...res.rows);
+    if (allRows.length >= res.totalCount || res.rows.length < pageSize) break;
+    skipToken = res.skipToken;
     page++;
   }
 

@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Enmax_autocadappconfigsService } from "../../generated";
 import type { GridFetchParams } from "../../components/DataGrid";
+import { clientPage } from "../../components/DataGrid/clientPage";
+import { logDataverseError } from "../../components/DataGrid/dataverseError";
 
 export interface ConfigRow {
   id: string;
@@ -29,24 +31,12 @@ const CONFIG_SELECT = ["enmax_autocadappconfigid", "enmax_acdnkey", "enmax_acdnv
 
 export async function fetchAppConfigRows(params: GridFetchParams): Promise<{ rows: ConfigRow[]; totalCount: number }> {
   const r = await Enmax_autocadappconfigsService.getAll({ select: CONFIG_SELECT, orderBy: ["enmax_acdnkey asc"] });
-  if (!r.success) throw new Error("Config fetch failed");
-  let rows = (r.data ?? []).map(mapConfigRow);
-
-  if (params.search) {
-    const q = params.search.toLowerCase();
-    rows = rows.filter(row => row.key.toLowerCase().includes(q) || row.value.toLowerCase().includes(q));
+  if (!r.success) {
+    logDataverseError("AppConfig", r.error);
+    throw new Error("Config fetch failed");
   }
-  if (params.sort) {
-    const { column, direction } = params.sort;
-    rows = [...rows].sort((a, b) => {
-      const cmp = String((a as unknown as Record<string, unknown>)[column] ?? "")
-        .localeCompare(String((b as unknown as Record<string, unknown>)[column] ?? ""));
-      return direction === "asc" ? cmp : -cmp;
-    });
-  }
-  const totalCount = rows.length;
-  const start = params.page * params.pageSize;
-  return { rows: rows.slice(start, start + params.pageSize), totalCount };
+  const rows = (r.data ?? []).map(mapConfigRow);
+  return clientPage(rows, params, { searchText: row => [row.key, row.value] });
 }
 
 export function useAppConfigRows() {
@@ -55,7 +45,10 @@ export function useAppConfigRows() {
     throwOnError: false,
     queryFn: async () => {
       const r = await Enmax_autocadappconfigsService.getAll({ select: CONFIG_SELECT, orderBy: ["enmax_acdnkey asc"] });
-      if (!r.success) throw new Error("Config fetch failed");
+      if (!r.success) {
+        logDataverseError("AppConfig", r.error);
+        throw new Error("Config fetch failed");
+      }
       return (r.data ?? []).map(mapConfigRow);
     },
   });
@@ -88,5 +81,6 @@ export function useUpsertConfigRow() {
       void qc.invalidateQueries({ queryKey: ["app-config-admin-grid"] });
       void qc.invalidateQueries({ queryKey: ["app-config"] });
     },
+    onError: (e) => logDataverseError("AppConfig upsert", e),
   });
 }

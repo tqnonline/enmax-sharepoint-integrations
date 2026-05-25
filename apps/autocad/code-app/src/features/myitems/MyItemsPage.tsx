@@ -80,7 +80,7 @@ const CHK_COLUMNS: ColumnDef<MyCheckout>[] = [
   {
     id: "drawingLibraryUrl", header: "Library",
     accessor: r => r.drawingLibraryUrl,
-    cell: r => r.drawingLibraryUrl
+    cell: r => /^https?:\/\//i.test(r.drawingLibraryUrl ?? "")
       ? <Link href={r.drawingLibraryUrl} target="_blank" rel="noopener noreferrer">Open</Link>
       : null,
   },

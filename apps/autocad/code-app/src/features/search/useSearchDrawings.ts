@@ -1,6 +1,7 @@
 import { Enmax_autocaddrawingsService } from "../../generated";
 import type { GridFetchParams } from "../../components/DataGrid";
 import { pagedGetAllOptions, pagedResult } from "../../components/DataGrid/serverPaging";
+import { logDataverseError } from "../../components/DataGrid/dataverseError";
 
 export interface DrawingRow {
   id: string;
@@ -140,7 +141,10 @@ export async function fetchSearchDrawings(
   });
   const result = await Enmax_autocaddrawingsService.getAll(options);
 
-  if (!result.success) throw new Error("Drawings fetch failed");
+  if (!result.success) {
+    logDataverseError("Search/Drawings", result.error);
+    throw new Error("Drawings fetch failed");
+  }
 
   const raw = (result.data ?? []) as DrawingRaw[];
   const rows: DrawingRow[] = raw.map(r => ({

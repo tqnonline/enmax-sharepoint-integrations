@@ -28,6 +28,7 @@ import { useUiStore } from "../../store/uiStore";
 import { useUserRole } from "../../auth/useUserRole";
 import { useAppConfig } from "../../config/useAppConfig";
 import { useUserPreferences, useSaveUserPreferences } from "./useUserPreferences";
+import { useDiagnostics } from "../../lib/diagnostics";
 import { APP_VERSION, APP_BUILD_DATE } from "../../lib/version";
 import { Enmax_autocadappconfigsService } from "../../generated";
 
@@ -50,6 +51,7 @@ export function SettingsPage() {
   const queryClient = useQueryClient();
 
   const { themeOverride, setThemeOverride, viewAsEndUser, setViewAsEndUser } = useUiStore();
+  const { on: diagnosticsOn, setOn: setDiagnosticsOn } = useDiagnostics();
   const prefsQuery = useUserPreferences();
   const savePrefsMutation = useSaveUserPreferences();
 
@@ -220,6 +222,27 @@ export function SettingsPage() {
             </section>
           </>
         )}
+
+        <div className={styles.divider} />
+
+        {/* Troubleshooting */}
+        <section className={styles.section} aria-labelledby="diag-heading">
+          <Title3 id="diag-heading">Troubleshooting</Title3>
+          <div className={styles.row}>
+            <div>
+              <Text block weight="semibold">Diagnostics Mode</Text>
+              <Text size={200}>
+                Logs data &amp; API operations to the browser console (F12) to help diagnose issues.
+                Secrets are redacted, and it turns off when you close the tab.
+              </Text>
+            </div>
+            <Switch
+              checked={diagnosticsOn}
+              onChange={(_, d) => setDiagnosticsOn(d.checked)}
+              aria-label="Diagnostics Mode"
+            />
+          </div>
+        </section>
 
         <div className={styles.divider} />
 

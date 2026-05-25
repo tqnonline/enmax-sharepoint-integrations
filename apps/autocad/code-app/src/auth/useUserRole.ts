@@ -3,6 +3,7 @@ import { useCurrentUser } from "./useCurrentUser";
 import { useAppConfig } from "../config/useAppConfig";
 import { TeamsService } from "../generated/services/TeamsService";
 import { SystemusersService } from "../generated/services/SystemusersService";
+import { isGuid } from "../lib/guid";
 
 export type Role = "Admin" | "Approver" | "User" | "Unknown";
 
@@ -12,7 +13,13 @@ async function fetchRole(
   userTeamId?: string,
   approverTeamId?: string,
 ): Promise<Role> {
-  const configuredIds = [adminTeamId, approverTeamId, userTeamId].filter(Boolean) as string[];
+  // userId and team ids are interpolated into OData filters — only proceed with
+  // validated GUIDs so a malformed value can't alter the role query.
+  if (!isGuid(userId)) {
+    console.warn("[UserRole] invalid userId; defaulting to Unknown:", userId);
+    return "Unknown";
+  }
+  const configuredIds = [adminTeamId, approverTeamId, userTeamId].filter(isGuid);
   const teamIdClauses = configuredIds.map((id) => `teamid eq '${id}'`).join(" or ");
 
   const [teamsResult, sysRoleResult] = await Promise.allSettled([

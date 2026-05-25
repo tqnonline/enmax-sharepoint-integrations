@@ -38,7 +38,7 @@ const mockWhoAmI   = vi.mocked(WhoAmIService.WhoAmI);
 const mockTeamsAll = vi.mocked(TeamsService.getAll);
 const mockSysAll   = vi.mocked(SystemusersService.getAll);
 
-const WHO_AM_I_OK = { success: true, data: { UserId: "user-guid-0001" } };
+const WHO_AM_I_OK = { success: true, data: { UserId: "11111111-1111-4111-8111-111111111111" } };
 const EMPTY_OK    = { success: true, data: [] };
 
 const TEAM_IDS = {

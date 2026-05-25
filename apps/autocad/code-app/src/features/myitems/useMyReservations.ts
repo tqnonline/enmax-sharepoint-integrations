@@ -1,7 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCurrentUser } from "../../auth/useCurrentUser";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Enmax_autocadreservationsService } from "../../generated";
 import type { GridFetchParams } from "../../components/DataGrid";
+import { clientPage } from "../../components/DataGrid/clientPage";
+import { logDataverseError } from "../../components/DataGrid/dataverseError";
+import { isGuid } from "../../lib/guid";
 
 export interface MyReservation {
   id: string;
@@ -55,7 +57,6 @@ export const RESERVATION_STATUS: Record<number, string> = {
 };
 
 function toMyReservation(r: RawReservation): MyReservation {
-  const raw = r as RawReservation;
   const status = r.enmax_acdnstatus ?? 1;
 
   return {
@@ -68,7 +69,7 @@ function toMyReservation(r: RawReservation): MyReservation {
     reason:           r.enmax_acdnreason ?? "",
     createdOn:        r.createdon ?? "",
     approvedOn:       r.enmax_acdnapprovedon ?? "",
-    approverDisplay:  raw["_enmax_acdnapprover_value@OData.Community.Display.V1.FormattedValue"] ?? "",
+    approverDisplay:  r["_enmax_acdnapprover_value@OData.Community.Display.V1.FormattedValue"] ?? "",
     businessId:       r._enmax_acdnbusiness_value ?? "",
     assetId:          r._enmax_acdnasset_value    ?? "",
     unitId:           r._enmax_acdnunit_value     ?? "",
@@ -92,6 +93,12 @@ export async function fetchMyReservationRows(
   showFinalised: boolean,
   params: GridFetchParams,
 ): Promise<{ rows: MyReservation[]; totalCount: number }> {
+  // The owner filter is the only data-isolation control here; validate the id is a
+  // GUID before interpolating it so a malformed value can't widen the OData filter.
+  if (!isGuid(userId)) {
+    logDataverseError("MyReservations", new Error(`invalid userId: ${userId}`));
+    return { rows: [], totalCount: 0 };
+  }
   const activeFilter = `_ownerid_value eq '${userId}' and (enmax_acdnstatus eq 1 or enmax_acdnstatus eq 2)`;
   const filter = showFinalised ? `_ownerid_value eq '${userId}'` : activeFilter;
 
@@ -100,58 +107,14 @@ export async function fetchMyReservationRows(
     select:  [...RESERVATION_SELECT],
     orderBy: ["createdon desc"],
   });
-  if (!result.success) throw new Error("My reservations fetch failed");
-  let rows = (result.data ?? []).map(r => toMyReservation(r as RawReservation));
-
-  if (params.search) {
-    const q = params.search.toLowerCase();
-    rows = rows.filter(r =>
-      r.reservationNumber.toLowerCase().includes(q) ||
-      r.statusLabel.toLowerCase().includes(q) ||
-      r.approverDisplay.toLowerCase().includes(q) ||
-      r.reason.toLowerCase().includes(q),
-    );
+  if (!result.success) {
+    logDataverseError("MyReservations", result.error);
+    throw new Error("My reservations fetch failed");
   }
+  const rows = (result.data ?? []).map(r => toMyReservation(r as RawReservation));
 
-  if (params.sort) {
-    const { column, direction } = params.sort;
-    rows = [...rows].sort((a, b) => {
-      const av = (a as unknown as Record<string, unknown>)[column];
-      const bv = (b as unknown as Record<string, unknown>)[column];
-      const cmp = typeof av === "number" && typeof bv === "number"
-        ? av - bv
-        : String(av ?? "").localeCompare(String(bv ?? ""));
-      return direction === "asc" ? cmp : -cmp;
-    });
-  }
-
-  const totalCount = rows.length;
-  const start = params.page * params.pageSize;
-  return { rows: rows.slice(start, start + params.pageSize), totalCount };
-}
-
-export function useMyReservations(showFinalised = false) {
-  const { data: user } = useCurrentUser();
-
-  return useQuery({
-    queryKey:     ["my-reservations", user?.id, showFinalised],
-    enabled:      !!user?.id,
-    throwOnError: false,
-    queryFn: async () => {
-      const activeFilter = `_ownerid_value eq '${user!.id}' and (enmax_acdnstatus eq 1 or enmax_acdnstatus eq 2)`;
-      const filter = showFinalised
-        ? `_ownerid_value eq '${user!.id}'`
-        : activeFilter;
-
-      const result = await Enmax_autocadreservationsService.getAll({
-        filter,
-        select:  [...RESERVATION_SELECT],
-        orderBy: ["createdon desc"],
-      });
-
-      if (!result.success) throw new Error("My reservations fetch failed");
-      return (result.data ?? []).map(r => toMyReservation(r as RawReservation));
-    },
+  return clientPage(rows, params, {
+    searchText: r => [r.reservationNumber, r.statusLabel, r.approverDisplay, r.reason],
   });
 }
 
@@ -167,5 +130,6 @@ export function useCancelReservation() {
       qc.invalidateQueries({ queryKey: ["my-reservations"] });
       qc.invalidateQueries({ queryKey: ["reservation-detail"] });
     },
+    onError: (e) => logDataverseError("CancelReservation", e),
   });
 }

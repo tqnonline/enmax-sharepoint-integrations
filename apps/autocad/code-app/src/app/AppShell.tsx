@@ -5,6 +5,7 @@ import { Sidebar } from "./Sidebar";
 import { CommandBar } from "./CommandBar";
 import { Footer } from "./Footer";
 import { MaintenanceBanner } from "./MaintenanceBanner";
+import { DiagnosticsIndicator } from "./DiagnosticsIndicator";
 
 const useStyles = makeStyles({
   root: {
@@ -77,6 +78,7 @@ export function AppShell({ children }: AppShellProps) {
         </main>
       </div>
       <Footer />
+      <DiagnosticsIndicator />
     </div>
   );
 }

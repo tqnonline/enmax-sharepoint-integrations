@@ -138,7 +138,7 @@ export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { data, isPending, isError } = useQuery({
+  const { data, isPending, isError, isPlaceholderData } = useQuery({
     queryKey: [...(Array.isArray(queryKey) ? queryKey : [queryKey]), deferredParams],
     queryFn: async () => {
       const skipToken = tokenCache.current.get(deferredParams.page);
@@ -271,7 +271,11 @@ export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
 
       {/* Table */}
       <div className={styles.tableWrap}>
-        <div className={styles.scrollPort} ref={scrollRef}>
+        <div
+          className={styles.scrollPort}
+          ref={scrollRef}
+          style={{ opacity: isPlaceholderData ? 0.6 : 1, transition: "opacity 120ms ease" }}
+        >
           {gated && <EmptyState title={searchPrompt} icon={<SearchRegular />} />}
           {!gated && isPending && <Spinner label="Loading…" style={{ margin: tokens.spacingVerticalL }} />}
           {!gated && isError && !isPending && (

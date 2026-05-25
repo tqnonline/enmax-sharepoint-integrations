@@ -33,5 +33,10 @@ export function pagedResult<T>(
   result: { count?: number; skipToken?: string },
   rows: T[],
 ): { rows: T[]; totalCount: number; skipToken?: string } {
+  if (result.count === undefined) {
+    // count:true was requested; a missing total silently collapses pagination to
+    // one page. Surface it (fail-loud) instead of pretending rows.length is the total.
+    console.warn("[paging] server returned no @odata.count; totalCount falls back to page length and pagination may truncate.");
+  }
   return { rows, totalCount: result.count ?? rows.length, skipToken: result.skipToken };
 }
