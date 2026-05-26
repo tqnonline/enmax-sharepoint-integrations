@@ -95,19 +95,44 @@ class DataverseClient:
     # Business Unit
     # ------------------------------------------------------------------
 
-    def find_business_unit(self, name: str) -> str:
+    def find_business_unit(self, name: str) -> str | None:
         data = self._get("businessunits", {
             "$filter": f"name eq '{name}'",
             "$select": "businessunitid",
         })
         items = data.get("value", [])
+        return items[0]["businessunitid"] if items else None
+
+    def find_root_business_unit(self) -> str:
+        data = self._get("businessunits", {
+            "$filter": "_parentbusinessunitid_value eq null",
+            "$select": "businessunitid",
+            "$top": "1",
+        })
+        items = data.get("value", [])
         if not items:
-            raise RuntimeError(
-                f"Business Unit '{name}' not found. "
-                "Verify the 'business_unit' key in security_roles.yaml "
-                "matches the BU created by seed.py."
-            )
+            raise RuntimeError("Root Business Unit not found — cannot create a child BU.")
         return items[0]["businessunitid"]
+
+    def ensure_business_unit(self, name: str) -> str:
+        """Find the named child BU, creating it under the root BU if absent (idempotent)."""
+        existing = self.find_business_unit(name)
+        if existing:
+            return existing
+        root_id = self.find_root_business_unit()
+        print(f"  Business Unit '{name}' not found — creating under root BU {root_id}...")
+        try:
+            self._post("businessunits", {
+                "name": name,
+                "parentbusinessunitid@odata.bind": f"/businessunits({root_id})",
+            })
+        except requests.HTTPError as exc:
+            # May already exist (concurrent run / unique-name conflict) — fall through to re-find.
+            print(f"  create returned {exc}; re-checking for the BU...")
+        created = self.find_business_unit(name)
+        if not created:
+            raise RuntimeError(f"Business Unit '{name}' could not be found or created.")
+        return created
 
     # ------------------------------------------------------------------
     # Security roles
@@ -275,8 +300,8 @@ def main() -> int:
     roles: list[dict] = config.get("roles", [])
     print(f"Loaded {len(roles)} role definition(s) from {SEED_FILE.name}")
 
-    print(f"Looking up Business Unit '{bu_name}'...")
-    bu_id = client.find_business_unit(bu_name)
+    print(f"Ensuring Business Unit '{bu_name}'...")
+    bu_id = client.ensure_business_unit(bu_name)
     print(f"  bu_id={bu_id}")
 
     print("Provisioning roles...")
