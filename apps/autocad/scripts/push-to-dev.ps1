@@ -1,20 +1,22 @@
 #Requires -Version 7
 <#
 .SYNOPSIS
-  Build the Code App and push it to the dev PowerApps environment.
-  Reads credentials from apps/code-app/.env.dev (gitignored).
+  Build the Code App and push it to a PowerApps environment.
+  Reads credentials from apps/code-app/.env.<environment> (gitignored).
 
 .USAGE
-  From repo root:  .\scripts\push-to-dev.ps1
-  From code-app:   ..\..\..\scripts\push-to-dev.ps1
+  From repo root:  .\scripts\push-to-dev.ps1                 # dev (default)
+                   .\scripts\push-to-dev.ps1 -Environment uat
 #>
+
+param([string]$Environment = "dev")
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $RepoRoot  = Split-Path $PSScriptRoot -Parent
 $CodeApp   = Join-Path $RepoRoot "apps\code-app"
-$EnvFile   = Join-Path $CodeApp ".env.dev"
+$EnvFile   = Join-Path $CodeApp ".env.$Environment"
 $ConfigOut = Join-Path $CodeApp "power.config.json"
 
 # ── Load .env.dev ────────────────────────────────────────────────────────────
@@ -24,15 +26,15 @@ if (-not (Test-Path $EnvFile)) {
     $GitCommonDir = & git -C $RepoRoot rev-parse --git-common-dir 2>$null
     if ($GitCommonDir) {
         $MainRepoRoot = Split-Path ([System.IO.Path]::GetFullPath($GitCommonDir)) -Parent
-        $FallbackEnv  = Join-Path $MainRepoRoot "apps\code-app\.env.dev"
+        $FallbackEnv  = Join-Path $MainRepoRoot "apps\code-app\.env.$Environment"
         if (Test-Path $FallbackEnv) {
-            Write-Host "    .env.dev not in worktree — using $FallbackEnv" -ForegroundColor DarkGray
+            Write-Host "    .env.$Environment not in worktree — using $FallbackEnv" -ForegroundColor DarkGray
             $EnvFile = $FallbackEnv
         }
     }
 }
 if (-not (Test-Path $EnvFile)) {
-    Write-Error ".env.dev not found. Place it at $CodeApp\.env.dev (or in the main repo checkout at the same relative path)."
+    Write-Error ".env.$Environment not found. Place it at $CodeApp\.env.$Environment (or in the main repo checkout at the same relative path)."
 }
 
 $env = @{}

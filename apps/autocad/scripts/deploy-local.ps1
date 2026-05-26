@@ -1,28 +1,37 @@
 #Requires -Version 7
 <#
 .SYNOPSIS
-  Run the full dev deploy chain locally (mirrors .github/workflows/cd-dev.yml),
-  for use when GitHub Actions CD is unavailable. Reads credentials from
-  apps/code-app/.env.dev (gitignored; worktree falls back to the main repo).
+  Run the full deploy chain locally against a target environment (mirrors
+  .github/workflows/cd-<env>.yml), for use when GitHub Actions CD is unavailable.
+  Reads credentials from apps/code-app/.env.<environment> (gitignored; worktree
+  falls back to the main repo).
 
   Chain: pac auth -> pack -> import (async) -> plugins -> optionsets -> seed
          -> roles -> publish Code App.
+
+.USAGE
+  .\scripts\deploy-local.ps1                  # dev (default)
+  .\scripts\deploy-local.ps1 -Environment uat
 #>
+
+param([string]$Environment = "dev")
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+Write-Host "==> Target environment: $Environment" -ForegroundColor Magenta
+
 $RepoRoot = Split-Path $PSScriptRoot -Parent
-$EnvFile  = Join-Path $RepoRoot "apps\code-app\.env.dev"
+$EnvFile  = Join-Path $RepoRoot "apps\code-app\.env.$Environment"
 if (-not (Test-Path $EnvFile)) {
     $GitCommonDir = & git -C $RepoRoot rev-parse --git-common-dir 2>$null
     if ($GitCommonDir) {
         $MainRepoRoot = Split-Path ([System.IO.Path]::GetFullPath($GitCommonDir)) -Parent
-        $Fallback = Join-Path $MainRepoRoot "apps\code-app\.env.dev"
-        if (Test-Path $Fallback) { Write-Host "    .env.dev via $Fallback" -ForegroundColor DarkGray; $EnvFile = $Fallback }
+        $Fallback = Join-Path $MainRepoRoot "apps\code-app\.env.$Environment"
+        if (Test-Path $Fallback) { Write-Host "    .env.$Environment via $Fallback" -ForegroundColor DarkGray; $EnvFile = $Fallback }
     }
 }
-if (-not (Test-Path $EnvFile)) { Write-Error ".env.dev not found at $EnvFile" }
+if (-not (Test-Path $EnvFile)) { Write-Error ".env.$Environment not found at $EnvFile" }
 
 $envmap = @{}
 foreach ($line in Get-Content $EnvFile) {
@@ -30,14 +39,14 @@ foreach ($line in Get-Content $EnvFile) {
     if ($line -match '^([^=]+)=(.*)$') { $envmap[$Matches[1].Trim()] = $Matches[2].Trim().Trim('"') }
 }
 
-# Map .env.dev keys -> the DATAVERSE_* names the deploy scripts expect.
+# Map .env.<env> keys -> the DATAVERSE_* names the deploy scripts expect.
 $env:DATAVERSE_URL           = $envmap['ENVIRONMENT_URL']
 $env:DATAVERSE_CLIENT_ID     = $envmap['CLIENT_ID']
 $env:DATAVERSE_CLIENT_SECRET = $envmap['CLIENT_SECRET']
 $env:DATAVERSE_TENANT_ID     = $envmap['TENANT_ID']
 $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
 
-if (-not $env:DATAVERSE_URL) { Write-Error "ENVIRONMENT_URL missing from .env.dev" }
+if (-not $env:DATAVERSE_URL) { Write-Error "ENVIRONMENT_URL missing from .env.$Environment" }
 
 function Invoke-Step {
     param([string]$Name, [scriptblock]$Body)
@@ -67,6 +76,6 @@ try {
 finally { Pop-Location }
 
 Write-Host "`n==> Publishing Code App (build + push)..." -ForegroundColor Cyan
-& "$PSScriptRoot\push-to-dev.ps1"
+& "$PSScriptRoot\push-to-dev.ps1" -Environment $Environment
 
-Write-Host "`n==> End-to-end dev deploy complete." -ForegroundColor Green
+Write-Host "`n==> End-to-end $Environment deploy complete." -ForegroundColor Green
