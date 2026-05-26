@@ -45,11 +45,15 @@ def main() -> int:
         print(f"ERROR: {ZIP} not found. Run pack.py first.", file=sys.stderr)
         return 2
 
+    # --async polls the import job instead of holding a synchronous WCF channel
+    # open; upgrade imports can exceed PAC's 30-minute sync timeout otherwise.
     cmd = [
         _pac(), "solution", "import",
         "--path", str(ZIP),
         "--publish-changes",
         "--activate-plugins",
+        "--async",
+        "--max-async-wait-time", "60",
     ]
     result = subprocess.run(cmd, check=False)
     return result.returncode
