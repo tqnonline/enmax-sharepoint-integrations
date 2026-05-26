@@ -63,7 +63,7 @@ roles:
         write: basic        # mark-as-read
       enmax_autocadnumbersequence:
         read: global        # plug-in runs as service; users see sequence state
-      enmax_autocadappconfiguration:
+      enmax_autocadappconfig:
         read: global
       enmax_autocadauditevent:
         read: basic         # own subject rows only
@@ -79,7 +79,7 @@ roles:
       enmax_autocadrecordtype:  { read: global }
       enmax_autocadrecordphase: { read: global }
       enmax_autocadvendor:      { read: global }
-      enmax_autocadunitasset:   { read: global }
+      enmax_autocadassetunit:   { read: global }
       enmax_autocadsystemscope: { read: global }
 
   # ---------------------------------------------------------------------------
@@ -115,7 +115,7 @@ roles:
         write: basic
       enmax_autocadnumbersequence:
         read: global
-      enmax_autocadappconfiguration:
+      enmax_autocadappconfig:
         read: global
       enmax_autocadauditevent:
         read: global
@@ -130,7 +130,7 @@ roles:
       enmax_autocadrecordtype:  { read: global }
       enmax_autocadrecordphase: { read: global }
       enmax_autocadvendor:      { read: global }
-      enmax_autocadunitasset:   { read: global }
+      enmax_autocadassetunit:   { read: global }
       enmax_autocadsystemscope: { read: global }
 
   # ---------------------------------------------------------------------------
@@ -198,7 +198,7 @@ roles:
         appendto: global
         assign: global
         share: global
-      enmax_autocadappconfiguration:
+      enmax_autocadappconfig:
         create: global
         read: global
         write: global
@@ -307,7 +307,7 @@ roles:
         appendto: global
         assign: global
         share: global
-      enmax_autocadunitasset:
+      enmax_autocadassetunit:
         create: global
         read: global
         write: global
@@ -346,7 +346,7 @@ roles:
       enmax_autocadcheckout:       { read: global }
       enmax_autocadinappnotification: { read: basic }
       enmax_autocadnumbersequence: { read: global }
-      enmax_autocadappconfiguration: { read: global }
+      enmax_autocadappconfig: { read: global }
       enmax_autocadauditevent:     { read: global }
       enmax_autocadbroadcast:      { read: global }
       enmax_autocadbusiness:       { read: global }
@@ -358,5 +358,5 @@ roles:
       enmax_autocadrecordtype:     { read: global }
       enmax_autocadrecordphase:    { read: global }
       enmax_autocadvendor:         { read: global }
-      enmax_autocadunitasset:      { read: global }
+      enmax_autocadassetunit:      { read: global }
       enmax_autocadsystemscope:    { read: global }

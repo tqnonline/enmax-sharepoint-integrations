@@ -25,12 +25,14 @@ import yaml
 SEED_FILE = Path(__file__).parent.parent / "seed" / "security_roles.yaml"
 
 # Maps YAML depth labels to the integer values Dataverse expects.
-DEPTH_VALUES: dict[str, int] = {
-    "none":   0,
-    "basic":  1,   # User (own records)
-    "local":  2,   # Business Unit
-    "deep":   3,   # Parent-Child Business Unit
-    "global": 4,   # Organisation-wide
+# Dataverse PrivilegeDepth enum. The Web API serialises enums as the member NAME
+# (a quoted string), not the numeric value. "none" is omitted — absence means
+# "no privilege" and the row is skipped.
+DEPTH_VALUES: dict[str, str] = {
+    "basic":  "Basic",   # User (own records)
+    "local":  "Local",   # Business Unit
+    "deep":   "Deep",    # Parent-Child Business Unit
+    "global": "Global",  # Organisation-wide
 }
 
 # Maps YAML operation keys to Dataverse privilege name prefixes.
@@ -88,7 +90,9 @@ class DataverseClient:
 
     def _post(self, path: str, body: dict) -> requests.Response:
         resp = self._session.post(f"{self._base}/{path}", json=body)
-        resp.raise_for_status()
+        if not resp.ok:
+            # Surface the Dataverse error body (fail-loud) — raise_for_status hides it.
+            raise RuntimeError(f"POST {path} -> {resp.status_code}: {resp.text}")
         return resp
 
     # ------------------------------------------------------------------
@@ -181,10 +185,12 @@ class DataverseClient:
         return None
 
     def replace_privileges(self, role_id: str, privileges: list[dict]) -> None:
-        self._post("ReplacePrivilegesRole", {
-            "RoleId": role_id,
-            "Privileges": privileges,
-        })
+        # ReplacePrivilegesRole is an action BOUND to the role entity — call it on
+        # the role instance (RoleId is the bound record, not a body param).
+        self._post(
+            f"roles({role_id})/Microsoft.Dynamics.CRM.ReplacePrivilegesRole",
+            {"Privileges": privileges},
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -204,8 +210,8 @@ def _resolve_privileges(
 
     for entity_name, ops in entity_map.items():
         for op_key, depth_label in ops.items():
-            depth = DEPTH_VALUES.get(depth_label, 0)
-            if depth == 0:
+            depth = DEPTH_VALUES.get(depth_label)
+            if depth is None:   # "none" / unrecognised → no privilege (Basic is a valid 0)
                 continue
 
             prefix = OP_PREFIXES.get(op_key)
