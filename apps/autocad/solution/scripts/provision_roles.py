@@ -267,6 +267,12 @@ def _provision_role(
 # ---------------------------------------------------------------------------
 
 def main() -> int:
+    # The script prints non-ASCII (e.g. "->") and runs on Windows CI where stdout
+    # defaults to cp1252 — force UTF-8 so a status print can't crash the deploy.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
+
     url = os.environ.get("DATAVERSE_URL", "").rstrip("/")
     client_id = os.environ.get("DATAVERSE_CLIENT_ID", "")
     client_secret = os.environ.get("DATAVERSE_CLIENT_SECRET", "")
