@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "powerplatform_deploy"
+version = "0.1.0"
+description = "Shared deploy tooling for the Enmax AutoCAD Power Platform solution"
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.12",
+    "requests>=2.31",
+    "PyYAML>=6.0",
+    "azure-identity>=1.15",
+    "msal>=1.27",
+    "python-dotenv>=1.0",
+]
+
+[project.scripts]
+pp-deploy = "powerplatform_deploy.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["powerplatform_deploy*"]

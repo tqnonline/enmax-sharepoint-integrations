@@ -11,6 +11,7 @@ on:
 
 env:
   DATAVERSE_GEO: can
+  PYTHONUTF8: '1'
 
 jobs:
   deploy-prod:
@@ -43,8 +44,15 @@ jobs:
         run: npm run build
       - name: Install Python deps
         run: uv pip install -r solution/scripts/requirements.txt --system
+      - name: Install deploy package
+        run: uv pip install -e solution/scripts --system
       - name: Pack solution
-        run: python solution/scripts/pack.py
+        env:
+          DATAVERSE_URL: ${{ secrets.PROD_DATAVERSE_URL }}
+          DATAVERSE_CLIENT_ID: ${{ secrets.PROD_SP_CLIENT_ID }}
+          DATAVERSE_CLIENT_SECRET: ${{ secrets.PROD_SP_CLIENT_SECRET }}
+          DATAVERSE_TENANT_ID: ${{ secrets.PROD_TENANT_ID }}
+        run: python -m powerplatform_deploy.cli pack --environment prod
       - name: Authenticate PAC CLI
         shell: pwsh
         env:
@@ -59,7 +67,7 @@ jobs:
           DATAVERSE_CLIENT_ID: ${{ secrets.PROD_SP_CLIENT_ID }}
           DATAVERSE_CLIENT_SECRET: ${{ secrets.PROD_SP_CLIENT_SECRET }}
           DATAVERSE_TENANT_ID: ${{ secrets.PROD_TENANT_ID }}
-        run: python solution/scripts/import.py
+        run: python -m powerplatform_deploy.cli import --environment prod
       - name: Register plugins & Custom APIs
         shell: pwsh
         env:
@@ -67,28 +75,28 @@ jobs:
           DATAVERSE_CLIENT_ID: ${{ secrets.PROD_SP_CLIENT_ID }}
           DATAVERSE_CLIENT_SECRET: ${{ secrets.PROD_SP_CLIENT_SECRET }}
           DATAVERSE_TENANT_ID: ${{ secrets.PROD_TENANT_ID }}
-        run: ./scripts/deploy-plugins.ps1
+        run: Import-Module ./scripts/PowerPlatform.Deploy/PowerPlatform.Deploy.psd1 -Force; Register-PpPlugins -Environment prod
       - name: Patch option set labels
         env:
           DATAVERSE_URL: ${{ secrets.PROD_DATAVERSE_URL }}
           DATAVERSE_CLIENT_ID: ${{ secrets.PROD_SP_CLIENT_ID }}
           DATAVERSE_CLIENT_SECRET: ${{ secrets.PROD_SP_CLIENT_SECRET }}
           DATAVERSE_TENANT_ID: ${{ secrets.PROD_TENANT_ID }}
-        run: python solution/scripts/patch_optionsets.py
+        run: python -m powerplatform_deploy.cli optionsets --environment prod
       - name: Seed deterministic master data
         env:
           DATAVERSE_URL: ${{ secrets.PROD_DATAVERSE_URL }}
           DATAVERSE_CLIENT_ID: ${{ secrets.PROD_SP_CLIENT_ID }}
           DATAVERSE_CLIENT_SECRET: ${{ secrets.PROD_SP_CLIENT_SECRET }}
           DATAVERSE_TENANT_ID: ${{ secrets.PROD_TENANT_ID }}
-        run: python solution/scripts/seed.py
+        run: python -m powerplatform_deploy.cli seed --environment prod
       - name: Provision security roles
         env:
           DATAVERSE_URL: ${{ secrets.PROD_DATAVERSE_URL }}
           DATAVERSE_CLIENT_ID: ${{ secrets.PROD_SP_CLIENT_ID }}
           DATAVERSE_CLIENT_SECRET: ${{ secrets.PROD_SP_CLIENT_SECRET }}
           DATAVERSE_TENANT_ID: ${{ secrets.PROD_TENANT_ID }}
-        run: python solution/scripts/provision_roles.py
+        run: python -m powerplatform_deploy.cli roles --environment prod
       - name: Publish Code App
         working-directory: apps/code-app
         env:
