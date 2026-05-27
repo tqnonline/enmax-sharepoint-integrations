@@ -6,10 +6,9 @@ export function useFinalizeDrawing() {
   return useMutation({
     mutationFn: finalizeDrawing,
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ["drawing", variables.drawingId] });
-      void queryClient.invalidateQueries({ queryKey: ["search-drawings"] });
+      void queryClient.invalidateQueries({ queryKey: ["drawing-detail", variables.drawingId] });
+      void queryClient.invalidateQueries({ queryKey: ["drawings-search"] });
       void queryClient.invalidateQueries({ queryKey: ["reservation-drawings"] });
-      void queryClient.invalidateQueries({ queryKey: ["drawings"] });
     },
   });
 }

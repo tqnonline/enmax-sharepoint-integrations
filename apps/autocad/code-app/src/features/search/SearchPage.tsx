@@ -22,12 +22,14 @@ const useStyles = makeStyles({
   stateBadge: { minWidth: "80px" },
 });
 
-const STATE_COLORS: Record<number, "success" | "warning" | "danger" | "informative" | undefined> = {
+const STATE_COLORS: Record<number, "success" | "warning" | "danger" | "informative" | "brand" | undefined> = {
   1: "success",
   2: "informative",
   3: "warning",
   4: "warning",
-  5: undefined,
+  5: "danger",
+  6: "danger",
+  7: "brand",
 };
 
 type BadgeColor = "success" | "informative" | "subtle";

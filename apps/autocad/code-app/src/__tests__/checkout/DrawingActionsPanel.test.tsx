@@ -414,6 +414,20 @@ test("Non-admin does NOT see Mark Obsolete / Mark Void on an Available drawing",
   expect(screen.queryByRole("button", { name: /mark void/i })).not.toBeInTheDocument();
 });
 
+// Test 14b — Business rule: Finalize and Mark Obsolete require at least one prior check-in.
+// A drawing with no currentRevision has never been checked in, so both are hidden.
+// Check Out (to begin the first checkout) and Mark Void (not restricted) remain.
+test("Finalize and Mark Obsolete are hidden on an Available drawing never checked in (no revision)", () => {
+  mockRole.value = "Admin";
+  renderWithProviders(
+    <DrawingActionsPanel drawing={makeDrawing(DrawingState.Available, { currentRevision: "" })} />,
+  );
+  expect(screen.queryByRole("button", { name: /finalize/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /mark obsolete/i })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /mark void/i })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /check out/i })).toBeInTheDocument();
+});
+
 // Test 15 — New: Finalized drawing is read-only with no action buttons
 test("Finalized drawing is read-only with no action buttons", () => {
   mockRole.value = "Admin";

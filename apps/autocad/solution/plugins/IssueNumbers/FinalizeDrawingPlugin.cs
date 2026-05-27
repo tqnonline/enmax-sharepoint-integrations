@@ -15,8 +15,9 @@ namespace Enmax.AutoCAD
     /// </summary>
     public class FinalizeDrawingPlugin : PluginBase
     {
-        private const string DrawingEntity   = "enmax_autocaddrawing";
-        private const string ColDrawingState = "enmax_acdnstate";
+        private const string DrawingEntity      = "enmax_autocaddrawing";
+        private const string ColDrawingState    = "enmax_acdnstate";
+        private const string ColCurrentRevision = "enmax_acdncurrentrevision";
 
         private const string SheetEntity     = "enmax_autocadsheet";
         private const string ColSheetDrawing = "enmax_acdndrawing";
@@ -54,7 +55,7 @@ namespace Enmax.AutoCAD
             Entity drawing;
             try
             {
-                drawing = service.Retrieve(DrawingEntity, target.Id, new ColumnSet(ColDrawingState));
+                drawing = service.Retrieve(DrawingEntity, target.Id, new ColumnSet(ColDrawingState, ColCurrentRevision));
             }
             catch (FaultException<OrganizationServiceFault> ex)
             {
@@ -65,6 +66,14 @@ namespace Enmax.AutoCAD
             if (currentState != StateAvailable)
                 throw new InvalidPluginExecutionException(
                     $"Drawing {target.Id} cannot be finalized from state {currentState}. Expected {StateAvailable} (Available).");
+
+            // Business rule: a drawing can only be finalized after at least one check-in.
+            // currentRevision is written only on a successful check-in, so an empty value
+            // means the drawing has never been checked in.
+            string currentRevision = drawing.GetAttributeValue<string>(ColCurrentRevision);
+            if (string.IsNullOrWhiteSpace(currentRevision))
+                throw new InvalidPluginExecutionException(
+                    $"Drawing {target.Id} cannot be finalized: it has never been checked in (no current revision). At least one check-in is required.");
 
             try
             {

@@ -170,6 +170,33 @@ export const dataSourcesInfo = {
     "primaryKey": "enmax_autocaddrawingid",
     "dataSourceType": "Dataverse",
     "apis": {
+      "enmax_acdnFinalizeDrawing": {
+        "path": "/api/data/v9.2/enmax_autocaddrawings({drawingId})/Microsoft.Dynamics.CRM.enmax_acdnFinalizeDrawing",
+        "method": "POST",
+        "parameters": [
+          { "name": "drawingId", "in": "path", "required": true,  "type": "string" },
+          { "name": "Reason",    "in": "body", "required": true,  "type": "string" }
+        ],
+        "responseInfo": { "200": { "type": "object" } }
+      },
+      "enmax_acdnMarkObsolete": {
+        "path": "/api/data/v9.2/enmax_autocaddrawings({drawingId})/Microsoft.Dynamics.CRM.enmax_acdnMarkObsolete",
+        "method": "POST",
+        "parameters": [
+          { "name": "drawingId", "in": "path", "required": true,  "type": "string" },
+          { "name": "Reason",    "in": "body", "required": false, "type": "string" }
+        ],
+        "responseInfo": { "200": { "type": "object" } }
+      },
+      "enmax_acdnMarkVoid": {
+        "path": "/api/data/v9.2/enmax_autocaddrawings({drawingId})/Microsoft.Dynamics.CRM.enmax_acdnMarkVoid",
+        "method": "POST",
+        "parameters": [
+          { "name": "drawingId", "in": "path", "required": true,  "type": "string" },
+          { "name": "Reason",    "in": "body", "required": true,  "type": "string" }
+        ],
+        "responseInfo": { "200": { "type": "object" } }
+      },
       "enmax_acdnCheckOutDrawing": {
         "path": "/api/data/v9.2/enmax_autocaddrawings({drawingId})/Microsoft.Dynamics.CRM.enmax_acdnCheckOutDrawing",
         "method": "POST",
@@ -193,6 +220,16 @@ export const dataSourcesInfo = {
     "primaryKey": "enmax_autocadcheckoutid",
     "dataSourceType": "Dataverse",
     "apis": {
+      "enmax_acdnSubmitRevision": {
+        "path": "/api/data/v9.2/enmax_autocadcheckouts({checkoutId})/Microsoft.Dynamics.CRM.enmax_acdnSubmitRevision",
+        "method": "POST",
+        "parameters": [
+          { "name": "checkoutId",  "in": "path", "required": true,  "type": "string" },
+          { "name": "NewRevision", "in": "body", "required": true,  "type": "string" },
+          { "name": "Reason",      "in": "body", "required": false, "type": "string" }
+        ],
+        "responseInfo": { "200": { "type": "object" } }
+      },
       "enmax_acdnApproveCheckin": {
         "path": "/api/data/v9.2/enmax_autocadcheckouts({checkoutId})/Microsoft.Dynamics.CRM.enmax_acdnApproveCheckin",
         "method": "POST",

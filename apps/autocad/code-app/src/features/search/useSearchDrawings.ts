@@ -73,6 +73,7 @@ export const DRAWING_STATE_LABELS: Record<number, string> = {
   4: "Checked In",
   5: "Obsolete",
   6: "Void",
+  7: "Finalized",
 };
 
 const ALLOWED_SORT_COLS = new Set([

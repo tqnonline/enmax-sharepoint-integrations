@@ -13,8 +13,9 @@ namespace Enmax.AutoCAD
     /// </summary>
     public class MarkObsoletePlugin : PluginBase
     {
-        private const string DrawingEntity   = "enmax_autocaddrawing";
-        private const string ColDrawingState = "enmax_acdnstate";
+        private const string DrawingEntity      = "enmax_autocaddrawing";
+        private const string ColDrawingState    = "enmax_acdnstate";
+        private const string ColCurrentRevision = "enmax_acdncurrentrevision";
         private const string SheetEntity     = "enmax_autocadsheet";
         private const string ColSheetDrawing = "enmax_acdndrawing";
         private const string ColSheetState   = "enmax_acdnstate";
@@ -45,11 +46,19 @@ namespace Enmax.AutoCAD
             string reason = context.InputParameters.Contains("Reason")
                 ? context.InputParameters["Reason"] as string ?? string.Empty : string.Empty;
 
-            var drawing = service.Retrieve(DrawingEntity, target.Id, new ColumnSet(ColDrawingState));
+            var drawing = service.Retrieve(DrawingEntity, target.Id, new ColumnSet(ColDrawingState, ColCurrentRevision));
             int currentState = drawing.GetAttributeValue<OptionSetValue>(ColDrawingState)?.Value ?? 0;
             if (currentState == StateObsolete || currentState == StateVoid || currentState == StateFinalized)
                 throw new InvalidPluginExecutionException(
                     $"Drawing {target.Id} is already terminal (state {currentState}); cannot mark obsolete.");
+
+            // Business rule: a drawing can only be marked obsolete after at least one check-in.
+            // currentRevision is written only on a successful check-in, so an empty value
+            // means the drawing has never been checked in.
+            string currentRevision = drawing.GetAttributeValue<string>(ColCurrentRevision);
+            if (string.IsNullOrWhiteSpace(currentRevision))
+                throw new InvalidPluginExecutionException(
+                    $"Drawing {target.Id} cannot be marked obsolete: it has never been checked in (no current revision). At least one check-in is required.");
 
             try
             {

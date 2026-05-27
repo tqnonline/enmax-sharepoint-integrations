@@ -18,6 +18,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         private const string DrawingEntity   = "enmax_autocaddrawing";
         private const string SheetEntity     = "enmax_autocadsheet";
         private const string ColDrawingState = "enmax_acdnstate";
+        private const string ColCurrentRevision = "enmax_acdncurrentrevision";
 
         private const int StateAvailable  = 1;
         private const int StateCheckedOut = 2;
@@ -26,13 +27,14 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         private const string ValidReason = "This is the final issued-for-construction revision; no further changes expected.";
 
         private static (XrmFakedContext ctx, XrmFakedPluginExecutionContext pluginCtx, Guid drawingId)
-            BuildContext(int drawingState = StateAvailable)
+            BuildContext(int drawingState = StateAvailable, string currentRevision = "A")
         {
             var ctx       = new XrmFakedContext();
             var drawingId = Guid.NewGuid();
             var userId    = Guid.NewGuid();
 
             var drawing = new Entity(DrawingEntity, drawingId) { [ColDrawingState] = new OptionSetValue(drawingState) };
+            if (!string.IsNullOrEmpty(currentRevision)) drawing[ColCurrentRevision] = currentRevision;
             var sheet   = new Entity(SheetEntity, Guid.NewGuid())
             {
                 ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
@@ -96,6 +98,17 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             Action act = () => ctx.ExecutePluginWith<FinalizeDrawingPlugin>(pluginCtx);
             act.Should().Throw<InvalidPluginExecutionException>().WithMessage($"*{StateCheckedOut}*",
                 because: "only an Available drawing can be finalised; the message must include the current state");
+        }
+
+        [Fact]
+        public void Drawing_never_checked_in_throws()
+        {
+            // currentRevision is written only on a successful check-in, so an empty
+            // value means the drawing has never been checked in and cannot be finalised.
+            var (ctx, pluginCtx, _) = BuildContext(StateAvailable, currentRevision: "");
+            Action act = () => ctx.ExecutePluginWith<FinalizeDrawingPlugin>(pluginCtx);
+            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*never been checked in*",
+                because: "a drawing can only be finalised after at least one check-in (business rule)");
         }
 
         [Fact]

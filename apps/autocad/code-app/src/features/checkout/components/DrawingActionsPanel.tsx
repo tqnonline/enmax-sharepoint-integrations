@@ -74,6 +74,13 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
   const [openDialog, setOpenDialog] = useState<null | "finalize" | "obsolete" | "void" | "forcecheckin">(null);
   const checkOut = useCheckOut();
 
+  // Business rule: Finalize and Mark Obsolete require at least one prior check-in.
+  // A drawing only gets a currentRevision after its first successful check-in
+  // (ApproveCheckin/SubmitRevision/ForceCheckin write it; creation does not), so an
+  // empty currentRevision means the drawing has never been checked in. Mark Void is
+  // not restricted.
+  const hasCheckin = Boolean(drawing.currentRevision);
+
   if (drawing.state === DrawingState.Finalized ||
       drawing.state === DrawingState.Obsolete ||
       drawing.state === DrawingState.Void) {
@@ -90,11 +97,9 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
             primaryLoading={checkOut.isPending}
             onPrimary={() => checkOut.mutate(drawing.id)}
             items={[
-              { key: "finalize", label: "Finalize", onClick: () => setOpenDialog("finalize") },
-              ...(isAdmin ? [
-                { key: "obsolete", label: "Mark Obsolete", onClick: () => setOpenDialog("obsolete") },
-                { key: "void", label: "Mark Void", onClick: () => setOpenDialog("void") },
-              ] : []),
+              ...(hasCheckin ? [{ key: "finalize", label: "Finalize", onClick: () => setOpenDialog("finalize") }] : []),
+              ...(isAdmin && hasCheckin ? [{ key: "obsolete", label: "Mark Obsolete", onClick: () => setOpenDialog("obsolete") }] : []),
+              ...(isAdmin ? [{ key: "void", label: "Mark Void", onClick: () => setOpenDialog("void") }] : []),
             ]}
           />
           {checkOut.isError && (
@@ -109,8 +114,8 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
     return (
       <div className={styles.actionRow}>
         <CheckOutButton drawingId={drawing.id} />
-        <FinalizeDialog drawingId={drawing.id} />
-        {isAdmin && <MarkObsoleteDialog drawingId={drawing.id} />}
+        {hasCheckin && <FinalizeDialog drawingId={drawing.id} />}
+        {isAdmin && hasCheckin && <MarkObsoleteDialog drawingId={drawing.id} />}
         {isAdmin && <MarkVoidDialog drawingId={drawing.id} />}
       </div>
     );

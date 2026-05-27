@@ -15,17 +15,19 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         private const string DrawingEntity   = "enmax_autocaddrawing";
         private const string SheetEntity     = "enmax_autocadsheet";
         private const string ColDrawingState = "enmax_acdnstate";
+        private const string ColCurrentRevision = "enmax_acdncurrentrevision";
         private const int StateAvailable = 1;
         private const int StateObsolete  = 5;
         private const int StateVoid      = 6;
         private const int StateFinalized = 7;
 
         private static (XrmFakedContext ctx, XrmFakedPluginExecutionContext pluginCtx, Guid drawingId)
-            BuildContext(int drawingState = StateAvailable)
+            BuildContext(int drawingState = StateAvailable, string currentRevision = "A")
         {
             var ctx       = new XrmFakedContext();
             var drawingId = Guid.NewGuid();
             var drawing = new Entity(DrawingEntity, drawingId) { [ColDrawingState] = new OptionSetValue(drawingState) };
+            if (!string.IsNullOrEmpty(currentRevision)) drawing[ColCurrentRevision] = currentRevision;
             var sheet   = new Entity(SheetEntity, Guid.NewGuid())
             {
                 ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
@@ -67,6 +69,17 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             audit.GetAttributeValue<OptionSetValue>("enmax_acdnevent").Value.Should().Be(2, because: "event 2 = State Changed");
             audit.GetAttributeValue<string>("enmax_acdntostate").Should().Be("Obsolete");
             audit.GetAttributeValue<string>("enmax_acdnsubjectid").Should().Be(drawingId.ToString());
+        }
+
+        [Fact]
+        public void Drawing_never_checked_in_throws()
+        {
+            // currentRevision is written only on a successful check-in, so an empty
+            // value means the drawing has never been checked in and cannot be marked obsolete.
+            var (ctx, pluginCtx, _) = BuildContext(StateAvailable, currentRevision: "");
+            Action act = () => ctx.ExecutePluginWith<MarkObsoletePlugin>(pluginCtx);
+            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*never been checked in*",
+                because: "a drawing can only be marked obsolete after at least one check-in (business rule)");
         }
 
         [Theory]
