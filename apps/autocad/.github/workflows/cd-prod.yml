@@ -101,4 +101,10 @@ jobs:
         working-directory: apps/code-app
         env:
           POWER_APPS_ENV_ID: ${{ secrets.PROD_POWER_APPS_ENV_ID }}
+          # npx power-apps push (the @microsoft/power-apps CLI) requires service-principal
+          # creds for non-interactive auth in CI; without these it errors with
+          # "Service Principal environment variables SP_CLIENT_ID, SP_CLIENT_SECRET, and SP_TENANT_ID must be set".
+          SP_CLIENT_ID: ${{ secrets.PROD_SP_CLIENT_ID }}
+          SP_CLIENT_SECRET: ${{ secrets.PROD_SP_CLIENT_SECRET }}
+          SP_TENANT_ID: ${{ secrets.PROD_TENANT_ID }}
         run: npx power-apps push --environmentId "$env:POWER_APPS_ENV_ID"
