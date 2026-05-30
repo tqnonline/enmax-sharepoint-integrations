@@ -92,16 +92,25 @@ jobs:
           DATAVERSE_TENANT_ID: ${{ secrets.DEV_TENANT_ID }}
         run: python -m powerplatform_deploy.cli roles --environment dev
       - name: Publish Code App
-        working-directory: apps/code-app
+        shell: pwsh
         env:
-          POWER_APPS_ENV_ID: ${{ secrets.DEV_POWER_APPS_ENV_ID }}
-          # npx power-apps push (the @microsoft/power-apps CLI) requires service-principal
-          # creds for non-interactive auth in CI; without these it errors with
-          # "Service Principal environment variables SP_CLIENT_ID, SP_CLIENT_SECRET, and SP_TENANT_ID must be set".
+          # Read by PowerPlatform.Deploy module via Get-PpEnvConfig's env-only fast path
+          # (no .env file needed in CI). Publish-PpCodeApp writes power.config.json with
+          # the full dataSources map and runs npx power-apps push.
+          DATAVERSE_URL: ${{ secrets.DEV_DATAVERSE_URL }}
+          DATAVERSE_CLIENT_ID: ${{ secrets.DEV_SP_CLIENT_ID }}
+          DATAVERSE_CLIENT_SECRET: ${{ secrets.DEV_SP_CLIENT_SECRET }}
+          DATAVERSE_TENANT_ID: ${{ secrets.DEV_TENANT_ID }}
+          APP_ID: ${{ secrets.DEV_APP_ID }}
+          APP_DISPLAY_NAME: ${{ secrets.DEV_APP_DISPLAY_NAME }}
+          ENVIRONMENT_ID: ${{ secrets.DEV_POWER_APPS_ENV_ID }}
+          # npx power-apps push (invoked by Publish-PpCodeApp) requires SP_* for SP auth.
           SP_CLIENT_ID: ${{ secrets.DEV_SP_CLIENT_ID }}
           SP_CLIENT_SECRET: ${{ secrets.DEV_SP_CLIENT_SECRET }}
           SP_TENANT_ID: ${{ secrets.DEV_TENANT_ID }}
-        run: npx power-apps push --environment-id "$env:POWER_APPS_ENV_ID"
+        run: |
+          Import-Module ./scripts/PowerPlatform.Deploy/PowerPlatform.Deploy.psd1 -Force
+          Publish-PpCodeApp -Environment dev
       - name: Smoke test
         working-directory: apps/code-app
         env:

@@ -43,6 +43,32 @@ function Get-PpEnvConfig {
         $RepoRoot = Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent
     }
 
+    # Env-only fast path. If the four credential keys are fully present in the process
+    # environment (either as DATAVERSE_* canonical or as the short ENVIRONMENT_URL/CLIENT_ID/
+    # CLIENT_SECRET/TENANT_ID names), build cfg from $env and skip the .env file lookup.
+    # APP_ID / APP_DISPLAY_NAME / ENVIRONMENT_ID are pulled in if set. This lets CI invoke
+    # Publish-PpCodeApp without a checked-in or copied .env file.
+    $envUrl    = if ($env:DATAVERSE_URL)           { $env:DATAVERSE_URL }           else { $env:ENVIRONMENT_URL }
+    $envCid    = if ($env:DATAVERSE_CLIENT_ID)     { $env:DATAVERSE_CLIENT_ID }     else { $env:CLIENT_ID }
+    $envSecret = if ($env:DATAVERSE_CLIENT_SECRET) { $env:DATAVERSE_CLIENT_SECRET } else { $env:CLIENT_SECRET }
+    $envTenant = if ($env:DATAVERSE_TENANT_ID)     { $env:DATAVERSE_TENANT_ID }     else { $env:TENANT_ID }
+    if ($envUrl -and $envCid -and $envSecret -and $envTenant) {
+        Write-Verbose "[Pp] Get-PpEnvConfig: env-only fast path (no .env file required)"
+        $cfg = @{}
+        $cfg['ENVIRONMENT_URL']  = $envUrl
+        $cfg['CLIENT_ID']        = $envCid
+        $cfg['CLIENT_SECRET']    = $envSecret
+        $cfg['TENANT_ID']        = $envTenant
+        $cfg['APP_ID']           = $env:APP_ID
+        $cfg['APP_DISPLAY_NAME'] = $env:APP_DISPLAY_NAME
+        $cfg['ENVIRONMENT_ID']   = $env:ENVIRONMENT_ID
+        $cfg['Url']          = $envUrl
+        $cfg['ClientId']     = $envCid
+        $cfg['ClientSecret'] = $envSecret
+        $cfg['TenantId']     = $envTenant
+        return $cfg
+    }
+
     $relPath = "apps\code-app\.env.$Environment"
     $envFile = Join-Path $RepoRoot $relPath
 
