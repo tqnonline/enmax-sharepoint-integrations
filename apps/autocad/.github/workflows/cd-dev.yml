@@ -122,8 +122,16 @@ jobs:
       - name: Concurrency integration tests (IssueNumbers)
         working-directory: solution/plugins
         env:
+          # The integration tests' SkipIfNoDataverse() reads the short names
+          # (ENVIRONMENT_URL / CLIENT_ID / CLIENT_SECRET / TENANT_ID) — the same
+          # keys as .env.dev. Provide both the canonical DATAVERSE_* names and
+          # the short aliases from the same SPN secrets.
           DATAVERSE_URL: ${{ secrets.DEV_DATAVERSE_URL }}
           DATAVERSE_CLIENT_ID: ${{ secrets.DEV_SP_CLIENT_ID }}
           DATAVERSE_CLIENT_SECRET: ${{ secrets.DEV_SP_CLIENT_SECRET }}
           DATAVERSE_TENANT_ID: ${{ secrets.DEV_TENANT_ID }}
+          ENVIRONMENT_URL: ${{ secrets.DEV_DATAVERSE_URL }}
+          CLIENT_ID: ${{ secrets.DEV_SP_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.DEV_SP_CLIENT_SECRET }}
+          TENANT_ID: ${{ secrets.DEV_TENANT_ID }}
         run: dotnet test IssueNumbers.Tests/IssueNumbers.Tests.csproj --filter "Category=Integration" --configuration Release
