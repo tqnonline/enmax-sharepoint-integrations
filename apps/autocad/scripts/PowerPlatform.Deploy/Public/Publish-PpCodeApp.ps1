@@ -11,7 +11,7 @@ function Publish-PpCodeApp {
            configuration, including the full databaseReferences dataSources map
            (25 Dataverse entity sets) required for the app's data bindings.
         4. Runs `npm run build` in apps\code-app.
-        5. Runs `npx power-apps push --non-interactive`.
+        5. Runs `pac code push` (uses the pac auth profile set up by Connect-PpDataverse).
         6. Prints the play URL so it can be opened immediately.
 
       Steps 3–5 (config write, build, push) are guarded by SupportsShouldProcess —
@@ -70,7 +70,7 @@ function Publish-PpCodeApp {
 
         Write-PpLog "Pushing to Power Apps..."
         Invoke-PpPowerAppsPush -WorkingDir $codeApp
-        Assert-PpExitCode -Operation 'npx power-apps push'
+        Assert-PpExitCode -Operation 'pac code push'
 
         Write-PpLog "Done! Open app at:"
         Write-PpLog "  https://apps.powerapps.com/play/e/$($cfg['ENVIRONMENT_ID'])/app/$($cfg['APP_ID'])"
@@ -152,10 +152,17 @@ function Invoke-PpNpm {
 
 function Invoke-PpPowerAppsPush {
     <#
-    .SYNOPSIS Thin, mockable wrapper around npx power-apps push. Seam for Pester mocking. #>
+    .SYNOPSIS Thin, mockable wrapper around the Code App push CLI. Seam for Pester mocking.
+    .DESCRIPTION
+      Uses `pac code push` (the Power Platform CLI command) rather than
+      `npx power-apps push`. pac uses the active pac auth profile (which CD sets up
+      via `pac auth create` with our SPN) and avoids the npm CLI's separate
+      SP_CLIENT_ID/SP_CLIENT_SECRET checkAccess path that requires the SPN to have
+      Power Platform Administrator at the tenant level.
+    #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$WorkingDir)
     Push-Location $WorkingDir
-    try   { & npx power-apps push --non-interactive }
+    try   { & pac code push }
     finally { Pop-Location }
 }
