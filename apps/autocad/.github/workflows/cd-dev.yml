@@ -113,9 +113,12 @@ jobs:
           Publish-PpCodeApp -Environment dev
       - name: Smoke test
         working-directory: apps/code-app
+        shell: pwsh
         env:
           SMOKE_URL: ${{ secrets.DEV_APP_PLAY_URL }}
-        run: npx playwright test --grep @smoke
+        # Single-quote @smoke so pwsh does not parse the leading @ as splatting
+        # ("The variable '$smoke' cannot be retrieved because it has not been set.").
+        run: npx playwright test --grep '@smoke'
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
