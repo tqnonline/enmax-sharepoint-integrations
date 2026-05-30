@@ -274,7 +274,7 @@ ExecuteDataversePlugin(context):
 ```powershell
 Set-Location solution/plugins/IssueNumbers
 dotnet build --configuration Release
-# Output: bin/Release/net462/IssueNumbers.dll (strong-named via .snk from plan #01)
+# Output: bin/Release/net462/Enmax.AutoCAD.dll (strong-named via .snk from plan #01)
 ```
 
 **Register via Plug-in Registration Tool (PRT):**
@@ -285,7 +285,7 @@ pac tool prt   # Launches the GUI tool
 
 In PRT:
 1. Connect to dev tenant
-2. Register New Assembly → select `IssueNumbers.dll` → Sandbox isolation, Database storage
+2. Register New Assembly → select `Enmax.AutoCAD.dll` → Sandbox isolation, Database storage
 3. The tool discovers `IssueNumbersPlugin` class automatically
 4. Register New Step:
    - Message: `enmax_acdnIssueNumbers`
@@ -435,10 +435,10 @@ pac solution unpack `
 git diff solution/src/CustomAPIs/     # confirm custom API + step + assembly captured
 
 # Concurrency test against dev tenant (requires service principal env vars)
-$env:DATAVERSE_URL = "https://<dev-org>.crm3.dynamics.com"
-$env:DATAVERSE_CLIENT_ID = "<sp-client-id>"
-$env:DATAVERSE_CLIENT_SECRET = "<from-key-vault>"
-$env:DATAVERSE_TENANT_ID = "<tenant-id>"
+$env:ENVIRONMENT_URL = "https://<dev-org>.crm3.dynamics.com"
+$env:CLIENT_ID       = "<sp-client-id>"
+$env:CLIENT_SECRET   = "<from-key-vault>"
+$env:TENANT_ID       = "<tenant-id>"
 Set-Location solution/plugins/IssueNumbers.Tests
 dotnet test --filter "Category=Integration"
 # Expected: 2 integration tests pass; takes ~30-60 seconds
