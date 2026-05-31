@@ -46,7 +46,11 @@ export function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
           <MessageBarBody>
             <MessageBarTitle>App configuration unavailable</MessageBarTitle>
             Could not load application configuration. Contact your admin.
-            <pre className={styles.pre}>{error.message}</pre>
+            {/* DEV-only: error.message can contain Dataverse OData fields or
+                Zod-derived config key paths/values. Never render in production. */}
+            {import.meta.env.DEV && (
+              <pre className={styles.pre}>{error.message}</pre>
+            )}
             <div className={styles.retryWrapper}>
               <Button appearance="primary" onClick={handleRetry}>
                 Retry

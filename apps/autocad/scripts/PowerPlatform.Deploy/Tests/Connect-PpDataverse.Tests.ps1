@@ -74,11 +74,27 @@ Describe 'Connect-PpDataverse' {
 
         It 'does invoke Invoke-PpPac with auth select (profile activation still runs)' {
             # WHY: auth select must always run even when create is skipped, so downstream pac
-            # commands use the correct profile index.
+            # commands use the correct profile.
             Connect-PpDataverse -Environment dev
 
             Should -Invoke Invoke-PpPac -ModuleName PowerPlatform.Deploy -ParameterFilter {
                 $Arguments -contains 'select'
+            }
+        }
+
+        It 'selects the auth profile by --environment URL (not --index)' {
+            # WHY: --index 1 picks whichever profile sorted first on the machine, which can
+            # silently target the wrong environment when multiple pac auth profiles exist.
+            # Selection must be by the environment URL to be unambiguous.
+            Connect-PpDataverse -Environment dev
+
+            Should -Invoke Invoke-PpPac -ModuleName PowerPlatform.Deploy -ParameterFilter {
+                ($Arguments -contains 'select') -and
+                ($Arguments -contains '--environment') -and
+                ($Arguments -contains 'https://dev.crm.dynamics.com')
+            }
+            Should -Invoke Invoke-PpPac -ModuleName PowerPlatform.Deploy -Times 0 -ParameterFilter {
+                ($Arguments -contains 'select') -and ($Arguments -contains '--index')
             }
         }
     }

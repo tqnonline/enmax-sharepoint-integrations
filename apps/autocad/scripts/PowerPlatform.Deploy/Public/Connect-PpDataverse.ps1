@@ -59,8 +59,12 @@ function Connect-PpDataverse {
         }
     }
 
-    if ($PSCmdlet.ShouldProcess('index 1', 'pac auth select')) {
-        Invoke-PpPac auth select --index 1
+    # Select by environment URL (not --index 1) so the right profile is
+    # activated even when the machine has multiple pac auth profiles. --index 1
+    # picks whichever profile sorted first, which can silently target the wrong
+    # environment.
+    if ($PSCmdlet.ShouldProcess($cfg.Url, 'pac auth select')) {
+        Invoke-PpPac auth select --environment $cfg.Url
         Assert-PpExitCode -Operation 'pac auth select'
     }
 
