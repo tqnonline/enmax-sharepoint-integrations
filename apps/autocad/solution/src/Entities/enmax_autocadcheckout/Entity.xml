@@ -1120,20 +1120,32 @@
         </attribute>
       </attributes>
       <EntityKeys>
+        <!--
+          Replaced (Drawing + Status) alt key with (Drawing + NewRevision + Status).
+          The 2-column key blocked legitimate multi-cycle checkouts: every cycle
+          closed with status=ClosedApproved(3), so a 2nd cycle's close collided.
+          The 3-column key includes the submitted revision so each cycle is
+          unique by revision, and additionally prevents the same revision being
+          submitted twice on the same drawing in the same status.
+          enmax_acdnnewrevision is populated as an empty placeholder on Open
+          create by CheckOutDrawingPlugin so the alt-key column is never null.
+        -->
         <EntityKey>
-          <Name>enmax_acdncheckout_drawing_status_ak</Name>
-          <LogicalName>enmax_acdncheckout_drawing_status_ak</LogicalName>
+          <Name>enmax_acdncheckout_drawing_newrevision_status_ak</Name>
+          <LogicalName>enmax_acdncheckout_drawing_newrevision_status_ak</LogicalName>
           <IntroducedVersion>1.0.0.0</IntroducedVersion>
           <IsCustomizable>0</IsCustomizable>
           <EntityKeyAttributes>
             <AttributeName>enmax_acdndrawing</AttributeName>
+            <AttributeName>enmax_acdnnewrevision</AttributeName>
             <AttributeName>enmax_acdnstatus</AttributeName>
           </EntityKeyAttributes>
           <displaynames>
-            <displayname description="Drawing + Status" languagecode="1033" />
+            <displayname description="Drawing + NewRevision + Status" languagecode="1033" />
           </displaynames>
         </EntityKey>
       </EntityKeys>
+
       <EntitySetName>enmax_autocadcheckouts</EntitySetName>
       <IsDuplicateCheckSupported>0</IsDuplicateCheckSupported>
       <IsBusinessProcessEnabled>0</IsBusinessProcessEnabled>

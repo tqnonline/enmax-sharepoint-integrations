@@ -127,14 +127,19 @@ namespace Enmax.AutoCAD
             foreach (var sheet in service.RetrieveMultiple(sheetQuery).Entities)
                 service.Update(new Entity(SheetEntity, sheet.Id) { [ColSheetState] = new OptionSetValue(SheetStateCheckedOut) });
 
-            // Create the checkout row
+            // Create the checkout row.
+            // enmax_acdnnewrevision is set to an empty placeholder (not null) so the
+            // alternate key (Drawing + NewRevision + Status) is satisfied at create
+            // time — Dataverse alt keys reject null columns. SubmitRevisionPlugin /
+            // ForceCheckinPlugin overwrite it with the actual revision on submit.
             var checkout = new Entity(CheckoutEntity)
             {
-                [ColCheckoutStatus]  = new OptionSetValue(StatusOpen),
-                [ColCheckoutDrawing] = new EntityReference(DrawingEntity, target.Id),
-                [ColCheckedOutBy]    = new EntityReference("systemuser", context.InitiatingUserId),
-                [ColCheckedOutOn]    = DateTime.UtcNow,
-                [ColCheckoutName]    = $"CHK-{target.Id}",
+                [ColCheckoutStatus]   = new OptionSetValue(StatusOpen),
+                [ColCheckoutDrawing]  = new EntityReference(DrawingEntity, target.Id),
+                [ColCheckedOutBy]     = new EntityReference("systemuser", context.InitiatingUserId),
+                [ColCheckedOutOn]     = DateTime.UtcNow,
+                [ColCheckoutName]     = $"CHK-{target.Id}",
+                ["enmax_acdnnewrevision"] = string.Empty,
             };
 
             Guid checkoutId = service.Create(checkout);
