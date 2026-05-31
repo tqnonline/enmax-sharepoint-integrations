@@ -42,14 +42,26 @@
             )
         }
 
-        # ── Entity-bound: Reservation lifecycle ──────────────────────────────
+        # ── Unbound (Global): Reservation lifecycle ─────────────────────────
+        # Kept unbound. An entity-bound migration was attempted and reverted:
+        # at runtime the bound URL segment routing returned
+        # "Resource not found for the segment '<uniquename>'" immediately
+        # after delete+recreate, even though the CA records had bindingtype=1
+        # and boundentitylogicalname set (verified via REST). Likely an
+        # SdkMessage/metadata propagation gap on recreate. Until that path
+        # is understood, these stay Global with Target passed explicitly in
+        # the request body (Type=5 EntityReference). Plugins read Target
+        # from InputParameters; the Code App sends Target with full
+        # @odata.type EntityReference shape (see useApproveReservation.ts).
         @{
             UniqueName  = "enmax_acdnApproveReservation"
             DisplayName = "Approve Reservation"
             PluginClass = "Enmax.AutoCAD.ApproveReservationPlugin"
-            BindingType = 1
-            BoundEntity = "enmax_autocadreservation"
-            Params      = @()
+            BindingType = 0
+            BoundEntity = $null
+            Params = @(
+                @{ Name="Target"; Type=5; Optional=$false }
+            )
             Response    = @()
         }
 
@@ -57,9 +69,10 @@
             UniqueName  = "enmax_acdnDeclineReservation"
             DisplayName = "Decline Reservation"
             PluginClass = "Enmax.AutoCAD.DeclineReservationPlugin"
-            BindingType = 1
-            BoundEntity = "enmax_autocadreservation"
+            BindingType = 0
+            BoundEntity = $null
             Params = @(
+                @{ Name="Target"; Type=5; Optional=$false }
                 @{ Name="Reason"; Type=10; Optional=$true }
             )
             Response = @()
@@ -69,9 +82,10 @@
             UniqueName  = "enmax_acdnCreateDrawings"
             DisplayName = "Create Drawings"
             PluginClass = "Enmax.AutoCAD.CreateDrawingsPlugin"
-            BindingType = 1
-            BoundEntity = "enmax_autocadreservation"
+            BindingType = 0
+            BoundEntity = $null
             Params = @(
+                @{ Name="Target";        Type=5;  Optional=$false }
                 @{ Name="IssuedNumbers"; Type=10; Optional=$false }
                 @{ Name="SequenceKey";   Type=10; Optional=$false }
             )
