@@ -142,9 +142,14 @@ class DataverseClient:
     # Security roles
     # ------------------------------------------------------------------
 
-    def find_role(self, name: str) -> dict | None:
+    def find_role(self, name: str, bu_id: str | None = None) -> dict | None:
+        flt = f"name eq '{name}'"
+        if bu_id:
+            # Role names repeat across BUs (root + auto-created child copies);
+            # scope the lookup so idempotency targets the intended BU's role.
+            flt += f" and _businessunitid_value eq {bu_id}"
         data = self._get("roles", {
-            "$filter": f"name eq '{name}'",
+            "$filter": flt,
             "$select": "roleid,name",
         })
         items = data.get("value", [])
@@ -160,8 +165,8 @@ class DataverseClient:
         entity_url = resp.headers.get("OData-EntityId", "")
         if "(" in entity_url:
             return entity_url.split("(")[-1].rstrip(")")
-        # Fallback: re-query by name
-        role = self.find_role(name)
+        # Fallback: re-query by name within the same BU
+        role = self.find_role(name, bu_id)
         if not role:
             raise RuntimeError(f"Created role '{name}' but could not retrieve it.")
         return role["roleid"]
@@ -247,7 +252,7 @@ def _provision_role(
 
     print(f"  [{name}]")
 
-    existing = client.find_role(name)
+    existing = client.find_role(name, bu_id)
     if existing:
         role_id = existing["roleid"]
         print(f"    exists  → roleid={role_id}")
@@ -312,11 +317,18 @@ def main() -> int:
     roles: list[dict] = config.get("roles", [])
     print(f"Loaded {len(roles)} role definition(s) from {SEED_FILE.name}")
 
+    # Ensure the child BU exists (teams are scoped to it), but create the ROLES
+    # in the ROOT BU so they are solution-eligible (only root-BU roles can be
+    # added to a solution) and therefore deploy to UAT/prod via pipeline/import.
+    # The root BU is resolved dynamically, so this is correct in every env.
+    # NOTE: creating a role in the root BU makes Dataverse auto-create a copy in
+    # each child BU — assign the child-BU team to that child copy.
     print(f"Ensuring Business Unit '{bu_name}'...")
-    bu_id = client.ensure_business_unit(bu_name)
-    print(f"  bu_id={bu_id}")
+    client.ensure_business_unit(bu_name)
+    bu_id = client.find_root_business_unit()
+    print(f"  root bu_id={bu_id} (roles created here — solution-eligible)")
 
-    print("Provisioning roles...")
+    print("Provisioning roles in the root BU...")
     for role_def in roles:
         _provision_role(client, role_def, bu_id)
 

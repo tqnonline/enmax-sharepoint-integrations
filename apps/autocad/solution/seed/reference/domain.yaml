@@ -102,27 +102,23 @@ rows:
   display_name: Project Management
   status: 1
   sort_order: 250
-- code: PRO
-  display_name: Procedures
-  status: 1
-  sort_order: 260
 - code: QAP
   display_name: Quality Assurance Program
   status: 1
-  sort_order: 270
+  sort_order: 260
 - code: SAF
   display_name: Safety
   status: 1
-  sort_order: 280
+  sort_order: 270
 - code: SCM
   display_name: Supply Chain Management
   status: 1
-  sort_order: 290
+  sort_order: 280
 - code: WHE
   display_name: Wholesale Energy
   status: 1
-  sort_order: 300
+  sort_order: 290
 - code: XXX
-  display_name: Unspecified
+  display_name: XXX
   status: 1
-  sort_order: 310
+  sort_order: 300

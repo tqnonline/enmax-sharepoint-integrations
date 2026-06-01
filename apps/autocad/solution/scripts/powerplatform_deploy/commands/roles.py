@@ -109,10 +109,18 @@ def ensure_business_unit(client: DataverseClient, name: str, logger: Any) -> str
 # Security role helpers
 # ---------------------------------------------------------------------------
 
-def find_role(client: DataverseClient, name: str) -> dict | None:
-    """Return the role record dict {roleid, name} or None."""
+def find_role(client: DataverseClient, name: str, bu_id: str | None = None) -> dict | None:
+    """Return the role record dict {roleid, name} or None.
+
+    When bu_id is given, scope to that BU — role names repeat across BUs (a
+    root-BU role plus its auto-created child-BU copies), so idempotent re-runs
+    must target one BU's role rather than matching the first of several.
+    """
+    flt = f"name eq '{name}'"
+    if bu_id:
+        flt += f" and _businessunitid_value eq {bu_id}"
     data = client._get("roles", {
-        "$filter": f"name eq '{name}'",
+        "$filter": flt,
         "$select": "roleid,name",
     })
     items = data.get("value", [])
@@ -129,8 +137,8 @@ def create_role(client: DataverseClient, name: str, description: str, bu_id: str
     entity_url = resp.headers.get("OData-EntityId", "")
     if "(" in entity_url:
         return entity_url.split("(")[-1].rstrip(")")
-    # Fallback: re-query by name
-    role = find_role(client, name)
+    # Fallback: re-query by name within the same BU
+    role = find_role(client, name, bu_id)
     if not role:
         raise RuntimeError(f"Created role '{name}' but could not retrieve it.")
     return role["roleid"]
@@ -226,7 +234,7 @@ def _provision_role(
 
     logger.info("  [%s]", name)
 
-    existing = find_role(client, name)
+    existing = find_role(client, name, bu_id)
     if existing:
         role_id = existing["roleid"]
         logger.info("    exists  -> roleid=%s", role_id)
@@ -309,11 +317,17 @@ def run(environment: str, dry_run: bool, verbose: bool) -> None:
 
     client = DataverseClient.from_env(cfg)
 
+    # Ensure the child BU exists (teams are scoped to it), but create the ROLES
+    # in the ROOT BU so they are solution-eligible (only root-BU roles can be
+    # added to a solution) and deploy to UAT/prod via pipeline/import. The root
+    # BU is resolved dynamically, so this is correct in every environment.
+    # Dataverse auto-creates a child-BU copy of each root-BU role for team use.
     logger.info("Ensuring Business Unit '%s'...", bu_name)
-    bu_id = ensure_business_unit(client, bu_name, logger)
-    logger.info("  bu_id=%s", bu_id)
+    ensure_business_unit(client, bu_name, logger)
+    bu_id = find_root_business_unit(client)
+    logger.info("  root bu_id=%s (roles created here — solution-eligible)", bu_id)
 
-    logger.info("Provisioning roles...")
+    logger.info("Provisioning roles in the root BU...")
     for role_def in roles:
         _provision_role(client, role_def, bu_id, logger)
 

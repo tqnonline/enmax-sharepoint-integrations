@@ -78,6 +78,19 @@ SAMPLE_LOAD_ORDER = [
     "user_preference",
 ]
 
+# Records in these tables are owned by the parent-BU team (governance requirement);
+# sample/transaction tables keep the seeding user as owner.
+TEAM_OWNED_TABLES: set[str] = {
+    "enmax_autocadbusiness", "enmax_autocadasset", "enmax_autocadunit",
+    "enmax_autocaddomain", "enmax_autocadsystem", "enmax_autocadkind",
+    "enmax_autocadvendor", "enmax_autocadrecordtype", "enmax_autocadrecordphase",
+    "enmax_autocadbusinessasset", "enmax_autocadassetunit", "enmax_autocadsystemscope",
+    "enmax_autocadappconfig", "enmax_autocadnumbersequence",
+}
+
+# Mutable holder for the resolved owner-team @odata.bind (set in main()).
+_OWNER: dict[str, str | None] = {"bind": None}
+
 OPTION_SET_VALUE_MAP: dict[str, dict[str, int]] = {}
 
 
@@ -143,6 +156,55 @@ def _get_token(client_id: str, client_secret: str, tenant_id: str, dataverse_url
         print(f"ERROR: MSAL token acquisition failed: {error}", file=sys.stderr)
         sys.exit(1)
     return result["access_token"]
+
+
+def acquire_token(dataverse_url: str, auth: str = "spn") -> str:
+    """Acquire a Dataverse bearer token.
+
+    Resolution order:
+      1. DATAVERSE_ACCESS_TOKEN env var (bring-your-own; from az/pac/browser).
+      2. auth='spn'  -> MSAL client credentials (DATAVERSE_CLIENT_ID/SECRET/TENANT_ID).
+      3. auth in {device, azcli, interactive} -> azure-identity user-delegated token
+         (no service principal required; handles MFA).
+    """
+    byo = os.environ.get("DATAVERSE_ACCESS_TOKEN", "").strip()
+    if byo:
+        print("Using DATAVERSE_ACCESS_TOKEN from environment.")
+        return byo
+
+    if auth == "spn":
+        return _get_token(
+            _require_env("DATAVERSE_CLIENT_ID"),
+            _require_env("DATAVERSE_CLIENT_SECRET"),
+            _require_env("DATAVERSE_TENANT_ID"),
+            dataverse_url,
+        )
+
+    try:
+        from azure.identity import (
+            AzureCliCredential,
+            DeviceCodeCredential,
+            InteractiveBrowserCredential,
+        )
+    except ImportError:
+        print(
+            "ERROR: azure-identity not installed. Re-run with: uv run --with azure-identity ...",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    scope = dataverse_url.rstrip("/") + "/.default"
+    tenant = os.environ.get("DATAVERSE_TENANT_ID", "").strip() or None
+    if auth == "device":
+        cred = DeviceCodeCredential(tenant_id=tenant)
+    elif auth == "azcli":
+        cred = AzureCliCredential()
+    elif auth == "interactive":
+        cred = InteractiveBrowserCredential(tenant_id=tenant)
+    else:
+        print(f"ERROR: unknown auth mode '{auth}'.", file=sys.stderr)
+        sys.exit(1)
+    return cred.get_token(scope).token
 
 
 # ---------------------------------------------------------------------------
@@ -435,6 +497,17 @@ def _build_payload(row: dict, lookups: dict, loaded_rows: dict) -> dict:
     return payload
 
 
+def _apply_owner(payload: dict, table: str, owner_bind: str | None) -> dict:
+    """Assign master/config/sequence records to the parent-BU team.
+
+    Sample/transaction tables are not in TEAM_OWNED_TABLES, so they keep the
+    seeding user as owner and are unaffected.
+    """
+    if owner_bind and table in TEAM_OWNED_TABLES:
+        payload.setdefault("ownerid@odata.bind", owner_bind)
+    return payload
+
+
 # ---------------------------------------------------------------------------
 # Validation pass
 # ---------------------------------------------------------------------------
@@ -516,6 +589,7 @@ def _seed_file(
         row_id = deterministic_id(table, nk)
         resolved = _resolve_lookups(row, lookups, loaded_rows)
         payload = _build_payload(resolved, lookups, loaded_rows)
+        payload = _apply_owner(payload, table, _OWNER["bind"])
 
         ok = _upsert_row(session, dataverse_url, token, table, row_id, payload, dry_run)
         if ok:
@@ -544,79 +618,170 @@ def _fetch_systemuser_id(
     return None
 
 
-def main() -> int:
-    _load_env_local()
+def _resolve_team_id(
+    session: requests.Session, dataverse_url: str, token: str, team_name: str,
+) -> tuple[str | None, str | None]:
+    """Return (teamid, None) for an exact team-name match, else (None, error)."""
+    url = f"{dataverse_url.rstrip('/')}/api/data/v9.2/teams"
+    params = {"$filter": f"name eq '{team_name}'", "$select": "teamid", "$top": "2"}
+    resp = session.get(url, params=params, headers=_build_headers(token))
+    if resp.status_code != 200:
+        return None, f"HTTP {resp.status_code}: {resp.text[:200]}"
+    vals = resp.json().get("value", [])
+    if not vals:
+        return None, f"team '{team_name}' not found"
+    if len(vals) > 1:
+        return None, f"team name '{team_name}' matched {len(vals)} teams (ambiguous)"
+    return vals[0]["teamid"], None
 
-    parser = argparse.ArgumentParser(description="Seed Dataverse master data")
-    parser.add_argument("--dry-run", action="store_true", help="Print payloads, no writes")
-    parser.add_argument("--table", default=None, help="Seed only this table logical name")
-    args = parser.parse_args()
 
-    dataverse_url = _require_env("DATAVERSE_URL") if not args.dry_run else os.environ.get("DATAVERSE_URL", "https://example.crm.dynamics.com")
-    client_id = _require_env("DATAVERSE_CLIENT_ID") if not args.dry_run else "x"
-    client_secret = _require_env("DATAVERSE_CLIENT_SECRET") if not args.dry_run else "x"
-    tenant_id = _require_env("DATAVERSE_TENANT_ID") if not args.dry_run else "x"
+SCOPE_SECTIONS: dict[str, set[str]] = {
+    "master":    {"reference", "app_config"},
+    "demo":      {"sample"},
+    "sequences": {"number_sequences"},
+    "all":       {"reference", "app_config", "sample"},
+}
 
-    token = ""
-    if not args.dry_run:
-        print("Acquiring MSAL token...")
-        token = _get_token(client_id, client_secret, tenant_id, dataverse_url)
-        print("Token acquired.")
 
-    _load_option_sets()
+def sections_for_scope(scope: str) -> set[str]:
+    """Map a --scope value to the set of seed sections to upsert.
 
-    session = requests.Session()
-    loaded_rows: dict[str, dict] = {}
-    total_errors = 0
+    'sequences' is intentionally excluded from 'all': re-pushing number_sequences
+    resets the issuance counter (duplicate-number risk, Rule 14), so it must be
+    run explicitly and only on a fresh environment.
+    """
+    return SCOPE_SECTIONS[scope]
 
-    # 1. Reference tables in dependency order
+
+def _register_reference_keys(loaded_rows: dict) -> None:
+    """Pre-register reference-table natural keys -> deterministic IDs (no upsert).
+
+    Lets a standalone 'demo' scope resolve + validate lookups to reference rows
+    seeded in a previous 'master' run, since the GUIDs are deterministic.
+    """
     ref_dir = SEED_DIR / "reference"
     for stem in REFERENCE_LOAD_ORDER:
         f = ref_dir / f"{stem}.yaml"
         if not f.exists():
             continue
         data = _load_yaml(f)
-        total_errors += _seed_file(data, session, dataverse_url, token, loaded_rows, args.dry_run, args.table)
+        table = data.get("table", "")
+        loaded_rows.setdefault(table, {})
+        for row in data.get("rows", []):
+            row = _resolve_templates_in_row(row)
+            try:
+                nk = _natural_key(table, row, loaded_rows)
+            except ValueError:
+                continue
+            loaded_rows[table][nk] = deterministic_id(table, nk)
 
-    # 2. App Configuration (independent)
-    app_config_f = SEED_DIR / "app_config.yaml"
-    if app_config_f.exists():
-        data = _load_yaml(app_config_f)
-        total_errors += _seed_file(data, session, dataverse_url, token, loaded_rows, args.dry_run, args.table)
 
-    # 3. Number Sequences (optional)
-    ns_f = SEED_DIR / "number_sequences.yaml"
-    if ns_f.exists():
-        data = _load_yaml(ns_f)
-        rows = data.get("rows", [])
-        if rows:
-            total_errors += _seed_file(data, session, dataverse_url, token, loaded_rows, args.dry_run, args.table)
+def main() -> int:
+    _load_env_local()
 
-    # 4. Preload systemuser for sample data that requires user FKs
-    # Always initialize the cache so _validate_seed_file doesn't fail on missing parent.
-    loaded_rows.setdefault("systemuser", {})
-    seed_user_email = os.environ.get("SEED_USER_EMAIL", "").strip()
-    if seed_user_email and not args.dry_run:
-        user_id = _fetch_systemuser_id(session, dataverse_url, token, seed_user_email)
-        if user_id:
-            loaded_rows["systemuser"] = {seed_user_email: user_id}
-            print(f"Resolved SEED_USER_EMAIL '{seed_user_email}' → {user_id}")
-        else:
-            print(
-                f"WARNING: SEED_USER_EMAIL '{seed_user_email}' not found in Dataverse "
-                "— user-linked sample rows will be skipped.",
-                file=sys.stderr,
-            )
+    parser = argparse.ArgumentParser(description="Seed Dataverse master data")
+    parser.add_argument("--dry-run", action="store_true", help="Print payloads, no writes")
+    parser.add_argument("--table", default=None, help="Seed only this table logical name")
+    parser.add_argument(
+        "--scope",
+        choices=sorted(SCOPE_SECTIONS),
+        default="master",
+        help="master=reference+app_config (default); demo=sample; sequences=number_sequences (init-once); all=master+demo",
+    )
+    parser.add_argument(
+        "--auth",
+        choices=["spn", "device", "azcli", "interactive"],
+        default="spn",
+        help="spn=client credentials (default); device/azcli/interactive=user login (no SPN). DATAVERSE_ACCESS_TOKEN env overrides all.",
+    )
+    parser.add_argument(
+        "--owner-team",
+        default="enmax-autocad-app",
+        help="Exact team name to own master/app_config/number_sequence records (parent-BU team).",
+    )
+    args = parser.parse_args()
 
-    # 5. Sample / test data
-    sample_dir = SEED_DIR / "sample"
-    if sample_dir.exists():
-        for stem in SAMPLE_LOAD_ORDER:
-            f = sample_dir / f"{stem}.yaml"
+    dataverse_url = _require_env("DATAVERSE_URL") if not args.dry_run else os.environ.get("DATAVERSE_URL", "https://example.crm.dynamics.com")
+
+    token = ""
+    if not args.dry_run:
+        print(f"Acquiring token (auth={args.auth})...")
+        token = acquire_token(dataverse_url, args.auth)
+        print("Token acquired.")
+
+    _load_option_sets()
+
+    sections = sections_for_scope(args.scope)
+    print(f"Seed scope: {args.scope} -> sections {sorted(sections)}")
+
+    session = requests.Session()
+    loaded_rows: dict[str, dict] = {}
+    total_errors = 0
+
+    # Pre-register reference IDs (offline, deterministic) so a standalone scope
+    # (e.g. demo) can resolve + validate lookups to reference rows seeded earlier.
+    _register_reference_keys(loaded_rows)
+
+    # Resolve the parent-BU owner team; master/app_config/number_sequence records
+    # are assigned to it (governance — all users belong to this BU). Sample/
+    # transaction records stay user-owned.
+    if not args.dry_run and (sections & {"reference", "app_config", "number_sequences"}):
+        team_id, err = _resolve_team_id(session, dataverse_url, token, args.owner_team)
+        if err:
+            print(f"ERROR: owner team '{args.owner_team}': {err}", file=sys.stderr)
+            return 1
+        _OWNER["bind"] = f"/teams({team_id})"
+        print(f"Owner team '{args.owner_team}' -> {team_id}")
+
+    # 1. Reference tables (master) in dependency order
+    if "reference" in sections:
+        ref_dir = SEED_DIR / "reference"
+        for stem in REFERENCE_LOAD_ORDER:
+            f = ref_dir / f"{stem}.yaml"
             if not f.exists():
                 continue
             data = _load_yaml(f)
             total_errors += _seed_file(data, session, dataverse_url, token, loaded_rows, args.dry_run, args.table)
+
+    # 2. App Configuration (master)
+    if "app_config" in sections:
+        app_config_f = SEED_DIR / "app_config.yaml"
+        if app_config_f.exists():
+            data = _load_yaml(app_config_f)
+            total_errors += _seed_file(data, session, dataverse_url, token, loaded_rows, args.dry_run, args.table)
+
+    # 3. Number Sequences (init-once; only via --scope sequences, never master/demo/all —
+    #    re-pushing seed values is safe but the set is env-specific legacy-migration data)
+    if "number_sequences" in sections:
+        ns_f = SEED_DIR / "number_sequences.yaml"
+        if ns_f.exists():
+            data = _load_yaml(ns_f)
+            if data.get("rows", []):
+                total_errors += _seed_file(data, session, dataverse_url, token, loaded_rows, args.dry_run, args.table)
+
+    # 4 + 5. Sample / demo transaction data (with systemuser preload)
+    loaded_rows.setdefault("systemuser", {})
+    if "sample" in sections:
+        seed_user_email = os.environ.get("SEED_USER_EMAIL", "").strip()
+        if seed_user_email and not args.dry_run:
+            user_id = _fetch_systemuser_id(session, dataverse_url, token, seed_user_email)
+            if user_id:
+                loaded_rows["systemuser"] = {seed_user_email: user_id}
+                print(f"Resolved SEED_USER_EMAIL '{seed_user_email}' → {user_id}")
+            else:
+                print(
+                    f"WARNING: SEED_USER_EMAIL '{seed_user_email}' not found in Dataverse "
+                    "— user-linked sample rows will be skipped.",
+                    file=sys.stderr,
+                )
+        sample_dir = SEED_DIR / "sample"
+        if sample_dir.exists():
+            for stem in SAMPLE_LOAD_ORDER:
+                f = sample_dir / f"{stem}.yaml"
+                if not f.exists():
+                    continue
+                data = _load_yaml(f)
+                total_errors += _seed_file(data, session, dataverse_url, token, loaded_rows, args.dry_run, args.table)
 
     if total_errors:
         print(f"\nSeed completed with {total_errors} errors.", file=sys.stderr)

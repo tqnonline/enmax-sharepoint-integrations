@@ -83,7 +83,7 @@ jobs:
           DATAVERSE_CLIENT_ID: ${{ secrets.UAT_SP_CLIENT_ID }}
           DATAVERSE_CLIENT_SECRET: ${{ secrets.UAT_SP_CLIENT_SECRET }}
           DATAVERSE_TENANT_ID: ${{ secrets.UAT_TENANT_ID }}
-        run: python -m powerplatform_deploy.cli seed --environment uat
+        run: python -m powerplatform_deploy.cli seed --environment uat --scope master
       - name: Provision security roles
         env:
           DATAVERSE_URL: ${{ secrets.UAT_DATAVERSE_URL }}

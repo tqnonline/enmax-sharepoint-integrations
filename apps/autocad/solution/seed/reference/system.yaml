@@ -403,7 +403,7 @@ rows:
   status: 1
   sort_order: 1000
 - code: EHA
-  display_name: High Voltage AC (over 34000 V)
+  display_name: High Voltage AC (> 34000 V)
   status: 1
   sort_order: 1010
 - code: EHS
@@ -411,15 +411,15 @@ rows:
   status: 1
   sort_order: 1020
 - code: ELA
-  display_name: Low Voltage AC Power (under 1000V)
+  display_name: Low Voltage AC Power (<1000V)
   status: 1
   sort_order: 1030
 - code: ELB
-  display_name: Low Voltage AC Power (under 300V)
+  display_name: Low Voltage AC Power (<300V)
   status: 1
   sort_order: 1040
 - code: ELC
-  display_name: Low Voltage AC Lighting and Convenience Power (under 300V)
+  display_name: Low Voltage AC Lighting and Convenience Power (<300V)
   status: 1
   sort_order: 1050
 - code: ELE
@@ -1136,7 +1136,7 @@ rows:
   status: 1
   sort_order: 2830
 - code: XXX
-  display_name: Unspecified
+  display_name: XXX
   status: 1
   sort_order: 2840
 - code: YAW

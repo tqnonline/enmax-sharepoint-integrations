@@ -116,14 +116,20 @@ def seed(
     environment: EnvironmentArg,
     dry_run: DryRunArg = False,
     verbose: VerboseArg = False,
+    scope: Annotated[
+        str,
+        typer.Option("--scope", help="Seed scope: master (reference+app_config, default), demo (sample), sequences (init-once), all (master+demo)."),
+    ] = "master",
 ) -> None:
-    """Seed Dataverse master data from solution/seed/ YAML files.
+    """Seed Dataverse data from solution/seed/ YAML files.
 
+    Master data (reference + app_config) seeds to every environment; demo/
+    transaction data (sample) is dev-only; number_sequences is init-once.
     Delegates to solution/scripts/seed.py. On --dry-run, prints PATCH payloads
     without writing to Dataverse.
     """
     from powerplatform_deploy.commands import seed as seed_mod
-    seed_mod.run(environment=environment, dry_run=dry_run, verbose=verbose)
+    seed_mod.run(environment=environment, dry_run=dry_run, verbose=verbose, scope=scope)
 
 
 @app.command()
@@ -205,3 +211,7 @@ def flows(
     """
     from powerplatform_deploy.commands import flows as flows_mod
     flows_mod.run(environment=environment, dry_run=dry_run, verbose=verbose)
+
+
+if __name__ == "__main__":
+    app()

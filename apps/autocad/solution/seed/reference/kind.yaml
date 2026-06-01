@@ -18,179 +18,123 @@ rows:
   display_name: Bill of Materials
   status: 1
   sort_order: 40
-- code: CH
-  display_name: Charter
-  status: 1
-  sort_order: 50
-- code: CS
-  display_name: Calculations
-  status: 1
-  sort_order: 60
 - code: DD
   display_name: Design Details
   status: 1
-  sort_order: 70
+  sort_order: 50
 - code: DS
   display_name: Data Sheets
   status: 1
-  sort_order: 80
-- code: EP
-  display_name: Execution Plans, including Communication and Coordination Plans
-  status: 1
-  sort_order: 90
+  sort_order: 60
 - code: EV
   display_name: Environmental
   status: 1
-  sort_order: 100
-- code: FM
-  display_name: Form
-  status: 1
-  sort_order: 110
+  sort_order: 70
 - code: GA
   display_name: General Arrangements and Outlines for Equipment
   status: 1
-  sort_order: 120
+  sort_order: 80
 - code: ID
   display_name: Instructional Document
   status: 1
-  sort_order: 130
-- code: IP
-  display_name: Implementation Plan
-  status: 1
-  sort_order: 140
+  sort_order: 90
 - code: IS
   display_name: Isometrics (ISO)
   status: 1
-  sort_order: 150
-- code: KP
-  display_name: Key Plans
-  status: 1
-  sort_order: 160
+  sort_order: 100
 - code: LD
   display_name: Logic Diagram / Scientific Apparatus Makers Association (SAMA) Symbology
   status: 1
-  sort_order: 170
+  sort_order: 110
 - code: LP
   display_name: Location and Positioning for Instrumentation
   status: 1
-  sort_order: 180
+  sort_order: 120
 - code: LS
   display_name: Legends and Symbols
   status: 1
-  sort_order: 190
+  sort_order: 130
 - code: MG
-  display_name: Maintenance - General
+  display_name: Maintenance Guide
   status: 1
-  sort_order: 200
-- code: MI
-  display_name: Maintenance - Instrumentation
-  status: 1
-  sort_order: 210
-- code: MT
-  display_name: Map and Topographies
-  status: 1
-  sort_order: 220
+  sort_order: 140
 - code: 'ON'
   display_name: Operating Procedures - Off-Normal
   status: 1
-  sort_order: 230
+  sort_order: 150
 - code: OS
   display_name: Operating Procedures - Standard
   status: 1
-  sort_order: 240
+  sort_order: 160
 - code: PD
   display_name: P&ID - Piping & Instrumentation Diagram
   status: 1
-  sort_order: 250
+  sort_order: 170
 - code: PF
   display_name: Process Flow Diagrams (PFD)
   status: 1
-  sort_order: 260
+  sort_order: 180
 - code: PL
   display_name: Plans, Layouts, Sections, Elevations for Buildings and Structures
   status: 1
-  sort_order: 270
-- code: PO
-  display_name: Purchase Order
-  status: 1
-  sort_order: 280
-- code: PP
-  display_name: Plot plan
-  status: 1
-  sort_order: 290
+  sort_order: 190
 - code: PR
   display_name: Procedure
   status: 1
-  sort_order: 300
+  sort_order: 200
 - code: PS
   display_name: Pipe Supports and Specials Details
   status: 1
-  sort_order: 310
-- code: QC
-  display_name: Quality Control
-  status: 1
-  sort_order: 320
+  sort_order: 210
 - code: RC
   display_name: Regulatory Compliance
   status: 1
-  sort_order: 330
-- code: RE
-  display_name: Renderings
-  status: 1
-  sort_order: 340
+  sort_order: 220
 - code: RL
   display_name: Register / List / Log / Index
   status: 1
-  sort_order: 350
+  sort_order: 230
 - code: RT
   display_name: Report / Record / Study
   status: 1
-  sort_order: 360
-- code: SA
-  display_name: Stress Analyses
-  status: 1
-  sort_order: 370
+  sort_order: 240
 - code: SC
   display_name: Schedules
   status: 1
-  sort_order: 380
+  sort_order: 250
 - code: SD
   display_name: Schematics and Diagrams
   status: 1
-  sort_order: 390
+  sort_order: 260
 - code: SL
   display_name: Single Line and Three Line Diagrams
   status: 1
-  sort_order: 400
+  sort_order: 270
 - code: SP
   display_name: Specifications
   status: 1
-  sort_order: 410
+  sort_order: 280
 - code: SS
   display_name: System Summary Description and Overview
   status: 1
-  sort_order: 420
+  sort_order: 290
 - code: ST
   display_name: Standard
   status: 1
-  sort_order: 430
+  sort_order: 300
 - code: VD
   display_name: Vendor Data and Drawings
   status: 1
-  sort_order: 440
+  sort_order: 310
 - code: WD
   display_name: Wiring Diagrams
   status: 1
-  sort_order: 450
+  sort_order: 320
 - code: WL
   display_name: Loop Diagrams
   status: 1
-  sort_order: 460
-- code: WP
-  display_name: Work Practice / Job Instruction / Maintenance Package
-  status: 1
-  sort_order: 470
+  sort_order: 330
 - code: XX
-  display_name: Unspecified
+  display_name: XX
   status: 1
-  sort_order: 480
+  sort_order: 340

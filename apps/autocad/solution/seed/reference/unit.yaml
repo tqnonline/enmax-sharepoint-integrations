@@ -299,6 +299,6 @@ rows:
   status: 1
   sort_order: 740
 - code: XX
-  display_name: Unspecified
+  display_name: XX
   status: 1
   sort_order: 750

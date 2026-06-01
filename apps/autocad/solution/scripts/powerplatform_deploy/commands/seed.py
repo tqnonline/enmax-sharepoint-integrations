@@ -19,7 +19,7 @@ from powerplatform_deploy import logging as pp_logging
 from powerplatform_deploy.config import load_env
 
 
-def run(environment: str, dry_run: bool, verbose: bool) -> None:
+def run(environment: str, dry_run: bool, verbose: bool, scope: str = "master") -> None:
     """Seed Dataverse master data by delegating to solution/scripts/seed.py.
 
     Loads DATAVERSE_* credentials from apps/code-app/.env.<environment> and
@@ -30,6 +30,7 @@ def run(environment: str, dry_run: bool, verbose: bool) -> None:
         environment: Target environment name, e.g. "dev", "uat", "prod".
         dry_run: When True, run seed.py with --dry-run (no writes).
         verbose: When True, emit DEBUG-level log output.
+        scope: Seed scope forwarded to seed.py (master|demo|sequences|all; default master).
     """
     logger = pp_logging.get_logger(__name__, verbose)
     cfg = load_env(environment)
@@ -37,7 +38,7 @@ def run(environment: str, dry_run: bool, verbose: bool) -> None:
     repo_root = Path(__file__).resolve().parent.parent.parent.parent.parent
     seed_script = repo_root / "solution" / "scripts" / "seed.py"
 
-    cmd = [sys.executable, str(seed_script)]
+    cmd = [sys.executable, str(seed_script), "--scope", scope]
     if dry_run:
         cmd.append("--dry-run")
 
