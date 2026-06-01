@@ -58,6 +58,8 @@ export function BroadcastEditorDrawer({ broadcast, open, onClose }: Props) {
 
   useEffect(() => {
     if (!open) return;
+    // Intentional: re-seed the whole form from the target broadcast each time the drawer opens.
+    /* eslint-disable react-hooks/set-state-in-effect */
     setTouched(false);
     save.reset(); retire.reset(); del.reset();
     setTitle(broadcast?.enmax_acdntitle ?? "");
@@ -68,6 +70,7 @@ export function BroadcastEditorDrawer({ broadcast, open, onClose }: Props) {
     setExpiresAt(toLocalInput(broadcast?.enmax_acdnexpiresat) || defaultExpiry());
     setPinned(broadcast?.enmax_acdnpinned ?? false);
     setRequiresAck(broadcast?.enmax_acdnrequiresack ?? false);
+    /* eslint-enable react-hooks/set-state-in-effect */
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, broadcast?.enmax_autocadbroadcastid]);
 
@@ -92,7 +95,7 @@ export function BroadcastEditorDrawer({ broadcast, open, onClose }: Props) {
     );
   }
 
-  const displayStatus = broadcast ? computeDisplayStatus(broadcast, Date.now()) : "Draft";
+  const displayStatus = broadcast ? computeDisplayStatus(broadcast) : "Draft";
   const canDelete = isEdit && displayStatus === "Draft";
 
   return (

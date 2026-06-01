@@ -68,7 +68,7 @@ interface Props {
 /** Grouped notification rows (Today / Earlier this week / Older) shared by the bell panel and the page. */
 export function NotificationList({ notifications, loading, onOpen, onMarkRead, compact = false }: Props) {
   const styles = useStyles();
-  const groups = useMemo(() => groupFeed(notifications, Date.now()), [notifications]);
+  const groups = useMemo(() => groupFeed(notifications), [notifications]);
 
   if (loading) return <div className={styles.center}><Spinner size="tiny" label="Loading…" /></div>;
   if (groups.length === 0) return <Text className={styles.empty}>You're all caught up.</Text>;

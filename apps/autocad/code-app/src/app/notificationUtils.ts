@@ -39,7 +39,7 @@ export function startOfWeek(nowMs: number): number {
 /** Group notifications (already newest-first) into Today / Earlier this week / Older; empty groups dropped. */
 export function groupFeed(
   items: NotificationItem[],
-  nowMs: number,
+  nowMs: number = Date.now(),
 ): { key: FeedGroupKey; items: NotificationItem[] }[] {
   const sod = startOfDay(nowMs);
   const sow = startOfWeek(nowMs);

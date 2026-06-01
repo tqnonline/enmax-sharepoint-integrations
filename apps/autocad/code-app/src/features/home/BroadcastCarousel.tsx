@@ -86,9 +86,6 @@ export function BroadcastCarousel({ broadcasts }: { broadcasts: HomeBroadcast[] 
   const count = broadcasts.length;
   const modalOpen = openId !== null;
 
-  // Keep the index in range when the list shrinks (e.g. after a dismissal).
-  useEffect(() => { if (idx > count - 1) setIdx(0); }, [count, idx]);
-
   // Auto-advance, paused while hovered or reading.
   useEffect(() => {
     if (count <= 1 || paused || modalOpen) return;

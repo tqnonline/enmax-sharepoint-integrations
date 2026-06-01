@@ -44,12 +44,11 @@ export function BroadcastsPage() {
   const [selected, setSelected] = useState<Enmax_autocadbroadcasts | null>(null);
 
   const rows = broadcastsQ.data ?? [];
-  const now = Date.now();
 
   const columns = useMemo((): ColumnDef<Enmax_autocadbroadcasts>[] => [
     {
-      id: "status", header: "Status", accessor: (r) => computeDisplayStatus(r, now), sortable: true, width: 110,
-      cell: (r) => { const s = computeDisplayStatus(r, now); return <Badge appearance="tint" color={STATUS_COLOR[s]} shape="rounded">{s}</Badge>; },
+      id: "status", header: "Status", accessor: (r) => computeDisplayStatus(r), sortable: true, width: 110,
+      cell: (r) => { const s = computeDisplayStatus(r); return <Badge appearance="tint" color={STATUS_COLOR[s]} shape="rounded">{s}</Badge>; },
     },
     { id: "title", header: "Title", accessor: (r) => r.enmax_acdntitle ?? "", sortable: true, filterable: true },
     {
@@ -63,7 +62,7 @@ export function BroadcastsPage() {
       id: "pinned", header: "Pinned", accessor: (r) => (r.enmax_acdnpinned ? "Yes" : "No"), width: 90, visibleByDefault: false,
       cell: (r) => (r.enmax_acdnpinned ? <Badge appearance="tint" color="brand">Pinned</Badge> : <>—</>),
     },
-  ], [now]);
+  ], []);
 
   const fetcher = useCallback(
     async (params: GridFetchParams): Promise<{ rows: Enmax_autocadbroadcasts[]; totalCount: number }> =>

@@ -22,7 +22,7 @@ const STATUS_RETIRED = 5;
 /** Effective status computed from dates (flow-free) + the stored Retired flag. */
 export function computeDisplayStatus(
   b: { enmax_acdnstatus?: number; enmax_acdnstartsat?: string; enmax_acdnexpiresat?: string },
-  nowMs: number,
+  nowMs: number = Date.now(),
 ): DisplayStatus {
   if (b.enmax_acdnstatus === STATUS_RETIRED) return "Retired";
   if (!b.enmax_acdnstartsat && !b.enmax_acdnexpiresat) return "Draft";
