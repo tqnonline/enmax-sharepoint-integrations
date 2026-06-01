@@ -11,6 +11,7 @@ vi.mock("./config/useAppConfig", () => ({
     StaleCheckoutMonths: "3,6,12",
     SharedMailboxAddress: "noreply@example.com",
     SharePointSiteUrl: "https://example.com",
+    CheckInUploadLibraryUrl: "https://example.com/library",
     BusinessUnitName: "ENMAX",
     BrandPrimary: "#E1393E",
     BrandSecondary: "#0F487A",

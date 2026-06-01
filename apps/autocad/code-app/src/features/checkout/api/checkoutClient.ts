@@ -23,7 +23,7 @@ export const DRAWING_STATE_LABELS: Record<number, string> = {
   2: "Checked Out",
   3: "Awaiting Validation",
   5: "Obsolete",
-  6: "Void",
+  6: "Released (Voided)",
   7: "Finalized",
 };
 
@@ -55,6 +55,8 @@ export interface DrawingForPanel {
   spLibraryUrl?: string;
   currentRevision?: string;
   missingSheets?: string;
+  /** systemuser GUID of the drawing owner (reservation requester). Used to gate self-release. */
+  ownerId?: string;
 }
 
 export interface CheckoutForPanel {
@@ -210,21 +212,32 @@ export async function markObsolete(input: MarkDrawingInput): Promise<void> {
   }
 }
 
-export async function markVoid(input: MarkDrawingInput): Promise<void> {
-  const result = await client.executeAsync<Record<string, unknown>, unknown>({
+export interface ReleaseDrawingInput {
+  drawingId: string;
+  reason: string;
+}
+
+export async function releaseDrawing(
+  input: ReleaseDrawingInput,
+): Promise<{ newState: string; sequenceKeyBurned: string }> {
+  const result = await client.executeAsync<Record<string, unknown>, Record<string, unknown>>({
     dataverseRequest: {
       action: "customapi",
       parameters: {
-        operationName: "enmax_acdnMarkVoid",
+        operationName: "enmax_acdnReleaseDrawing",
         tableName: "enmax_autocaddrawings",
-        body: { drawingId: input.drawingId, Reason: input.reason ?? "" },
+        body: { drawingId: input.drawingId, Reason: input.reason },
       },
     },
   });
   if (!result.success) {
     const err = result.error as { message?: string } | undefined;
-    throw new Error(err?.message ?? "Mark void failed");
+    throw new Error(err?.message ?? "Release failed");
   }
+  return {
+    newState: (result.data?.["NewState"] as string) ?? "Void",
+    sequenceKeyBurned: (result.data?.["SequenceKeyBurned"] as string) ?? "",
+  };
 }
 
 export function nextRevision(current?: string): string {

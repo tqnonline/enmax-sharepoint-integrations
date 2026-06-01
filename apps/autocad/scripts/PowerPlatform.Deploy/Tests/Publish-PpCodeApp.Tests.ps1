@@ -69,7 +69,7 @@ Describe 'Publish-PpCodeApp — -WhatIf suppresses all side effects' {
         Publish-PpCodeApp -Environment dev -WhatIf 2>$null
 
         Should -Invoke Assert-PpExitCode -ModuleName PowerPlatform.Deploy -Times 0 -ParameterFilter {
-            $Operation -eq 'npm run build' -or $Operation -eq 'pac code push'
+            $Operation -eq 'npm run build' -or $Operation -eq 'power-apps push'
         }
     }
 }
@@ -145,7 +145,7 @@ Describe 'Publish-PpCodeApp — normal run (mocked)' {
         Publish-PpCodeApp -Environment dev
 
         Should -Invoke Assert-PpExitCode -ModuleName PowerPlatform.Deploy -ParameterFilter {
-            $Operation -eq 'pac code push'
+            $Operation -eq 'power-apps push'
         }
     }
 }

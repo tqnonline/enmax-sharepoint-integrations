@@ -78,9 +78,9 @@ const mockObsoleteMutate = vi.hoisted(() => vi.fn());
 vi.mock("../../features/checkout/hooks/useMarkObsolete", () => ({
   useMarkObsolete: () => ({ mutate: mockObsoleteMutate, isPending: false, isError: false, error: null, reset: vi.fn() }),
 }));
-const mockVoidMutate = vi.hoisted(() => vi.fn());
-vi.mock("../../features/checkout/hooks/useMarkVoid", () => ({
-  useMarkVoid: () => ({ mutate: mockVoidMutate, isPending: false, isError: false, error: null, reset: vi.fn() }),
+const mockReleaseMutate = vi.hoisted(() => vi.fn());
+vi.mock("../../features/checkout/hooks/useReleaseDrawing", () => ({
+  useReleaseDrawing: () => ({ mutate: mockReleaseMutate, isPending: false, isError: false, error: null, reset: vi.fn() }),
 }));
 
 // Default: RequireCheckInApproval=false → trigger="Check In", confirm="Confirm Check In"
@@ -109,7 +109,7 @@ afterEach(() => {
   mockForceMutate.mockClear();
   mockFinalizeMutate.mockClear();
   mockObsoleteMutate.mockClear();
-  mockVoidMutate.mockClear();
+  mockReleaseMutate.mockClear();
 });
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -398,33 +398,31 @@ test("Finalize button visible when drawing is Available", () => {
   expect(screen.getByRole("button", { name: /finalize/i })).toBeInTheDocument();
 });
 
-// Test 13 — New: Admin sees Mark Obsolete and Mark Void on an Available drawing
-test("Admin sees Mark Obsolete and Mark Void on an Available drawing", () => {
+// Test 13 — Admin sees Mark Obsolete (Mark Void retired — merged into Release)
+test("Admin sees Mark Obsolete on a checked-in Available drawing; Mark Void is gone", () => {
   mockRole.value = "Admin";
   renderWithProviders(<DrawingActionsPanel drawing={makeDrawing(DrawingState.Available)} />);
   expect(screen.getByRole("button", { name: /mark obsolete/i })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /mark void/i })).toBeInTheDocument();
-});
-
-// Test 14 — New: Non-admin does NOT see Mark Obsolete / Mark Void on an Available drawing
-test("Non-admin does NOT see Mark Obsolete / Mark Void on an Available drawing", () => {
-  mockRole.value = "User";
-  renderWithProviders(<DrawingActionsPanel drawing={makeDrawing(DrawingState.Available)} />);
-  expect(screen.queryByRole("button", { name: /mark obsolete/i })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /mark void/i })).not.toBeInTheDocument();
 });
 
-// Test 14b — Business rule: Finalize and Mark Obsolete require at least one prior check-in.
-// A drawing with no currentRevision has never been checked in, so both are hidden.
-// Check Out (to begin the first checkout) and Mark Void (not restricted) remain.
-test("Finalize and Mark Obsolete are hidden on an Available drawing never checked in (no revision)", () => {
+// Test 14 — Non-admin does NOT see Mark Obsolete on an Available drawing
+test("Non-admin does NOT see Mark Obsolete on an Available drawing", () => {
+  mockRole.value = "User";
+  renderWithProviders(<DrawingActionsPanel drawing={makeDrawing(DrawingState.Available)} />);
+  expect(screen.queryByRole("button", { name: /mark obsolete/i })).not.toBeInTheDocument();
+});
+
+// Test 14b — Finalize/Obsolete require a prior check-in; Release is the inverse (only a
+// never-checked-in drawing can be released). No revision => Release + Check Out, no Finalize/Obsolete.
+test("Never-checked-in Available drawing offers Release + Check Out, not Finalize/Obsolete", () => {
   mockRole.value = "Admin";
   renderWithProviders(
     <DrawingActionsPanel drawing={makeDrawing(DrawingState.Available, { currentRevision: "" })} />,
   );
   expect(screen.queryByRole("button", { name: /finalize/i })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /mark obsolete/i })).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /mark void/i })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /^release$/i })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /check out/i })).toBeInTheDocument();
 });
 
@@ -449,8 +447,8 @@ test("split mode: Admin Available drawing shows Check Out primary and More actio
   expect(screen.getByRole("button", { name: /more actions/i })).toBeInTheDocument();
 });
 
-// Test 17 — Split mode: clicking "More actions" opens menu with Finalize/Mark Obsolete/Mark Void for Admin
-test("split mode: Admin Available drawing More actions menu lists Finalize, Mark Obsolete, Mark Void", async () => {
+// Test 17 — Split mode: More actions menu lists Finalize + Mark Obsolete for Admin (no Mark Void)
+test("split mode: Admin Available drawing More actions menu lists Finalize and Mark Obsolete", async () => {
   mockRole.value = "Admin";
   const user = userEvent.setup();
   renderWithProviders(
@@ -461,23 +459,7 @@ test("split mode: Admin Available drawing More actions menu lists Finalize, Mark
 
   expect(await screen.findByRole("menuitem", { name: /finalize/i })).toBeInTheDocument();
   expect(screen.getByRole("menuitem", { name: /mark obsolete/i })).toBeInTheDocument();
-  expect(screen.getByRole("menuitem", { name: /mark void/i })).toBeInTheDocument();
-});
-
-// Test 18 — Split mode: clicking "Mark Void" in the overflow menu opens the void dialog
-test("split mode: clicking Mark Void in overflow opens the void dialog", async () => {
-  mockRole.value = "Admin";
-  const user = userEvent.setup();
-  renderWithProviders(
-    <DrawingActionsPanel drawing={makeDrawing(DrawingState.Available)} variant="split" />,
-  );
-
-  await user.click(screen.getByRole("button", { name: /more actions/i }));
-  const voidItem = await screen.findByRole("menuitem", { name: /mark void/i });
-  await user.click(voidItem);
-
-  // Void dialog title should appear
-  expect(await screen.findByText(/confirm void/i)).toBeInTheDocument();
+  expect(screen.queryByRole("menuitem", { name: /mark void/i })).not.toBeInTheDocument();
 });
 
 // Test 19 — Split mode: clicking primary "Check Out" calls useCheckOut mutate
@@ -525,4 +507,53 @@ test("split mode: error message appears when checkOut.isError is true", () => {
     <DrawingActionsPanel drawing={makeDrawing(DrawingState.Available)} variant="split" />,
   );
   expect(screen.getByText(/check out failed/i)).toBeInTheDocument();
+});
+
+// ─── F-06 Release gating (plan #14a) ──────────────────────────────────────────
+
+// Test 23 — Owner (User role) sees Release on their own never-checked-in Available drawing
+test("Release button visible to the owner on their own never-checked-in Available drawing", () => {
+  mockRole.value = "User";
+  renderWithProviders(
+    <DrawingActionsPanel drawing={makeDrawing(DrawingState.Available, { ownerId: CURRENT_USER_ID, currentRevision: "" })} />,
+  );
+  expect(screen.getByRole("button", { name: /^release$/i })).toBeInTheDocument();
+});
+
+// Test 24 — Non-owner, non-admin does NOT see Release
+test("Release button hidden from a non-owner non-admin user", () => {
+  mockRole.value = "User";
+  renderWithProviders(
+    <DrawingActionsPanel drawing={makeDrawing(DrawingState.Available, { ownerId: OTHER_USER_ID, currentRevision: "" })} />,
+  );
+  expect(screen.queryByRole("button", { name: /^release$/i })).not.toBeInTheDocument();
+});
+
+// Test 25 — Admin sees Release on anyone's never-checked-in Available drawing (force-release)
+test("Release button visible to Admin on another user's never-checked-in Available drawing", () => {
+  mockRole.value = "Admin";
+  renderWithProviders(
+    <DrawingActionsPanel drawing={makeDrawing(DrawingState.Available, { ownerId: OTHER_USER_ID, currentRevision: "" })} />,
+  );
+  expect(screen.getByRole("button", { name: /^release$/i })).toBeInTheDocument();
+});
+
+// Test 26 — Admin force-release opens the dialog with the on-behalf-of warning
+test("Admin force-release dialog shows the on-behalf-of warning", async () => {
+  mockRole.value = "Admin";
+  const user = userEvent.setup();
+  renderWithProviders(
+    <DrawingActionsPanel drawing={makeDrawing(DrawingState.Available, { ownerId: OTHER_USER_ID, currentRevision: "" })} />,
+  );
+  await user.click(screen.getByRole("button", { name: /^release$/i }));
+  expect(await screen.findByText(/on their behalf/i)).toBeInTheDocument();
+});
+
+// Test 27 — Release is hidden once the drawing has been checked in (it is "used")
+test("Release is hidden once the drawing has been checked in (used)", () => {
+  mockRole.value = "Admin";
+  renderWithProviders(
+    <DrawingActionsPanel drawing={makeDrawing(DrawingState.Available, { ownerId: CURRENT_USER_ID, currentRevision: "B" })} />,
+  );
+  expect(screen.queryByRole("button", { name: /^release$/i })).not.toBeInTheDocument();
 });

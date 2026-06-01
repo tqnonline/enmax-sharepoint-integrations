@@ -11,7 +11,7 @@ namespace Enmax.AutoCAD
     ///
     /// Checkout / drawing-lifecycle audit is owned by the individual lifecycle plugins
     /// (CheckOut, SubmitRevision, ApproveCheckin, ForceCheckin, Finalize, MarkObsolete,
-    /// MarkVoid), which key every audit row to the DRAWING. This emitter therefore no
+    /// ReleaseDrawing), which key every audit row to the DRAWING. This emitter therefore no
     /// longer handles enmax_autocadcheckout — doing so would double-write audit rows.
     ///
     /// Registered PostOperation Synchronous on each reference entity.

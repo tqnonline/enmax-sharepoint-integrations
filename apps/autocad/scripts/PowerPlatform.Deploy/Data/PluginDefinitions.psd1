@@ -181,16 +181,21 @@
             Response = @()
         }
 
+        # ── Entity-bound: F-06 release unused reserved number (plan-14a) ─────
         @{
-            UniqueName  = "enmax_acdnMarkVoid"
-            DisplayName = "Mark Drawing Void"
-            PluginClass = "Enmax.AutoCAD.MarkVoidPlugin"
+            UniqueName  = "enmax_acdnReleaseDrawing"
+            DisplayName = "Release Drawing"
+            PluginClass = "Enmax.AutoCAD.ReleaseDrawingPlugin"
             BindingType = 1
             BoundEntity = "enmax_autocaddrawing"
             Params = @(
                 @{ Name="Reason"; Type=10; Optional=$false }
             )
-            Response = @()
+            Response = @(
+                @{ Name="DrawingId";         Type=10 }
+                @{ Name="NewState";          Type=10 }
+                @{ Name="SequenceKeyBurned"; Type=10 }
+            )
         }
     )
 

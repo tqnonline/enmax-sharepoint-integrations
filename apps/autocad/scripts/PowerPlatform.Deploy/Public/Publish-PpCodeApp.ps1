@@ -69,8 +69,8 @@ function Publish-PpCodeApp {
         Assert-PpExitCode -Operation 'npm run build'
 
         Write-PpLog "Pushing to Power Apps..."
-        Invoke-PpPowerAppsPush -WorkingDir $codeApp
-        Assert-PpExitCode -Operation 'pac code push'
+        Invoke-PpPowerAppsPush -WorkingDir $codeApp -Cfg $cfg
+        Assert-PpExitCode -Operation 'power-apps push'
 
         Write-PpLog "Done! Open app at:"
         Write-PpLog "  https://apps.powerapps.com/play/e/$($cfg['ENVIRONMENT_ID'])/app/$($cfg['APP_ID'])"
@@ -154,15 +154,28 @@ function Invoke-PpPowerAppsPush {
     <#
     .SYNOPSIS Thin, mockable wrapper around the Code App push CLI. Seam for Pester mocking.
     .DESCRIPTION
-      Uses `pac code push` (the Power Platform CLI command) rather than
-      `npx power-apps push`. pac uses the active pac auth profile (which CD sets up
-      via `pac auth create` with our SPN) and avoids the npm CLI's separate
-      SP_CLIENT_ID/SP_CLIENT_SECRET checkAccess path that requires the SPN to have
-      Power Platform Administrator at the tenant level.
+      Uses `npx power-apps push` (the npm Power Apps CLI), authenticated via the
+      SP_CLIENT_ID / SP_CLIENT_SECRET / SP_TENANT_ID environment variables (set here
+      from $Cfg so the push works both locally and in CI).
+
+      `pac code push` was tried (commit #21) but its app-ownership access check rejects
+      the deploy service principal in this tenant: `startSession` returns 403
+      PowerAppsNoAccess ("does not have access to the app"). The SP holds the Dataverse
+      plane (it registers the Custom APIs) but not Power Apps app-plane ownership, and
+      pac cannot push without it. The npm CLI's SP-credential path is accepted, so we
+      use it for every push. cd-dev.yml already supplies the SP_* env vars.
     #>
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$WorkingDir)
+    param(
+        [Parameter(Mandatory)][string]$WorkingDir,
+        [Parameter(Mandatory)][hashtable]$Cfg
+    )
     Push-Location $WorkingDir
-    try   { & pac code push }
+    try {
+        $env:SP_CLIENT_ID     = $Cfg['ClientId']
+        $env:SP_CLIENT_SECRET = $Cfg['ClientSecret']
+        $env:SP_TENANT_ID     = $Cfg['TenantId']
+        & npx power-apps push --non-interactive
+    }
     finally { Pop-Location }
 }

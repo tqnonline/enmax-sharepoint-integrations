@@ -13,7 +13,7 @@ import {
   tokens,
   makeStyles,
 } from "@fluentui/react-components";
-import { Dismiss24Regular, DocumentEdit24Regular } from "@fluentui/react-icons";
+import { Dismiss24Regular, DocumentEdit24Regular, ArrowUpload24Regular } from "@fluentui/react-icons";
 import { useSubmitRevision } from "../hooks/useSubmitRevision";
 import { nextRevision } from "../api/checkoutClient";
 import { useAppConfig } from "../../../config/useAppConfig";
@@ -24,11 +24,6 @@ const useStyles = makeStyles({
     flexDirection: "column",
     gap: tokens.spacingVerticalM,
     paddingBottom: tokens.spacingVerticalXXL,
-  },
-  libraryLink: {
-    fontFamily: "monospace",
-    wordBreak: "break-all",
-    color: tokens.colorBrandForeground1,
   },
   confirmationBox: {
     border: `1px solid ${tokens.colorNeutralStroke2}`,
@@ -51,12 +46,11 @@ interface Props {
   checkoutId: string;
   drawingId: string;
   currentRevision?: string;
-  spLibraryUrl?: string;
 }
 
-export function SubmitRevisionDrawer({ checkoutId, drawingId, currentRevision, spLibraryUrl }: Props) {
+export function SubmitRevisionDrawer({ checkoutId, drawingId, currentRevision }: Props) {
   const styles = useStyles();
-  const { RequireCheckInApproval } = useAppConfig();
+  const { RequireCheckInApproval, CheckInUploadLibraryUrl } = useAppConfig();
   const [open, setOpen] = useState(false);
   const [newRevision, setNewRevision] = useState(() => nextRevision(currentRevision));
   const [filesConfirmed, setFilesConfirmed] = useState(false);
@@ -122,28 +116,22 @@ export function SubmitRevisionDrawer({ checkoutId, drawingId, currentRevision, s
               />
             </Field>
 
+            {CheckInUploadLibraryUrl && (
+              <Button
+                as="a"
+                href={CheckInUploadLibraryUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                icon={<ArrowUpload24Regular />}
+                appearance="secondary"
+              >
+                Upload Drawings to SharePoint
+              </Button>
+            )}
+
             <div className={styles.confirmationBox}>
               <Checkbox
-                label={
-                  <span>
-                    I have uploaded the revised PDFs to the SharePoint library
-                    {spLibraryUrl ? (
-                      <>
-                        {" at: "}
-                        <a
-                          href={spLibraryUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={styles.libraryLink}
-                        >
-                          {spLibraryUrl}
-                        </a>
-                      </>
-                    ) : (
-                      " for this drawing"
-                    )}
-                  </span>
-                }
+                label="I have uploaded the revised PDFs to the SharePoint library above"
                 checked={filesConfirmed}
                 onChange={(_, d) => setFilesConfirmed(!!d.checked)}
               />

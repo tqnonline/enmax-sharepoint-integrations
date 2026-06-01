@@ -1,8 +1,7 @@
-import { Badge, Text, makeStyles, tokens } from "@fluentui/react-components";
+import { Badge, Text, tokens } from "@fluentui/react-components";
 import { EnmaxDataGrid } from "../../components/DataGrid";
 import type { ColumnDef, GridFetchParams } from "../../components/DataGrid";
 import { Enmax_autocadnumbersequencesService } from "../../generated";
-import { NumberSequenceImportButton } from "./NumberSequenceImport";
 
 const SEQ_STATUS: Record<number, { label: string; color: "success" | "warning" | "danger" | undefined }> = {
   1: { label: "Healthy",   color: "success"  },
@@ -142,17 +141,12 @@ async function fetchSequences(params: GridFetchParams): Promise<{ rows: RawSeq[]
   return { rows: rows.slice(start, start + params.pageSize), totalCount };
 }
 
-const useStyles = makeStyles({
-  toolbar: { marginBottom: tokens.spacingVerticalS },
-});
-
 export function NumberSequencesGrid() {
-  const styles = useStyles();
+  // Number Sequences are read-only in the app (view/search/filter). Seed values are
+  // preloaded via scripting (solution/seed + seed scripts); the CSV import was retired
+  // 2026-06-01 to remove manual bulk-load work from the Document Controller.
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
-      <div className={styles.toolbar}>
-        <NumberSequenceImportButton />
-      </div>
       <div style={{ flex: 1, overflow: "hidden" }}>
         <EnmaxDataGrid
           queryKey={["number-sequences-grid"]}

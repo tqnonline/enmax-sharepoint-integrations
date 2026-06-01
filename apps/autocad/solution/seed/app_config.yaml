@@ -9,6 +9,10 @@ rows:
     value: "false"
     value_type: Boolean
     description: When true, only one admin may perform write operations at a time. Dev/UAT leave false.
+  - key: ReleaseRequiresReason
+    value: "true"
+    value_type: Boolean
+    description: When true, enmax_acdnReleaseDrawing requires a non-empty Reason (min 10 chars) to release an unused reserved number.
   - key: MaxDrawingsPerReservation
     value: "10"
     value_type: Integer
@@ -37,6 +41,10 @@ rows:
     value: https://enmax.sharepoint.com/sites/GenerationDrawings
     value_type: String
     description: Root SharePoint site where drawing document libraries are provisioned.
+  - key: CheckInUploadLibraryUrl
+    value: https://enmax.sharepoint.com/sites/GenerationDrawings/Shared%20Documents
+    value_type: String
+    description: Single SharePoint document library where users upload revised drawing files at check-in. ALL drawings use this one library; admins move files to the right location afterward. Set to the actual library URL.
   - key: BusinessUnitName
     value: Enmax AutoCAD
     value_type: String

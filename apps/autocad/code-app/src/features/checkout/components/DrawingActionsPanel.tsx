@@ -1,4 +1,4 @@
-import { Badge, Text, tokens, makeStyles, Menu, MenuTrigger, MenuButton, MenuPopover, MenuList, MenuItem } from "@fluentui/react-components";
+import { Badge, Text, tokens, makeStyles } from "@fluentui/react-components";
 import { useState } from "react";
 import { useUserRole } from "../../../auth/useUserRole";
 import { useCurrentUser } from "../../../auth/useCurrentUser";
@@ -11,7 +11,7 @@ import { ValidationDrawer } from "./ValidationDrawer";
 import { ForceCheckInDialog } from "./ForceCheckInDialog";
 import { FinalizeDialog } from "./FinalizeDialog";
 import { MarkObsoleteDialog } from "./MarkObsoleteDialog";
-import { MarkVoidDialog } from "./MarkVoidDialog";
+import { ReleaseDrawingDialog } from "./ReleaseDrawingDialog";
 import { SplitButton } from "../../../components/SplitButton";
 
 const useStyles = makeStyles({
@@ -71,15 +71,20 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
   const { data: currentUser } = useCurrentUser();
   const isAdmin    = role === "Admin";
   const isApprover = role === "Approver";
-  const [openDialog, setOpenDialog] = useState<null | "finalize" | "obsolete" | "void" | "forcecheckin">(null);
+  const isOwner      = !!drawing.ownerId && drawing.ownerId === currentUser?.id;
+  const forceRelease = isAdmin && !isOwner;
+  const [openDialog, setOpenDialog] = useState<null | "finalize" | "obsolete" | "release" | "forcecheckin">(null);
   const checkOut = useCheckOut();
 
   // Business rule: Finalize and Mark Obsolete require at least one prior check-in.
   // A drawing only gets a currentRevision after its first successful check-in
   // (ApproveCheckin/SubmitRevision/ForceCheckin write it; creation does not), so an
-  // empty currentRevision means the drawing has never been checked in. Mark Void is
-  // not restricted.
+  // empty currentRevision means the drawing has never been checked in.
   const hasCheckin = Boolean(drawing.currentRevision);
+  // F-06 release: owner self-releases / admin force-releases (owner notified by the
+  // plug-in). Only an Available drawing never checked out can be released; hasCheckin
+  // is the cheap proxy, the plug-in enforces the authoritative "no checkout rows" rule.
+  const canRelease = (isOwner || isAdmin) && !hasCheckin;
 
   if (drawing.state === DrawingState.Finalized ||
       drawing.state === DrawingState.Obsolete ||
@@ -99,7 +104,7 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
             items={[
               ...(hasCheckin ? [{ key: "finalize", label: "Finalize", onClick: () => setOpenDialog("finalize") }] : []),
               ...(isAdmin && hasCheckin ? [{ key: "obsolete", label: "Mark Obsolete", onClick: () => setOpenDialog("obsolete") }] : []),
-              ...(isAdmin ? [{ key: "void", label: "Mark Void", onClick: () => setOpenDialog("void") }] : []),
+              ...(canRelease ? [{ key: "release", label: "Release", onClick: () => setOpenDialog("release") }] : []),
             ]}
           />
           {checkOut.isError && (
@@ -107,7 +112,7 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
           )}
           <FinalizeDialog drawingId={drawing.id} hideTrigger open={openDialog === "finalize"} onOpenChange={o => setOpenDialog(o ? "finalize" : null)} />
           <MarkObsoleteDialog drawingId={drawing.id} hideTrigger open={openDialog === "obsolete"} onOpenChange={o => setOpenDialog(o ? "obsolete" : null)} />
-          <MarkVoidDialog drawingId={drawing.id} hideTrigger open={openDialog === "void"} onOpenChange={o => setOpenDialog(o ? "void" : null)} />
+          <ReleaseDrawingDialog drawingId={drawing.id} forceRelease={forceRelease} hideTrigger open={openDialog === "release"} onOpenChange={o => setOpenDialog(o ? "release" : null)} />
         </>
       );
     }
@@ -116,7 +121,7 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
         <CheckOutButton drawingId={drawing.id} />
         {hasCheckin && <FinalizeDialog drawingId={drawing.id} />}
         {isAdmin && hasCheckin && <MarkObsoleteDialog drawingId={drawing.id} />}
-        {isAdmin && <MarkVoidDialog drawingId={drawing.id} />}
+        {canRelease && <ReleaseDrawingDialog drawingId={drawing.id} forceRelease={forceRelease} />}
       </div>
     );
   }
@@ -128,38 +133,13 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
         checkoutId={openCheckout.id}
         drawingId={drawing.id}
         currentRevision={drawing.currentRevision}
-        spLibraryUrl={drawing.spLibraryUrl}
       />
     );
   }
 
   if (drawing.state === DrawingState.CheckedOut && openCheckout && (isAdmin || isApprover)) {
-    if (variant === "split") {
-      return (
-        <div className={styles.actionRow}>
-          <ForceCheckInDialog
-            checkoutId={openCheckout.id}
-            drawingId={drawing.id}
-            currentRevision={drawing.currentRevision}
-          />
-          {isAdmin && (
-            <Menu positioning="below-end">
-              <MenuTrigger disableButtonEnhancement>
-                <MenuButton appearance="outline" aria-label="More actions" />
-              </MenuTrigger>
-              <MenuPopover>
-                <MenuList>
-                  <MenuItem onClick={() => setOpenDialog("void")}>Mark Void</MenuItem>
-                </MenuList>
-              </MenuPopover>
-            </Menu>
-          )}
-          {isAdmin && (
-            <MarkVoidDialog drawingId={drawing.id} hideTrigger open={openDialog === "void"} onOpenChange={o => setOpenDialog(o ? "void" : null)} />
-          )}
-        </div>
-      );
-    }
+    // A checked-out drawing cannot be released/voided (it is "used"); the only admin
+    // action here is Force Check-In.
     return (
       <div className={styles.actionRow}>
         <ForceCheckInDialog
@@ -167,7 +147,6 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
           drawingId={drawing.id}
           currentRevision={drawing.currentRevision}
         />
-        {isAdmin && <MarkVoidDialog drawingId={drawing.id} />}
       </div>
     );
   }

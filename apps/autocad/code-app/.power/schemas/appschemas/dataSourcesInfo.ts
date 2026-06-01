@@ -188,8 +188,8 @@ export const dataSourcesInfo = {
         ],
         "responseInfo": { "200": { "type": "object" } }
       },
-      "enmax_acdnMarkVoid": {
-        "path": "/api/data/v9.2/enmax_autocaddrawings({drawingId})/Microsoft.Dynamics.CRM.enmax_acdnMarkVoid",
+      "enmax_acdnReleaseDrawing": {
+        "path": "/api/data/v9.2/enmax_autocaddrawings({drawingId})/Microsoft.Dynamics.CRM.enmax_acdnReleaseDrawing",
         "method": "POST",
         "parameters": [
           { "name": "drawingId", "in": "path", "required": true,  "type": "string" },

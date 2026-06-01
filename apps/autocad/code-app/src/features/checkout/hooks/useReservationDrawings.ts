@@ -13,6 +13,7 @@ async function fetchReservationDrawings(reservationId: string): Promise<Reservat
     select: [
       "enmax_autocaddrawingid", "enmax_acdnnumber", "enmax_acdnstate",
       "enmax_acdnsplibraryurl", "enmax_acdncurrentrevision", "enmax_acdnmissingsheets",
+      "_ownerid_value",
     ],
     orderBy: ["enmax_acdnnumber asc"],
   });
@@ -38,6 +39,7 @@ async function fetchReservationDrawings(reservationId: string): Promise<Reservat
 
   return drawingsResult.data.map((d) => {
     const c = checkoutMap.get(d.enmax_autocaddrawingid);
+    const draw = d as unknown as Record<string, unknown>;
     return {
       drawing: {
         id: d.enmax_autocaddrawingid,
@@ -46,6 +48,7 @@ async function fetchReservationDrawings(reservationId: string): Promise<Reservat
         spLibraryUrl: d.enmax_acdnsplibraryurl,
         currentRevision: d.enmax_acdncurrentrevision,
         missingSheets: d.enmax_acdnmissingsheets,
+        ownerId: draw["_ownerid_value"] as string | undefined,
       },
       checkout: c
         ? {

@@ -18,6 +18,7 @@ export const AppConfigSchema = z.object({
   UserTeamId:                     guidSchema.optional(),
   SharedMailboxAddress:           z.email(),
   SharePointSiteUrl:              z.url(),
+  CheckInUploadLibraryUrl:        z.url().optional(),
   BusinessUnitName:               z.string(),
   BrandPrimary:                   z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   BrandSecondary:                 z.string().regex(/^#[0-9A-Fa-f]{6}$/),

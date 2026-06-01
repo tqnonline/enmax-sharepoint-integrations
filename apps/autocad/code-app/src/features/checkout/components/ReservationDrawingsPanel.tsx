@@ -27,6 +27,9 @@ import { usePageSize } from "../../../config/usePageSize";
 import type { PendingReservation } from "../../approvals/hooks/usePendingReservations";
 import { useReservationDrawings, type ReservationDrawingRow } from "../hooks/useReservationDrawings";
 import { DrawingActionsPanel } from "./DrawingActionsPanel";
+import { ReleaseDrawingsPanel } from "./ReleaseDrawingsPanel";
+import { useCurrentUser } from "../../../auth/useCurrentUser";
+import { useUserRole } from "../../../auth/useUserRole";
 import { DrawingState, DRAWING_STATE_LABELS, DRAWING_STATE_BADGE_COLOR } from "../api/checkoutClient";
 import type { BadgeColor } from "../api/checkoutClient";
 import { formatComposition } from "../../approvals/compositionUtils";
@@ -87,6 +90,10 @@ export function ReservationDrawingsPanel({ reservation, onClose }: Props) {
   const drawerSize = width >= 1024 ? "large" : "medium";
   const pageSize  = usePageSize();
   const [drawingPage, setDrawingPage] = useState(1);
+  const [batchReleaseOpen, setBatchReleaseOpen] = useState(false);
+  const { data: currentUser } = useCurrentUser();
+  const { role } = useUserRole();
+  const isAdmin = role === "Admin";
 
   const columns = useMemo((): TableColumnDefinition<ReservationDrawingRow>[] => [
     createTableColumn<ReservationDrawingRow>({
@@ -141,6 +148,15 @@ export function ReservationDrawingsPanel({ reservation, onClose }: Props) {
   const drawingsQuery = useReservationDrawings(
     reservation?.enmax_acdnstatus === 2 ? reservation.enmax_acdnreservationid : null,
   );
+
+  // Releasable = Available AND never checked out (currentRevision empty). A drawing
+  // checked out even once is "used" and cannot be released.
+  const availableDrawings = (drawingsQuery.data ?? [])
+    .map((r) => r.drawing)
+    .filter((d) => d.state === DrawingState.Available && !d.currentRevision);
+  const canBatchRelease =
+    availableDrawings.length > 0 &&
+    (isAdmin || availableDrawings.some((d) => d.ownerId === currentUser?.id));
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- reset to page 1 when the selected reservation changes
   useEffect(() => { setDrawingPage(1); }, [reservation?.enmax_acdnreservationid]);
@@ -244,6 +260,15 @@ export function ReservationDrawingsPanel({ reservation, onClose }: Props) {
 
                 {drawingsQuery.data && drawingsQuery.data.length > 0 && (
                   <>
+                    {canBatchRelease && (
+                      <Button
+                        appearance="outline"
+                        onClick={() => setBatchReleaseOpen(true)}
+                        style={{ marginBottom: tokens.spacingVerticalM }}
+                      >
+                        Release unused drawings
+                      </Button>
+                    )}
                     <DataGrid
                       items={pagedDrawings}
                       columns={columns}
@@ -291,6 +316,11 @@ export function ReservationDrawingsPanel({ reservation, onClose }: Props) {
                     )}
                   </>
                 )}
+                <ReleaseDrawingsPanel
+                  drawings={availableDrawings}
+                  open={batchReleaseOpen}
+                  onOpenChange={setBatchReleaseOpen}
+                />
               </>
             )}
           </>
