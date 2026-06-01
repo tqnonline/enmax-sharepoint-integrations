@@ -31,6 +31,11 @@ namespace Enmax.AutoCAD
         private const int StateFinalized  = 7;
         private const int SheetStateFinalized = 7;
 
+        private const string ColOwner  = "ownerid";
+        private const string ColNumber = "enmax_acdnnumber";
+        private const int NotifSeverityInfo = 1;
+        private const int NotifSourceSystem = 8;
+
         public FinalizeDrawingPlugin() : base(typeof(FinalizeDrawingPlugin)) { }
         public FinalizeDrawingPlugin(string unsecureConfiguration, string secureConfiguration)
             : base(typeof(FinalizeDrawingPlugin)) { }
@@ -55,7 +60,7 @@ namespace Enmax.AutoCAD
             Entity drawing;
             try
             {
-                drawing = service.Retrieve(DrawingEntity, target.Id, new ColumnSet(ColDrawingState, ColCurrentRevision));
+                drawing = service.Retrieve(DrawingEntity, target.Id, new ColumnSet(ColDrawingState, ColCurrentRevision, ColOwner, ColNumber));
             }
             catch (FaultException<OrganizationServiceFault> ex)
             {
@@ -112,6 +117,22 @@ namespace Enmax.AutoCAD
                 ["enmax_acdnactedby"]      = new EntityReference("systemuser", context.InitiatingUserId),
                 ["enmax_acdnname"]         = $"Drawing {target.Id} finalized",
             });
+
+            // Notify the drawing owner it was finalized.
+            var owner = drawing.GetAttributeValue<EntityReference>(ColOwner);
+            if (owner != null && owner.Id != context.InitiatingUserId)
+            {
+                string number = drawing.GetAttributeValue<string>(ColNumber);
+                if (string.IsNullOrWhiteSpace(number)) number = target.Id.ToString();
+                NotificationWriter.Create(service, owner.Id,
+                    title:        $"Drawing finalized: {number}",
+                    body:         $"Your drawing {number} was finalized and is now locked.",
+                    severity:     NotifSeverityInfo,
+                    sourceEvent:  NotifSourceSystem,
+                    subjectTable: DrawingEntity,
+                    subjectId:    target.Id.ToString(),
+                    deepLinkPath: "/my-items");
+            }
         }
     }
 }

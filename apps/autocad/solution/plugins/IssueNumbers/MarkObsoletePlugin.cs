@@ -27,6 +27,11 @@ namespace Enmax.AutoCAD
         private const int    StateFinalized     = 7;
         private const int    SheetStateObsolete = 5;
 
+        private const string ColOwner  = "ownerid";
+        private const string ColNumber = "enmax_acdnnumber";
+        private const int NotifSeverityWarning = 2;
+        private const int NotifSourceSystem    = 8;
+
         public MarkObsoletePlugin() : base(typeof(MarkObsoletePlugin)) { }
         public MarkObsoletePlugin(string unsecureConfiguration, string secureConfiguration)
             : base(typeof(MarkObsoletePlugin)) { }
@@ -46,7 +51,7 @@ namespace Enmax.AutoCAD
             string reason = context.InputParameters.Contains("Reason")
                 ? context.InputParameters["Reason"] as string ?? string.Empty : string.Empty;
 
-            var drawing = service.Retrieve(DrawingEntity, target.Id, new ColumnSet(ColDrawingState, ColCurrentRevision));
+            var drawing = service.Retrieve(DrawingEntity, target.Id, new ColumnSet(ColDrawingState, ColCurrentRevision, ColOwner, ColNumber));
             int currentState = drawing.GetAttributeValue<OptionSetValue>(ColDrawingState)?.Value ?? 0;
             if (currentState == StateObsolete || currentState == StateVoid || currentState == StateFinalized)
                 throw new InvalidPluginExecutionException(
@@ -96,6 +101,24 @@ namespace Enmax.AutoCAD
                 ["enmax_acdnactedby"]      = new EntityReference("systemuser", context.InitiatingUserId),
                 ["enmax_acdnname"]         = $"Drawing {target.Id} marked obsolete",
             });
+
+            // Notify the drawing owner it was retired.
+            var owner = drawing.GetAttributeValue<EntityReference>(ColOwner);
+            if (owner != null && owner.Id != context.InitiatingUserId)
+            {
+                string number = drawing.GetAttributeValue<string>(ColNumber);
+                if (string.IsNullOrWhiteSpace(number)) number = target.Id.ToString();
+                NotificationWriter.Create(service, owner.Id,
+                    title:        $"Drawing marked obsolete: {number}",
+                    body:         string.IsNullOrWhiteSpace(reason)
+                                    ? $"Your drawing {number} was marked obsolete — do not use it."
+                                    : $"Your drawing {number} was marked obsolete — do not use it. Reason: {reason}",
+                    severity:     NotifSeverityWarning,
+                    sourceEvent:  NotifSourceSystem,
+                    subjectTable: DrawingEntity,
+                    subjectId:    target.Id.ToString(),
+                    deepLinkPath: "/my-items");
+            }
         }
     }
 }

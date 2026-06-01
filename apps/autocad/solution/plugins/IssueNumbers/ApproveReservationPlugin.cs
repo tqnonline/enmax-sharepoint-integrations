@@ -19,6 +19,11 @@ namespace Enmax.AutoCAD
         private const string ColStatus     = "enmax_acdnstatus";
         private const string ColApprovedOn = "enmax_acdnapprovedon";
         private const string ColApprover   = "enmax_acdnapprover";
+        private const string ColOwner      = "ownerid";
+        private const string ColNumber     = "enmax_acdnreservationnumber";
+
+        private const int NotifSeverityInfo              = 1;
+        private const int NotifSourceReservationApproved = 1;
 
         private const string AuditEntityName = "enmax_autocadauditevent";
         private const int    AuditEventApprovalGranted = 3;
@@ -63,7 +68,7 @@ namespace Enmax.AutoCAD
             Entity reservation;
             try
             {
-                reservation = service.Retrieve(EntityName, target.Id, new ColumnSet(ColStatus));
+                reservation = service.Retrieve(EntityName, target.Id, new ColumnSet(ColStatus, ColOwner, ColNumber));
             }
             catch (FaultException<OrganizationServiceFault> ex)
             {
@@ -108,6 +113,22 @@ namespace Enmax.AutoCAD
                 ["enmax_acdnname"]         = $"Approval granted for reservation {target.Id}",
             };
             service.Create(auditEvent);
+
+            // Notify the requester their reservation was approved.
+            var owner = reservation.GetAttributeValue<EntityReference>(ColOwner);
+            if (owner != null && owner.Id != context.InitiatingUserId)
+            {
+                string number = reservation.GetAttributeValue<string>(ColNumber);
+                if (string.IsNullOrWhiteSpace(number)) number = target.Id.ToString();
+                NotificationWriter.Create(service, owner.Id,
+                    title:        $"Reservation approved: {number}",
+                    body:         $"Your reservation {number} was approved and the drawing numbers have been issued.",
+                    severity:     NotifSeverityInfo,
+                    sourceEvent:  NotifSourceReservationApproved,
+                    subjectTable: EntityName,
+                    subjectId:    target.Id.ToString(),
+                    deepLinkPath: $"/reservations/{target.Id}");
+            }
 
             localPluginContext.Trace($"Audit event created for reservation {target.Id}.");
         }

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Badge,
   Link,
@@ -155,7 +155,9 @@ export function MyItemsPage() {
     { id: "issuedNumbers",   header: "Issued Numbers",  accessor: r => r.issuedNumbers,   visibleByDefault: false },
   ], [compMaps]);
 
-  const [activeTab,     setActiveTab]     = useState<TabValue>("reservations");
+  const [searchParams] = useSearchParams();
+  const initialTab: TabValue = searchParams.get("tab") === "checkouts" ? "checkouts" : "reservations";
+  const [activeTab,     setActiveTab]     = useState<TabValue>(initialTab);
   const [showFinalised, setShowFinalised] = useState(false);
   const [panelDrawing,  setPanelDrawing]  = useState<DrawingRow | null>(null);
 

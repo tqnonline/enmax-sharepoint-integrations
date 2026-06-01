@@ -18,6 +18,11 @@ namespace Enmax.AutoCAD
         private const int StatusPending  = 1;
         private const int StatusDeclined = 3;
 
+        private const string ColOwner  = "ownerid";
+        private const string ColNumber = "enmax_acdnreservationnumber";
+        private const int NotifSeverityWarning           = 2;
+        private const int NotifSourceReservationDeclined = 2;
+
         private const string AuditEntityName       = "enmax_autocadauditevent";
         private const int    AuditEventApprovalDenied = 4;
         private const int    AuditSourceAction        = 4;
@@ -52,7 +57,7 @@ namespace Enmax.AutoCAD
             Entity reservation;
             try
             {
-                reservation = service.Retrieve(EntityName, target.Id, new ColumnSet(ColStatus));
+                reservation = service.Retrieve(EntityName, target.Id, new ColumnSet(ColStatus, ColOwner, ColNumber));
             }
             catch (FaultException<OrganizationServiceFault> ex)
             {
@@ -94,6 +99,24 @@ namespace Enmax.AutoCAD
                 ["enmax_acdnname"]         = $"Approval denied for reservation {target.Id}",
             };
             service.Create(auditEvent);
+
+            // Notify the requester their reservation was declined (with the reason).
+            var owner = reservation.GetAttributeValue<EntityReference>(ColOwner);
+            if (owner != null && owner.Id != context.InitiatingUserId)
+            {
+                string number = reservation.GetAttributeValue<string>(ColNumber);
+                if (string.IsNullOrWhiteSpace(number)) number = target.Id.ToString();
+                NotificationWriter.Create(service, owner.Id,
+                    title:        $"Reservation declined: {number}",
+                    body:         string.IsNullOrWhiteSpace(reason)
+                                    ? $"Your reservation {number} was declined."
+                                    : $"Your reservation {number} was declined: {reason}",
+                    severity:     NotifSeverityWarning,
+                    sourceEvent:  NotifSourceReservationDeclined,
+                    subjectTable: EntityName,
+                    subjectId:    target.Id.ToString(),
+                    deepLinkPath: $"/reservations/{target.Id}");
+            }
 
             localPluginContext.Trace($"Audit event created for reservation {target.Id}.");
         }

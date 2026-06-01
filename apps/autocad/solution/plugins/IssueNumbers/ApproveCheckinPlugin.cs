@@ -51,6 +51,13 @@ namespace Enmax.AutoCAD
         private const int    SheetStateAvailable   = 2;
         private const int    SheetStateCheckedOut  = 3;
 
+        private const string ColCheckoutOwner = "ownerid";
+        private const int NotifSeverityInfo           = 1;
+        private const int NotifSeverityWarning        = 2;
+        private const int NotifSourceCheckinValidated = 3;
+        private const int NotifSourceCheckinDeclined  = 4;
+        private const string CheckinDeepLink = "/my-items?tab=checkouts";
+
         // -----------------------------------------------------------------------
         // Constructors
         // -----------------------------------------------------------------------
@@ -104,7 +111,7 @@ namespace Enmax.AutoCAD
             try
             {
                 checkout = service.Retrieve(CheckoutEntity, target.Id,
-                    new ColumnSet(ColCheckoutStatus, ColCheckoutDrawing, ColNewRevision));
+                    new ColumnSet(ColCheckoutStatus, ColCheckoutDrawing, ColNewRevision, ColCheckoutOwner));
             }
             catch (FaultException<OrganizationServiceFault> ex)
             {
@@ -200,6 +207,33 @@ namespace Enmax.AutoCAD
                 ["enmax_acdnactedby"]      = new EntityReference("systemuser", context.InitiatingUserId),
                 ["enmax_acdnname"]         = $"Checkout {target.Id} {(decision == DecisionApproved ? "approved" : "declined")}",
             });
+
+            // Notify the submitter of the validation outcome.
+            var submitter = checkout.GetAttributeValue<EntityReference>(ColCheckoutOwner);
+            if (submitter != null && submitter.Id != context.InitiatingUserId)
+            {
+                string number = NotificationWriter.ResolveDrawingNumber(service, drawingRef.Id);
+                if (decision == DecisionApproved)
+                    NotificationWriter.Create(service, submitter.Id,
+                        title:        $"Check-in approved: {number}",
+                        body:         $"Your check-in of drawing {number} was validated. The drawing is now Available.",
+                        severity:     NotifSeverityInfo,
+                        sourceEvent:  NotifSourceCheckinValidated,
+                        subjectTable: CheckoutEntity,
+                        subjectId:    target.Id.ToString(),
+                        deepLinkPath: CheckinDeepLink);
+                else
+                    NotificationWriter.Create(service, submitter.Id,
+                        title:        $"Check-in needs changes: {number}",
+                        body:         string.IsNullOrWhiteSpace(reason)
+                                        ? $"Your check-in of drawing {number} was declined. It is checked out to you again."
+                                        : $"Your check-in of drawing {number} was declined: {reason}",
+                        severity:     NotifSeverityWarning,
+                        sourceEvent:  NotifSourceCheckinDeclined,
+                        subjectTable: CheckoutEntity,
+                        subjectId:    target.Id.ToString(),
+                        deepLinkPath: CheckinDeepLink);
+            }
 
             context.OutputParameters["CheckoutId"]  = target.Id.ToString();
             context.OutputParameters["NewStatus"]   = newStatus;

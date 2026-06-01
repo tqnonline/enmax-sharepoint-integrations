@@ -1,4 +1,5 @@
 using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Query;
 using System;
 
 namespace Enmax.AutoCAD
@@ -6,14 +7,19 @@ namespace Enmax.AutoCAD
     /// <summary>
     /// Standard step plug-in: fires PostOperation on Create of enmax_autocadreservation.
     /// Registration: Message=Create, Entity=enmax_autocadreservation, Stage=40 (PostOperation), Mode=Synchronous.
+    /// Writes the "submitted" audit event and notifies approvers/admins that a reservation needs approval.
     /// </summary>
     public class OnReservationCreatedPlugin : PluginBase
     {
         private const string EntityName = "enmax_autocadreservation";
+        private const string ColNumber  = "enmax_acdnreservationnumber";
 
         private const string AuditEntityName    = "enmax_autocadauditevent";
         private const int    AuditEventCreated  = 1;
         private const int    AuditSourceAction  = 4;
+
+        private const int NotifSeverityWarning          = 2;
+        private const int NotifSourceReservationPending = 9;
 
         public OnReservationCreatedPlugin() : base(typeof(OnReservationCreatedPlugin)) { }
 
@@ -46,7 +52,31 @@ namespace Enmax.AutoCAD
             };
             service.Create(auditEvent);
 
-            localPluginContext.Trace($"Audit event created for reservation {reservationId}.");
+            // Notify approvers/admins (flow-free) that a reservation is awaiting approval.
+            string number = ResolveNumber(service, reservationId);
+            string actor  = NotificationWriter.ResolveActorName(service, context.InitiatingUserId);
+            NotificationWriter.NotifyApproversAndAdmins(service, context.InitiatingUserId,
+                title:        $"New reservation pending: {number}",
+                body:         $"{actor} submitted reservation {number} for approval.",
+                severity:     NotifSeverityWarning,
+                sourceEvent:  NotifSourceReservationPending,
+                subjectTable: EntityName,
+                subjectId:    reservationId.ToString(),
+                deepLinkPath: "/approvals");
+
+            localPluginContext.Trace($"Audit + approver notifications written for reservation {reservationId}.");
+        }
+
+        private static string ResolveNumber(IOrganizationService service, Guid reservationId)
+        {
+            try
+            {
+                var r = service.Retrieve(EntityName, reservationId, new ColumnSet(ColNumber));
+                var n = r.GetAttributeValue<string>(ColNumber);
+                if (!string.IsNullOrWhiteSpace(n)) return n;
+            }
+            catch { /* number is cosmetic — fall back to the id */ }
+            return reservationId.ToString();
         }
     }
 }

@@ -1,0 +1,78 @@
+import { screen } from "@testing-library/react";
+import { renderWithProviders } from "../helpers/renderWithProviders";
+import { HomePage } from "../../features/home/HomePage";
+import type { Role } from "../../auth/useUserRole";
+
+const CURRENT = { id: "00000000-0000-0000-0000-000000000001", displayName: "Rahul Akmol" };
+
+const roleRef: { value: Role } = { value: "User" };
+type Rows = Array<Record<string, unknown>>;
+const checkoutsRef: { value: Rows } = { value: [] };
+const reservationsRef: { value: Rows } = { value: [] };
+const pendingResRef: { value: Rows } = { value: [] };
+const pendingChkRef: { value: number } = { value: 0 };
+const broadcastsRef: { value: Rows } = { value: [] };
+const healthRef: { value: Rows } = { value: [] };
+
+vi.mock("../../auth/useCurrentUser", () => ({ useCurrentUser: () => ({ data: CURRENT, isPending: false }) }));
+vi.mock("../../auth/useUserRole", () => ({ useUserRole: () => ({ role: roleRef.value, isPending: false }) }));
+vi.mock("../../features/approvals/hooks/usePendingReservations", () => ({
+  usePendingReservations: () => ({ data: pendingResRef.value }),
+}));
+vi.mock("../../features/home/useHomeData", () => ({
+  useMyOpenCheckouts: () => ({ data: checkoutsRef.value, isPending: false }),
+  useMyRecentReservations: () => ({ data: reservationsRef.value, isPending: false }),
+  usePendingCheckinCount: () => ({ data: pendingChkRef.value }),
+  useHomeBroadcasts: () => ({ data: broadcastsRef.value }),
+  useSequenceHealth: () => ({ data: healthRef.value, isPending: false }),
+}));
+
+afterEach(() => {
+  roleRef.value = "User";
+  checkoutsRef.value = [];
+  reservationsRef.value = [];
+  pendingResRef.value = [];
+  pendingChkRef.value = 0;
+  broadcastsRef.value = [];
+  healthRef.value = [];
+});
+
+test("greets the user by first name", () => {
+  renderWithProviders(<HomePage />);
+  expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/Rahul/);
+});
+
+test("a User with nothing open sees 'all caught up' and no admin health card", () => {
+  renderWithProviders(<HomePage />);
+  expect(screen.getByText(/all caught up/i)).toBeInTheDocument();
+  expect(screen.queryByText(/number sequence health/i)).not.toBeInTheDocument();
+});
+
+test("status line summarizes open work", () => {
+  checkoutsRef.value = [{ checkoutId: "c1", drawingNumber: "0042", status: 1, daysOut: 3, checkedOutOn: new Date().toISOString() }];
+  reservationsRef.value = [{ id: "r1", reservationNumber: "RES-1", status: 1, createdOn: new Date().toISOString() }];
+  renderWithProviders(<HomePage />);
+  expect(screen.getByText(/1 open check-out.*1 pending reservation/i)).toBeInTheDocument();
+});
+
+test("Approver sees pending-approval attention with a Review action", () => {
+  roleRef.value = "Approver";
+  pendingResRef.value = [{}, {}, {}];
+  renderWithProviders(<HomePage />);
+  expect(screen.getByText(/3 reservations pending your approval/i)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /review/i })).toBeInTheDocument();
+});
+
+test("a stale check-out surfaces in the attention panel", () => {
+  checkoutsRef.value = [{ checkoutId: "c1", drawingNumber: "GG-CG-00-0042", status: 1, daysOut: 120, checkedOutOn: "2026-01-01T00:00:00Z" }];
+  renderWithProviders(<HomePage />);
+  expect(screen.getByText(/stale check-out/i)).toBeInTheDocument();
+});
+
+test("Admin sees the number sequence health card", () => {
+  roleRef.value = "Admin";
+  healthRef.value = [{ key: "GG-CG-00-ECS-AST-DD", lastIssued: 9905, status: 3 }];
+  renderWithProviders(<HomePage />);
+  expect(screen.getByText(/number sequence health/i)).toBeInTheDocument();
+  expect(screen.getByText("GG-CG-00-ECS-AST-DD")).toBeInTheDocument();
+});

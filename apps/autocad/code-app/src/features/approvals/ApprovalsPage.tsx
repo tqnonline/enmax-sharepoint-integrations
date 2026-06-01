@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Title2,
   Text,
@@ -21,11 +22,13 @@ import { ReservationQueueGrid } from "./ReservationQueueGrid";
 import { ReservationDetailPanel } from "./ReservationDetailPanel";
 import { BulkApproveDialog } from "./BulkApproveDialog";
 import { ReservationDrawingsPanel } from "../checkout/components/ReservationDrawingsPanel";
+import { useCheckins } from "./hooks/useCheckins";
+import { CheckinQueueGrid } from "./CheckinQueueGrid";
 
 const TOASTER_ID = "approvals-toaster";
 
-type TabValue = "pending" | "approved" | "rejected";
-const TAB_STATUS: Record<TabValue, 1 | 2 | 3> = { pending: 1, approved: 2, rejected: 3 };
+type TabValue = "pending" | "approved" | "rejected" | "checkins";
+const TAB_STATUS: Record<"pending" | "approved" | "rejected", 1 | 2 | 3> = { pending: 1, approved: 2, rejected: 3 };
 
 const FADE_UP = {
   from: { opacity: "0", transform: "translateY(8px)" },
@@ -36,6 +39,7 @@ const EMPTY_MESSAGES: Record<TabValue, string> = {
   pending:  "No reservations awaiting approval.",
   approved: "No approved reservations.",
   rejected: "No rejected reservations.",
+  checkins: "No check-ins awaiting validation.",
 };
 
 const useStyles = makeStyles({
@@ -67,12 +71,18 @@ const useStyles = makeStyles({
 
 export function ApprovalsPage() {
   const styles = useStyles();
-  const [activeTab, setActiveTab]               = useState<TabValue>("pending");
+  const [searchParams] = useSearchParams();
+  const paramTab = searchParams.get("tab");
+  const initialTab: TabValue =
+    paramTab === "approved" || paramTab === "rejected" || paramTab === "checkins" ? paramTab : "pending";
+  const [activeTab, setActiveTab]               = useState<TabValue>(initialTab);
   const [selectedReservation, setSelectedReservation] = useState<PendingReservation | null>(null);
   const [bulkApproveList, setBulkApproveList]   = useState<PendingReservation[]>([]);
   const [bulkDialogOpen, setBulkDialogOpen]     = useState(false);
 
-  const currentQuery   = usePendingReservations(TAB_STATUS[activeTab]);
+  const isCheckins     = activeTab === "checkins";
+  const currentQuery   = usePendingReservations(isCheckins ? 1 : TAB_STATUS[activeTab]);
+  const checkinsQuery  = useCheckins(isCheckins);
   const approveMutation = useApproveReservation();
   const { dispatchToast } = useToastController(TOASTER_ID);
 
@@ -157,17 +167,35 @@ export function ApprovalsPage() {
             <CounterBadge count={loadedCount} color="informative" size="small" style={{ marginLeft: "6px" }} />
           )}
         </Tab>
+        <Tab value="checkins">
+          Check-ins
+          {isCheckins && !checkinsQuery.isPending && (checkinsQuery.data?.length ?? 0) > 0 && (
+            <CounterBadge count={checkinsQuery.data!.length} color="danger" size="small" style={{ marginLeft: "6px" }} />
+          )}
+        </Tab>
       </TabList>
 
-      {currentQuery.isPending && <Spinner label="Loading…" />}
+      {isCheckins && (
+        <div className={styles.content}>
+          {checkinsQuery.isPending && <Spinner label="Loading…" />}
+          {checkinsQuery.isError && (
+            <MessageBar intent="error">
+              <MessageBarBody>Failed to load check-ins. Please refresh.</MessageBarBody>
+            </MessageBar>
+          )}
+          {checkinsQuery.data && <CheckinQueueGrid checkins={checkinsQuery.data} />}
+        </div>
+      )}
 
-      {currentQuery.isError && (
+      {!isCheckins && currentQuery.isPending && <Spinner label="Loading…" />}
+
+      {!isCheckins && currentQuery.isError && (
         <MessageBar intent="error">
           <MessageBarBody>Failed to load reservations. Please refresh.</MessageBarBody>
         </MessageBar>
       )}
 
-      {currentQuery.data && (
+      {!isCheckins && currentQuery.data && (
         <div className={styles.content}>
           <ReservationQueueGrid
             reservations={currentQuery.data}

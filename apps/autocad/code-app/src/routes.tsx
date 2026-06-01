@@ -9,6 +9,7 @@ import Audit from "./pages/Audit";
 import AppConfig from "./pages/AppConfig";
 import Broadcasts from "./pages/Broadcasts";
 import Settings from "./pages/Settings";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 import { ReservePage } from "./features/reserve/ReservePage";
 import { ReserveSuccess } from "./features/reserve/ReserveSuccess";
@@ -41,6 +42,7 @@ export const router = createHashRouter([
       { path: "app-config",     element: <RequireRole roles={["Admin"]}><AppConfig /></RequireRole> },
       { path: "broadcasts",     element: <RequireRole roles={["Admin"]}><Broadcasts /></RequireRole> },
       { path: "settings",       element: <Settings /> },
+      { path: "notifications",  element: <Notifications /> }, // reachable from the bell, not the sidebar
       { path: "*",              element: <NotFound /> },
     ],
   },

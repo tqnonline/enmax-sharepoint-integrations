@@ -45,6 +45,11 @@ namespace Enmax.AutoCAD
         private const string ColSheetState        = "enmax_acdnstate";
         private const int    SheetStateAvailable  = 2;
 
+        private const string ColCheckoutOwner   = "ownerid";
+        private const int    NotifSeverityWarning   = 2;
+        private const int    NotifSourceForceCheckin = 7;
+        private const string CheckinDeepLink = "/my-items?tab=checkouts";
+
         // -----------------------------------------------------------------------
         // Constructors
         // -----------------------------------------------------------------------
@@ -95,7 +100,7 @@ namespace Enmax.AutoCAD
             try
             {
                 checkout = service.Retrieve(CheckoutEntity, target.Id,
-                    new ColumnSet(ColCheckoutStatus, ColCheckoutDrawing));
+                    new ColumnSet(ColCheckoutStatus, ColCheckoutDrawing, ColCheckoutOwner));
             }
             catch (FaultException<OrganizationServiceFault> ex)
             {
@@ -173,6 +178,21 @@ namespace Enmax.AutoCAD
                 ["enmax_acdnactedby"]      = new EntityReference("systemuser", context.InitiatingUserId),
                 ["enmax_acdnname"]         = $"Checkout {target.Id} force closed by admin",
             });
+
+            // Notify the user whose check-out was force-closed.
+            var submitter = checkout.GetAttributeValue<EntityReference>(ColCheckoutOwner);
+            if (submitter != null && submitter.Id != context.InitiatingUserId)
+            {
+                string number = NotificationWriter.ResolveDrawingNumber(service, drawingRef.Id);
+                NotificationWriter.Create(service, submitter.Id,
+                    title:        $"Your check-out was force-closed: {number}",
+                    body:         $"An administrator force-checked-in drawing {number} (revision {newRevision}). Reason: {reason}",
+                    severity:     NotifSeverityWarning,
+                    sourceEvent:  NotifSourceForceCheckin,
+                    subjectTable: CheckoutEntity,
+                    subjectId:    target.Id.ToString(),
+                    deepLinkPath: CheckinDeepLink);
+            }
 
             context.OutputParameters["CheckoutId"]   = target.Id.ToString();
             context.OutputParameters["DrawingState"] = StateAvailable;

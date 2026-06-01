@@ -25,6 +25,7 @@ namespace Enmax.AutoCAD
         private const string DrawingEntity       = "enmax_autocaddrawing";
         private const string ColDrawingState     = "enmax_acdnstate";
         private const string ColCurrentRevision  = "enmax_acdncurrentrevision";
+        private const string ColDrawingNumber    = "enmax_acdnnumber";
 
         private const string SheetEntity         = "enmax_autocadsheet";
         private const string ColSheetDrawing     = "enmax_acdndrawing";
@@ -48,6 +49,11 @@ namespace Enmax.AutoCAD
 
         private const int SheetStateAvailable          = 2;
         private const int SheetStateAwaitingValidation = 4;
+
+        // In-app notification to approvers/admins when a check-in needs validation.
+        private const int NotifSeverityWarning   = 2; // Info=1, Warning=2, Critical=3 (Code App severity map)
+        private const int NotifSourceSystem      = 8; // "System Message" (no dedicated Check-In-Submitted source event)
+        private const string CheckinDeepLink     = "/approvals?tab=checkins";
 
         public SubmitRevisionPlugin() : base(typeof(SubmitRevisionPlugin)) { }
         public SubmitRevisionPlugin(string unsecureConfiguration, string secureConfiguration)
@@ -91,7 +97,7 @@ namespace Enmax.AutoCAD
             if (drawingRef == null)
                 throw new InvalidPluginExecutionException($"Checkout {target.Id} has no associated drawing.");
 
-            Entity drawing = service.Retrieve(DrawingEntity, drawingRef.Id, new ColumnSet(ColDrawingState));
+            Entity drawing = service.Retrieve(DrawingEntity, drawingRef.Id, new ColumnSet(ColDrawingState, ColDrawingNumber));
             int drawingStateNow = drawing.GetAttributeValue<OptionSetValue>(ColDrawingState)?.Value ?? 0;
             if (drawingStateNow != StateCheckedOut)
                 throw new InvalidPluginExecutionException(
@@ -155,8 +161,43 @@ namespace Enmax.AutoCAD
                 ["enmax_acdnname"]         = $"Drawing {drawingRef.Id} revision {newRevision} submitted",
             });
 
+            // A check-in always notifies approvers/admins — to validate it (approval on) or to move the
+            // files to SharePoint (approval off). Admins must hear about every check-in either way.
+            NotifyApprovers(service, context, drawing, target.Id, newRevision, requireApproval);
+
             context.OutputParameters["NewStatus"]    = targetStatus;
             context.OutputParameters["DrawingState"] = targetDrawingState;
+        }
+
+        // Notify every Approver/Admin (minus the submitter) about a check-in. When approval is required the
+        // ask is "validate it"; when not, the ask is "move the files" — but admins are told either way.
+        private static void NotifyApprovers(
+            IOrganizationService service, IPluginExecutionContext context,
+            Entity drawing, Guid checkoutId, string newRevision, bool requireApproval)
+        {
+            var recipients = NotificationWriter.GetApproverAndAdminUserIds(service, context.InitiatingUserId);
+            if (recipients.Count == 0) return;
+
+            string number = drawing.GetAttributeValue<string>(ColDrawingNumber);
+            if (string.IsNullOrWhiteSpace(number)) number = drawing.Id.ToString();
+            string actor = NotificationWriter.ResolveActorName(service, context.InitiatingUserId);
+
+            string title = requireApproval
+                ? $"Check-in pending validation: {number}"
+                : $"Drawing checked in: {number}";
+            string body = requireApproval
+                ? $"{actor} checked in drawing {number} (revision {newRevision}). Review and validate it on the Approvals page."
+                : $"{actor} checked in drawing {number} (revision {newRevision}). Please move the files to the SharePoint library.";
+
+            foreach (var recipientId in recipients)
+                NotificationWriter.Create(service, recipientId,
+                    title:        title,
+                    body:         body,
+                    severity:     NotifSeverityWarning,
+                    sourceEvent:  NotifSourceSystem,
+                    subjectTable: CheckoutEntity,
+                    subjectId:    checkoutId.ToString(),
+                    deepLinkPath: CheckinDeepLink);
         }
 
         private static bool GetRequireCheckInApproval(IOrganizationService service)
