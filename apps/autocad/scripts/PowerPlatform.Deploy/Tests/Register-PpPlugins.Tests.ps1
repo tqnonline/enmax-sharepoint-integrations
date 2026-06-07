@@ -7,7 +7,7 @@
 
 BeforeAll {
     $RepoRoot     = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent | Split-Path -Parent
-    $ManifestPath = Join-Path $RepoRoot 'scripts\PowerPlatform.Deploy\PowerPlatform.Deploy.psd1'
+    $ManifestPath = Join-Path $RepoRoot 'scripts/PowerPlatform.Deploy/PowerPlatform.Deploy.psd1'
     Import-Module $ManifestPath -Force
 }
 
@@ -31,7 +31,7 @@ Describe 'Register-PpPlugins — PluginDefinitions data file' {
         # state. This test guards against a [ordered]->@{} conversion silently breaking
         # the file parse, or a developer accidentally removing an entry.
         $RepoRoot  = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent | Split-Path -Parent
-        $defsPath  = Join-Path $RepoRoot 'scripts\PowerPlatform.Deploy\Data\PluginDefinitions.psd1'
+        $defsPath  = Join-Path $RepoRoot 'scripts/PowerPlatform.Deploy/Data/PluginDefinitions.psd1'
         $defs = Import-PowerShellDataFile $defsPath
         $defs.CustomAPIDefs.Count | Should -Be 11
     }
@@ -43,7 +43,7 @@ Describe 'Register-PpPlugins — PluginDefinitions data file' {
         # syntax in the data file) would silently leave steps unregistered, so ownership stamping
         # and the reservation workflow would stop firing.
         $RepoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent | Split-Path -Parent
-        $defsPath = Join-Path $RepoRoot 'scripts\PowerPlatform.Deploy\Data\PluginDefinitions.psd1'
+        $defsPath = Join-Path $RepoRoot 'scripts/PowerPlatform.Deploy/Data/PluginDefinitions.psd1'
         $defs = Import-PowerShellDataFile $defsPath
         $defs.StepDefs.Count | Should -Be 18
     }
@@ -54,7 +54,7 @@ Describe 'Register-PpPlugins — PluginDefinitions data file' {
         # and client calls will fail. Encode the correct binding here so a regression
         # is caught before deployment.
         $RepoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent | Split-Path -Parent
-        $defsPath = Join-Path $RepoRoot 'scripts\PowerPlatform.Deploy\Data\PluginDefinitions.psd1'
+        $defsPath = Join-Path $RepoRoot 'scripts/PowerPlatform.Deploy/Data/PluginDefinitions.psd1'
         $defs = Import-PowerShellDataFile $defsPath
         $issueApi = $defs.CustomAPIDefs | Where-Object { $_.UniqueName -eq 'enmax_acdnIssueNumbers' }
         $issueApi | Should -Not -BeNullOrEmpty

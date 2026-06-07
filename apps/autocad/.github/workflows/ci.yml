@@ -42,3 +42,35 @@ jobs:
           name: code-app-build
           path: apps/code-app/dist
           retention-days: 7
+
+  # Cross-platform sandbox: prove the PowerPlatform.Deploy scripts + plug-in build
+  # run on Linux (the GitHub ubuntu runner is a sandboxed Linux container with pwsh
+  # and dotnet pre-installed). net462 BUILDS here via reference assemblies but cannot
+  # EXECUTE on Linux, so the .NET unit tests stay on the Windows job above.
+  deploy-scripts-linux:
+    name: Deploy scripts (Linux sandbox)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Build plug-in on Linux (net462 via reference assemblies)
+        working-directory: solution/plugins/IssueNumbers
+        run: dotnet build --configuration Release
+      - name: Install Pester
+        shell: pwsh
+        run: Install-Module Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck -Scope CurrentUser
+      - name: Run PowerPlatform.Deploy Pester on Linux (clean env)
+        shell: pwsh
+        run: |
+          'ENVIRONMENT_URL','CLIENT_ID','CLIENT_SECRET','TENANT_ID','DATAVERSE_URL','DATAVERSE_CLIENT_ID','DATAVERSE_CLIENT_SECRET','DATAVERSE_TENANT_ID' |
+            ForEach-Object { [Environment]::SetEnvironmentVariable($_, $null, 'Process') }
+          $cfg = New-PesterConfiguration
+          $cfg.Run.Path = 'scripts/PowerPlatform.Deploy/Tests'
+          $cfg.Run.Exit = $true
+          $cfg.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $cfg

@@ -29,9 +29,13 @@ function Invoke-PpPac {
         [string[]]$Arguments
     )
 
-    # Ensure dotnet global tools (where pac lives) are on PATH
-    if ($env:PATH -notlike "*$env:USERPROFILE\.dotnet\tools*") {
-        $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
+    # Ensure the dotnet global-tools dir (where pac lives) is on PATH — cross-platform.
+    # $HOME resolves the user home on Windows, Linux and macOS; the path separator is
+    # ';' on Windows and ':' on Unix (via [IO.Path]::PathSeparator).
+    $toolsDir = Join-Path $HOME '.dotnet/tools'
+    $sep = [System.IO.Path]::PathSeparator
+    if (($env:PATH -split [regex]::Escape($sep)) -notcontains $toolsDir) {
+        $env:PATH = if ($env:PATH) { "$($env:PATH)$sep$toolsDir" } else { $toolsDir }
     }
 
     return & pac @Arguments

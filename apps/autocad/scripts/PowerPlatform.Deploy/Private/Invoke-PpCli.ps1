@@ -50,18 +50,20 @@ function Invoke-PpCli {
         [switch]$VerboseCli
     )
 
-    # Resolve entry point: prefer installed pp-deploy entry point, fall back to module invocation
-    $cliExe = if (Get-Command 'pp-deploy' -ErrorAction SilentlyContinue) {
-        'pp-deploy'
-    } else {
-        'python'
-    }
+    # Resolve entry point: prefer the installed pp-deploy entry point, else a Python
+    # interpreter. macOS/Linux (e.g. Homebrew) often expose only `python3`, Windows `python`.
+    $cliExe =
+        if     (Get-Command 'pp-deploy' -ErrorAction SilentlyContinue) { 'pp-deploy' }
+        elseif (Get-Command 'python'    -ErrorAction SilentlyContinue) { 'python' }
+        elseif (Get-Command 'python3'   -ErrorAction SilentlyContinue) { 'python3' }
+        else   { 'python' }
 
-    # Build argument list
-    $cliArgs = if ($cliExe -eq 'python') {
-        @('-m', 'powerplatform_deploy.cli', $Command, '--environment', $Environment)
-    } else {
+    # Build argument list — a bare interpreter (python/python3) needs `-m`; the
+    # pp-deploy entry point takes the subcommand directly.
+    $cliArgs = if ($cliExe -eq 'pp-deploy') {
         @($Command, '--environment', $Environment)
+    } else {
+        @('-m', 'powerplatform_deploy.cli', $Command, '--environment', $Environment)
     }
 
     if ($DryRun)     { $cliArgs += '--dry-run' }

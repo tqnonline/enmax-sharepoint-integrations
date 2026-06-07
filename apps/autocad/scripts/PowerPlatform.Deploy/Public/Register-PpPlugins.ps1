@@ -90,9 +90,9 @@ function Register-PpPlugins {
     $moduleRoot = Split-Path $PSScriptRoot -Parent                    # scripts/PowerPlatform.Deploy/
     $repoRoot   = Split-Path (Split-Path $moduleRoot -Parent) -Parent # repo root (module -> scripts -> repo)
 
-    $pluginProj = Join-Path $repoRoot "solution\plugins\IssueNumbers\IssueNumbers.csproj"
-    $dllPath    = Join-Path $repoRoot "solution\plugins\IssueNumbers\bin\Release\net462\Enmax.AutoCAD.dll"
-    $defsPath   = Join-Path $moduleRoot "Data\PluginDefinitions.psd1"
+    $pluginProj = Join-Path $repoRoot "solution/plugins/IssueNumbers/IssueNumbers.csproj"
+    $dllPath    = Join-Path $repoRoot "solution/plugins/IssueNumbers/bin/Release/net462/Enmax.AutoCAD.dll"
+    $defsPath   = Join-Path $moduleRoot "Data/PluginDefinitions.psd1"
 
     # ── 1. Build ──────────────────────────────────────────────────────────────
     if (-not $SkipBuild) {

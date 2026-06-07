@@ -34,7 +34,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot   = Split-Path $PSScriptRoot -Parent
-$codeApp    = Join-Path $repoRoot "apps\code-app"
+$codeApp    = Join-Path $repoRoot "apps/code-app"
 $configMain = Join-Path $codeApp  "power.config.json"
 $configUat  = Join-Path $codeApp  "power.config.uat.json"
 $envUat     = Join-Path $codeApp  ".env.uat"

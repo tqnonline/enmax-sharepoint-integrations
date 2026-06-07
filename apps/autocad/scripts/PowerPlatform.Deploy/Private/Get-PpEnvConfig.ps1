@@ -69,7 +69,7 @@ function Get-PpEnvConfig {
         return $cfg
     }
 
-    $relPath = "apps\code-app\.env.$Environment"
+    $relPath = "apps/code-app/.env.$Environment"
     $envFile = Join-Path $RepoRoot $relPath
 
     # Worktree fallback: .env files are gitignored and may only exist in the main checkout

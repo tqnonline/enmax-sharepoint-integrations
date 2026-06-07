@@ -8,7 +8,7 @@
 
 BeforeAll {
     $RepoRoot  = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent | Split-Path -Parent
-    $ManifestPath = Join-Path $RepoRoot 'scripts\PowerPlatform.Deploy\PowerPlatform.Deploy.psd1'
+    $ManifestPath = Join-Path $RepoRoot 'scripts/PowerPlatform.Deploy/PowerPlatform.Deploy.psd1'
     Import-Module $ManifestPath -Force
 }
 
@@ -20,7 +20,7 @@ Describe 'Get-PpEnvConfig' {
         # silent auth failures. Every format variant present in real .env files must parse.
         BeforeAll {
             $script:TempDir = Join-Path ([System.IO.Path]::GetTempPath()) ([guid]::NewGuid())
-            $envDir = Join-Path $script:TempDir 'apps\code-app'
+            $envDir = Join-Path $script:TempDir 'apps/code-app'
             New-Item -ItemType Directory -Force -Path $envDir | Out-Null
 
             $envContent = @'

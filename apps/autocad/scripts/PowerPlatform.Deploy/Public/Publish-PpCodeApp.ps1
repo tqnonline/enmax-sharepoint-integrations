@@ -53,7 +53,7 @@ function Publish-PpCodeApp {
     # ── Resolve paths ─────────────────────────────────────────────────────────
     $moduleRoot = Split-Path $PSScriptRoot -Parent                    # scripts/PowerPlatform.Deploy/
     $repoRoot   = Split-Path (Split-Path $moduleRoot -Parent) -Parent # repo root (module -> scripts -> repo)
-    $codeApp    = Join-Path $repoRoot "apps\code-app"
+    $codeApp    = Join-Path $repoRoot "apps/code-app"
     $configOut  = Join-Path $codeApp  "power.config.json"
 
     if ($PSCmdlet.ShouldProcess($configOut, 'Write power.config.json + npm build + power-apps push')) {

@@ -15,5 +15,5 @@ param([string]$Environment = "dev")
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-Import-Module "$PSScriptRoot\PowerPlatform.Deploy\PowerPlatform.Deploy.psd1" -Force
+Import-Module "$PSScriptRoot/PowerPlatform.Deploy/PowerPlatform.Deploy.psd1" -Force
 Publish-PpCodeApp -Environment $Environment
