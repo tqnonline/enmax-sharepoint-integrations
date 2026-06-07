@@ -23,6 +23,7 @@ solution/plugins/**/obj/
 solution/build/
 solution/src/**/*.zip
 power.config.json
+power.config.*.json
 .pac/
 
 # IDE
@@ -38,5 +39,6 @@ Thumbs.db
 .env
 .env.local
 .env.dev
+.env.uat
 *.pem
 *.pfx

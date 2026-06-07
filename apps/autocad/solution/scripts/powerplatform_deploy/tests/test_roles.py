@@ -25,6 +25,8 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 import requests
 
+import yaml
+
 from powerplatform_deploy.commands.roles import (
     DEPTH_VALUES,
     OP_PREFIXES,
@@ -32,8 +34,10 @@ from powerplatform_deploy.commands.roles import (
     _resolve_privileges,
     ensure_business_unit,
     find_business_unit,
+    find_default_team,
     find_root_business_unit,
     replace_privileges,
+    upsert_app_config,
 )
 from powerplatform_deploy.client import DataverseClient
 
@@ -348,4 +352,169 @@ class TestMissingPrivilegeWarned:
         assert resolved == [], "Missing privilege must not appear in resolved list"
         assert "prvReadUnimportedEntity" in missing, (
             f"Missing privilege name must appear in missing list. Got: {missing}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test 6: least-privilege YAML assertions
+# ---------------------------------------------------------------------------
+
+class TestLeastPrivilegeTargets:
+    """security_roles.yaml must reflect the Phase 5 least-privilege hardening."""
+
+    @staticmethod
+    def _load_yaml() -> dict:
+        """Load the seed YAML relative to the repo root (5 levels up from tests/)."""
+        from pathlib import Path
+        repo_root = Path(__file__).resolve().parent.parent.parent.parent.parent
+        seed = repo_root / "solution" / "seed" / "security_roles.yaml"
+        with seed.open(encoding="utf-8") as fh:
+            return yaml.safe_load(fh)
+
+    @staticmethod
+    def _role_privs(data: dict, role_name: str) -> dict:
+        for r in data["roles"]:
+            if r["name"] == role_name:
+                return r.get("privileges", {})
+        raise KeyError(f"Role not found: {role_name}")
+
+    def test_least_privilege_targets(self):
+        data = self._load_yaml()
+        user_privs = self._role_privs(data, "Enmax AutoCAD User")
+        approver_privs = self._role_privs(data, "Enmax AutoCAD Approver")
+        admin_privs = self._role_privs(data, "Enmax AutoCAD Admin")
+
+        # User: checkout is read-only basic
+        assert user_privs["enmax_autocadcheckout"] == {"read": "basic"}, (
+            f"User checkout must be {{read: basic}}, got: {user_privs['enmax_autocadcheckout']}"
+        )
+        # User: numbersequence deleted
+        assert "enmax_autocadnumbersequence" not in user_privs, (
+            "User must NOT have enmax_autocadnumbersequence"
+        )
+        # User: auditevent deleted
+        assert "enmax_autocadauditevent" not in user_privs, (
+            "User must NOT have enmax_autocadauditevent"
+        )
+        # User: reservation has no assign
+        assert "assign" not in user_privs["enmax_autocadreservation"], (
+            f"User reservation must not have assign; got: {user_privs['enmax_autocadreservation']}"
+        )
+        # User: new tables present
+        assert "enmax_autocadbroadcastdismissal" in user_privs, (
+            "User must have enmax_autocadbroadcastdismissal"
+        )
+        assert "enmax_autocaduserpreference" in user_privs, (
+            "User must have enmax_autocaduserpreference"
+        )
+
+        # Approver: reservation is read-only global
+        assert approver_privs["enmax_autocadreservation"] == {"read": "global"}, (
+            f"Approver reservation must be {{read: global}}, got: {approver_privs['enmax_autocadreservation']}"
+        )
+
+        # Admin: auditevent is read-only global
+        assert admin_privs["enmax_autocadauditevent"] == {"read": "global"}, (
+            f"Admin auditevent must be {{read: global}}, got: {admin_privs['enmax_autocadauditevent']}"
+        )
+        # Admin: no delete on reference tables
+        assert "delete" not in admin_privs["enmax_autocadbusiness"], (
+            f"Admin enmax_autocadbusiness must not have delete; got: {admin_privs['enmax_autocadbusiness']}"
+        )
+        assert "delete" not in admin_privs["enmax_autocadnumbersequence"], (
+            f"Admin enmax_autocadnumbersequence must not have delete; got: {admin_privs['enmax_autocadnumbersequence']}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test 7: find_default_team filters on isdefault
+# ---------------------------------------------------------------------------
+
+class TestFindDefaultTeam:
+    """find_default_team must query teams with isdefault eq true scoped to the BU."""
+
+    def test_find_default_team_filters_isdefault(self):
+        client = _make_client()
+
+        with patch.object(
+            client, "_get", return_value={"value": [{"teamid": "team-guid"}]}
+        ) as mock_get:
+            result = find_default_team(client, "bu-guid")
+
+        assert result == "team-guid", f"Expected 'team-guid', got {result!r}"
+        assert mock_get.call_count == 1
+        call_path, call_params = mock_get.call_args[0]
+        assert call_path == "teams", f"Expected path 'teams', got {call_path!r}"
+        filt = call_params.get("$filter", "")
+        assert "isdefault" in filt, f"$filter must contain 'isdefault'; got: {filt}"
+        assert "bu-guid" in filt, f"$filter must contain bu-guid; got: {filt}"
+
+    def test_find_default_team_returns_none_when_empty(self):
+        client = _make_client()
+
+        with patch.object(client, "_get", return_value={"value": []}):
+            result = find_default_team(client, "bu-guid")
+
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Test 8: upsert_app_config patches when record exists
+# ---------------------------------------------------------------------------
+
+class TestUpsertAppConfigPatches:
+    """upsert_app_config must PATCH when a matching key already exists."""
+
+    def test_upsert_app_config_patches_when_exists(self):
+        client = _make_client()
+        existing_id = "cfg-id-existing"
+
+        with (
+            patch.object(
+                client, "_get",
+                return_value={"value": [{"enmax_autocadappconfigid": existing_id}]},
+            ),
+            patch.object(client, "_patch") as mock_patch,
+            patch.object(client, "_post") as mock_post,
+        ):
+            upsert_app_config(client, "AppOwnerTeamId", "team-abc")
+
+        mock_patch.assert_called_once()
+        mock_post.assert_not_called()
+        patch_path = mock_patch.call_args[0][0]
+        assert existing_id in patch_path, (
+            f"PATCH path must include the config id; got: {patch_path}"
+        )
+        patch_body = mock_patch.call_args[0][1]
+        assert patch_body == {"enmax_acdnvalue": "team-abc"}
+
+
+# ---------------------------------------------------------------------------
+# Test 9: upsert_app_config posts when record absent
+# ---------------------------------------------------------------------------
+
+class TestUpsertAppConfigPosts:
+    """upsert_app_config must POST when no matching key is found."""
+
+    def test_upsert_app_config_posts_when_absent(self):
+        client = _make_client()
+
+        mock_resp = _mock_response(204)
+
+        with (
+            patch.object(client, "_get", return_value={"value": []}),
+            patch.object(client, "_patch") as mock_patch,
+            patch.object(client, "_post", return_value=mock_resp) as mock_post,
+        ):
+            upsert_app_config(client, "AppOwnerTeamId", "team-xyz")
+
+        mock_post.assert_called_once()
+        mock_patch.assert_not_called()
+        post_args = mock_post.call_args[0]
+        assert post_args[0] == "enmax_autocadappconfigs", (
+            f"POST path must be 'enmax_autocadappconfigs'; got: {post_args[0]}"
+        )
+        post_body = post_args[1]
+        assert post_body == {"enmax_acdnkey": "AppOwnerTeamId", "enmax_acdnvalue": "team-xyz"}, (
+            f"POST body mismatch: {post_body}"
         )

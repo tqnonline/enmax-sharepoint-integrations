@@ -40,35 +40,29 @@ roles:
         delete: none
         append: basic
         appendto: basic
-        assign: basic
         share: basic
       enmax_autocaddrawing:
         read: basic
-        append: basic
-        appendto: basic
         share: basic
       enmax_autocadsheet:
         read: basic
-        append: basic
-        appendto: basic
         share: basic
       enmax_autocadcheckout:
-        create: basic
         read: basic
-        write: basic
-        append: basic
-        appendto: basic
       enmax_autocadinappnotification:
         read: basic
         write: basic        # mark-as-read
-      enmax_autocadnumbersequence:
-        read: global        # plug-in runs as service; users see sequence state
       enmax_autocadappconfig:
         read: global
-      enmax_autocadauditevent:
-        read: basic         # own subject rows only
       enmax_autocadbroadcast:
         read: global
+      enmax_autocadbroadcastdismissal:
+        create: basic
+        read: basic
+      enmax_autocaduserpreference:
+        create: basic
+        read: basic
+        write: basic
       # Reference / dimension tables — read-only for all
       enmax_autocadbusiness:    { read: global }
       enmax_autocadasset:       { read: global }
@@ -96,31 +90,26 @@ roles:
     privileges:
       enmax_autocadreservation:
         read: global
-        append: global
-        appendto: global
       enmax_autocaddrawing:
         read: global
-        append: global
-        appendto: global
       enmax_autocadsheet:
         read: global
-        append: global
-        appendto: global
       enmax_autocadcheckout:
         read: global
-        append: global
-        appendto: global
       enmax_autocadinappnotification:
         read: basic
         write: basic
-      enmax_autocadnumbersequence:
-        read: global
       enmax_autocadappconfig:
-        read: global
-      enmax_autocadauditevent:
         read: global
       enmax_autocadbroadcast:
         read: global
+      enmax_autocadbroadcastdismissal:
+        create: basic
+        read: basic
+      enmax_autocaduserpreference:
+        create: basic
+        read: basic
+        write: basic
       enmax_autocadbusiness:    { read: global }
       enmax_autocadasset:       { read: global }
       enmax_autocadunit:        { read: global }
@@ -193,7 +182,6 @@ roles:
         create: global
         read: global
         write: global
-        delete: global
         append: global
         appendto: global
         assign: global
@@ -202,20 +190,12 @@ roles:
         create: global
         read: global
         write: global
-        delete: global
         append: global
         appendto: global
         assign: global
         share: global
       enmax_autocadauditevent:
-        create: global
         read: global
-        write: global
-        delete: global
-        append: global
-        appendto: global
-        assign: global
-        share: global
       enmax_autocadbroadcast:
         create: global
         read: global
@@ -230,7 +210,6 @@ roles:
         create: global
         read: global
         write: global
-        delete: global
         append: global
         appendto: global
         assign: global
@@ -239,7 +218,6 @@ roles:
         create: global
         read: global
         write: global
-        delete: global
         append: global
         appendto: global
         assign: global
@@ -248,7 +226,6 @@ roles:
         create: global
         read: global
         write: global
-        delete: global
         append: global
         appendto: global
         assign: global
@@ -257,7 +234,6 @@ roles:
         create: global
         read: global
         write: global
-        delete: global
         append: global
         appendto: global
         assign: global
@@ -266,7 +242,6 @@ roles:
         create: global
         read: global
         write: global
-        delete: global
         append: global
         appendto: global
         assign: global
@@ -275,7 +250,6 @@ roles:
         create: global
         read: global
         write: global
-        delete: global
         append: global
         appendto: global
         assign: global
@@ -284,7 +258,6 @@ roles:
         create: global
         read: global
         write: global
-        delete: global
         append: global
         appendto: global
         assign: global
@@ -293,7 +266,6 @@ roles:
         create: global
         read: global
         write: global
-        delete: global
         append: global
         appendto: global
         assign: global
@@ -302,7 +274,6 @@ roles:
         create: global
         read: global
         write: global
-        delete: global
         append: global
         appendto: global
         assign: global
@@ -311,7 +282,6 @@ roles:
         create: global
         read: global
         write: global
-        delete: global
         append: global
         appendto: global
         assign: global
@@ -320,11 +290,17 @@ roles:
         create: global
         read: global
         write: global
-        delete: global
         append: global
         appendto: global
         assign: global
         share: global
+      enmax_autocadbroadcastdismissal:
+        create: basic
+        read: global
+      enmax_autocaduserpreference:
+        create: basic
+        read: basic
+        write: basic
 
   # ---------------------------------------------------------------------------
   # 4. Enmax AutoCAD Read Only
@@ -360,3 +336,39 @@ roles:
       enmax_autocadvendor:         { read: global }
       enmax_autocadassetunit:      { read: global }
       enmax_autocadsystemscope:    { read: global }
+      enmax_autocadbroadcastdismissal: { read: global }
+      enmax_autocaduserpreference: { read: global }
+
+  # ---------------------------------------------------------------------------
+  # 5. Enmax AutoCAD App Owner
+  #    NOT user-facing. Assigned ONLY to the BU default team (enmax-autocad-app),
+  #    which Dataverse auto-populates with every business-unit user — so this role
+  #    is inherited by all users and MUST stay read-only and narrowly scoped.
+  #    Purpose: let the app-owner team HOLD the seeded master/reference/config/
+  #    sequence records (Dataverse requires a record's owner to have Read on the
+  #    entity). Deliberately excludes the transaction tables (reservation/drawing/
+  #    sheet/checkout) so inheriting it never widens a user's row-level visibility.
+  # ---------------------------------------------------------------------------
+  - name: Enmax AutoCAD App Owner
+    description: >
+      Ownership-team role for the enmax-autocad-app business-unit default team.
+      Read-only on the master, reference, configuration, and sequence tables the
+      app team owns. Scoped to exclude transaction tables because every business-
+      unit user inherits the default team's roles. Stacks on Basic User.
+    privileges:
+      enmax_autocadbusiness:       { read: global }
+      enmax_autocadasset:          { read: global }
+      enmax_autocadunit:           { read: global }
+      enmax_autocaddomain:         { read: global }
+      enmax_autocadsystem:         { read: global }
+      enmax_autocadkind:           { read: global }
+      enmax_autocadrecordtype:     { read: global }
+      enmax_autocadrecordphase:    { read: global }
+      enmax_autocadvendor:         { read: global }
+      enmax_autocadbusinessasset:  { read: global }
+      enmax_autocadassetunit:      { read: global }
+      enmax_autocadsystemscope:    { read: global }
+      enmax_autocadappconfig:      { read: global }
+      enmax_autocadnumbersequence: { read: global }
+      enmax_autocadauditevent:     { read: global }
+      enmax_autocadbroadcast:      { read: global }

@@ -51,7 +51,10 @@ namespace Enmax.AutoCAD
         protected override void ExecuteDataversePlugin(ILocalPluginContext localPluginContext)
         {
             var context = localPluginContext.PluginExecutionContext;
-            var service = localPluginContext.InitiatingUserService;
+            var service = localPluginContext.SystemUserService;
+
+            // Authorization gate — caller must be Approver or Admin.
+            Authorization.RequireApproverOrAdmin(service, context.InitiatingUserId, "issue numbers");
 
             // Step 2 — Validate required string parameters (presence and non-empty)
             var requiredParams = new[] { "Business", "Asset", "Unit", "Domain", "System", "Kind" };
@@ -125,6 +128,18 @@ namespace Enmax.AutoCAD
             context.OutputParameters["SequenceKey"]     = sequenceKey;
             context.OutputParameters["NewLastIssued"]   = proposedLastIssued;
             context.OutputParameters["Status"]          = new OptionSetValue(ComputeStatus(proposedLastIssued));
+
+            // When invoked during approval, stamp the issued numbers onto the reservation
+            // as SYSTEM so the approver needs no write privilege on it. This Update triggers
+            // AutoCreateDrawingsPlugin (the reservation is already Approved by this point).
+            if (context.InputParameters.TryGetValue("Reservation", out var resObj) && resObj is EntityReference resRef)
+            {
+                var resUpdate = new Entity(resRef.LogicalName, resRef.Id)
+                {
+                    ["enmax_acdnissuednumbers"] = JsonConvert.SerializeObject(issued),
+                };
+                service.Update(resUpdate);
+            }
         }
 
         // -----------------------------------------------------------------------

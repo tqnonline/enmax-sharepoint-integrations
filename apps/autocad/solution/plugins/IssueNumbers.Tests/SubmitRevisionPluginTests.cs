@@ -49,6 +49,8 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             {
                 [ColCheckoutStatus]  = new OptionSetValue(checkoutStatus),
                 [ColCheckoutDrawing] = new EntityReference(DrawingEntity, drawingId),
+                // Owner = acting user so RequireSelf gate passes.
+                ["ownerid"]          = new EntityReference("systemuser", userId),
             };
             var sheet = new Entity(SheetEntity, Guid.NewGuid())
             {
@@ -175,6 +177,56 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 
             act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*ConcurrencyVersionMismatch*",
                 because: "two simultaneous revision submits must not both win; the loser must be told to retry (Rule 14)");
+        }
+
+        [Fact]
+        public void Non_checkout_owner_cannot_submit_revision()
+        {
+            // Arrange: checkout owned by someone else; acting user is a stranger.
+            var ctx          = new XrmFakedContext();
+            var drawingId    = Guid.NewGuid();
+            var checkoutId   = Guid.NewGuid();
+            var checkoutOwner = Guid.NewGuid();
+            var actingUser   = Guid.NewGuid(); // not the owner
+
+            var drawing = new Entity(DrawingEntity, drawingId)
+            {
+                [ColDrawingState]    = new OptionSetValue(StateCheckedOut),
+                [ColCurrentRevision] = "A",
+            };
+            var checkout = new Entity(CheckoutEntity, checkoutId)
+            {
+                [ColCheckoutStatus]  = new OptionSetValue(StatusOpen),
+                [ColCheckoutDrawing] = new EntityReference(DrawingEntity, drawingId),
+                ["ownerid"]          = new EntityReference("systemuser", checkoutOwner),
+            };
+            var config = new Entity(AppConfigEntity, Guid.NewGuid())
+            {
+                ["enmax_acdnkey"]   = "RequireCheckInApproval",
+                ["enmax_acdnvalue"] = "false",
+            };
+            ctx.Initialize(new Entity[] { drawing, checkout, config });
+
+            var pluginCtx = ctx.GetDefaultPluginContext();
+            pluginCtx.MessageName      = "enmax_acdnSubmitRevision";
+            pluginCtx.Stage            = 40;
+            pluginCtx.InitiatingUserId = actingUser;
+            pluginCtx.InputParameters  = new ParameterCollection();
+            pluginCtx.OutputParameters = new ParameterCollection();
+            pluginCtx.InputParameters["Target"]      = new EntityReference(CheckoutEntity, checkoutId);
+            pluginCtx.InputParameters["NewRevision"] = "B";
+
+            Action act = () => ctx.ExecutePluginWith<SubmitRevisionPlugin>(pluginCtx);
+
+            act.Should().Throw<InvalidPluginExecutionException>()
+               .WithMessage("*not authorized*",
+                   because: "only the checkout owner may submit a revision; other users must be denied");
+
+            // Checkout and drawing state must remain unchanged.
+            var svc = ctx.GetFakedOrganizationService();
+            svc.Retrieve(CheckoutEntity, checkoutId, new ColumnSet(ColCheckoutStatus))
+               .GetAttributeValue<OptionSetValue>(ColCheckoutStatus).Value
+               .Should().Be(StatusOpen, because: "the gate fires before any state change");
         }
     }
 }

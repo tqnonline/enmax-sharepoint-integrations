@@ -32,6 +32,9 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         // Helpers
         // -----------------------------------------------------------------------
 
+        private static readonly Guid ApproverTeamId = Guid.NewGuid();
+        private static readonly Guid AdminTeamId     = Guid.NewGuid();
+
         private static (XrmFakedContext ctx, XrmFakedPluginExecutionContext pluginCtx, Guid reservationId)
             BuildContext(int status)
         {
@@ -43,7 +46,27 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             {
                 [ColStatus] = new OptionSetValue(status),
             };
-            ctx.Initialize(new[] { reservation });
+
+            // Seed authz: AppConfig + approver membership so the gate passes.
+            ctx.Initialize(new[]
+            {
+                reservation,
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "AdminTeamId",
+                    ["enmax_acdnvalue"] = AdminTeamId.ToString(),
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "ApproverTeamId",
+                    ["enmax_acdnvalue"] = ApproverTeamId.ToString(),
+                },
+                new Entity("teammembership", Guid.NewGuid())
+                {
+                    ["teamid"]       = ApproverTeamId,
+                    ["systemuserid"] = approverId,
+                },
+            });
 
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName          = "enmax_acdnApproveReservation";
@@ -155,6 +178,52 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             updated.GetAttributeValue<EntityReference>(ColApprover).Id
                    .Should().Be(expectedApproverId,
                        because: "the approver lookup must point to the user who called the action, not the plugin run-as user");
+        }
+
+        [Fact]
+        public void UnauthorizedUser_cannot_approve_reservation_and_state_unchanged()
+        {
+            // Arrange: a plain user (not in any team) tries to approve a Pending reservation
+            var ctx           = new XrmFakedContext();
+            var reservationId = Guid.NewGuid();
+            var plainUserId   = Guid.NewGuid();
+
+            ctx.Initialize(new[]
+            {
+                new Entity(EntityName, reservationId) { [ColStatus] = new OptionSetValue(StatusPending) },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "AdminTeamId",
+                    ["enmax_acdnvalue"] = AdminTeamId.ToString(),
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "ApproverTeamId",
+                    ["enmax_acdnvalue"] = ApproverTeamId.ToString(),
+                },
+                // No teammembership for plainUserId
+            });
+
+            var pluginCtx = ctx.GetDefaultPluginContext();
+            pluginCtx.MessageName      = "enmax_acdnApproveReservation";
+            pluginCtx.Stage            = 40;
+            pluginCtx.InitiatingUserId = plainUserId;
+            pluginCtx.InputParameters  = new ParameterCollection();
+            pluginCtx.OutputParameters = new ParameterCollection();
+            pluginCtx.InputParameters["Target"] = new EntityReference(EntityName, reservationId);
+
+            Action act = () => ctx.ExecutePluginWith<ApproveReservationPlugin>(pluginCtx);
+
+            // Act + Assert: must throw "not authorized" and leave status as Pending
+            act.Should().Throw<InvalidPluginExecutionException>()
+               .WithMessage("*not authorized*",
+                   because: "a user outside the Admin/Approver teams must be denied");
+
+            var unchanged = ctx.GetFakedOrganizationService()
+                               .Retrieve(EntityName, reservationId, new Microsoft.Xrm.Sdk.Query.ColumnSet(ColStatus));
+            unchanged.GetAttributeValue<OptionSetValue>(ColStatus).Value
+                     .Should().Be(StatusPending,
+                         because: "authorization failure must leave the reservation status unchanged (no partial write)");
         }
     }
 }

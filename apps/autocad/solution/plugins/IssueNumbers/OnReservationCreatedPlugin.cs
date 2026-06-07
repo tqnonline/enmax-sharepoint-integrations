@@ -12,7 +12,7 @@ namespace Enmax.AutoCAD
     public class OnReservationCreatedPlugin : PluginBase
     {
         private const string EntityName = "enmax_autocadreservation";
-        private const string ColNumber  = "enmax_acdnreservationnumber";
+        private const string ColNumber  = "enmax_acdnreservationid";
 
         private const string AuditEntityName    = "enmax_autocadauditevent";
         private const int    AuditEventCreated  = 1;
@@ -29,7 +29,7 @@ namespace Enmax.AutoCAD
         protected override void ExecuteDataversePlugin(ILocalPluginContext localPluginContext)
         {
             var context = localPluginContext.PluginExecutionContext;
-            var service = localPluginContext.InitiatingUserService;
+            var service = localPluginContext.SystemUserService;
 
             if (!string.Equals(context.MessageName, "Create", StringComparison.OrdinalIgnoreCase))
                 return;

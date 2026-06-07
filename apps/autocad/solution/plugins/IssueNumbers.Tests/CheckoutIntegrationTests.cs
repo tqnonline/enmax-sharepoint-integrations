@@ -88,11 +88,21 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var entity = new Entity(DrawingEntity);
             entity[ColDrawingState]  = new OptionSetValue(StateAvailable);
             entity[ColCurrentRev]    = revision;
-            entity["enmax_acdnname"] = number ?? $"TEST-{Guid.NewGuid():N}";
+            entity["enmax_acdnnumber"] = number ?? $"TEST-{Guid.NewGuid():N}";
 
             var req = new CreateRequest { Target = entity };
             var rsp = (CreateResponse)await _client.ExecuteAsync(req).ConfigureAwait(false);
-            return rsp.id;
+            var drawingId = rsp.id;
+
+            // Create one sheet linked to the drawing so sheet-state propagation
+            // assertions (e.g. Finalize -> all sheets Finalized) have a row to mirror.
+            var sheet = new Entity("enmax_autocadsheet");
+            sheet["enmax_acdndrawing"]     = new EntityReference(DrawingEntity, drawingId);
+            sheet["enmax_acdnsheetnumber"] = 1;
+            sheet["enmax_acdnstate"]       = new OptionSetValue(2); // Available (sheet-state)
+            await _client.ExecuteAsync(new CreateRequest { Target = sheet }).ConfigureAwait(false);
+
+            return drawingId;
         }
 
         /// <summary>Deletes a drawing (idempotent).</summary>
@@ -150,12 +160,13 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         /// <summary>Invokes enmax_acdnForceCheckin.</summary>
-        public async Task InvokeForceCheckinAsync(Guid checkoutId, string reason)
+        public async Task InvokeForceCheckinAsync(Guid checkoutId, string reason, string newRevision = "B")
         {
             EnsureReady();
             var request = new OrganizationRequest(ForceAction);
-            request.Parameters["Target"] = new EntityReference(CheckoutEntity, checkoutId);
-            request.Parameters["Reason"] = reason;
+            request.Parameters["Target"]      = new EntityReference(CheckoutEntity, checkoutId);
+            request.Parameters["Reason"]      = reason;
+            request.Parameters["NewRevision"] = newRevision;
             await _client.ExecuteAsync(request).ConfigureAwait(false);
         }
 

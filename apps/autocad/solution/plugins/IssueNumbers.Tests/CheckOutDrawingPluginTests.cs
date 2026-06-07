@@ -36,6 +36,9 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         // Helpers
         // -----------------------------------------------------------------------
 
+        private static readonly Guid AdminTeamId    = Guid.NewGuid();
+        private static readonly Guid ApproverTeamId = Guid.NewGuid();
+
         private static (XrmFakedContext ctx, XrmFakedPluginExecutionContext pluginCtx, Guid drawingId)
             BuildContext(int drawingState = StateAvailable)
         {
@@ -46,8 +49,25 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var drawing = new Entity(DrawingEntity, drawingId)
             {
                 [ColDrawingState] = new OptionSetValue(drawingState),
+                // Owner = acting user so the authorization gate passes.
+                ["ownerid"]       = new EntityReference("systemuser", userId),
             };
-            ctx.Initialize(new[] { drawing });
+
+            ctx.Initialize(new Entity[]
+            {
+                drawing,
+                // AppConfig entries so Authorization helper can resolve teams.
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "AdminTeamId",
+                    ["enmax_acdnvalue"] = AdminTeamId.ToString(),
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "ApproverTeamId",
+                    ["enmax_acdnvalue"] = ApproverTeamId.ToString(),
+                },
+            });
 
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnCheckOutDrawing";
@@ -227,18 +247,107 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         [Fact]
+        public void Non_owner_non_admin_cannot_check_out_drawing()
+        {
+            // Arrange: drawing owned by someone else; acting user is a stranger.
+            var ctx         = new XrmFakedContext();
+            var drawingId   = Guid.NewGuid();
+            var drawingOwner = Guid.NewGuid();
+            var actingUser  = Guid.NewGuid(); // not the owner, not in any team
+
+            var drawing = new Entity(DrawingEntity, drawingId)
+            {
+                [ColDrawingState] = new OptionSetValue(StateAvailable),
+                ["ownerid"]       = new EntityReference("systemuser", drawingOwner),
+            };
+            ctx.Initialize(new Entity[]
+            {
+                drawing,
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "AdminTeamId",
+                    ["enmax_acdnvalue"] = AdminTeamId.ToString(),
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "ApproverTeamId",
+                    ["enmax_acdnvalue"] = ApproverTeamId.ToString(),
+                },
+            });
+
+            var pluginCtx = ctx.GetDefaultPluginContext();
+            pluginCtx.MessageName      = "enmax_acdnCheckOutDrawing";
+            pluginCtx.Stage            = 40;
+            pluginCtx.InitiatingUserId = actingUser;
+            pluginCtx.InputParameters  = new ParameterCollection();
+            pluginCtx.OutputParameters = new ParameterCollection();
+            pluginCtx.InputParameters["Target"] = new EntityReference(DrawingEntity, drawingId);
+
+            Action act = () => ctx.ExecutePluginWith<CheckOutDrawingPlugin>(pluginCtx);
+
+            act.Should().Throw<InvalidPluginExecutionException>()
+               .WithMessage("*not authorized*",
+                   because: "a user who is neither the drawing owner nor an admin must be denied checkout");
+
+            // Drawing state must remain Available — no checkout created.
+            var svc = ctx.GetFakedOrganizationService();
+            svc.Retrieve(DrawingEntity, drawingId, new ColumnSet(ColDrawingState))
+               .GetAttributeValue<OptionSetValue>(ColDrawingState).Value
+               .Should().Be(StateAvailable, because: "the gate fired before any state change");
+
+            svc.RetrieveMultiple(new QueryExpression(CheckoutEntity) { ColumnSet = new ColumnSet(false) })
+               .Entities.Should().BeEmpty(because: "no checkout row must be created when the gate denies the request");
+        }
+
+        [Fact]
+        public void CheckOut_sets_checkout_ownerid_to_initiating_user()
+        {
+            var (ctx, pluginCtx, _) = BuildContext(StateAvailable);
+            var expectedUserId = pluginCtx.InitiatingUserId;
+
+            ctx.ExecutePluginWith<CheckOutDrawingPlugin>(pluginCtx);
+
+            var svc      = ctx.GetFakedOrganizationService();
+            var checkouts = svc.RetrieveMultiple(new QueryExpression(CheckoutEntity)
+            {
+                ColumnSet = new ColumnSet("ownerid"),
+            });
+
+            checkouts.Entities[0].GetAttributeValue<EntityReference>("ownerid").Id
+                .Should().Be(expectedUserId,
+                    because: "the checkout ownerid must be set to the initiating user so that authorization gates work downstream");
+        }
+
+        [Fact]
         public void CheckOut_transitions_related_sheets_to_CheckedOut()
         {
             var ctx       = new XrmFakedContext();
             var drawingId = Guid.NewGuid();
             var userId    = Guid.NewGuid();
 
-            var drawing = new Entity(DrawingEntity, drawingId) { [ColDrawingState] = new OptionSetValue(StateAvailable) };
+            var drawing = new Entity(DrawingEntity, drawingId)
+            {
+                [ColDrawingState] = new OptionSetValue(StateAvailable),
+                ["ownerid"]       = new EntityReference("systemuser", userId),
+            };
             var sheet1  = new Entity("enmax_autocadsheet", Guid.NewGuid())
                 { ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId), ["enmax_acdnstate"] = new OptionSetValue(2) };
             var sheet2  = new Entity("enmax_autocadsheet", Guid.NewGuid())
                 { ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId), ["enmax_acdnstate"] = new OptionSetValue(2) };
-            ctx.Initialize(new[] { drawing, sheet1, sheet2 });
+            ctx.Initialize(new Entity[]
+            {
+                drawing, sheet1, sheet2,
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "AdminTeamId",
+                    ["enmax_acdnvalue"] = AdminTeamId.ToString(),
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "ApproverTeamId",
+                    ["enmax_acdnvalue"] = ApproverTeamId.ToString(),
+                },
+            });
 
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnCheckOutDrawing";

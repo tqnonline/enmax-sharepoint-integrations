@@ -16,12 +16,8 @@ namespace Enmax.AutoCAD
     /// </summary>
     public static class NotificationWriter
     {
-        private const string NotifEntity     = "enmax_autocadinappnotification";
-        private const string AppConfigEntity = "enmax_autocadappconfig";
-        private const string TeamMembership  = "teammembership";
-
-        private const string ColKey   = "enmax_acdnkey";
-        private const string ColValue = "enmax_acdnvalue";
+        private const string NotifEntity    = "enmax_autocadinappnotification";
+        private const string TeamMembership = "teammembership";
 
         /// <summary>Create one in-app notification for a single recipient.</summary>
         public static void Create(
@@ -40,6 +36,7 @@ namespace Enmax.AutoCAD
                 ["enmax_acdndeeplinkpath"] = deepLinkPath,
                 ["enmax_acdnread"]         = false,
                 ["enmax_acdnrecipient"]    = new EntityReference("systemuser", recipientId),
+                ["ownerid"]               = new EntityReference("systemuser", recipientId),
             });
         }
 
@@ -103,11 +100,6 @@ namespace Enmax.AutoCAD
         }
 
         private static string GetConfigValue(IOrganizationService service, string key)
-        {
-            var q = new QueryExpression(AppConfigEntity) { ColumnSet = new ColumnSet(ColValue), TopCount = 1 };
-            q.Criteria.AddCondition(ColKey, ConditionOperator.Equal, key);
-            var r = service.RetrieveMultiple(q);
-            return r.Entities.Count > 0 ? r.Entities[0].GetAttributeValue<string>(ColValue) : null;
-        }
+            => AppConfigReader.GetValue(service, key);
     }
 }

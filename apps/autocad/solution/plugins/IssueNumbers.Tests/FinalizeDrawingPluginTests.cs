@@ -26,6 +26,9 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 
         private const string ValidReason = "This is the final issued-for-construction revision; no further changes expected.";
 
+        private static readonly Guid AdminTeamId    = Guid.NewGuid();
+        private static readonly Guid ApproverTeamId = Guid.NewGuid();
+
         private static (XrmFakedContext ctx, XrmFakedPluginExecutionContext pluginCtx, Guid drawingId)
             BuildContext(int drawingState = StateAvailable, string currentRevision = "A")
         {
@@ -33,14 +36,32 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var drawingId = Guid.NewGuid();
             var userId    = Guid.NewGuid();
 
-            var drawing = new Entity(DrawingEntity, drawingId) { [ColDrawingState] = new OptionSetValue(drawingState) };
+            var drawing = new Entity(DrawingEntity, drawingId)
+            {
+                [ColDrawingState] = new OptionSetValue(drawingState),
+                // Owner = acting user so the authorization gate passes.
+                ["ownerid"]       = new EntityReference("systemuser", userId),
+            };
             if (!string.IsNullOrEmpty(currentRevision)) drawing[ColCurrentRevision] = currentRevision;
             var sheet   = new Entity(SheetEntity, Guid.NewGuid())
             {
                 ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
                 ["enmax_acdnstate"]   = new OptionSetValue(2),
             };
-            ctx.Initialize(new[] { drawing, sheet });
+            ctx.Initialize(new Entity[]
+            {
+                drawing, sheet,
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "AdminTeamId",
+                    ["enmax_acdnvalue"] = AdminTeamId.ToString(),
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "ApproverTeamId",
+                    ["enmax_acdnvalue"] = ApproverTeamId.ToString(),
+                },
+            });
 
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnFinalizeDrawing";
@@ -131,6 +152,57 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             Action act = () => ctx.ExecutePluginWith<FinalizeDrawingPlugin>(pluginCtx);
             act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*ConcurrencyVersionMismatch*",
                 because: "two simultaneous finalisations must not both succeed; the loser must be told to retry");
+        }
+
+        [Fact]
+        public void Non_owner_non_admin_cannot_finalize_drawing()
+        {
+            var ctx          = new XrmFakedContext();
+            var drawingId    = Guid.NewGuid();
+            var drawingOwner = Guid.NewGuid();
+            var actingUser   = Guid.NewGuid(); // not the owner, not in any team
+
+            var drawing = new Entity(DrawingEntity, drawingId)
+            {
+                [ColDrawingState]    = new OptionSetValue(StateAvailable),
+                [ColCurrentRevision] = "A",
+                ["ownerid"]          = new EntityReference("systemuser", drawingOwner),
+            };
+            ctx.Initialize(new Entity[]
+            {
+                drawing,
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "AdminTeamId",
+                    ["enmax_acdnvalue"] = AdminTeamId.ToString(),
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "ApproverTeamId",
+                    ["enmax_acdnvalue"] = ApproverTeamId.ToString(),
+                },
+            });
+
+            var pluginCtx = ctx.GetDefaultPluginContext();
+            pluginCtx.MessageName      = "enmax_acdnFinalizeDrawing";
+            pluginCtx.Stage            = 40;
+            pluginCtx.InitiatingUserId = actingUser;
+            pluginCtx.InputParameters  = new ParameterCollection();
+            pluginCtx.OutputParameters = new ParameterCollection();
+            pluginCtx.InputParameters["Target"] = new EntityReference(DrawingEntity, drawingId);
+            pluginCtx.InputParameters["Reason"] = ValidReason;
+
+            Action act = () => ctx.ExecutePluginWith<FinalizeDrawingPlugin>(pluginCtx);
+
+            act.Should().Throw<InvalidPluginExecutionException>()
+               .WithMessage("*not authorized*",
+                   because: "a user who is neither the owner nor an admin must be denied finalization");
+
+            // Drawing must remain Available.
+            ctx.GetFakedOrganizationService()
+               .Retrieve(DrawingEntity, drawingId, new ColumnSet(ColDrawingState))
+               .GetAttributeValue<OptionSetValue>(ColDrawingState).Value
+               .Should().Be(StateAvailable, because: "the gate fires before the state change");
         }
     }
 }

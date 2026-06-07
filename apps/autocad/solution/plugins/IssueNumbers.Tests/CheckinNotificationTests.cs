@@ -47,6 +47,8 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             {
                 ["enmax_acdnstatus"]  = new OptionSetValue(1), // Open
                 ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
+                // Owner = submitter so RequireSelf gate passes for the submitter.
+                ["ownerid"]           = new EntityReference("systemuser", submitter),
             };
             var sheet = new Entity(SheetEntity, Guid.NewGuid())
             {

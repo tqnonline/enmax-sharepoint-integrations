@@ -106,6 +106,36 @@ def ensure_business_unit(client: DataverseClient, name: str, logger: Any) -> str
 
 
 # ---------------------------------------------------------------------------
+# App Configuration / team helpers
+# ---------------------------------------------------------------------------
+
+def find_default_team(client: DataverseClient, bu_id: str) -> str | None:
+    """Return the default owner team id for a business unit, or None."""
+    data = client._get("teams", {
+        "$filter": f"_businessunitid_value eq {bu_id} and isdefault eq true",
+        "$select": "teamid",
+        "$top": "1",
+    })
+    items = data.get("value", [])
+    return items[0]["teamid"] if items else None
+
+
+def upsert_app_config(client: DataverseClient, key: str, value: str) -> None:
+    """Idempotently set an App Configuration key=value (find by key, patch or create)."""
+    data = client._get("enmax_autocadappconfigs", {
+        "$filter": f"enmax_acdnkey eq '{key}'",
+        "$select": "enmax_autocadappconfigid",
+        "$top": "1",
+    })
+    items = data.get("value", [])
+    if items:
+        client._patch(f"enmax_autocadappconfigs({items[0]['enmax_autocadappconfigid']})",
+                      {"enmax_acdnvalue": value})
+    else:
+        client._post("enmax_autocadappconfigs", {"enmax_acdnkey": key, "enmax_acdnvalue": value})
+
+
+# ---------------------------------------------------------------------------
 # Security role helpers
 # ---------------------------------------------------------------------------
 
@@ -332,3 +362,11 @@ def run(environment: str, dry_run: bool, verbose: bool) -> None:
         _provision_role(client, role_def, bu_id, logger)
 
     logger.info("%d security role(s) provisioned successfully.", len(roles))
+
+    child_bu_id = find_business_unit(client, bu_name)
+    team_id = find_default_team(client, child_bu_id) if child_bu_id else None
+    if team_id:
+        upsert_app_config(client, "AppOwnerTeamId", team_id)
+        logger.info("  AppOwnerTeamId -> %s (default team of %s)", team_id, bu_name)
+    else:
+        logger.warning("  No default team found for BU '%s' — AppOwnerTeamId not set", bu_name)

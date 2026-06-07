@@ -40,6 +40,38 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         internal const string ColLastIssuedAt = "enmax_acdnlastissuedat";
         internal const string ColStatus       = "enmax_acdnnumbersequencestatus";
 
+        // Stable GUID used as the authorized initiating user in all default-context tests.
+        internal static readonly Guid AuthorizedUserId = new Guid("aaaaaaaa-0000-0000-0000-000000000001");
+
+        // Shared team IDs used when seeding authorization data.
+        private static readonly Guid ApproverTeamId = new Guid("bbbbbbbb-0000-0000-0000-000000000002");
+        private static readonly Guid AdminTeamId    = new Guid("cccccccc-0000-0000-0000-000000000003");
+
+        /// <summary>
+        /// Seeds the AppConfig rows and a teammembership row so that <paramref name="userId"/>
+        /// is recognized as an Approver. Uses the org service Create so it does not overwrite
+        /// any sequence rows already placed by the test.
+        /// </summary>
+        internal static void SeedAuthForUser(XrmFakedContext fakedContext, Guid userId)
+        {
+            var svc = fakedContext.GetFakedOrganizationService();
+
+            var adminConfig = new Entity("enmax_autocadappconfig", Guid.NewGuid());
+            adminConfig["enmax_acdnkey"]   = "AdminTeamId";
+            adminConfig["enmax_acdnvalue"] = AdminTeamId.ToString();
+            svc.Create(adminConfig);
+
+            var approverConfig = new Entity("enmax_autocadappconfig", Guid.NewGuid());
+            approverConfig["enmax_acdnkey"]   = "ApproverTeamId";
+            approverConfig["enmax_acdnvalue"] = ApproverTeamId.ToString();
+            svc.Create(approverConfig);
+
+            var membership = new Entity("teammembership", Guid.NewGuid());
+            membership["teamid"]       = ApproverTeamId;
+            membership["systemuserid"] = userId;
+            svc.Create(membership);
+        }
+
         internal static XrmFakedPluginExecutionContext BuildDefaultContext(
             XrmFakedContext fakedContext,
             int count = 1,
@@ -50,11 +82,16 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             string system   = DefaultSystem,
             string kind     = DefaultKind)
         {
+            // Seed authorization data so the authorization gate passes.
+            SeedAuthForUser(fakedContext, AuthorizedUserId);
+
             var pluginCtx = fakedContext.GetDefaultPluginContext();
             pluginCtx.MessageName = "enmax_acdnIssueNumbers";
             pluginCtx.Stage      = 40; // PostOperation
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
+
+            pluginCtx.InitiatingUserId = AuthorizedUserId;
 
             pluginCtx.InputParameters["Business"] = business;
             pluginCtx.InputParameters["Asset"]    = asset;
@@ -445,11 +482,14 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         public void Issue_MissingRequiredParameter_Business_Throws()
         {
             var fxCtx  = new XrmFakedContext();
+            // Seed auth so the gate passes and parameter validation is reached.
+            PluginContextFactory.SeedAuthForUser(fxCtx, PluginContextFactory.AuthorizedUserId);
             var plugCtx = fxCtx.GetDefaultPluginContext();
             plugCtx.MessageName = "enmax_acdnIssueNumbers";
             plugCtx.Stage       = 40;
             plugCtx.InputParameters  = new ParameterCollection();
             plugCtx.OutputParameters = new ParameterCollection();
+            plugCtx.InitiatingUserId = PluginContextFactory.AuthorizedUserId;
             // Intentionally omit "Business"
             plugCtx.InputParameters["Asset"]  = "CG";
             plugCtx.InputParameters["Unit"]   = "00";
@@ -464,6 +504,82 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         // -----------------------------------------------------------------------
+        // Test 21 – Reservation write: issued numbers stamped onto reservation row
+        // -----------------------------------------------------------------------
+        [Fact]
+        public void Issue_writes_issued_numbers_onto_reservation_when_supplied()
+        {
+            var fxCtx  = new XrmFakedContext();
+            var resId  = Guid.NewGuid();
+            var resRow = new Entity("enmax_autocadreservation", resId);
+            fxCtx.Initialize(new List<Entity> { resRow });
+
+            var plugCtx = PluginContextFactory.BuildDefaultContext(fxCtx, count: 2);
+            plugCtx.InputParameters["Reservation"] = new EntityReference("enmax_autocadreservation", resId);
+
+            fxCtx.ExecutePluginWith<IssueNumbersPlugin>(plugCtx);
+
+            var issuedJson = (string)plugCtx.OutputParameters["IssuedNumbers"];
+            var svc        = fxCtx.GetFakedOrganizationService();
+            var updated    = svc.Retrieve("enmax_autocadreservation", resId,
+                                new Microsoft.Xrm.Sdk.Query.ColumnSet("enmax_acdnissuednumbers"));
+            var stamped    = (string)updated["enmax_acdnissuednumbers"];
+
+            stamped.Should().Be(issuedJson,
+                "the reservation must carry the same issued-numbers JSON as the plugin output");
+        }
+
+        // -----------------------------------------------------------------------
+        // Test 22 – Authorization gate: unauthorized user is denied
+        // -----------------------------------------------------------------------
+        [Fact]
+        public void Issue_denied_for_unauthorized_user()
+        {
+            var fxCtx      = new XrmFakedContext();
+            // Seed AppConfig team IDs but do NOT add the user to any team.
+            var approverTeamId = new Guid("bbbbbbbb-0000-0000-0000-000000000002");
+            var adminTeamId    = new Guid("cccccccc-0000-0000-0000-000000000003");
+            var unauthorizedId = Guid.NewGuid();
+
+            var svc = fxCtx.GetFakedOrganizationService();
+            var adminConfig = new Entity("enmax_autocadappconfig", Guid.NewGuid());
+            adminConfig["enmax_acdnkey"]   = "AdminTeamId";
+            adminConfig["enmax_acdnvalue"] = adminTeamId.ToString();
+            svc.Create(adminConfig);
+
+            var approverConfig = new Entity("enmax_autocadappconfig", Guid.NewGuid());
+            approverConfig["enmax_acdnkey"]   = "ApproverTeamId";
+            approverConfig["enmax_acdnvalue"] = approverTeamId.ToString();
+            svc.Create(approverConfig);
+
+            var plugCtx = fxCtx.GetDefaultPluginContext();
+            plugCtx.MessageName      = "enmax_acdnIssueNumbers";
+            plugCtx.Stage            = 40;
+            plugCtx.InputParameters  = new ParameterCollection();
+            plugCtx.OutputParameters = new ParameterCollection();
+            plugCtx.InitiatingUserId = unauthorizedId;
+            plugCtx.InputParameters["Business"] = "GG";
+            plugCtx.InputParameters["Asset"]    = "CG";
+            plugCtx.InputParameters["Unit"]     = "00";
+            plugCtx.InputParameters["Domain"]   = "ECS";
+            plugCtx.InputParameters["System"]   = "AST";
+            plugCtx.InputParameters["Kind"]     = "DD";
+            plugCtx.InputParameters["Count"]    = 1;
+
+            Action act = () => fxCtx.ExecutePluginWith<IssueNumbersPlugin>(plugCtx);
+            act.Should().Throw<InvalidPluginExecutionException>()
+               .WithMessage("*not authorized*",
+                   "unauthorized user must be denied before any number is issued");
+
+            // Assert no number-sequence row was created.
+            var results = svc.RetrieveMultiple(new Microsoft.Xrm.Sdk.Query.QueryExpression("enmax_autocadnumbersequence")
+            {
+                ColumnSet = new Microsoft.Xrm.Sdk.Query.ColumnSet(false),
+            });
+            results.Entities.Should().BeEmpty("no sequence row must be created for an unauthorized call");
+        }
+
+        // -----------------------------------------------------------------------
         // Test 18 – Audit attribution: plugin reads calling user from PluginExecutionContext.UserId
         // -----------------------------------------------------------------------
         [Fact]
@@ -473,6 +589,8 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             // records the initiating user for every number issuance (not the service account).
             var testUserId = Guid.NewGuid();
             var fxCtx = new XrmFakedContext();
+            // Seed auth for the specific testUserId so the authorization gate passes.
+            PluginContextFactory.SeedAuthForUser(fxCtx, testUserId);
             var plugCtx = PluginContextFactory.BuildDefaultContext(fxCtx, count: 1);
             plugCtx.UserId = testUserId;
             plugCtx.InitiatingUserId = testUserId;

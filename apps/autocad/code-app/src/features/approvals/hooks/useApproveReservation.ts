@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getClient } from "@microsoft/power-apps/data";
-import { Enmax_autocadreservationsService } from "../../../generated";
 import { dataSourcesInfo } from "../../../../.power/schemas/appschemas/dataSourcesInfo";
 
 const client = getClient(dataSourcesInfo);
@@ -54,31 +53,28 @@ async function invokeApproveAction(input: ApproveInput): Promise<void> {
             operationName: "enmax_acdnIssueNumbers",
             tableName: "enmax_acdnissuenumbers",
             body: {
-              Business: businessCode,
-              Asset:    assetCode,
-              Unit:     unitCode,
-              Domain:   domainCode,
-              System:   systemCode,
-              Kind:     kindCode,
-              Count:    drawingCount,
+              Business:    businessCode,
+              Asset:       assetCode,
+              Unit:        unitCode,
+              Domain:      domainCode,
+              System:      systemCode,
+              Kind:        kindCode,
+              Count:       drawingCount,
+              // Unbound Custom API EntityReference param — must use the @odata.id
+              // binding, NOT the @odata.type+pk Entity shape. The Entity shape does
+              // not bind to an EntityReference param, so IssueNumbers never stamps
+              // issuednumbers onto the reservation and AutoCreateDrawings never fires
+              // (drawings silently fail to appear after approval).
+              Reservation: {
+                "@odata.id": `enmax_autocadreservations(${input.reservationId})`,
+              },
             },
           },
         },
       });
 
-      if (issueResult.success && issueResult.data) {
-        const issuedNumbers = issueResult.data["IssuedNumbers"] as string | undefined;
-
-        if (issuedNumbers) {
-          // Write issued numbers to the reservation — the AutoCreateDrawingsPlugin fires
-          // asynchronously on this update and creates the Drawing + Sheet records.
-          await Enmax_autocadreservationsService.update(
-            input.reservationId,
-            { enmax_acdnissuednumbers: issuedNumbers } as Parameters<typeof Enmax_autocadreservationsService.update>[1],
-          );
-        }
-      } else {
-        console.error("[IssueNumbers] failed or returned no data:", issueResult.error);
+      if (!issueResult.success) {
+        console.error("[IssueNumbers] failed:", issueResult.error);
       }
       // Number issuance failure is non-fatal — approval already succeeded
     }

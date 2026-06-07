@@ -36,14 +36,16 @@ Describe 'Register-PpPlugins — PluginDefinitions data file' {
         $defs.CustomAPIDefs.Count | Should -Be 11
     }
 
-    It 'PluginDefinitions.psd1 loads with exactly 2 StepDefs' {
-        # WHY: StepDefs encode plugin step registrations (OnReservationCreated + AutoCreateDrawings).
-        # A broken parse (e.g. unexpected syntax in the data file) would silently leave both
-        # steps unregistered, causing the reservation workflow to stop firing.
+    It 'PluginDefinitions.psd1 loads with exactly 18 StepDefs' {
+        # WHY: StepDefs encode plugin step registrations: 16 SetAppOwnerPlugin Create steps
+        # (one per config/reference table — PreValidation ownerid stamping = the BU app-owner
+        # team) plus OnReservationCreated and AutoCreateDrawings. A broken parse (e.g. unexpected
+        # syntax in the data file) would silently leave steps unregistered, so ownership stamping
+        # and the reservation workflow would stop firing.
         $RepoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent | Split-Path -Parent
         $defsPath = Join-Path $RepoRoot 'scripts\PowerPlatform.Deploy\Data\PluginDefinitions.psd1'
         $defs = Import-PowerShellDataFile $defsPath
-        $defs.StepDefs.Count | Should -Be 2
+        $defs.StepDefs.Count | Should -Be 18
     }
 
     It 'enmax_acdnIssueNumbers has BindingType=0 (Global) and no BoundEntity' {

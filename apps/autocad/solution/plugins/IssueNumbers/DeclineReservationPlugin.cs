@@ -19,7 +19,7 @@ namespace Enmax.AutoCAD
         private const int StatusDeclined = 3;
 
         private const string ColOwner  = "ownerid";
-        private const string ColNumber = "enmax_acdnreservationnumber";
+        private const string ColNumber = "enmax_acdnreservationid";
         private const int NotifSeverityWarning           = 2;
         private const int NotifSourceReservationDeclined = 2;
 
@@ -35,7 +35,7 @@ namespace Enmax.AutoCAD
         protected override void ExecuteDataversePlugin(ILocalPluginContext localPluginContext)
         {
             var context = localPluginContext.PluginExecutionContext;
-            var service = localPluginContext.InitiatingUserService;
+            var service = localPluginContext.SystemUserService;
 
             if (!context.InputParameters.Contains("Target"))
                 throw new InvalidPluginExecutionException("Missing required input: Target");
@@ -47,6 +47,8 @@ namespace Enmax.AutoCAD
             if (!string.Equals(target.LogicalName, EntityName, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidPluginExecutionException(
                     $"Target must be {EntityName}, got {target.LogicalName}");
+
+            Authorization.RequireApproverOrAdmin(service, context.InitiatingUserId, "decline a reservation");
 
             string reason = context.InputParameters.Contains("Reason")
                 ? (context.InputParameters["Reason"] as string ?? "")

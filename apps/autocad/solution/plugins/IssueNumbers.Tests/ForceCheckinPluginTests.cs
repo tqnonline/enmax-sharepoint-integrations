@@ -39,13 +39,16 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         // Helpers
         // -----------------------------------------------------------------------
 
+        private static readonly Guid AdminTeamId    = Guid.NewGuid();
+        private static readonly Guid ApproverTeamId = Guid.NewGuid();
+
         private static (XrmFakedContext ctx, XrmFakedPluginExecutionContext pluginCtx, Guid checkoutId, Guid drawingId)
             BuildContext(int checkoutStatus = StatusOpen)
         {
             var ctx        = new XrmFakedContext();
             var drawingId  = Guid.NewGuid();
             var checkoutId = Guid.NewGuid();
-            var userId     = Guid.NewGuid();
+            var userId     = Guid.NewGuid(); // will be put in the Approver team
 
             var drawing = new Entity(DrawingEntity, drawingId)
             {
@@ -58,7 +61,27 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 [ColCheckoutDrawing] = new EntityReference(DrawingEntity, drawingId),
             };
 
-            ctx.Initialize(new[] { drawing, checkout });
+            ctx.Initialize(new Entity[]
+            {
+                drawing, checkout,
+                // AppConfig
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "AdminTeamId",
+                    ["enmax_acdnvalue"] = AdminTeamId.ToString(),
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "ApproverTeamId",
+                    ["enmax_acdnvalue"] = ApproverTeamId.ToString(),
+                },
+                // Acting user is in the Approver team.
+                new Entity("teammembership", Guid.NewGuid())
+                {
+                    ["teamid"]       = ApproverTeamId,
+                    ["systemuserid"] = userId,
+                },
+            });
 
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnForceCheckin";
@@ -276,6 +299,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var ctx        = new XrmFakedContext();
             var drawingId  = Guid.NewGuid();
             var checkoutId = Guid.NewGuid();
+            var userId     = Guid.NewGuid();
             var drawing  = new Entity(DrawingEntity, drawingId)  { [ColDrawingState] = new OptionSetValue(StateCheckedOut) };
             var checkout = new Entity(CheckoutEntity, checkoutId)
             {
@@ -287,11 +311,29 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
                 ["enmax_acdnstate"]   = new OptionSetValue(3),
             };
-            ctx.Initialize(new[] { drawing, checkout, sheet });
+            ctx.Initialize(new Entity[]
+            {
+                drawing, checkout, sheet,
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "AdminTeamId",
+                    ["enmax_acdnvalue"] = AdminTeamId.ToString(),
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "ApproverTeamId",
+                    ["enmax_acdnvalue"] = ApproverTeamId.ToString(),
+                },
+                new Entity("teammembership", Guid.NewGuid())
+                {
+                    ["teamid"]       = ApproverTeamId,
+                    ["systemuserid"] = userId,
+                },
+            });
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnForceCheckin";
             pluginCtx.Stage            = 40;
-            pluginCtx.InitiatingUserId = Guid.NewGuid();
+            pluginCtx.InitiatingUserId = userId;
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
             pluginCtx.InputParameters["Target"]      = new EntityReference(CheckoutEntity, checkoutId);
@@ -312,6 +354,59 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             Action act = () => ctx.ExecutePluginWith<ForceCheckinPlugin>(pluginCtx);
             act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*NewRevision*",
                 because: "an admin force check-in must record the revision being finalised");
+        }
+
+        [Fact]
+        public void Non_approver_non_admin_cannot_force_checkin()
+        {
+            var ctx        = new XrmFakedContext();
+            var drawingId  = Guid.NewGuid();
+            var checkoutId = Guid.NewGuid();
+            var actingUser = Guid.NewGuid(); // not in any team
+
+            var drawing  = new Entity(DrawingEntity, drawingId)  { [ColDrawingState] = new OptionSetValue(StateCheckedOut) };
+            var checkout = new Entity(CheckoutEntity, checkoutId)
+            {
+                [ColCheckoutStatus]  = new OptionSetValue(StatusOpen),
+                [ColCheckoutDrawing] = new EntityReference(DrawingEntity, drawingId),
+            };
+            ctx.Initialize(new Entity[]
+            {
+                drawing, checkout,
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "AdminTeamId",
+                    ["enmax_acdnvalue"] = AdminTeamId.ToString(),
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "ApproverTeamId",
+                    ["enmax_acdnvalue"] = ApproverTeamId.ToString(),
+                },
+                // No teammembership — actingUser is neither approver nor admin.
+            });
+
+            var pluginCtx = ctx.GetDefaultPluginContext();
+            pluginCtx.MessageName      = "enmax_acdnForceCheckin";
+            pluginCtx.Stage            = 40;
+            pluginCtx.InitiatingUserId = actingUser;
+            pluginCtx.InputParameters  = new ParameterCollection();
+            pluginCtx.OutputParameters = new ParameterCollection();
+            pluginCtx.InputParameters["Target"]      = new EntityReference(CheckoutEntity, checkoutId);
+            pluginCtx.InputParameters["Reason"]      = ValidReason;
+            pluginCtx.InputParameters["NewRevision"] = "C";
+
+            Action act = () => ctx.ExecutePluginWith<ForceCheckinPlugin>(pluginCtx);
+
+            act.Should().Throw<InvalidPluginExecutionException>()
+               .WithMessage("*not authorized*",
+                   because: "only approvers and admins may force a check-in; plain users must be denied");
+
+            // Checkout must remain Open — no changes applied.
+            ctx.GetFakedOrganizationService()
+               .Retrieve(CheckoutEntity, checkoutId, new ColumnSet(ColCheckoutStatus))
+               .GetAttributeValue<OptionSetValue>(ColCheckoutStatus).Value
+               .Should().Be(StatusOpen, because: "the gate fires before any state change");
         }
     }
 }

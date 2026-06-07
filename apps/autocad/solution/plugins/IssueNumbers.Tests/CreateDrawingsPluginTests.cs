@@ -20,6 +20,9 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 
         // ── Helpers ──────────────────────────────────────────────────────────────
 
+        private static readonly Guid ApproverTeamId = Guid.NewGuid();
+        private static readonly Guid AdminTeamId     = Guid.NewGuid();
+
         private static (XrmFakedContext ctx, XrmFakedPluginExecutionContext pluginCtx, Guid reservationId, Guid ownerId)
             BuildContext(int[] numbers, string sequenceKey = "BIZ-AST-UNT-DOM-SYS-KND", int sheetsPer = 2)
         {
@@ -34,7 +37,27 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 ["enmax_acdnsheetsperdrawing"] = sheetsPer,
                 ["enmax_acdnbusiness"]         = new EntityReference("enmax_autocadbusiness", bizId),
             };
-            ctx.Initialize(new[] { reservation });
+
+            // Seed authz: AppConfig + approver membership so the gate passes for ownerId (the initiating user).
+            ctx.Initialize(new[]
+            {
+                reservation,
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "AdminTeamId",
+                    ["enmax_acdnvalue"] = AdminTeamId.ToString(),
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "ApproverTeamId",
+                    ["enmax_acdnvalue"] = ApproverTeamId.ToString(),
+                },
+                new Entity("teammembership", Guid.NewGuid())
+                {
+                    ["teamid"]       = ApproverTeamId,
+                    ["systemuserid"] = ownerId,
+                },
+            });
 
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnCreateDrawings";
@@ -247,6 +270,56 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 
             Action act = () => ctx.ExecutePluginWith<CreateDrawingsPlugin>(pluginCtx);
             act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*at least one number*");
+        }
+
+        [Fact]
+        public void UnauthorizedUser_cannot_create_drawings_and_no_drawings_created()
+        {
+            // Arrange: a plain user (not in any team) tries to create drawings
+            var ctx           = new XrmFakedContext();
+            var reservationId = Guid.NewGuid();
+            var plainUser     = Guid.NewGuid();
+
+            ctx.Initialize(new[]
+            {
+                new Entity(ReservationEntity, reservationId)
+                {
+                    ["ownerid"]                    = new EntityReference("systemuser", plainUser),
+                    ["enmax_acdnsheetsperdrawing"] = 1,
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "AdminTeamId",
+                    ["enmax_acdnvalue"] = AdminTeamId.ToString(),
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "ApproverTeamId",
+                    ["enmax_acdnvalue"] = ApproverTeamId.ToString(),
+                },
+                // No teammembership for plainUser
+            });
+
+            var pluginCtx = ctx.GetDefaultPluginContext();
+            pluginCtx.MessageName      = "enmax_acdnCreateDrawings";
+            pluginCtx.Stage            = 40;
+            pluginCtx.InitiatingUserId = plainUser;
+            pluginCtx.InputParameters  = new ParameterCollection
+            {
+                ["Target"]        = new EntityReference(ReservationEntity, reservationId),
+                ["IssuedNumbers"] = JsonConvert.SerializeObject(new[] { 1, 2 }),
+                ["SequenceKey"]   = "BIZ-AST-UNT-DOM-SYS-KND",
+            };
+            pluginCtx.OutputParameters = new ParameterCollection();
+
+            Action act = () => ctx.ExecutePluginWith<CreateDrawingsPlugin>(pluginCtx);
+
+            act.Should().Throw<InvalidPluginExecutionException>()
+               .WithMessage("*not authorized*",
+                   because: "a user outside the Admin/Approver teams must be denied");
+
+            ctx.CreateQuery(DrawingEntity).ToList().Should().BeEmpty(
+                because: "no drawings must be created when the gate rejects the caller");
         }
     }
 }

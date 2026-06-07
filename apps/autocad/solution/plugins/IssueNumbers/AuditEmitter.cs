@@ -45,7 +45,7 @@ namespace Enmax.AutoCAD
         protected override void ExecuteDataversePlugin(ILocalPluginContext ctx)
         {
             var pluginCtx = ctx.PluginExecutionContext;
-            var orgSvc    = ctx.OrgSvcFactory.CreateOrganizationService(pluginCtx.UserId);
+            var orgSvc    = ctx.SystemUserService;
 
             var entity   = pluginCtx.PrimaryEntityName;
             var entityId = pluginCtx.PrimaryEntityId;
@@ -66,7 +66,7 @@ namespace Enmax.AutoCAD
                 ["enmax_acdnevent"]        = new OptionSetValue(EventReferenceDataChanged),
                 ["enmax_acdnreason"]       = BuildRefDataReason(message, entity, pluginCtx),
                 ["enmax_acdnsource"]       = new OptionSetValue(SourceAction),
-                ["enmax_acdnactedby"]      = new EntityReference("systemuser", pluginCtx.UserId),
+                ["enmax_acdnactedby"]      = new EntityReference("systemuser", pluginCtx.InitiatingUserId),
             };
 
             orgSvc.Create(auditRow);

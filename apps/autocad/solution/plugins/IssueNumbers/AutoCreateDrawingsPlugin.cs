@@ -35,7 +35,7 @@ namespace Enmax.AutoCAD
         protected override void ExecuteDataversePlugin(ILocalPluginContext localPluginContext)
         {
             var context = localPluginContext.PluginExecutionContext;
-            var service = localPluginContext.InitiatingUserService;
+            var service = localPluginContext.SystemUserService;
             var tracing = localPluginContext.TracingService;
 
             if (!context.PostEntityImages.Contains("postImage"))

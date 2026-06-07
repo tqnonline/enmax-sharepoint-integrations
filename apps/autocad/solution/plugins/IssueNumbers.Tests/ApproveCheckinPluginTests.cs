@@ -41,6 +41,9 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         // Helpers
         // -----------------------------------------------------------------------
 
+        private static readonly Guid ApproverTeamId = Guid.NewGuid();
+        private static readonly Guid AdminTeamId     = Guid.NewGuid();
+
         private static (XrmFakedContext ctx, XrmFakedPluginExecutionContext pluginCtx, Guid checkoutId, Guid drawingId)
             BuildContext(int checkoutStatus = StatusAwaitingValidation, string newRevision = "B")
         {
@@ -62,7 +65,27 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 [ColNewRevision]     = newRevision,
             };
 
-            ctx.Initialize(new[] { drawing, checkout });
+            // Seed authz: AppConfig + approver membership so the gate passes.
+            ctx.Initialize(new[]
+            {
+                (Entity)drawing,
+                checkout,
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "AdminTeamId",
+                    ["enmax_acdnvalue"] = AdminTeamId.ToString(),
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "ApproverTeamId",
+                    ["enmax_acdnvalue"] = ApproverTeamId.ToString(),
+                },
+                new Entity("teammembership", Guid.NewGuid())
+                {
+                    ["teamid"]       = ApproverTeamId,
+                    ["systemuserid"] = userId,
+                },
+            });
 
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnApproveCheckin";
@@ -345,6 +368,63 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var checkout = ctx.GetFakedOrganizationService()
                 .Retrieve(CheckoutEntity, checkoutId, new ColumnSet(ColCheckoutStatus));
             checkout.GetAttributeValue<OptionSetValue>(ColCheckoutStatus).Value.Should().Be(StatusClosedApproved);
+        }
+
+        [Fact]
+        public void UnauthorizedUser_cannot_validate_checkin_and_state_unchanged()
+        {
+            // Arrange: a plain user (not in any team) tries to approve a checkout
+            var ctx        = new XrmFakedContext();
+            var drawingId  = Guid.NewGuid();
+            var checkoutId = Guid.NewGuid();
+            var plainUser  = Guid.NewGuid();
+
+            ctx.Initialize(new[]
+            {
+                new Entity(DrawingEntity, drawingId)
+                {
+                    [ColDrawingState]    = new OptionSetValue(StateCheckedOut),
+                    [ColCurrentRevision] = "A",
+                },
+                new Entity(CheckoutEntity, checkoutId)
+                {
+                    [ColCheckoutStatus]  = new OptionSetValue(StatusAwaitingValidation),
+                    [ColCheckoutDrawing] = new EntityReference(DrawingEntity, drawingId),
+                    [ColNewRevision]     = "B",
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "AdminTeamId",
+                    ["enmax_acdnvalue"] = AdminTeamId.ToString(),
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "ApproverTeamId",
+                    ["enmax_acdnvalue"] = ApproverTeamId.ToString(),
+                },
+                // No teammembership for plainUser
+            });
+
+            var pluginCtx = ctx.GetDefaultPluginContext();
+            pluginCtx.MessageName      = "enmax_acdnApproveCheckin";
+            pluginCtx.Stage            = 40;
+            pluginCtx.InitiatingUserId = plainUser;
+            pluginCtx.InputParameters  = new ParameterCollection();
+            pluginCtx.OutputParameters = new ParameterCollection();
+            pluginCtx.InputParameters["Target"]   = new EntityReference(CheckoutEntity, checkoutId);
+            pluginCtx.InputParameters["Decision"] = DecisionApproved;
+
+            Action act = () => ctx.ExecutePluginWith<ApproveCheckinPlugin>(pluginCtx);
+
+            act.Should().Throw<InvalidPluginExecutionException>()
+               .WithMessage("*not authorized*",
+                   because: "a user outside the Admin/Approver teams must be denied");
+
+            var unchanged = ctx.GetFakedOrganizationService()
+                               .Retrieve(CheckoutEntity, checkoutId, new ColumnSet(ColCheckoutStatus));
+            unchanged.GetAttributeValue<OptionSetValue>(ColCheckoutStatus).Value
+                     .Should().Be(StatusAwaitingValidation,
+                         because: "authorization failure must leave the checkout status unchanged (no partial write)");
         }
     }
 }

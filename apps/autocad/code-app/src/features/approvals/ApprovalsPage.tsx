@@ -22,7 +22,7 @@ import { ReservationQueueGrid } from "./ReservationQueueGrid";
 import { ReservationDetailPanel } from "./ReservationDetailPanel";
 import { BulkApproveDialog } from "./BulkApproveDialog";
 import { ReservationDrawingsPanel } from "../checkout/components/ReservationDrawingsPanel";
-import { useCheckins } from "./hooks/useCheckins";
+import { useCheckins, CHECKIN_STATUS_AWAITING } from "./hooks/useCheckins";
 import { CheckinQueueGrid } from "./CheckinQueueGrid";
 
 const TOASTER_ID = "approvals-toaster";
@@ -131,6 +131,7 @@ export function ApprovalsPage() {
   const isPending     = activeTab === "pending";
   const loadedCount   = currentQuery.data?.length ?? 0;
   const showBadge     = !currentQuery.isPending && loadedCount > 0;
+  const awaitingCheckins = checkinsQuery.data?.filter((c) => c.status === CHECKIN_STATUS_AWAITING).length ?? 0;
 
   const tabCountLabel = `${loadedCount} ${activeTab === "pending" ? "pending" : activeTab === "approved" ? "approved" : "rejected"}`;
 
@@ -169,8 +170,8 @@ export function ApprovalsPage() {
         </Tab>
         <Tab value="checkins">
           Check-ins
-          {isCheckins && !checkinsQuery.isPending && (checkinsQuery.data?.length ?? 0) > 0 && (
-            <CounterBadge count={checkinsQuery.data!.length} color="danger" size="small" style={{ marginLeft: "6px" }} />
+          {isCheckins && !checkinsQuery.isPending && awaitingCheckins > 0 && (
+            <CounterBadge count={awaitingCheckins} color="danger" size="small" style={{ marginLeft: "6px" }} />
           )}
         </Tab>
       </TabList>

@@ -21,11 +21,16 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         private const int StateVoid      = 6;
         private const int StateFinalized = 7;
 
+        private static readonly Guid AdminTeamId    = Guid.NewGuid();
+        private static readonly Guid ApproverTeamId = Guid.NewGuid();
+
         private static (XrmFakedContext ctx, XrmFakedPluginExecutionContext pluginCtx, Guid drawingId)
             BuildContext(int drawingState = StateAvailable, string currentRevision = "A")
         {
             var ctx       = new XrmFakedContext();
             var drawingId = Guid.NewGuid();
+            var userId    = Guid.NewGuid(); // will be put in the Admin team
+
             var drawing = new Entity(DrawingEntity, drawingId) { [ColDrawingState] = new OptionSetValue(drawingState) };
             if (!string.IsNullOrEmpty(currentRevision)) drawing[ColCurrentRevision] = currentRevision;
             var sheet   = new Entity(SheetEntity, Guid.NewGuid())
@@ -33,11 +38,31 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
                 ["enmax_acdnstate"]   = new OptionSetValue(2),
             };
-            ctx.Initialize(new[] { drawing, sheet });
+            ctx.Initialize(new Entity[]
+            {
+                drawing, sheet,
+                // AppConfig
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "AdminTeamId",
+                    ["enmax_acdnvalue"] = AdminTeamId.ToString(),
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "ApproverTeamId",
+                    ["enmax_acdnvalue"] = ApproverTeamId.ToString(),
+                },
+                // Acting user is in the Admin team.
+                new Entity("teammembership", Guid.NewGuid())
+                {
+                    ["teamid"]       = AdminTeamId,
+                    ["systemuserid"] = userId,
+                },
+            });
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnMarkObsolete";
             pluginCtx.Stage            = 40;
-            pluginCtx.InitiatingUserId = Guid.NewGuid();
+            pluginCtx.InitiatingUserId = userId;
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
             pluginCtx.InputParameters["Target"] = new EntityReference(DrawingEntity, drawingId);
@@ -92,6 +117,56 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             Action act = () => ctx.ExecutePluginWith<MarkObsoletePlugin>(pluginCtx);
             act.Should().Throw<InvalidPluginExecutionException>(
                 because: "a terminal drawing (Obsolete/Void/Finalized) cannot be marked obsolete");
+        }
+
+        [Fact]
+        public void Non_admin_cannot_mark_drawing_obsolete()
+        {
+            var ctx          = new XrmFakedContext();
+            var drawingId    = Guid.NewGuid();
+            var actingUser   = Guid.NewGuid(); // not in any team
+
+            var drawing = new Entity(DrawingEntity, drawingId)
+            {
+                [ColDrawingState]    = new OptionSetValue(StateAvailable),
+                [ColCurrentRevision] = "A",
+            };
+            ctx.Initialize(new Entity[]
+            {
+                drawing,
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "AdminTeamId",
+                    ["enmax_acdnvalue"] = AdminTeamId.ToString(),
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "ApproverTeamId",
+                    ["enmax_acdnvalue"] = ApproverTeamId.ToString(),
+                },
+                // No teammembership rows — actingUser is not an admin.
+            });
+
+            var pluginCtx = ctx.GetDefaultPluginContext();
+            pluginCtx.MessageName      = "enmax_acdnMarkObsolete";
+            pluginCtx.Stage            = 40;
+            pluginCtx.InitiatingUserId = actingUser;
+            pluginCtx.InputParameters  = new ParameterCollection();
+            pluginCtx.OutputParameters = new ParameterCollection();
+            pluginCtx.InputParameters["Target"] = new EntityReference(DrawingEntity, drawingId);
+            pluginCtx.InputParameters["Reason"] = string.Empty;
+
+            Action act = () => ctx.ExecutePluginWith<MarkObsoletePlugin>(pluginCtx);
+
+            act.Should().Throw<InvalidPluginExecutionException>()
+               .WithMessage("*not authorized*",
+                   because: "only admins may mark a drawing obsolete; plain users must be denied");
+
+            // Drawing state must remain unchanged.
+            ctx.GetFakedOrganizationService()
+               .Retrieve(DrawingEntity, drawingId, new ColumnSet(ColDrawingState))
+               .GetAttributeValue<OptionSetValue>(ColDrawingState).Value
+               .Should().Be(StateAvailable, because: "the gate fires before the state change");
         }
     }
 }

@@ -95,6 +95,13 @@ namespace Enmax.AutoCAD
         IOrganizationService PluginUserService { get; }
 
         /// <summary>
+        /// Organization service running as the SYSTEM user (full privileges).
+        /// Use for ALL Create/Update/Delete and for privileged reads. Never use a
+        /// caller-context service for writes.
+        /// </summary>
+        IOrganizationService SystemUserService { get; }
+
+        /// <summary>
         /// IPluginExecutionContext contains information that describes the run-time environment in which the plug-in executes, information related to the execution pipeline, and entity business information.
         /// </summary>
         IPluginExecutionContext PluginExecutionContext { get; }
@@ -141,6 +148,13 @@ namespace Enmax.AutoCAD
         /// The PowerPlatform Dataverse organization service for the Account that was registered to run this plugin, This could be the same user as InitiatingUserService.
         /// </summary>
         public IOrganizationService PluginUserService { get; }
+
+        /// <summary>
+        /// Organization service running as the SYSTEM user (full privileges).
+        /// Use for ALL Create/Update/Delete and for privileged reads. Never use a
+        /// caller-context service for writes.
+        /// </summary>
+        public IOrganizationService SystemUserService { get; }
 
         /// <summary>
         /// IPluginExecutionContext contains information that describes the run-time environment in which the plug-in executes, information related to the execution pipeline, and entity business information.
@@ -192,6 +206,9 @@ namespace Enmax.AutoCAD
             PluginUserService = serviceProvider.GetOrganizationService(PluginExecutionContext.UserId); // User that the plugin is registered to run as, Could be same as current user.
 
             InitiatingUserService = serviceProvider.GetOrganizationService(PluginExecutionContext.InitiatingUserId); //User who's action called the plugin.
+
+            // null userId => SYSTEM user context (bypasses privilege checks).
+            SystemUserService = OrgSvcFactory.CreateOrganizationService(null);
 
         }
 

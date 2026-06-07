@@ -60,7 +60,7 @@ namespace Enmax.AutoCAD
         protected override void ExecuteDataversePlugin(ILocalPluginContext localPluginContext)
         {
             var context = localPluginContext.PluginExecutionContext;
-            var service = localPluginContext.InitiatingUserService;
+            var service = localPluginContext.SystemUserService;
 
             if (!context.InputParameters.Contains("Target"))
                 throw new InvalidPluginExecutionException("Missing required input: Target");
@@ -80,13 +80,18 @@ namespace Enmax.AutoCAD
             try
             {
                 drawing = service.Retrieve(DrawingEntity, target.Id,
-                    new ColumnSet(ColDrawingState));
+                    new ColumnSet(ColDrawingState, "ownerid"));
             }
             catch (FaultException<OrganizationServiceFault> ex)
             {
                 throw new InvalidPluginExecutionException(
                     $"Could not retrieve drawing {target.Id}: {ex.Message}", ex);
             }
+
+            Authorization.RequireOwnerOrAdmin(service,
+                drawing.GetAttributeValue<EntityReference>("ownerid")?.Id ?? Guid.Empty,
+                context.InitiatingUserId,
+                "check out this drawing");
 
             int currentState = drawing.GetAttributeValue<OptionSetValue>(ColDrawingState)?.Value ?? 0;
 
@@ -140,6 +145,7 @@ namespace Enmax.AutoCAD
                 [ColCheckedOutOn]     = DateTime.UtcNow,
                 [ColCheckoutName]     = $"CHK-{target.Id}",
                 ["enmax_acdnnewrevision"] = string.Empty,
+                ["ownerid"]           = new EntityReference("systemuser", context.InitiatingUserId),
             };
 
             Guid checkoutId = service.Create(checkout);

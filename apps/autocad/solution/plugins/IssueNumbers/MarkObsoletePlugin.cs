@@ -39,7 +39,7 @@ namespace Enmax.AutoCAD
         protected override void ExecuteDataversePlugin(ILocalPluginContext localPluginContext)
         {
             var context = localPluginContext.PluginExecutionContext;
-            var service = localPluginContext.InitiatingUserService;
+            var service = localPluginContext.SystemUserService;
 
             var target = context.InputParameters.Contains("Target")
                 ? context.InputParameters["Target"] as EntityReference : null;
@@ -50,6 +50,8 @@ namespace Enmax.AutoCAD
 
             string reason = context.InputParameters.Contains("Reason")
                 ? context.InputParameters["Reason"] as string ?? string.Empty : string.Empty;
+
+            Authorization.RequireAdmin(service, context.InitiatingUserId, "mark a drawing obsolete");
 
             var drawing = service.Retrieve(DrawingEntity, target.Id, new ColumnSet(ColDrawingState, ColCurrentRevision, ColOwner, ColNumber));
             int currentState = drawing.GetAttributeValue<OptionSetValue>(ColDrawingState)?.Value ?? 0;

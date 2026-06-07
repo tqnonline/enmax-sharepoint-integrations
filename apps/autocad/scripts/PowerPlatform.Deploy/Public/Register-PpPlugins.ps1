@@ -60,7 +60,9 @@ function Register-PpPlugins {
         [Parameter(Mandatory)]
         [string]$Environment,
 
-        [switch]$SkipBuild
+        [switch]$SkipBuild,
+
+        [string]$SolutionName = 'enmax_autocadsln'
     )
 
     # ── Resolve credentials ───────────────────────────────────────────────────
@@ -149,7 +151,8 @@ function Register-PpPlugins {
         if ($PSCmdlet.ShouldProcess($envUrl, "Ensure CustomAPI $($def.UniqueName)")) {
             $apiId = Ensure-PpCustomAPI -UniqueName $def.UniqueName -DisplayName $def.DisplayName `
                                         -BindingType $def.BindingType -BoundEntity $def.BoundEntity `
-                                        -TypeId $typeId -Token $token -EnvUrl $envUrl
+                                        -TypeId $typeId -Token $token -EnvUrl $envUrl `
+                                        -Description $def.Description
             foreach ($p in $def.Params) {
                 Ensure-PpRequestParam -ApiId $apiId -Name $p.Name -Type $p.Type `
                                       -Optional $p.Optional -Token $token -EnvUrl $envUrl
@@ -171,6 +174,40 @@ function Register-PpPlugins {
         if ($PSCmdlet.ShouldProcess($envUrl, "Ensure PluginStep $($def.Name)")) {
             Ensure-PpPluginStep -Def $def -TypeId $typeId -Token $token -EnvUrl $envUrl
         }
+    }
+
+    # ── 7. Ensure all plugin components belong to the solution ────────────────
+    # Components created via the Web API land in the Default solution unless added
+    # explicitly. Enumerate the assembly's live components and add each to
+    # $SolutionName (idempotent — AddSolutionComponent on an existing member is a
+    # no-op). Component types: 91=PluginAssembly, 10088=CustomAPI,
+    # 10089=CustomAPIRequestParameter, 10090=CustomAPIResponseProperty,
+    # 92=SdkMessageProcessingStep (step images ride along as subcomponents).
+    if ($PSCmdlet.ShouldProcess($envUrl, "Sync plugin components into solution '$SolutionName'")) {
+        Write-PpLog "Syncing plugin components into solution '$SolutionName'..."
+        Add-PpSolutionComponent -ComponentId $assemblyId -ComponentType 91 -SolutionName $SolutionName -Token $token -EnvUrl $envUrl
+        $asmTypes = (Invoke-PpDataverse -Method Get -Token $token -EnvUrl $envUrl `
+            -Path "plugintypes?`$filter=_pluginassemblyid_value eq $assemblyId&`$select=plugintypeid").value
+        foreach ($t in $asmTypes) {
+            $tid = $t.plugintypeid
+            foreach ($api in (Invoke-PpDataverse -Method Get -Token $token -EnvUrl $envUrl `
+                -Path "customapis?`$filter=_plugintypeid_value eq $tid&`$select=customapiid").value) {
+                Add-PpSolutionComponent -ComponentId $api.customapiid -ComponentType 10088 -SolutionName $SolutionName -Token $token -EnvUrl $envUrl
+                foreach ($pr in (Invoke-PpDataverse -Method Get -Token $token -EnvUrl $envUrl `
+                    -Path "customapirequestparameters?`$filter=_customapiid_value eq $($api.customapiid)&`$select=customapirequestparameterid").value) {
+                    Add-PpSolutionComponent -ComponentId $pr.customapirequestparameterid -ComponentType 10089 -SolutionName $SolutionName -Token $token -EnvUrl $envUrl
+                }
+                foreach ($rp in (Invoke-PpDataverse -Method Get -Token $token -EnvUrl $envUrl `
+                    -Path "customapiresponseproperties?`$filter=_customapiid_value eq $($api.customapiid)&`$select=customapiresponsepropertyid").value) {
+                    Add-PpSolutionComponent -ComponentId $rp.customapiresponsepropertyid -ComponentType 10090 -SolutionName $SolutionName -Token $token -EnvUrl $envUrl
+                }
+            }
+            foreach ($st in (Invoke-PpDataverse -Method Get -Token $token -EnvUrl $envUrl `
+                -Path "sdkmessageprocessingsteps?`$filter=_plugintypeid_value eq $tid&`$select=sdkmessageprocessingstepid").value) {
+                Add-PpSolutionComponent -ComponentId $st.sdkmessageprocessingstepid -ComponentType 92 -SolutionName $SolutionName -Token $token -EnvUrl $envUrl
+            }
+        }
+        Write-PpLog "Solution component sync complete."
     }
 
     Write-PpLog "Register-PpPlugins complete for $envUrl."
@@ -252,6 +289,34 @@ function Invoke-PpDataverse {
     return Invoke-RestMethod @callArgs
 }
 
+function Add-PpSolutionComponent {
+    <#
+    .SYNOPSIS Add a component to a solution via the AddSolutionComponent action.
+    Idempotent: adding a component already in the solution is a no-op (errors are
+    swallowed at Verbose). #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ComponentId,
+        [Parameter(Mandatory)][int]$ComponentType,
+        [Parameter(Mandatory)][string]$SolutionName,
+        [Parameter(Mandatory)][string]$Token,
+        [Parameter(Mandatory)][string]$EnvUrl
+    )
+    try {
+        Invoke-PpDataverse -Method Post -Path "AddSolutionComponent" -Token $Token -EnvUrl $EnvUrl -NoPrefer -Body @{
+            ComponentId               = $ComponentId
+            ComponentType             = $ComponentType
+            SolutionUniqueName        = $SolutionName
+            AddRequiredComponents     = $false
+            DoNotIncludeSubcomponents = $false
+        } | Out-Null
+        Write-PpLog "  + solution component $ComponentType/$ComponentId" -Level Verbose
+    }
+    catch {
+        Write-PpLog "  solution-add skipped ($ComponentType/$ComponentId): $($_.Exception.Message)" -Level Verbose
+    }
+}
+
 function Get-PpPluginTypeId {
     [CmdletBinding()]
     param(
@@ -290,21 +355,46 @@ function Ensure-PpCustomAPI {
         [string]$BoundEntity,
         [Parameter(Mandatory)][string]$TypeId,
         [Parameter(Mandatory)][string]$Token,
-        [Parameter(Mandatory)][string]$EnvUrl
+        [Parameter(Mandatory)][string]$EnvUrl,
+        [string]$Description = $null
     )
+    # Compute effective description: use supplied value (truncated to 300) or fall back to DisplayName.
+    if ($Description -and $Description.Length -gt 0) {
+        $desc = if ($Description.Length -gt 300) { $Description.Substring(0, 300) } else { $Description }
+    } else {
+        $desc = $DisplayName
+    }
+
     $r = Invoke-PpDataverse -Method Get `
-        -Path "customapis?`$filter=uniquename eq '$UniqueName'&`$select=customapiid" `
+        -Path "customapis?`$filter=uniquename eq '$UniqueName'&`$select=customapiid,name,displayname,description" `
         -Token $Token -EnvUrl $EnvUrl
     if ($r.value.Count -gt 0) {
-        Write-PpLog "  CustomAPI exists: $UniqueName ($($r.value[0].customapiid))" -Level Verbose
-        return $r.value[0].customapiid
+        $existing = $r.value[0]
+        $id = $existing.customapiid
+        Write-PpLog "  CustomAPI exists: $UniqueName ($id)" -Level Verbose
+
+        # Heal any drift in name, displayname, description.
+        $patch = @{}
+        if ($existing.name        -ne $DisplayName) { $patch['name']        = $DisplayName }
+        if ($existing.displayname -ne $DisplayName) { $patch['displayname'] = $DisplayName }
+        if ($existing.description -ne $desc)        { $patch['description'] = $desc }
+        if ($patch.Count -gt 0) {
+            # $null = ... : the PATCH response must NOT leak to the pipeline. Without this,
+            # the function returns @(<patch response>, $id) — an array — and every caller
+            # that passes the result as -ApiId (a [string]) fails the cast. Latent until
+            # name/displayname/description actually drift and the heal fires.
+            $null = Invoke-PpDataverse -Method Patch -Path "customapis($id)" -Body $patch `
+                                       -Token $Token -EnvUrl $EnvUrl -NoPrefer
+            Write-PpLog "  Patched CustomAPI $UniqueName ($id): $($patch.Keys -join ', ')" -Level Verbose
+        }
+        return $id
     }
     Write-PpLog "  Creating CustomAPI: $UniqueName" -Level Verbose
     $body = @{
         uniquename                      = $UniqueName
         name                            = $DisplayName
         displayname                     = $DisplayName
-        description                     = $DisplayName
+        description                     = $desc
         bindingtype                     = $BindingType
         isfunction                      = $false
         isprivate                       = $false
@@ -411,7 +501,7 @@ function Ensure-PpPluginStep {
     $filterId = Get-PpMessageFilterId -MsgId $msgId -Entity $Def.Entity -Token $Token -EnvUrl $EnvUrl
 
     $r = Invoke-PpDataverse -Method Get `
-        -Path "sdkmessageprocessingsteps?`$filter=_plugintypeid_value eq $TypeId and _sdkmessageid_value eq $msgId and stage eq $($Def.Stage)&`$select=sdkmessageprocessingstepid,name" `
+        -Path "sdkmessageprocessingsteps?`$filter=_plugintypeid_value eq $TypeId and _sdkmessageid_value eq $msgId and stage eq $($Def.Stage) and _sdkmessagefilterid_value eq $filterId&`$select=sdkmessageprocessingstepid,name" `
         -Token $Token -EnvUrl $EnvUrl
 
     if ($r.value.Count -gt 0) {

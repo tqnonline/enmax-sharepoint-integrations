@@ -62,7 +62,7 @@ namespace Enmax.AutoCAD
         protected override void ExecuteDataversePlugin(ILocalPluginContext localPluginContext)
         {
             var context = localPluginContext.PluginExecutionContext;
-            var service = localPluginContext.InitiatingUserService;
+            var service = localPluginContext.SystemUserService;
 
             var target = context.InputParameters.Contains("Target")
                 ? context.InputParameters["Target"] as EntityReference : null;
@@ -81,12 +81,17 @@ namespace Enmax.AutoCAD
             try
             {
                 checkout = service.Retrieve(CheckoutEntity, target.Id,
-                    new ColumnSet(ColCheckoutStatus, ColCheckoutDrawing));
+                    new ColumnSet(ColCheckoutStatus, ColCheckoutDrawing, "ownerid"));
             }
             catch (FaultException<OrganizationServiceFault> ex)
             {
                 throw new InvalidPluginExecutionException($"Could not retrieve checkout {target.Id}: {ex.Message}", ex);
             }
+
+            Authorization.RequireSelf(
+                checkout.GetAttributeValue<EntityReference>("ownerid")?.Id ?? Guid.Empty,
+                context.InitiatingUserId,
+                "submit a revision on this check-out");
 
             int currentStatus = checkout.GetAttributeValue<OptionSetValue>(ColCheckoutStatus)?.Value ?? 0;
             if (currentStatus != StatusOpen)

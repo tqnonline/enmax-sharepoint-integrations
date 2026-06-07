@@ -19,8 +19,12 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         private const int StateAvailable = 1, StateCheckedOut = 2, StateVoid = 6;
         private const string ValidReason = "Number no longer required; project was cancelled by the business.";
 
+        private static readonly Guid AdminTeamId    = Guid.NewGuid();
+        private static readonly Guid ApproverTeamId = Guid.NewGuid();
+
         private static (XrmFakedContext ctx, XrmFakedPluginExecutionContext pctx, Guid drawingId, Guid ownerId)
-            Build(int state = StateAvailable, string reason = ValidReason, bool callerIsOwner = true, string number = "0042")
+            Build(int state = StateAvailable, string reason = ValidReason, bool callerIsOwner = true,
+                  string number = "0042", bool callerIsAdmin = false)
         {
             var ctx = new XrmFakedContext();
             var drawingId = Guid.NewGuid();
@@ -37,7 +41,30 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
                 [ColState]            = new OptionSetValue(2),
             };
-            ctx.Initialize(new[] { drawing, sheet });
+
+            var seed = new System.Collections.Generic.List<Entity>
+            {
+                drawing, sheet,
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "AdminTeamId",
+                    ["enmax_acdnvalue"] = AdminTeamId.ToString(),
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "ApproverTeamId",
+                    ["enmax_acdnvalue"] = ApproverTeamId.ToString(),
+                },
+            };
+
+            if (callerIsAdmin)
+                seed.Add(new Entity("teammembership", Guid.NewGuid())
+                {
+                    ["teamid"]       = AdminTeamId,
+                    ["systemuserid"] = callerId,
+                });
+
+            ctx.Initialize(seed);
             var pctx = ctx.GetDefaultPluginContext();
             pctx.MessageName      = "enmax_acdnReleaseDrawing";
             pctx.Stage            = 40;
@@ -101,7 +128,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         [Fact]
         public void Force_release_by_non_owner_writes_OverrideUsed_audit_and_notifies_owner()
         {
-            var (ctx, pctx, drawingId, ownerId) = Build(callerIsOwner: false);
+            var (ctx, pctx, drawingId, ownerId) = Build(callerIsOwner: false, callerIsAdmin: true);
             ctx.ExecutePluginWith<ReleaseDrawingPlugin>(pctx);
             var svc = ctx.GetFakedOrganizationService();
 
@@ -135,6 +162,30 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             // Drawing must remain Available (release rejected, no state change)
             svc.Retrieve(DrawingEntity, drawingId, new ColumnSet(ColState))
                .GetAttributeValue<OptionSetValue>(ColState).Value.Should().Be(StateAvailable);
+        }
+
+        [Fact]
+        public void Non_owner_non_admin_cannot_force_release_drawing()
+        {
+            // caller != owner (isForce = true) but caller is not Admin → gate must deny before any mutation.
+            var (ctx, pctx, drawingId, _) = Build(callerIsOwner: false, callerIsAdmin: false);
+
+            Action act = () => ctx.ExecutePluginWith<ReleaseDrawingPlugin>(pctx);
+
+            act.Should().Throw<InvalidPluginExecutionException>()
+               .WithMessage("*not authorized*",
+                   because: "force-releasing someone else's drawing requires admin rights; plain users must be denied");
+
+            var svc = ctx.GetFakedOrganizationService();
+
+            // Drawing must remain Available — the gate fires before the state change.
+            svc.Retrieve(DrawingEntity, drawingId, new ColumnSet(ColState))
+               .GetAttributeValue<OptionSetValue>(ColState).Value
+               .Should().Be(StateAvailable, because: "the gate fires before the void update");
+
+            // No notification must be created.
+            svc.RetrieveMultiple(new QueryExpression(NotifEntity) { ColumnSet = new ColumnSet(false) })
+               .Entities.Should().BeEmpty(because: "no notification must be sent when the gate denies the request");
         }
     }
 }

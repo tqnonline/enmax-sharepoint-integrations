@@ -10,6 +10,8 @@ export interface CheckinRow {
   submittedById: string;
   submittedByName: string;
   submittedOn: string;
+  status: number;
+  statusLabel: string;
   currentRevision: string;
   newRevision: string;
   newPdfUrls: string;
@@ -17,7 +19,16 @@ export interface CheckinRow {
   spLibraryUrl: string;
 }
 
-const CHECKIN_STATUS_AWAITING = 2;
+// Checkout status option set.
+export const CHECKIN_STATUS_AWAITING = 2;
+export const CHECKIN_STATUS_APPROVED = 3;
+const CHECKIN_STATUS_LABELS: Record<number, string> = {
+  1: "Open",
+  2: "Awaiting Validation",
+  3: "Approved",
+  4: "Declined",
+  5: "Force-Closed",
+};
 
 async function resolve<T extends string>(
   ids: string[],
@@ -33,13 +44,16 @@ async function resolve<T extends string>(
 }
 
 export async function fetchCheckins(): Promise<CheckinRow[]> {
+  // List ALL check-ins (every status), newest activity first. The grid filters
+  // by date / submitter client-side; status is shown as a column.
   const res = await Enmax_autocadcheckoutsService.getAll({
-    filter: `enmax_acdnstatus eq ${CHECKIN_STATUS_AWAITING}`,
     select: [
       "enmax_autocadcheckoutid", "_ownerid_value", "enmax_acdncheckedouton",
-      "enmax_acdnnewrevision", "enmax_acdnnewpdfurls", "_enmax_acdndrawing_value", "createdon",
+      "enmax_acdnnewrevision", "enmax_acdnnewpdfurls", "_enmax_acdndrawing_value",
+      "enmax_acdnstatus", "createdon", "modifiedon",
     ],
-    orderBy: ["createdon desc"],
+    orderBy: ["modifiedon desc"],
+    top: 5000,
   });
   if (!res.success) {
     logDataverseError("Checkins", res.error);
@@ -73,13 +87,18 @@ export async function fetchCheckins(): Promise<CheckinRow[]> {
     const ownerId = (c["_ownerid_value"] as string) ?? "";
     const d = drawingMap.get(drawingId) ?? {};
     const u = userMap.get(ownerId) ?? {};
+    const status = (c["enmax_acdnstatus"] as number) ?? 0;
     return {
       checkoutId: c["enmax_autocadcheckoutid"] as string,
       drawingId,
       drawingNumber: (d["enmax_acdnnumber"] as string) ?? "",
       submittedById: ownerId,
       submittedByName: (u["fullname"] as string) ?? "",
-      submittedOn: (c["enmax_acdncheckedouton"] as string) ?? (c["createdon"] as string) ?? "",
+      // "Submitted" = when the check-in last changed state (submission / validation),
+      // not the original check-out time which can be far in the past.
+      submittedOn: (c["modifiedon"] as string) ?? (c["enmax_acdncheckedouton"] as string) ?? (c["createdon"] as string) ?? "",
+      status,
+      statusLabel: CHECKIN_STATUS_LABELS[status] ?? String(status),
       currentRevision: (d["enmax_acdncurrentrevision"] as string) ?? "",
       newRevision: (c["enmax_acdnnewrevision"] as string) ?? "",
       newPdfUrls: (c["enmax_acdnnewpdfurls"] as string) ?? "",
@@ -91,7 +110,7 @@ export async function fetchCheckins(): Promise<CheckinRow[]> {
 
 export function useCheckins(enabled: boolean) {
   return useQuery<CheckinRow[]>({
-    queryKey: ["checkins-awaiting-validation"],
+    queryKey: ["checkins-all"],
     enabled,
     queryFn: fetchCheckins,
     refetchInterval: 30_000,

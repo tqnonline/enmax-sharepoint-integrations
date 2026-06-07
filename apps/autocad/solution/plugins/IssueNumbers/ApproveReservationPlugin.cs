@@ -20,7 +20,7 @@ namespace Enmax.AutoCAD
         private const string ColApprovedOn = "enmax_acdnapprovedon";
         private const string ColApprover   = "enmax_acdnapprover";
         private const string ColOwner      = "ownerid";
-        private const string ColNumber     = "enmax_acdnreservationnumber";
+        private const string ColNumber     = "enmax_acdnreservationid";
 
         private const int NotifSeverityInfo              = 1;
         private const int NotifSourceReservationApproved = 1;
@@ -48,7 +48,7 @@ namespace Enmax.AutoCAD
         protected override void ExecuteDataversePlugin(ILocalPluginContext localPluginContext)
         {
             var context = localPluginContext.PluginExecutionContext;
-            var service = localPluginContext.InitiatingUserService;
+            var service = localPluginContext.SystemUserService;
 
             // Bound Custom API — Target is an EntityReference to the reservation row
             if (!context.InputParameters.Contains("Target"))
@@ -61,6 +61,8 @@ namespace Enmax.AutoCAD
             if (!string.Equals(target.LogicalName, EntityName, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidPluginExecutionException(
                     $"Target must be {EntityName}, got {target.LogicalName}");
+
+            Authorization.RequireApproverOrAdmin(service, context.InitiatingUserId, "approve a reservation");
 
             localPluginContext.Trace($"Approving reservation {target.Id} for user {context.InitiatingUserId}");
 

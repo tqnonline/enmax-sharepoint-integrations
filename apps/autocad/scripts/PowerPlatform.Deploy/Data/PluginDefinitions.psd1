@@ -6,7 +6,7 @@
 # CustomAPI bindingtype:           0=Global  1=Entity  2=EntityCollection
 # CustomAPIRequestParameter type:  5=EntityReference  7=Integer  9=Picklist  10=String
 # CustomAPIResponseProperty type:  same codes
-# PluginStep stage:                20=PreValidation  40=PostOperation
+# PluginStep stage:                20=PreOperation  40=PostOperation
 # PluginStep mode:                 0=Synchronous  1=Asynchronous
 #
 # Entity-bound APIs (bindingtype=1) receive Target automatically from the
@@ -21,18 +21,20 @@
         # ── Global: IssueNumbers ──────────────────────────────────────────────
         @{
             UniqueName  = "enmax_acdnIssueNumbers"
-            DisplayName = "Issue Drawing Numbers"
+            DisplayName = "Issue ENMAX Numbers"
+            Description = "Concurrency-safe issuance of sequential drawing numbers (Rule 14). Atomically reserves the next Count (1-1000) numbers for the Business-Asset-Unit-Domain-System-Kind sequence with optimistic locking. If a Reservation is supplied, writes them onto it to trigger drawing creation. Approver/Admin only."
             PluginClass = "Enmax.AutoCAD.IssueNumbersPlugin"
             BindingType = 0
             BoundEntity = $null
             Params = @(
-                @{ Name="Business"; Type=10; Optional=$false }
-                @{ Name="Asset";    Type=10; Optional=$false }
-                @{ Name="Unit";     Type=10; Optional=$false }
-                @{ Name="Domain";   Type=10; Optional=$false }
-                @{ Name="System";   Type=10; Optional=$false }
-                @{ Name="Kind";     Type=10; Optional=$false }
-                @{ Name="Count";    Type=7;  Optional=$false }
+                @{ Name="Business";    Type=10; Optional=$false }
+                @{ Name="Asset";       Type=10; Optional=$false }
+                @{ Name="Unit";        Type=10; Optional=$false }
+                @{ Name="Domain";      Type=10; Optional=$false }
+                @{ Name="System";      Type=10; Optional=$false }
+                @{ Name="Kind";        Type=10; Optional=$false }
+                @{ Name="Count";       Type=7;  Optional=$false }
+                @{ Name="Reservation"; Type=5;  Optional=$true  }
             )
             Response = @(
                 @{ Name="IssuedNumbers";  Type=10 }
@@ -56,6 +58,7 @@
         @{
             UniqueName  = "enmax_acdnApproveReservation"
             DisplayName = "Approve Reservation"
+            Description = "Approves a pending reservation (Approver/Admin only). Moves Pending to Approved, stamps the approver and timestamp, writes an audit event, and notifies the requester. Idempotent: re-approving an already-approved reservation is a no-op. Target is the reservation."
             PluginClass = "Enmax.AutoCAD.ApproveReservationPlugin"
             BindingType = 0
             BoundEntity = $null
@@ -68,6 +71,7 @@
         @{
             UniqueName  = "enmax_acdnDeclineReservation"
             DisplayName = "Decline Reservation"
+            Description = "Declines a pending reservation with a reason (Approver/Admin only). Moves Pending to Declined, stores the reason, writes an audit event, and notifies the requester with the reason. Inputs: Target (reservation) and Reason."
             PluginClass = "Enmax.AutoCAD.DeclineReservationPlugin"
             BindingType = 0
             BoundEntity = $null
@@ -81,6 +85,7 @@
         @{
             UniqueName  = "enmax_acdnCreateDrawings"
             DisplayName = "Create Drawings"
+            Description = "Creates one Drawing per issued number, plus its Sheets, for an approved reservation (Approver/Admin only). Every record is owned by the reservation requester, not the approver. Inputs: Target (reservation), IssuedNumbers (JSON array), SequenceKey. Returns DrawingsCreated."
             PluginClass = "Enmax.AutoCAD.CreateDrawingsPlugin"
             BindingType = 0
             BoundEntity = $null
@@ -98,6 +103,7 @@
         @{
             UniqueName  = "enmax_acdnCheckOutDrawing"
             DisplayName = "Check Out Drawing"
+            Description = "Checks out an Available drawing for revision (drawing owner or Admin only). Moves Available to CheckedOut with optimistic concurrency to block simultaneous check-outs, creates an Open checkout owned by the caller, and propagates sheet state. Target is the drawing. Returns CheckoutId."
             PluginClass = "Enmax.AutoCAD.CheckOutDrawingPlugin"
             BindingType = 1
             BoundEntity = "enmax_autocaddrawing"
@@ -110,6 +116,7 @@
         @{
             UniqueName  = "enmax_acdnApproveCheckin"
             DisplayName = "Approve Check-In"
+            Description = "Validates a submitted check-in (Approver/Admin only). Approve: checkout closes, drawing returns to Available with the new revision, sheets follow. Decline (reason 10+ chars): checkout reopens, drawing reverts to CheckedOut. Submitter notified. Inputs: Target, Decision (1 or 2), Reason."
             PluginClass = "Enmax.AutoCAD.ApproveCheckinPlugin"
             BindingType = 1
             BoundEntity = "enmax_autocadcheckout"
@@ -127,6 +134,7 @@
         @{
             UniqueName  = "enmax_acdnForceCheckin"
             DisplayName = "Force Check-In"
+            Description = "Administrative force-close of an open or stuck checkout (Approver/Admin only). Closes it as ClosedForced, returns the drawing to Available with the supplied NewRevision, propagates sheets, audits, and notifies the affected user. Inputs: Target, NewRevision and Reason (both required)."
             PluginClass = "Enmax.AutoCAD.ForceCheckinPlugin"
             BindingType = 1
             BoundEntity = "enmax_autocadcheckout"
@@ -144,6 +152,7 @@
         @{
             UniqueName  = "enmax_acdnSubmitRevision"
             DisplayName = "Submit Revision"
+            Description = "Submits a revised drawing on an open checkout (checkout owner only). AppConfig RequireCheckInApproval off: checkout closes, drawing returns to Available with the new revision. On: both move to AwaitingValidation for approval. Inputs: Target, NewRevision, Reason."
             PluginClass = "Enmax.AutoCAD.SubmitRevisionPlugin"
             BindingType = 1
             BoundEntity = "enmax_autocadcheckout"
@@ -160,6 +169,7 @@
         @{
             UniqueName  = "enmax_acdnFinalizeDrawing"
             DisplayName = "Finalize Drawing"
+            Description = "Finalises a drawing as the canonical, locked revision - terminal (drawing owner or Admin only). Requires a reason (10+ chars) and at least one prior check-in. Moves Available to Finalized with optimistic concurrency, finalises sheets, audits, notifies the owner. Inputs: Target, Reason."
             PluginClass = "Enmax.AutoCAD.FinalizeDrawingPlugin"
             BindingType = 1
             BoundEntity = "enmax_autocaddrawing"
@@ -172,6 +182,7 @@
         @{
             UniqueName  = "enmax_acdnMarkObsolete"
             DisplayName = "Mark Drawing Obsolete"
+            Description = "Marks a non-terminal drawing Obsolete - do not use (Admin only). Requires at least one prior check-in. Transitions to Obsolete with optimistic concurrency, propagates to sheets, writes an audit event, and notifies the owner. Inputs: Target (drawing) and Reason (optional)."
             PluginClass = "Enmax.AutoCAD.MarkObsoletePlugin"
             BindingType = 1
             BoundEntity = "enmax_autocaddrawing"
@@ -185,6 +196,7 @@
         @{
             UniqueName  = "enmax_acdnReleaseDrawing"
             DisplayName = "Release Drawing"
+            Description = "Releases an unused, Available, never-checked-out reserved number - F-06. Owner self-releases; Admin force-releases anyone's (owner notified). Drawing and sheets move to Void; the number stays burned, never reused. Used drawings must use Mark Obsolete. Inputs: Target, Reason (10+ chars)."
             PluginClass = "Enmax.AutoCAD.ReleaseDrawingPlugin"
             BindingType = 1
             BoundEntity = "enmax_autocaddrawing"
@@ -200,6 +212,202 @@
     )
 
     StepDefs = @(
+
+        # ── SetAppOwnerPlugin — PreValidation/Create/Synchronous on all config+ref tables ──
+        # Stage 10 (PreValidation), NOT 20 (PreOperation): on Create the platform
+        # resolves ownerid before PreOperation, so a PreOp Target ownerid override is
+        # ignored. PreValidation reliably stamps ownerid = the BU app-owner team.
+        @{
+            Name             = "Enmax.AutoCAD.SetAppOwnerPlugin: Create of enmax_autocadappconfig"
+            PluginClass      = "Enmax.AutoCAD.SetAppOwnerPlugin"
+            Message          = "Create"
+            Entity           = "enmax_autocadappconfig"
+            Stage            = 10
+            Mode             = 0    # Synchronous
+            Rank             = 1
+            FilterAttributes = $null
+            Images           = @()
+        }
+
+        @{
+            Name             = "Enmax.AutoCAD.SetAppOwnerPlugin: Create of enmax_autocadbroadcast"
+            PluginClass      = "Enmax.AutoCAD.SetAppOwnerPlugin"
+            Message          = "Create"
+            Entity           = "enmax_autocadbroadcast"
+            Stage            = 10
+            Mode             = 0    # Synchronous
+            Rank             = 1
+            FilterAttributes = $null
+            Images           = @()
+        }
+
+        @{
+            Name             = "Enmax.AutoCAD.SetAppOwnerPlugin: Create of enmax_autocadauditevent"
+            PluginClass      = "Enmax.AutoCAD.SetAppOwnerPlugin"
+            Message          = "Create"
+            Entity           = "enmax_autocadauditevent"
+            Stage            = 10
+            Mode             = 0    # Synchronous
+            Rank             = 1
+            FilterAttributes = $null
+            Images           = @()
+        }
+
+        @{
+            Name             = "Enmax.AutoCAD.SetAppOwnerPlugin: Create of enmax_autocadnumbersequence"
+            PluginClass      = "Enmax.AutoCAD.SetAppOwnerPlugin"
+            Message          = "Create"
+            Entity           = "enmax_autocadnumbersequence"
+            Stage            = 10
+            Mode             = 0    # Synchronous
+            Rank             = 1
+            FilterAttributes = $null
+            Images           = @()
+        }
+
+        @{
+            Name             = "Enmax.AutoCAD.SetAppOwnerPlugin: Create of enmax_autocadbusiness"
+            PluginClass      = "Enmax.AutoCAD.SetAppOwnerPlugin"
+            Message          = "Create"
+            Entity           = "enmax_autocadbusiness"
+            Stage            = 10
+            Mode             = 0    # Synchronous
+            Rank             = 1
+            FilterAttributes = $null
+            Images           = @()
+        }
+
+        @{
+            Name             = "Enmax.AutoCAD.SetAppOwnerPlugin: Create of enmax_autocadasset"
+            PluginClass      = "Enmax.AutoCAD.SetAppOwnerPlugin"
+            Message          = "Create"
+            Entity           = "enmax_autocadasset"
+            Stage            = 10
+            Mode             = 0    # Synchronous
+            Rank             = 1
+            FilterAttributes = $null
+            Images           = @()
+        }
+
+        @{
+            Name             = "Enmax.AutoCAD.SetAppOwnerPlugin: Create of enmax_autocadunit"
+            PluginClass      = "Enmax.AutoCAD.SetAppOwnerPlugin"
+            Message          = "Create"
+            Entity           = "enmax_autocadunit"
+            Stage            = 10
+            Mode             = 0    # Synchronous
+            Rank             = 1
+            FilterAttributes = $null
+            Images           = @()
+        }
+
+        @{
+            Name             = "Enmax.AutoCAD.SetAppOwnerPlugin: Create of enmax_autocaddomain"
+            PluginClass      = "Enmax.AutoCAD.SetAppOwnerPlugin"
+            Message          = "Create"
+            Entity           = "enmax_autocaddomain"
+            Stage            = 10
+            Mode             = 0    # Synchronous
+            Rank             = 1
+            FilterAttributes = $null
+            Images           = @()
+        }
+
+        @{
+            Name             = "Enmax.AutoCAD.SetAppOwnerPlugin: Create of enmax_autocadsystem"
+            PluginClass      = "Enmax.AutoCAD.SetAppOwnerPlugin"
+            Message          = "Create"
+            Entity           = "enmax_autocadsystem"
+            Stage            = 10
+            Mode             = 0    # Synchronous
+            Rank             = 1
+            FilterAttributes = $null
+            Images           = @()
+        }
+
+        @{
+            Name             = "Enmax.AutoCAD.SetAppOwnerPlugin: Create of enmax_autocadkind"
+            PluginClass      = "Enmax.AutoCAD.SetAppOwnerPlugin"
+            Message          = "Create"
+            Entity           = "enmax_autocadkind"
+            Stage            = 10
+            Mode             = 0    # Synchronous
+            Rank             = 1
+            FilterAttributes = $null
+            Images           = @()
+        }
+
+        @{
+            Name             = "Enmax.AutoCAD.SetAppOwnerPlugin: Create of enmax_autocadrecordtype"
+            PluginClass      = "Enmax.AutoCAD.SetAppOwnerPlugin"
+            Message          = "Create"
+            Entity           = "enmax_autocadrecordtype"
+            Stage            = 10
+            Mode             = 0    # Synchronous
+            Rank             = 1
+            FilterAttributes = $null
+            Images           = @()
+        }
+
+        @{
+            Name             = "Enmax.AutoCAD.SetAppOwnerPlugin: Create of enmax_autocadrecordphase"
+            PluginClass      = "Enmax.AutoCAD.SetAppOwnerPlugin"
+            Message          = "Create"
+            Entity           = "enmax_autocadrecordphase"
+            Stage            = 10
+            Mode             = 0    # Synchronous
+            Rank             = 1
+            FilterAttributes = $null
+            Images           = @()
+        }
+
+        @{
+            Name             = "Enmax.AutoCAD.SetAppOwnerPlugin: Create of enmax_autocadvendor"
+            PluginClass      = "Enmax.AutoCAD.SetAppOwnerPlugin"
+            Message          = "Create"
+            Entity           = "enmax_autocadvendor"
+            Stage            = 10
+            Mode             = 0    # Synchronous
+            Rank             = 1
+            FilterAttributes = $null
+            Images           = @()
+        }
+
+        @{
+            Name             = "Enmax.AutoCAD.SetAppOwnerPlugin: Create of enmax_autocadbusinessasset"
+            PluginClass      = "Enmax.AutoCAD.SetAppOwnerPlugin"
+            Message          = "Create"
+            Entity           = "enmax_autocadbusinessasset"
+            Stage            = 10
+            Mode             = 0    # Synchronous
+            Rank             = 1
+            FilterAttributes = $null
+            Images           = @()
+        }
+
+        @{
+            Name             = "Enmax.AutoCAD.SetAppOwnerPlugin: Create of enmax_autocadassetunit"
+            PluginClass      = "Enmax.AutoCAD.SetAppOwnerPlugin"
+            Message          = "Create"
+            Entity           = "enmax_autocadassetunit"
+            Stage            = 10
+            Mode             = 0    # Synchronous
+            Rank             = 1
+            FilterAttributes = $null
+            Images           = @()
+        }
+
+        @{
+            Name             = "Enmax.AutoCAD.SetAppOwnerPlugin: Create of enmax_autocadsystemscope"
+            PluginClass      = "Enmax.AutoCAD.SetAppOwnerPlugin"
+            Message          = "Create"
+            Entity           = "enmax_autocadsystemscope"
+            Stage            = 10
+            Mode             = 0    # Synchronous
+            Rank             = 1
+            FilterAttributes = $null
+            Images           = @()
+        }
 
         @{
             Name             = "Enmax.AutoCAD.OnReservationCreatedPlugin: Create of enmax_autocadreservation"

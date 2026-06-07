@@ -81,6 +81,28 @@ class DataverseClient:
             raise RuntimeError(f"POST {path} -> {resp.status_code}: {resp.text}")
         return resp
 
+    def _patch(self, path: str, body: dict) -> requests.Response:
+        """Issue a PATCH request and return the Response on success.
+
+        Non-2xx responses raise RuntimeError with the full Dataverse error
+        body.  We do NOT use raise_for_status because that discards the
+        response text, hiding the actual Dataverse error message.
+
+        Args:
+            path: Path relative to the OData endpoint.
+            body: Request payload; serialised as JSON.
+
+        Returns:
+            The raw ``requests.Response`` on success (2xx).
+
+        Raises:
+            RuntimeError: on non-2xx, with the status code and response body.
+        """
+        resp = self._session.patch(f"{self._base}/{path}", json=body)
+        if not resp.ok:
+            raise RuntimeError(f"PATCH {path} -> {resp.status_code}: {resp.text}")
+        return resp
+
     # ------------------------------------------------------------------
     # Factory
     # ------------------------------------------------------------------

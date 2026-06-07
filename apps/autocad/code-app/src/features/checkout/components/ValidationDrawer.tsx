@@ -20,10 +20,12 @@ import {
   CheckmarkCircle24Regular,
   DismissCircle24Regular,
   DocumentSearch24Regular,
+  Open24Regular,
 } from "@fluentui/react-icons";
 import { useApproveCheckin } from "../hooks/useApproveCheckin";
 import { parsePdfUrls } from "../api/checkoutClient";
 import type { CheckoutForPanel, DrawingForPanel } from "../api/checkoutClient";
+import { useAppConfig } from "../../../config/useAppConfig";
 
 const useStyles = makeStyles({
   body: {
@@ -86,6 +88,9 @@ interface Props {
 
 export function ValidationDrawer({ checkout, drawing }: Props) {
   const styles = useStyles();
+  // Single SharePoint drop-off library, from App Config — the same URL the user
+  // uploads to in SubmitRevisionDrawer. (Per-asset-unit libraries: future phase.)
+  const { CheckInUploadLibraryUrl } = useAppConfig();
   const [open, setOpen] = useState(false);
   const [showDecline, setShowDecline] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
@@ -189,6 +194,19 @@ export function ValidationDrawer({ checkout, drawing }: Props) {
                 )}
               </div>
             </div>
+
+            {CheckInUploadLibraryUrl && (
+              <Button
+                appearance="secondary"
+                icon={<Open24Regular />}
+                as="a"
+                href={CheckInUploadLibraryUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open SharePoint library
+              </Button>
+            )}
 
             {hasMissingSheets && (
               <MessageBar intent="warning">

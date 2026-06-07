@@ -43,7 +43,7 @@ namespace Enmax.AutoCAD
         protected override void ExecuteDataversePlugin(ILocalPluginContext localPluginContext)
         {
             var context = localPluginContext.PluginExecutionContext;
-            var service = localPluginContext.InitiatingUserService;
+            var service = localPluginContext.SystemUserService;
 
             var target = context.InputParameters.Contains("Target")
                 ? context.InputParameters["Target"] as EntityReference : null;
@@ -66,6 +66,11 @@ namespace Enmax.AutoCAD
             {
                 throw new InvalidPluginExecutionException($"Could not retrieve drawing {target.Id}: {ex.Message}", ex);
             }
+
+            Authorization.RequireOwnerOrAdmin(service,
+                drawing.GetAttributeValue<EntityReference>(ColOwner)?.Id ?? Guid.Empty,
+                context.InitiatingUserId,
+                "finalize this drawing");
 
             int currentState = drawing.GetAttributeValue<OptionSetValue>(ColDrawingState)?.Value ?? 0;
             if (currentState != StateAvailable)

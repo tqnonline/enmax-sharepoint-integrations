@@ -66,7 +66,7 @@ namespace Enmax.AutoCAD
         protected override void ExecuteDataversePlugin(ILocalPluginContext localPluginContext)
         {
             var context = localPluginContext.PluginExecutionContext;
-            var service = localPluginContext.InitiatingUserService;
+            var service = localPluginContext.SystemUserService;
 
             if (!context.InputParameters.Contains("Target"))
                 throw new InvalidPluginExecutionException("Missing required input: Target");
@@ -91,6 +91,8 @@ namespace Enmax.AutoCAD
             if (string.IsNullOrWhiteSpace(newRevision))
                 throw new InvalidPluginExecutionException("Missing required input: NewRevision");
             newRevision = newRevision.Trim();
+
+            Authorization.RequireApproverOrAdmin(service, context.InitiatingUserId, "force check-in");
 
             localPluginContext.Trace(
                 $"ForceCheckin: checkout={target.Id}, user={context.InitiatingUserId}");

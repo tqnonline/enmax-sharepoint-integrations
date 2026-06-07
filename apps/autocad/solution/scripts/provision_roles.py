@@ -285,28 +285,40 @@ def main() -> int:
             stream.reconfigure(encoding="utf-8")
 
     url = os.environ.get("DATAVERSE_URL", "").rstrip("/")
-    client_id = os.environ.get("DATAVERSE_CLIENT_ID", "")
-    client_secret = os.environ.get("DATAVERSE_CLIENT_SECRET", "")
-    tenant_id = os.environ.get("DATAVERSE_TENANT_ID", "")
-
-    missing_env = [
-        name for name, val in [
-            ("DATAVERSE_URL", url),
-            ("DATAVERSE_CLIENT_ID", client_id),
-            ("DATAVERSE_CLIENT_SECRET", client_secret),
-            ("DATAVERSE_TENANT_ID", tenant_id),
-        ]
-        if not val
-    ]
-    if missing_env:
-        print(
-            f"ERROR: missing env vars: {', '.join(missing_env)}",
-            file=sys.stderr,
-        )
+    if not url:
+        print("ERROR: missing env var: DATAVERSE_URL", file=sys.stderr)
         return 1
 
-    print("Authenticating...")
-    token = _get_token(tenant_id, client_id, client_secret, url)
+    # Auth resolution (mirrors seed.py): a bring-your-own bearer token
+    # (DATAVERSE_ACCESS_TOKEN — e.g. `az account get-access-token` or pac) wins and
+    # needs no service principal. This is how a no-SP environment behind Conditional
+    # Access (e.g. UAT) is provisioned with a sysadmin user login. Otherwise fall
+    # back to MSAL client credentials.
+    byo = os.environ.get("DATAVERSE_ACCESS_TOKEN", "").strip()
+    if byo:
+        print("Using DATAVERSE_ACCESS_TOKEN from environment.")
+        token = byo
+    else:
+        client_id = os.environ.get("DATAVERSE_CLIENT_ID", "")
+        client_secret = os.environ.get("DATAVERSE_CLIENT_SECRET", "")
+        tenant_id = os.environ.get("DATAVERSE_TENANT_ID", "")
+        missing_env = [
+            name for name, val in [
+                ("DATAVERSE_CLIENT_ID", client_id),
+                ("DATAVERSE_CLIENT_SECRET", client_secret),
+                ("DATAVERSE_TENANT_ID", tenant_id),
+            ]
+            if not val
+        ]
+        if missing_env:
+            print(
+                f"ERROR: missing env vars: {', '.join(missing_env)} "
+                "(or set DATAVERSE_ACCESS_TOKEN to bypass the service principal)",
+                file=sys.stderr,
+            )
+            return 1
+        print("Authenticating (service principal)...")
+        token = _get_token(tenant_id, client_id, client_secret, url)
 
     client = DataverseClient(url, token)
 

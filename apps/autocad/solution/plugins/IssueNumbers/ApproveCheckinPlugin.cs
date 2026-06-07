@@ -74,7 +74,7 @@ namespace Enmax.AutoCAD
         protected override void ExecuteDataversePlugin(ILocalPluginContext localPluginContext)
         {
             var context = localPluginContext.PluginExecutionContext;
-            var service = localPluginContext.InitiatingUserService;
+            var service = localPluginContext.SystemUserService;
 
             if (!context.InputParameters.Contains("Target"))
                 throw new InvalidPluginExecutionException("Missing required input: Target");
@@ -86,6 +86,8 @@ namespace Enmax.AutoCAD
             if (!string.Equals(target.LogicalName, CheckoutEntity, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidPluginExecutionException(
                     $"Target must be {CheckoutEntity}, got {target.LogicalName}");
+
+            Authorization.RequireApproverOrAdmin(service, context.InitiatingUserId, "validate a check-in");
 
             if (!context.InputParameters.Contains("Decision"))
                 throw new InvalidPluginExecutionException("Missing required input: Decision");

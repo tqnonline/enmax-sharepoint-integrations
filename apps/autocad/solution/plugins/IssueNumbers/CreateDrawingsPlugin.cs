@@ -30,7 +30,7 @@ namespace Enmax.AutoCAD
         protected override void ExecuteDataversePlugin(ILocalPluginContext localPluginContext)
         {
             var context = localPluginContext.PluginExecutionContext;
-            var service = localPluginContext.InitiatingUserService;
+            var service = localPluginContext.SystemUserService;
 
             // ── Validate inputs ──────────────────────────────────────────────────
             if (!context.InputParameters.Contains("Target"))
@@ -41,6 +41,8 @@ namespace Enmax.AutoCAD
             if (!string.Equals(target.LogicalName, ReservationEntity, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidPluginExecutionException(
                     $"Target must be {ReservationEntity}, got {target.LogicalName}");
+
+            Authorization.RequireApproverOrAdmin(service, context.InitiatingUserId, "create drawings");
 
             if (!context.InputParameters.Contains("IssuedNumbers"))
                 throw new InvalidPluginExecutionException("Missing required input: IssuedNumbers");

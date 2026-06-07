@@ -46,7 +46,7 @@ namespace Enmax.AutoCAD
         protected override void ExecuteDataversePlugin(ILocalPluginContext localPluginContext)
         {
             var context = localPluginContext.PluginExecutionContext;
-            var service = localPluginContext.InitiatingUserService;
+            var service = localPluginContext.SystemUserService;
 
             var target = context.InputParameters.Contains("Target")
                 ? context.InputParameters["Target"] as EntityReference : null;
@@ -84,6 +84,10 @@ namespace Enmax.AutoCAD
             var callerId = context.InitiatingUserId;
             bool isForce = owner == null || owner.Id != callerId;
             string number = drawing.GetAttributeValue<string>(ColDrawingNumber) ?? string.Empty;
+
+            // Force-release (caller != owner) requires admin rights — check before any mutation.
+            if (isForce)
+                Authorization.RequireAdmin(service, callerId, "force-release this drawing");
 
             // Available -> Void with optimistic concurrency
             try
@@ -142,6 +146,7 @@ namespace Enmax.AutoCAD
                         ["enmax_acdndeeplinkpath"] = "/my-items",
                         ["enmax_acdnread"]         = false,
                         ["enmax_acdnrecipient"]    = new EntityReference("systemuser", owner.Id),
+                        ["ownerid"]                = new EntityReference("systemuser", owner.Id),
                     });
             }
             else
