@@ -65,8 +65,9 @@ test("owner can cancel a pending reservation", async () => {
   renderDetail();
 
   await user.click(screen.getByRole("button", { name: /cancel reservation/i }));
-  // Confirm dialog
-  await user.click(screen.getByRole("button", { name: /confirm cancel/i }));
+  // Confirm dialog — the Fluent Dialog surface mounts through a portal after the
+  // open state flips, so wait for the confirm button rather than querying synchronously.
+  await user.click(await screen.findByRole("button", { name: /confirm cancel/i }));
 
   expect(mockCancelMutate).toHaveBeenCalledWith("res-1", expect.anything());
 });

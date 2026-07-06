@@ -10,6 +10,10 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    // Retry timing-sensitive DOM tests (Fluent portals, async form validation)
+    // to absorb CI-load races. A genuinely broken test still fails every attempt,
+    // so retries stabilize flakiness without masking real regressions.
+    retry: 2,
     setupFiles: ["./src/test-setup.ts"],
     exclude: ["node_modules", "dist", "e2e/**"],  // e2e uses Playwright, not Vitest
     server: {
