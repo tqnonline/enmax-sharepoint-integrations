@@ -110,12 +110,14 @@
       <RootComponent type="9" schemaName="enmax_acdn_broadcaststatus" behavior="0" />
       <RootComponent type="9" schemaName="enmax_acdn_checkoutreminderstage" behavior="0" />
       <RootComponent type="9" schemaName="enmax_acdn_checkoutstatus" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_documentsubtype" behavior="0" />
       <RootComponent type="9" schemaName="enmax_acdn_drawingstate" behavior="0" />
       <RootComponent type="9" schemaName="enmax_acdn_notificationseverity" behavior="0" />
       <RootComponent type="9" schemaName="enmax_acdn_numbersequencestatus" behavior="0" />
       <RootComponent type="9" schemaName="enmax_acdn_recordstatus" behavior="0" />
       <RootComponent type="9" schemaName="enmax_acdn_recordtypechoice" behavior="0" />
       <RootComponent type="9" schemaName="enmax_acdn_reservationstatus" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_reservationtype" behavior="0" />
       <RootComponent type="9" schemaName="enmax_acdn_sequencetype" behavior="0" />
       <RootComponent type="9" schemaName="enmax_acdn_sheetstate" behavior="0" />
       <RootComponent type="9" schemaName="enmax_acdn_sourceevent" behavior="0" />
