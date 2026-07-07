@@ -114,9 +114,7 @@ test("submitting valid form POSTs to enmax_autocadreservations with correct body
   await waitFor(() => expect(screen.getByLabelText(/Number of drawings/i)).toBeInTheDocument());
   const countInput = screen.getByLabelText(/Number of drawings/i);
   await user.clear(countInput);
-  await user.type(countInput, "3");
-  await user.click(screen.getByRole("radio", { name: /New sequence/i }));
-  const reasonInput = screen.getByLabelText(/Reason for reservation/i);
+  await user.type(countInput, "3");  const reasonInput = screen.getByLabelText(/Reason for reservation/i);
   await user.type(reasonInput, "test reservation per plan #05");
   await user.click(screen.getByRole("button", { name: /next/i }));
 
@@ -153,9 +151,7 @@ test("Document/Standard reservation hides child count and sends type=2, subtype=
 
   const countInput = screen.getByLabelText(/Number of standard documents/i);
   await user.clear(countInput);
-  await user.type(countInput, "1");
-  await user.click(screen.getByRole("radio", { name: /New sequence/i }));
-  await user.type(screen.getByLabelText(/Reason for reservation/i), "standard document reservation test");
+  await user.type(countInput, "1");  await user.type(screen.getByLabelText(/Reason for reservation/i), "standard document reservation test");
   await user.click(screen.getByRole("button", { name: /Next: Review/i }));
 
   await waitFor(() => expect(screen.getByRole("button", { name: /Submit reservation/i })).toBeInTheDocument());
@@ -192,9 +188,7 @@ test("successful submission navigates to /reserve/success with reservation id", 
   await waitFor(() => expect(screen.getByLabelText(/Number of drawings/i)).toBeInTheDocument());
   const countInput = screen.getByLabelText(/Number of drawings/i);
   await user.clear(countInput);
-  await user.type(countInput, "2");
-  await user.click(screen.getByRole("radio", { name: /New sequence/i }));
-  await user.type(screen.getByLabelText(/Reason for reservation/i), "navigates to success on 201");
+  await user.type(countInput, "2");  await user.type(screen.getByLabelText(/Reason for reservation/i), "navigates to success on 201");
   await user.click(screen.getByRole("button", { name: /next/i }));
 
   await waitFor(() => expect(screen.getByRole("button", { name: /Submit reservation/i })).toBeInTheDocument());
@@ -234,9 +228,7 @@ test("surfaces permission-denied error when create returns 403", async () => {
   await waitFor(() => expect(screen.getByLabelText(/Number of drawings/i)).toBeInTheDocument());
   const countInput = screen.getByLabelText(/Number of drawings/i);
   await user.clear(countInput);
-  await user.type(countInput, "1");
-  await user.click(screen.getByRole("radio", { name: /New sequence/i }));
-  await user.type(screen.getByLabelText(/Reason for reservation/i), "403 error test case here");
+  await user.type(countInput, "1");  await user.type(screen.getByLabelText(/Reason for reservation/i), "403 error test case here");
   await user.click(screen.getByRole("button", { name: /next/i }));
 
   await waitFor(() => expect(screen.getByRole("button", { name: /Submit reservation/i })).toBeInTheDocument());

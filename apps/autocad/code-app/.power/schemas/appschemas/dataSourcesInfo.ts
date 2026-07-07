@@ -164,6 +164,23 @@ export const dataSourcesInfo = {
       }
     }
   },
+  "enmax_acdnaddchilditems": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "",
+    "dataSourceType": "Dataverse",
+    "apis": {
+      "enmax_acdnAddChildItems": {
+        "path": "/api/data/v9.2/enmax_acdnAddChildItems",
+        "method": "POST",
+        "parameters": [
+          { "name": "Drawing", "in": "body", "required": true, "type": "object" },
+          { "name": "Count",   "in": "body", "required": true, "type": "integer" }
+        ],
+        "responseInfo": { "200": { "type": "object" } }
+      }
+    }
+  },
   "enmax_autocaddrawings": {
     "tableId": "",
     "version": "",

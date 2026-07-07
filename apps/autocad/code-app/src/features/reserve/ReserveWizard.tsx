@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { useForm, FormProvider, type Resolver } from "react-hook-form";
+import { useState } from "react";
+import { useForm, FormProvider, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
 import {
@@ -17,11 +17,13 @@ import { Step1TypeSubtype } from "./steps/Step1TypeSubtype";
 import { Step2Composition } from "./steps/Step2Composition";
 import { Step3Details } from "./steps/Step3Details";
 import { Step4Review } from "./steps/Step4Review";
+import { StepAddToExisting } from "./steps/StepAddToExisting";
 import { useReferenceData } from "./hooks/useReferenceData";
 import { useCreateReservation } from "./hooks/useCreateReservation";
 import { useAppConfig } from "../../config/useAppConfig";
 
-const USER_STEPS = ["Type", "Composition", "Details", "Review"];
+const NEW_STEPS      = ["Type", "Composition", "Details", "Review"];
+const EXISTING_STEPS = ["Type", "Add to existing"];
 
 const useStyles = makeStyles({
   stepper: {
@@ -112,8 +114,13 @@ export function ReserveWizard() {
   const refDataQuery   = useReferenceData();
   const createMutation = useCreateReservation();
 
-  const next = useCallback(() => setStep((s) => Math.min(s + 1, 3)), []);
-  const back = useCallback(() => setStep((s) => Math.max(s - 1, 0)), []);
+  const sequenceType = useWatch({ control: methods.control, name: "sequenceType" });
+  const isExisting = sequenceType === "Existing";
+  const steps      = isExisting ? EXISTING_STEPS : NEW_STEPS;
+  const maxStep    = steps.length - 1;
+
+  const next = () => setStep((s) => Math.min(s + 1, maxStep));
+  const back = () => setStep((s) => Math.max(s - 1, 0));
 
   async function handleSubmit() {
     const values = methods.getValues();
@@ -148,12 +155,12 @@ export function ReserveWizard() {
       {/* Stepper */}
       <nav aria-label="Reservation wizard steps" style={{ display: "flex", flexDirection: "column", marginBottom: "1.5rem" }}>
       <div style={{ display: "flex", alignItems: "center", paddingBottom: "1rem", borderBottom: `1px solid ${tokens.colorNeutralStroke1}` }}>
-        {USER_STEPS.map((label, i) => {
+        {steps.map((label, i) => {
           const isComplete = i < userStep;
           const isActive   = i === userStep;
 
           return (
-            <div key={label} style={{ display: "flex", alignItems: "center", flex: i < USER_STEPS.length - 1 ? "1" : "0" }}>
+            <div key={label} style={{ display: "flex", alignItems: "center", flex: i < steps.length - 1 ? "1" : "0" }}>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
                 <div
                   className={mergeClasses(
@@ -182,7 +189,7 @@ export function ReserveWizard() {
                 </Text>
               </div>
 
-              {i < USER_STEPS.length - 1 && (
+              {i < steps.length - 1 && (
                 <div
                   style={{
                     flex: 1,
@@ -207,7 +214,7 @@ export function ReserveWizard() {
           marginTop: tokens.spacingVerticalXS,
         }}
       >
-        Step {userStep + 1} of {USER_STEPS.length}
+        Step {userStep + 1} of {steps.length}
       </Text>
       </nav>
 
@@ -224,22 +231,28 @@ export function ReserveWizard() {
 
       <div className={styles.content}>
         {step === 0 && <Step1TypeSubtype onNext={next} />}
-        {step === 1 && <Step2Composition refData={refData} onNext={next} onBack={back} />}
-        {step === 2 && (
-          <Step3Details
-            maxCount={config.MaxDrawingsPerReservation}
-            maxSheets={config.MaxSheetsPerDrawing}
-            onNext={next}
-            onBack={back}
-          />
-        )}
-        {step === 3 && (
-          <Step4Review
-            refData={refData}
-            onBack={back}
-            onSubmit={() => void handleSubmit()}
-            isSubmitting={createMutation.isPending}
-          />
+        {isExisting ? (
+          step === 1 && <StepAddToExisting onBack={back} />
+        ) : (
+          <>
+            {step === 1 && <Step2Composition refData={refData} onNext={next} onBack={back} />}
+            {step === 2 && (
+              <Step3Details
+                maxCount={config.MaxDrawingsPerReservation}
+                maxSheets={config.MaxSheetsPerDrawing}
+                onNext={next}
+                onBack={back}
+              />
+            )}
+            {step === 3 && (
+              <Step4Review
+                refData={refData}
+                onBack={back}
+                onSubmit={() => void handleSubmit()}
+                isSubmitting={createMutation.isPending}
+              />
+            )}
+          </>
         )}
       </div>
     </FormProvider>

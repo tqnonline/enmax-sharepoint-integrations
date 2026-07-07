@@ -3,8 +3,6 @@ import {
   Field,
   Input,
   Textarea,
-  RadioGroup,
-  Radio,
   Button,
   tokens,
   makeStyles,
@@ -34,8 +32,8 @@ export function Step3Details({ maxCount, maxSheets, onNext, onBack }: Props) {
 
   async function handleNext() {
     const fields: Array<keyof ReserveForm> = term.createsChildren
-      ? ["count", "sheetsPerDrawing", "sequenceType", "reason"]
-      : ["count", "sequenceType", "reason"];
+      ? ["count", "sheetsPerDrawing", "reason"]
+      : ["count", "reason"];
     const ok = await trigger(fields);
     if (ok) onNext();
   }
@@ -91,23 +89,6 @@ export function Step3Details({ maxCount, maxSheets, onNext, onBack }: Props) {
           </div>
         )}
       </div>
-
-      <Controller
-        name="sequenceType"
-        control={control}
-        render={({ field }) => (
-          <Field label="Sequence type" validationMessage={errors.sequenceType?.message} required>
-            <RadioGroup
-              value={field.value}
-              onChange={(_, data) => field.onChange(data.value)}
-              layout="horizontal"
-            >
-              <Radio value="New"      label="New sequence" />
-              <Radio value="Existing" label="Existing sequence" />
-            </RadioGroup>
-          </Field>
-        )}
-      />
 
       <Controller
         name="reason"
