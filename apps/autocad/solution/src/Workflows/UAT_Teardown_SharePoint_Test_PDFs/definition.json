@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "1.0.0.0",
+  "metadata": {
+    "description": "WS5e UAT harness: deletes seeded ~1KB test PDFs from UAT SharePoint libraries. Run after Validate or to reset the scenario matrix."
+  },
+  "triggers": {
+    "Manual_Teardown": {
+      "type": "Request",
+      "kind": "Http",
+      "inputs": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "files": {
+              "type": "string",
+              "title": "JSON array of {libraryUrl,folderPath,fileName} entries to delete"
+            }
+          },
+          "required": ["files"]
+        }
+      }
+    }
+  },
+  "actions": {
+    "Apply_to_each_File": {
+      "type": "Foreach",
+      "runAfter": {},
+      "foreach": "@json(triggerBody()?['files'])",
+      "actions": {
+        "Delete_File": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_sharepointonline",
+              "operationId": "DeleteFile",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+            },
+            "parameters": {
+              "dataset": "@{items('Apply_to_each_File')?['libraryUrl']}",
+              "id": "@{concat(items('Apply_to_each_File')?['folderPath'], '/', items('Apply_to_each_File')?['fileName'])}"
+            }
+          }
+        }
+      }
+    },
+    "Response": {
+      "type": "Response",
+      "runAfter": { "Apply_to_each_File": ["Succeeded", "Failed"] },
+      "kind": "Http",
+      "inputs": {
+        "statusCode": 200,
+        "body": { "status": "teardown-complete" }
+      }
+    }
+  }
+}

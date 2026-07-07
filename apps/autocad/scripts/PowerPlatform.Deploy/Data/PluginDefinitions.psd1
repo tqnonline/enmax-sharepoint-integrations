@@ -253,6 +253,31 @@
                 @{ Name="SequenceKeyBurned"; Type=10 }
             )
         }
+
+        # ── Global: SharePoint indexer upsert (WS5) ───────────────────────────
+        # Unbound with explicit Target (Type=5). The indexer flow passes discovered
+        # PDF metadata as a JSON array; the plug-in runs SharePointLinkMatcher and
+        # idempotently writes drop-off/destination URLs + present flags + last-indexed.
+        @{
+            UniqueName  = "enmax_acdnUpsertSharePointLinks"
+            DisplayName = "Upsert SharePoint Link Metadata"
+            Description = "WS5 indexer: matches FoundFiles (JSON array of PDF metadata) to a drawing or sheet by deterministic filename, then idempotently upserts drop-off/destination URLs, present-in-library flags, and last-indexed timestamp. Inputs: Target (drawing or sheet), RecordNumber (must match the record), FoundFiles (JSON array; empty clears links). Returns UpdateNeeded, DropOffUrl, DestinationUrl, PresentInDropOff, PresentInDestination."
+            PluginClass = "Enmax.AutoCAD.UpsertSharePointLinksPlugin"
+            BindingType = 0
+            BoundEntity = $null
+            Params = @(
+                @{ Name="Target";       Type=5;  Optional=$false }
+                @{ Name="RecordNumber"; Type=10; Optional=$false }
+                @{ Name="FoundFiles";   Type=10; Optional=$true  }
+            )
+            Response = @(
+                @{ Name="UpdateNeeded";          Type=0 }
+                @{ Name="DropOffUrl";            Type=10 }
+                @{ Name="DestinationUrl";        Type=10 }
+                @{ Name="PresentInDropOff";      Type=0 }
+                @{ Name="PresentInDestination";  Type=0 }
+            )
+        }
     )
 
     StepDefs = @(

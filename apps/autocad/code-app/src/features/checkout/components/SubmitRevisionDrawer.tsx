@@ -13,9 +13,10 @@ import {
   tokens,
   makeStyles,
 } from "@fluentui/react-components";
-import { Dismiss24Regular, DocumentEdit24Regular, ArrowUpload24Regular } from "@fluentui/react-icons";
+import { Dismiss24Regular, DocumentEdit24Regular } from "@fluentui/react-icons";
 import { useSubmitRevision } from "../hooks/useSubmitRevision";
 import { useAppConfig } from "../../../config/useAppConfig";
+import { SharePointUploadButton } from "../../sharepoint/SharePointUploadButton";
 
 const useStyles = makeStyles({
   body: {
@@ -44,11 +45,12 @@ const useStyles = makeStyles({
 interface Props {
   checkoutId: string;
   drawingId: string;
+  drawingNumber: string;
 }
 
-export function SubmitRevisionDrawer({ checkoutId, drawingId }: Props) {
+export function SubmitRevisionDrawer({ checkoutId, drawingId, drawingNumber }: Props) {
   const styles = useStyles();
-  const { RequireCheckInApproval, CheckInUploadLibraryUrl } = useAppConfig();
+  const { RequireCheckInApproval } = useAppConfig();
   const [open, setOpen] = useState(false);
   const [submissionInfo, setSubmissionInfo] = useState("");
   const [filesConfirmed, setFilesConfirmed] = useState(false);
@@ -120,18 +122,7 @@ export function SubmitRevisionDrawer({ checkoutId, drawingId }: Props) {
               />
             </Field>
 
-            {CheckInUploadLibraryUrl && (
-              <Button
-                as="a"
-                href={CheckInUploadLibraryUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                icon={<ArrowUpload24Regular />}
-                appearance="secondary"
-              >
-                Upload Drawings to SharePoint
-              </Button>
-            )}
+            <SharePointUploadButton recordNumber={drawingNumber} enabled />
 
             <div className={styles.confirmationBox}>
               <Checkbox

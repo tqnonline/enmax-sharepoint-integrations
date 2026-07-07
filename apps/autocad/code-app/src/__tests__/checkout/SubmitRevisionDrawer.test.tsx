@@ -9,12 +9,12 @@ vi.mock("../../features/checkout/hooks/useSubmitRevision", () => ({
 }));
 
 test("check-in drawer shows the configured upload library link, opening in a new tab", () => {
-  renderWithProviders(<SubmitRevisionDrawer checkoutId="c1" drawingId="d1" />);
+  renderWithProviders(<SubmitRevisionDrawer checkoutId="c1" drawingId="d1" drawingNumber="GG-CG-00-ECS-AST-DD-0001" />);
 
   fireEvent.click(screen.getByRole("button", { name: /^check in$/i }));
 
-  const link = screen.getByRole("link", { name: /upload drawings to sharepoint/i });
-  expect(link).toHaveAttribute("href", "https://example.com/library");
+  const link = screen.getByRole("link", { name: /upload pdf to sharepoint/i });
+  expect(link).toHaveAttribute("href", "https://example.com/drawings-dropoff/Forms/AllItems.aspx");
   expect(link).toHaveAttribute("target", "_blank");
   expect(link).toHaveAttribute("rel", "noopener noreferrer");
 });

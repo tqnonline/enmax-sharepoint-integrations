@@ -25,16 +25,16 @@ Describe 'Register-PpPlugins — parameter contract' {
 
 Describe 'Register-PpPlugins — PluginDefinitions data file' {
 
-    It 'PluginDefinitions.psd1 loads with exactly 13 CustomAPIDefs' {
+    It 'PluginDefinitions.psd1 loads with exactly 14 CustomAPIDefs' {
         # WHY: The number of Custom API definitions is load-bearing; adding or removing
         # an entry without a matching deployment would leave Dataverse in an inconsistent
         # state. This test guards against a [ordered]->@{} conversion silently breaking
         # the file parse, or a developer accidentally removing an entry.
-        # 13 = 11 original + enmax_acdnAddChildItems (WS2c) + enmax_acdnApproveCheckout (WS3 gated Check Out).
+        # 14 = 13 prior + enmax_acdnUpsertSharePointLinks (WS5 indexer).
         $RepoRoot  = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent | Split-Path -Parent
         $defsPath  = Join-Path $RepoRoot 'scripts/PowerPlatform.Deploy/Data/PluginDefinitions.psd1'
         $defs = Import-PowerShellDataFile $defsPath
-        $defs.CustomAPIDefs.Count | Should -Be 13
+        $defs.CustomAPIDefs.Count | Should -Be 14
     }
 
     It 'PluginDefinitions.psd1 loads with exactly 18 StepDefs' {
@@ -103,6 +103,18 @@ Describe 'Register-PpPlugins — PluginDefinitions data file' {
         $api | Should -Not -BeNullOrEmpty
         ($api.Params | Where-Object { $_.Name -eq 'SubmissionInfo' }) | Should -Not -BeNullOrEmpty
         ($api.Params | Where-Object { $_.Name -eq 'NewRevision' })    | Should -BeNullOrEmpty
+    }
+
+    It 'enmax_acdnUpsertSharePointLinks is Global with Target + RecordNumber + FoundFiles (WS5)' {
+        $RepoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent | Split-Path -Parent
+        $defsPath = Join-Path $RepoRoot 'scripts/PowerPlatform.Deploy/Data/PluginDefinitions.psd1'
+        $defs = Import-PowerShellDataFile $defsPath
+        $api = $defs.CustomAPIDefs | Where-Object { $_.UniqueName -eq 'enmax_acdnUpsertSharePointLinks' }
+        $api | Should -Not -BeNullOrEmpty
+        $api.BindingType | Should -Be 0
+        $api.PluginClass | Should -Be 'Enmax.AutoCAD.UpsertSharePointLinksPlugin'
+        ($api.Params | Where-Object { $_.Name -eq 'Target' }).Type       | Should -Be 5
+        ($api.Params | Where-Object { $_.Name -eq 'RecordNumber' }).Type | Should -Be 10
     }
 }
 

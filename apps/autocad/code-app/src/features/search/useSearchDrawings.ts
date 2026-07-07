@@ -13,6 +13,8 @@ export interface DrawingRow {
   enmax_acdnsheetcount: number;
   enmax_acdnsplibraryurl: string;
   enmax_acdnspdestinationurl: string;
+  enmax_acdnpresentindropoff?: boolean;
+  enmax_acdnpresentindestination?: boolean;
   _enmax_acdnbusiness_value: string;
   _enmax_acdnasset_value: string;
   _enmax_acdnunit_value: string;
@@ -45,6 +47,8 @@ type DrawingRaw = {
   enmax_acdnsheetcount?: number;
   enmax_acdnsplibraryurl?: string;
   enmax_acdnspdestinationurl?: string;
+  enmax_acdnpresentindropoff?: boolean;
+  enmax_acdnpresentindestination?: boolean;
   _enmax_acdnbusiness_value?: string;
   "_enmax_acdnbusiness_value@OData.Community.Display.V1.FormattedValue"?: string;
   _enmax_acdnasset_value?: string;
@@ -135,6 +139,7 @@ export async function fetchSearchDrawings(
       "enmax_autocaddrawingid", "enmax_acdnnumber", "enmax_acdntitle",
       "enmax_acdncurrentrevision", "enmax_acdnrevisiondate", "enmax_acdnstate",
       "enmax_acdnsheetcount", "enmax_acdnsplibraryurl", "enmax_acdnspdestinationurl",
+      "enmax_acdnpresentindropoff", "enmax_acdnpresentindestination",
       "_enmax_acdnbusiness_value", "_enmax_acdnasset_value", "_enmax_acdnunit_value",
       "_enmax_acdndomain_value", "_enmax_acdnsystem_value", "_enmax_acdnkind_value",
       "_enmax_acdnrecordtype_value", "_enmax_acdnrecordphase_value",
@@ -160,6 +165,8 @@ export async function fetchSearchDrawings(
     enmax_acdnsheetcount:   r.enmax_acdnsheetcount ?? 0,
     enmax_acdnsplibraryurl: r.enmax_acdnsplibraryurl ?? "",
     enmax_acdnspdestinationurl: r.enmax_acdnspdestinationurl ?? "",
+    enmax_acdnpresentindropoff: r.enmax_acdnpresentindropoff ?? false,
+    enmax_acdnpresentindestination: r.enmax_acdnpresentindestination ?? false,
     _enmax_acdnbusiness_value:   r._enmax_acdnbusiness_value ?? "",
     _enmax_acdnasset_value:      r._enmax_acdnasset_value ?? "",
     _enmax_acdnunit_value:       r._enmax_acdnunit_value ?? "",

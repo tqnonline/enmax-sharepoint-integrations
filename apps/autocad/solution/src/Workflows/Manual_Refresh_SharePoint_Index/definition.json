@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "1.0.0.0",
+  "metadata": {
+    "description": "WS5: on-demand per-record SharePoint index refresh. Manual trigger accepts entityName, recordId, recordNumber, and FoundFiles JSON; calls enmax_acdnUpsertSharePointLinks."
+  },
+  "triggers": {
+    "Manual": {
+      "type": "Request",
+      "kind": "PowerAppV2",
+      "inputs": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "entityName": { "type": "string", "title": "Entity logical name (enmax_autocaddrawing or enmax_autocadsheet)" },
+            "recordId":   { "type": "string", "title": "Record GUID" },
+            "recordNumber": { "type": "string", "title": "Drawing/Document Number (deterministic filename token)" },
+            "foundFiles": { "type": "string", "title": "FoundFiles JSON array (optional; default [])" }
+          },
+          "required": ["entityName", "recordId", "recordNumber"]
+        }
+      }
+    }
+  },
+  "actions": {
+    "Upsert_Links": {
+      "type": "OpenApiConnection",
+      "runAfter": {},
+      "inputs": {
+        "host": {
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "PerformUnboundAction",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        },
+        "parameters": {
+          "actionName": "enmax_acdnUpsertSharePointLinks",
+          "item/Target": {
+            "@odata.type": "Microsoft.Dynamics.CRM.@{triggerBody()?['entityName']}",
+            "@{triggerBody()?['entityName']}id": "@{triggerBody()?['recordId']}"
+          },
+          "item/RecordNumber": "@{triggerBody()?['recordNumber']}",
+          "item/FoundFiles": "@{coalesce(triggerBody()?['foundFiles'], '[]')}"
+        }
+      }
+    },
+    "Response": {
+      "type": "Response",
+      "runAfter": { "Upsert_Links": ["Succeeded", "Failed"] },
+      "kind": "PowerApp",
+      "inputs": {
+        "statusCode": 200,
+        "body": {
+          "updateNeeded": "@{outputs('Upsert_Links')?['body/UpdateNeeded']}",
+          "dropOffUrl": "@{outputs('Upsert_Links')?['body/DropOffUrl']}",
+          "destinationUrl": "@{outputs('Upsert_Links')?['body/DestinationUrl']}",
+          "presentInDropOff": "@{outputs('Upsert_Links')?['body/PresentInDropOff']}",
+          "presentInDestination": "@{outputs('Upsert_Links')?['body/PresentInDestination']}"
+        }
+      }
+    }
+  }
+}

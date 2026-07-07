@@ -181,6 +181,24 @@ export const dataSourcesInfo = {
       }
     }
   },
+  "enmax_acdnupsertsharepointlinks": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "",
+    "dataSourceType": "Dataverse",
+    "apis": {
+      "enmax_acdnUpsertSharePointLinks": {
+        "path": "/api/data/v9.2/enmax_acdnUpsertSharePointLinks",
+        "method": "POST",
+        "parameters": [
+          { "name": "Target",       "in": "body", "required": true,  "type": "object" },
+          { "name": "RecordNumber", "in": "body", "required": true,  "type": "string" },
+          { "name": "FoundFiles",   "in": "body", "required": false, "type": "string" }
+        ],
+        "responseInfo": { "200": { "type": "object" } }
+      }
+    }
+  },
   "enmax_autocaddrawings": {
     "tableId": "",
     "version": "",

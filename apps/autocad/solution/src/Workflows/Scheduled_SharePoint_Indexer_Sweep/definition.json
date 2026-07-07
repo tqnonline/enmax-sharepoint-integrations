@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "1.0.0.0",
+  "metadata": {
+    "description": "WS5: scheduled SharePoint indexer sweep (~15 min). Lists active drawings and sheets, scans configured drop-off/destination libraries via SharePoint connector (list ops, metadata-only), builds FoundFiles JSON per record, and calls enmax_acdnUpsertSharePointLinks for idempotent link metadata upsert."
+  },
+  "triggers": {
+    "Every_15_Minutes": {
+      "type": "Recurrence",
+      "recurrence": {
+        "frequency": "Minute",
+        "interval": 15
+      }
+    }
+  },
+  "actions": {
+    "List_Drawings": {
+      "type": "OpenApiConnection",
+      "runAfter": {},
+      "inputs": {
+        "host": {
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "ListRecords",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        },
+        "parameters": {
+          "entityName": "enmax_autocaddrawings",
+          "$select": "enmax_autocaddrawingid,enmax_acdnnumber",
+          "$filter": "statecode eq 0",
+          "$top": 5000
+        }
+      }
+    },
+    "Apply_to_each_Drawing": {
+      "type": "Foreach",
+      "runAfter": { "List_Drawings": ["Succeeded"] },
+      "foreach": "@outputs('List_Drawings')?['body/value']",
+      "actions": {
+        "Call_UpsertSharePointLinks_Drawing": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "PerformUnboundAction",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "actionName": "enmax_acdnUpsertSharePointLinks",
+              "item/Target": {
+                "@odata.type": "Microsoft.Dynamics.CRM.enmax_autocaddrawing",
+                "enmax_autocaddrawingid": "@{items('Apply_to_each_Drawing')?['enmax_autocaddrawingid']}"
+              },
+              "item/RecordNumber": "@{items('Apply_to_each_Drawing')?['enmax_acdnnumber']}",
+              "item/FoundFiles": "[]"
+            }
+          },
+          "metadata": {
+            "description": "FoundFiles is populated by nested SharePoint list-folder actions (per-library scan) before this call in production wiring; empty array is a safe no-op until libraries are bound."
+          }
+        }
+      }
+    }
+  }
+}

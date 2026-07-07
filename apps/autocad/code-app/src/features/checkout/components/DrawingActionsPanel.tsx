@@ -149,6 +149,7 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
       <SubmitRevisionDrawer
         checkoutId={openCheckout.id}
         drawingId={drawing.id}
+        drawingNumber={drawing.number ?? ""}
       />
     );
   }

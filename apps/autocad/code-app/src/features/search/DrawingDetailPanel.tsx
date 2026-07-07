@@ -16,6 +16,7 @@ import { DrawingActionsPanel } from "../checkout/components/DrawingActionsPanel"
 import type { DrawingStateValue } from "../checkout/api/checkoutClient";
 import { useDrawingCheckout } from "../checkout/hooks/useDrawingCheckout";
 import { useDrawingAuditTrail } from "../checkout/hooks/useDrawingAuditTrail";
+import { SharePointLinkStatus } from "../sharepoint/SharePointLinkStatus";
 import { formatAuditSentence } from "../checkout/hooks/auditSentence";
 import { auditEventColor } from "../audit/auditPills";
 import { useDrawingDetail } from "./useDrawingDetail";
@@ -121,6 +122,11 @@ export function DrawingDetailPanel({ drawing, onClose }: DrawingDetailPanelProps
                   Open destination library <OpenRegular style={{ verticalAlign: "middle" }} />
                 </Link>
               )}
+              <SharePointLinkStatus
+                presentInDropOff={d?.enmax_acdnpresentindropoff}
+                presentInDestination={d?.enmax_acdnpresentindestination}
+                recordNumber={d?.enmax_acdnnumber}
+              />
             </div>
 
             <div className={styles.divider} />

@@ -1,0 +1,7 @@
+schema_name: enmax_acdn_documentsubtype
+display_name: Document Subtype
+values:
+  - value: 1
+    label: Standard
+  - value: 2
+    label: Procedure
