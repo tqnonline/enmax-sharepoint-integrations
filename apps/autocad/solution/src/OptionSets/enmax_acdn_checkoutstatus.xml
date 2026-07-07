@@ -38,5 +38,10 @@
         <label description="Closed Forced" languagecode="1033" />
       </labels>
     </option>
+    <option value="6" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Requested" languagecode="1033" />
+      </labels>
+    </option>
   </options>
 </optionset>

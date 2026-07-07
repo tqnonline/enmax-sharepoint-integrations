@@ -33,6 +33,9 @@ export const AppConfigSchema = z.object({
   BroadcastFanOutCadenceMinutes:  z.number().int().min(1),
   GridPageSize:                   z.number().int().min(1).default(10),
   RequireCheckInApproval:         z.boolean().default(false),
+  // WS3: Check Out is a gated/approved action. Mandatory per requirement #8, but
+  // exposed as a toggle (mirrors RequireCheckInApproval) and defaults to enabled.
+  RequireCheckOutApproval:        z.boolean().default(true),
 });
 
 export type AppConfig = z.infer<typeof AppConfigSchema>;

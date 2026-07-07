@@ -13,3 +13,5 @@ values:
     label: Closed Declined
   - value: 5
     label: Closed Forced
+  - value: 6
+    label: Requested

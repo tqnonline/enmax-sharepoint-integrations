@@ -97,3 +97,7 @@ rows:
     value: "10"
     value_type: Integer
     description: Number of rows per page in all Code App grids and lists. Increase for power users, decrease for low-bandwidth environments.
+  - key: RequireCheckOutApproval
+    value: "true"
+    value_type: Boolean
+    description: When true, Check Out is a gated action — a user request creates a checkout in the 'Requested' state and an Approver/Admin must approve it before the drawing is checked out and drop-off upload is enabled. Mandatory per governance; leave true.
