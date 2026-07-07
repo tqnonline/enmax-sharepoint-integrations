@@ -76,9 +76,10 @@ const useStyles = makeStyles({
 interface Props {
   refData: ReferenceData;
   onNext: () => void;
+  onBack: () => void;
 }
 
-export function Step2Composition({ refData, onNext }: Props) {
+export function Step2Composition({ refData, onNext, onBack }: Props) {
   const styles = useStyles();
   const { control, watch, formState: { errors }, trigger } = useFormContext<ReserveForm>();
 
@@ -191,6 +192,9 @@ export function Step2Composition({ refData, onNext }: Props) {
 
       {/* Navigation */}
       <div className={styles.actions}>
+        <Button appearance="secondary" onClick={onBack}>
+          Back
+        </Button>
         <Button
           appearance="primary"
           disabled={!isComplete}

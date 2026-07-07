@@ -60,6 +60,28 @@ vi.mock("../../generated/services/Enmax_autocadreservationsService", () => ({
 import { Enmax_autocadreservationsService } from "../../generated/services/Enmax_autocadreservationsService";
 const mockCreate = vi.mocked(Enmax_autocadreservationsService.create);
 
+type U = ReturnType<typeof userEvent.setup>;
+
+// The wizard now opens on the Type step. Drawing is the default selection, so this
+// helper just advances into Composition; pass a subtype to reserve a Document instead.
+async function chooseTypeAndAdvance(user: U, subtype?: "Standard" | "Procedure") {
+  if (subtype) {
+    await user.click(await screen.findByRole("radio", { name: /Document — a Standard/i }));
+    await user.click(await screen.findByRole("radio", { name: new RegExp(`${subtype} —`, "i") }));
+  }
+  await user.click(await screen.findByRole("button", { name: /Next: Composition/i }));
+}
+
+async function fillComposition(user: U) {
+  await waitFor(() => expect(screen.getByLabelText("Business")).toBeInTheDocument(), { timeout: 3000 });
+  await user.selectOptions(screen.getByLabelText("Business"), "bus-1");
+  await user.selectOptions(screen.getByLabelText("Asset"), "asset-a");
+  await user.selectOptions(screen.getByLabelText("Unit"), "unit-1");
+  await user.selectOptions(screen.getByLabelText("Domain"), "dom-1");
+  await user.selectOptions(screen.getByLabelText("System"), "sys-1");
+  await user.selectOptions(screen.getByLabelText("Kind"), "kind-1");
+}
+
 beforeEach(() => {
   mockCreate.mockResolvedValue({
     success: true,
@@ -73,6 +95,8 @@ test("submitting valid form POSTs to enmax_autocadreservations with correct body
 
   const user = userEvent.setup();
   renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
+
+  await chooseTypeAndAdvance(user);
 
   await waitFor(() => expect(screen.getByLabelText("Business")).toBeInTheDocument(), { timeout: 3000 });
 
@@ -105,14 +129,52 @@ test("submitting valid form POSTs to enmax_autocadreservations with correct body
   expect(body["enmax_acdnBusiness@odata.bind"]).toBe("/enmax_autocadbusinesses(bus-1)");
   expect(body.enmax_acdndrawingcount).toBe(3);
   expect(body.enmax_acdnstatus).toBe(1);
+  // Default reservation is a Drawing (type=1) with no document subtype (ADR 0001 #1).
+  expect(body.enmax_acdnreservationtype).toBe(1);
+  expect(body.enmax_acdndocumentsubtype).toBeUndefined();
   // Combination override is removed (ADR 0001 #4) — no longer sent.
   expect(body.enmax_acdnoverride).toBeUndefined();
+});
+
+// Test 7b — Document/Standard is base-only: no child-count field, and type/subtype are sent
+test("Document/Standard reservation hides child count and sends type=2, subtype=1", async () => {
+  mockCreate.mockClear();
+
+  const user = userEvent.setup();
+  renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
+
+  await chooseTypeAndAdvance(user, "Standard");
+  await fillComposition(user);
+  await user.click(screen.getByRole("button", { name: /Next: Details/i }));
+
+  // Count label is type-aware; the child-count field is absent for Standard (base-only).
+  await waitFor(() => expect(screen.getByLabelText(/Number of standard documents/i)).toBeInTheDocument());
+  expect(screen.queryByLabelText(/per standard document/i)).not.toBeInTheDocument();
+
+  const countInput = screen.getByLabelText(/Number of standard documents/i);
+  await user.clear(countInput);
+  await user.type(countInput, "1");
+  await user.click(screen.getByRole("radio", { name: /New sequence/i }));
+  await user.type(screen.getByLabelText(/Reason for reservation/i), "standard document reservation test");
+  await user.click(screen.getByRole("button", { name: /Next: Review/i }));
+
+  await waitFor(() => expect(screen.getByRole("button", { name: /Submit reservation/i })).toBeInTheDocument());
+  // Review shows the type and omits the child-count row.
+  expect(screen.getByText("Standard Document")).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: /Submit reservation/i }));
+
+  await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
+  const body = mockCreate.mock.calls[0][0] as Record<string, unknown>;
+  expect(body.enmax_acdnreservationtype).toBe(2);
+  expect(body.enmax_acdndocumentsubtype).toBe(1);
 });
 
 // Test 8 — Submit navigates to success page on 201
 test("successful submission navigates to /reserve/success with reservation id", async () => {
   const user = userEvent.setup();
   const { container } = renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
+
+  await chooseTypeAndAdvance(user);
 
   await waitFor(() => expect(screen.getByLabelText("Business")).toBeInTheDocument(), { timeout: 3000 });
 
@@ -154,6 +216,8 @@ test("surfaces permission-denied error when create returns 403", async () => {
   const user = userEvent.setup();
   renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
 
+  await chooseTypeAndAdvance(user);
+
   await waitFor(() => expect(screen.getByLabelText("Business")).toBeInTheDocument(), { timeout: 3000 });
 
   await user.selectOptions(screen.getByLabelText("Business"), "bus-1");
@@ -188,6 +252,8 @@ test("live preview shows ???? placeholder with tooltip — never a sequence numb
   const user = userEvent.setup();
   renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
 
+  await chooseTypeAndAdvance(user);
+
   await waitFor(() => expect(screen.getByLabelText("Business")).toBeInTheDocument(), { timeout: 3000 });
 
   await user.selectOptions(screen.getByLabelText("Business"), "bus-1");
@@ -210,6 +276,8 @@ test("Asset dropdown shows all active assets regardless of Business — no casca
   const user = userEvent.setup();
   renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
 
+  await chooseTypeAndAdvance(user);
+
   await waitFor(() => expect(screen.getByLabelText("Business")).toBeInTheDocument(), { timeout: 3000 });
 
   // Asset is enabled and fully populated before any Business is chosen.
@@ -231,6 +299,8 @@ test("Asset dropdown shows all active assets regardless of Business — no casca
 test("no override warning or toggle for any Business+Asset combination", async () => {
   const user = userEvent.setup();
   renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
+
+  await chooseTypeAndAdvance(user);
 
   await waitFor(() => expect(screen.getByLabelText("Business")).toBeInTheDocument(), { timeout: 3000 });
 

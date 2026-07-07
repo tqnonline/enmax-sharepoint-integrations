@@ -1,7 +1,7 @@
 import { reserveSchema } from "../../features/reserve/schema";
 
 const VALID_BASE = {
-  recordType: "Drawing" as const,
+  reservationType: "Drawing" as const,
   business: "bus-id",
   asset:    "asset-id",
   unit:     "unit-id",
@@ -37,7 +37,40 @@ test("rejects reason shorter than 10 characters", () => {
 // Combination override removed (ADR 0001 #4): the six segments are independent,
 // so there is no override/justification path in the schema anymore.
 
-test("accepts valid form data", () => {
+test("accepts a valid Drawing reservation", () => {
   const result = reserveSchema.safeParse(VALID_BASE);
   expect(result.success).toBe(true);
+});
+
+// Taxonomy (ADR 0001 #1): a Document must specify a subtype (Standard | Procedure).
+test("accepts a Document/Standard reservation", () => {
+  const result = reserveSchema.safeParse({
+    ...VALID_BASE,
+    reservationType: "Document",
+    documentSubtype: "Standard",
+  });
+  expect(result.success).toBe(true);
+});
+
+test("accepts a Document/Procedure reservation", () => {
+  const result = reserveSchema.safeParse({
+    ...VALID_BASE,
+    reservationType: "Document",
+    documentSubtype: "Procedure",
+  });
+  expect(result.success).toBe(true);
+});
+
+test("rejects a Document reservation with no subtype", () => {
+  const result = reserveSchema.safeParse({ ...VALID_BASE, reservationType: "Document" });
+  expect(result.success).toBe(false);
+  if (!result.success) {
+    const paths = result.error.issues.map((e) => e.path[0]);
+    expect(paths).toContain("documentSubtype");
+  }
+});
+
+test("rejects an unknown reservation type", () => {
+  const result = reserveSchema.safeParse({ ...VALID_BASE, reservationType: "Widget" });
+  expect(result.success).toBe(false);
 });

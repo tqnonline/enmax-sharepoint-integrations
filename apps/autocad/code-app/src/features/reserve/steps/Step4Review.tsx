@@ -10,6 +10,9 @@ import {
 import type { ReserveForm } from "../schema";
 import type { ReferenceData } from "../hooks/useReferenceData";
 import { SEQUENCE_TOOLTIP } from "../hooks/usePreviewNumber";
+import { reserveTerminology } from "../terminology";
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const FADE_UP = {
   from: { opacity: "0", transform: "translateY(8px)" },
@@ -119,6 +122,8 @@ export function Step4Review({ refData, onBack, onSubmit, isSubmitting }: Props) 
   const system   = refData.systems.find((s) => s.id === form.system);
   const kind     = refData.kinds.find((k) => k.id === form.kind);
 
+  const term = reserveTerminology(form.reservationType, form.documentSubtype);
+
   const segments: SegProps[] = [
     { label: "BUS",   code: business?.code ?? "??"  },
     { label: "ASSET", code: asset?.code    ?? "??"  },
@@ -146,6 +151,9 @@ export function Step4Review({ refData, onBack, onSubmit, isSubmitting }: Props) 
 
       {/* Detail grid */}
       <div className={styles.details}>
+        <span className={styles.label}>Type</span>
+        <span>{term.typeLabel}</span>
+
         <span className={styles.label}>Business</span>
         <span>{business?.code} — {business?.name}</span>
 
@@ -164,11 +172,15 @@ export function Step4Review({ refData, onBack, onSubmit, isSubmitting }: Props) 
         <span className={styles.label}>Kind</span>
         <span>{kind?.code} — {kind?.name}</span>
 
-        <span className={styles.label}>Drawings</span>
+        <span className={styles.label}>{capitalize(term.baseNounPlural)}</span>
         <span>{form.count}</span>
 
-        <span className={styles.label}>Sheets / drawing</span>
-        <span>{form.sheetsPerDrawing}</span>
+        {term.createsChildren && (
+          <>
+            <span className={styles.label}>{term.childNoun}s / {term.baseNoun}</span>
+            <span>{form.sheetsPerDrawing}</span>
+          </>
+        )}
 
         <span className={styles.label}>Sequence type</span>
         <span>{form.sequenceType}</span>

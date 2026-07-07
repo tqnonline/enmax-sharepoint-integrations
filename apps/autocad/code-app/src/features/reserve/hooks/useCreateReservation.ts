@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ReserveForm } from "../schema";
+import { RESERVATION_TYPE_VALUE, DOCUMENT_SUBTYPE_VALUE } from "../terminology";
 import { Enmax_autocadreservationsService } from "../../../generated";
 import type { Enmax_autocadreservationsBase } from "../../../generated/models/Enmax_autocadreservationsModel";
 
@@ -23,6 +24,12 @@ async function createReservation(form: ReserveForm): Promise<CreatedReservation>
     enmax_acdnsequencetype:     form.sequenceType === "New" ? 1 : 2,
     enmax_acdnreason:           form.reason,
     enmax_acdnstatus:           1,
+    // Taxonomy (WS1a columns): drives type-aware, base-only vs. child issuance in the
+    // AutoCreateDrawings plug-in (ADR 0001 #1). Subtype is only set for Documents.
+    enmax_acdnreservationtype:  RESERVATION_TYPE_VALUE[form.reservationType],
+    ...(form.reservationType === "Document" && form.documentSubtype
+      ? { enmax_acdndocumentsubtype: DOCUMENT_SUBTYPE_VALUE[form.documentSubtype] }
+      : {}),
   } as unknown as Omit<Enmax_autocadreservationsBase, 'enmax_autocadreservationid'>;
 
   const result = await Enmax_autocadreservationsService.create(body);

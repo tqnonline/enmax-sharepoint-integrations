@@ -10,11 +10,14 @@ import {
   makeStyles,
 } from "@fluentui/react-components";
 import type { ReserveForm } from "../schema";
+import { reserveTerminology } from "../terminology";
 
 const useStyles = makeStyles({
   row: { display: "flex", gap: tokens.spacingHorizontalM },
   half: { flex: 1 },
 });
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 interface Props {
   maxCount: number;
@@ -25,10 +28,15 @@ interface Props {
 
 export function Step3Details({ maxCount, maxSheets, onNext, onBack }: Props) {
   const styles = useStyles();
-  const { control, formState: { errors }, trigger } = useFormContext<ReserveForm>();
+  const { control, watch, formState: { errors }, trigger } = useFormContext<ReserveForm>();
+
+  const term = reserveTerminology(watch("reservationType"), watch("documentSubtype"));
 
   async function handleNext() {
-    const ok = await trigger(["count", "sheetsPerDrawing", "sequenceType", "reason"]);
+    const fields: Array<keyof ReserveForm> = term.createsChildren
+      ? ["count", "sheetsPerDrawing", "sequenceType", "reason"]
+      : ["count", "sequenceType", "reason"];
+    const ok = await trigger(fields);
     if (ok) onNext();
   }
 
@@ -41,7 +49,7 @@ export function Step3Details({ maxCount, maxSheets, onNext, onBack }: Props) {
             control={control}
             render={({ field }) => (
               <Field
-                label={`Number of drawings (1–${maxCount})`}
+                label={`Number of ${term.baseNounPlural} (1–${maxCount})`}
                 validationMessage={errors.count?.message}
                 required
               >
@@ -57,28 +65,31 @@ export function Step3Details({ maxCount, maxSheets, onNext, onBack }: Props) {
             )}
           />
         </div>
-        <div className={styles.half}>
-          <Controller
-            name="sheetsPerDrawing"
-            control={control}
-            render={({ field }) => (
-              <Field
-                label={`Sheets per drawing (1–${maxSheets})`}
-                validationMessage={errors.sheetsPerDrawing?.message}
-                required
-              >
-                <Input
-                  type="number"
-                  min={1}
-                  max={maxSheets}
-                  {...field}
-                  value={String(field.value ?? "")}
-                  onChange={(_, data) => field.onChange(data.value)}
-                />
-              </Field>
-            )}
-          />
-        </div>
+        {/* Standard documents are base-only (ADR 0001 #1) — no child-count field. */}
+        {term.createsChildren && (
+          <div className={styles.half}>
+            <Controller
+              name="sheetsPerDrawing"
+              control={control}
+              render={({ field }) => (
+                <Field
+                  label={`${capitalize(term.childNoun!)}s per ${term.baseNoun} (1–${maxSheets})`}
+                  validationMessage={errors.sheetsPerDrawing?.message}
+                  required
+                >
+                  <Input
+                    type="number"
+                    min={1}
+                    max={maxSheets}
+                    {...field}
+                    value={String(field.value ?? "")}
+                    onChange={(_, data) => field.onChange(data.value)}
+                  />
+                </Field>
+              )}
+            />
+          </div>
+        )}
       </div>
 
       <Controller
@@ -109,7 +120,7 @@ export function Step3Details({ maxCount, maxSheets, onNext, onBack }: Props) {
           >
             <Textarea
               {...field}
-              placeholder="Describe the purpose of these drawing numbers (min 10 chars)"
+              placeholder={`Describe the purpose of these ${term.baseNoun} numbers (min 10 chars)`}
               rows={4}
             />
           </Field>

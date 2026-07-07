@@ -13,7 +13,7 @@ import {
 } from "@fluentui/react-components";
 import { CheckmarkCircle20Filled, Circle20Regular } from "@fluentui/react-icons";
 import { reserveSchema, type ReserveForm } from "./schema";
-import { Step1RecordType } from "./steps/Step1RecordType";
+import { Step1TypeSubtype } from "./steps/Step1TypeSubtype";
 import { Step2Composition } from "./steps/Step2Composition";
 import { Step3Details } from "./steps/Step3Details";
 import { Step4Review } from "./steps/Step4Review";
@@ -21,8 +21,7 @@ import { useReferenceData } from "./hooks/useReferenceData";
 import { useCreateReservation } from "./hooks/useCreateReservation";
 import { useAppConfig } from "../../config/useAppConfig";
 
-// Step 0 (RecordType) auto-advances immediately; users only interact with steps 1-3.
-const USER_STEPS = ["Composition", "Details", "Review"];
+const USER_STEPS = ["Type", "Composition", "Details", "Review"];
 
 const useStyles = makeStyles({
   stepper: {
@@ -103,7 +102,7 @@ export function ReserveWizard() {
   const methods = useForm<ReserveForm>({
     resolver: zodResolver(reserveSchema) as Resolver<ReserveForm>,
     defaultValues: {
-      recordType: "Drawing",
+      reservationType: "Drawing",
       count: 1,
       sheetsPerDrawing: config.DefaultSheetsPerDrawing,
       sequenceType: "New",
@@ -140,8 +139,9 @@ export function ReserveWizard() {
 
   const refData = refDataQuery.data!;
 
-  // step 0 = RecordType (auto-advances); userStep maps steps 1-3 to 0-2 for the stepper display
-  const userStep = Math.max(step - 1, 0);
+  // Every wizard step is now interactive (Type is the first), so the stepper index
+  // maps 1:1 to the form step.
+  const userStep = step;
 
   return (
     <FormProvider {...methods}>
@@ -223,8 +223,8 @@ export function ReserveWizard() {
       )}
 
       <div className={styles.content}>
-        {step === 0 && <Step1RecordType onNext={next} />}
-        {step === 1 && <Step2Composition refData={refData} onNext={next} />}
+        {step === 0 && <Step1TypeSubtype onNext={next} />}
+        {step === 1 && <Step2Composition refData={refData} onNext={next} onBack={back} />}
         {step === 2 && (
           <Step3Details
             maxCount={config.MaxDrawingsPerReservation}
