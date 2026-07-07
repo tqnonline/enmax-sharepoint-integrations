@@ -4,6 +4,10 @@ name: CD - Dev finish (post-import)
 # were skipped or failed. Does NOT re-import the solution.
 on:
   workflow_dispatch:
+  push:
+    branches: [dev]
+    paths:
+      - '.github/workflows/cd-dev-finish.yml'
 
 env:
   DATAVERSE_GEO: can
