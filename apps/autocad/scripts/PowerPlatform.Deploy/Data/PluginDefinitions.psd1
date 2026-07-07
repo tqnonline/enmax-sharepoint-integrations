@@ -434,7 +434,7 @@
                 @{
                     Name       = "postImage"
                     ImageType  = 1   # PostImage
-                    Attributes = "enmax_acdnstatus,enmax_acdnissuednumbers,enmax_acdnsheetsperdrawing,ownerid,enmax_acdnbusiness,enmax_acdnasset,enmax_acdnunit,enmax_acdndomain,enmax_acdnsystem,enmax_acdnkind"
+                    Attributes = "enmax_acdnstatus,enmax_acdnissuednumbers,enmax_acdnsheetsperdrawing,enmax_acdnreservationtype,enmax_acdndocumentsubtype,ownerid,enmax_acdnbusiness,enmax_acdnasset,enmax_acdnunit,enmax_acdndomain,enmax_acdnsystem,enmax_acdnkind"
                 }
             )
         }

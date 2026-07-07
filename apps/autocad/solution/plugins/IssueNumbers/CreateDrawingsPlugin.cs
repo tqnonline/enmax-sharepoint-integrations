@@ -22,6 +22,13 @@ namespace Enmax.AutoCAD
 
         private const int StateAvailable = 1;
 
+        // Type-aware issuance (ADR 0001). Document/Standard is base-only; Drawing,
+        // Document/Procedure, and legacy/null reservations all get child items.
+        // Child items are hard-capped at 999 (the 3-digit -sss ceiling), default 1.
+        private const int ReservationTypeDocument = 2;
+        private const int DocumentSubtypeStandard = 1;
+        private const int MaxChildItems           = 999;
+
         public CreateDrawingsPlugin() : base(typeof(CreateDrawingsPlugin)) { }
 
         public CreateDrawingsPlugin(string unsecureConfiguration, string secureConfiguration)
@@ -71,6 +78,8 @@ namespace Enmax.AutoCAD
             Entity reservation = service.Retrieve(ReservationEntity, target.Id, new ColumnSet(
                 "ownerid",
                 "enmax_acdnsheetsperdrawing",
+                "enmax_acdnreservationtype",
+                "enmax_acdndocumentsubtype",
                 "enmax_acdnbusiness",
                 "enmax_acdnasset",
                 "enmax_acdnunit",
@@ -80,10 +89,11 @@ namespace Enmax.AutoCAD
 
             var owner = reservation.GetAttributeValue<EntityReference>("ownerid");
 
+            bool createChildren = CreatesChildItems(reservation);
             int sheetsPer = reservation.Contains("enmax_acdnsheetsperdrawing")
                 ? reservation.GetAttributeValue<int>("enmax_acdnsheetsperdrawing")
                 : 0;
-            int sheetCount = sheetsPer > 0 ? sheetsPer : 1;
+            int sheetCount = Math.Min(Math.Max(sheetsPer, 1), MaxChildItems);
 
             // ── Create drawings + sheets ─────────────────────────────────────────
             int drawingsCreated = 0;
@@ -108,19 +118,34 @@ namespace Enmax.AutoCAD
                 Guid drawingId = service.Create(drawing);
                 drawingsCreated++;
 
-                for (int i = 1; i <= sheetCount; i++)
+                if (createChildren)
                 {
-                    var sheet = new Entity(SheetEntity)
+                    for (int i = 1; i <= sheetCount; i++)
                     {
-                        ["enmax_acdndrawing"]     = new EntityReference(DrawingEntity, drawingId),
-                        ["enmax_acdnsheetnumber"] = i,
-                    };
-                    if (owner != null) sheet["ownerid"] = owner;
-                    service.Create(sheet);
+                        var sheet = new Entity(SheetEntity)
+                        {
+                            ["enmax_acdndrawing"]     = new EntityReference(DrawingEntity, drawingId),
+                            ["enmax_acdnsheetnumber"] = i,
+                        };
+                        if (owner != null) sheet["ownerid"] = owner;
+                        service.Create(sheet);
+                    }
                 }
             }
 
             context.OutputParameters["DrawingsCreated"] = drawingsCreated;
+        }
+
+        /// <summary>
+        /// Document/Standard reservations are base-only (a single Standard Document, no
+        /// child items). Drawing, Document/Procedure, and legacy/null-type reservations
+        /// all create child items — preserving the pre-taxonomy Drawing behavior.
+        /// </summary>
+        private static bool CreatesChildItems(Entity reservation)
+        {
+            var type    = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
+            var subtype = reservation.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value;
+            return !(type == ReservationTypeDocument && subtype == DocumentSubtypeStandard);
         }
 
         private static void CopyLookup(Entity source, Entity target, string attribute)

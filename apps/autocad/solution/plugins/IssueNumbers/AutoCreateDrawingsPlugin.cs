@@ -12,8 +12,9 @@ namespace Enmax.AutoCAD
     /// Registration: Post-Operation, Asynchronous, Update on enmax_autocadreservation
     /// Filtering attribute: enmax_acdnissuednumbers
     /// Post-image alias "postImage": enmax_acdnstatus, enmax_acdnissuednumbers,
-    ///   enmax_acdnsheetsperdrawing, ownerid, enmax_acdnbusiness, enmax_acdnasset,
-    ///   enmax_acdnunit, enmax_acdndomain, enmax_acdnsystem, enmax_acdnkind
+    ///   enmax_acdnsheetsperdrawing, enmax_acdnreservationtype, enmax_acdndocumentsubtype,
+    ///   ownerid, enmax_acdnbusiness, enmax_acdnasset, enmax_acdnunit, enmax_acdndomain,
+    ///   enmax_acdnsystem, enmax_acdnkind
     /// </summary>
     public class AutoCreateDrawingsPlugin : PluginBase
     {
@@ -26,6 +27,12 @@ namespace Enmax.AutoCAD
         private const int    AuditEventCreated  = 1;
         private const int    AuditSourceAction  = 4;
         private const int    SheetStateAvailable = 2;
+
+        // Type-aware issuance (ADR 0001). Document/Standard is base-only; Drawing,
+        // Document/Procedure, and legacy/null reservations all get child items.
+        private const int    ReservationTypeDocument = 2;
+        private const int    DocumentSubtypeStandard = 1;
+        private const int    MaxChildItems           = 999;
 
         public AutoCreateDrawingsPlugin() : base(typeof(AutoCreateDrawingsPlugin)) { }
 
@@ -93,7 +100,11 @@ namespace Enmax.AutoCAD
             var owner      = post.GetAttributeValue<EntityReference>("ownerid");
             int sheetsPer  = post.Contains("enmax_acdnsheetsperdrawing")
                 ? post.GetAttributeValue<int>("enmax_acdnsheetsperdrawing") : 0;
-            int sheetCount = sheetsPer > 0 ? sheetsPer : 1;
+            int sheetCount = Math.Min(Math.Max(sheetsPer, 1), MaxChildItems);
+
+            // Type-aware issuance (ADR 0001): Document/Standard is base-only. Type/Subtype
+            // are carried on the post-image (missing -> null -> legacy Drawing behavior).
+            bool createChildren = CreatesChildItems(post);
 
             int created = 0;
             foreach (int number in numbers)
@@ -116,16 +127,19 @@ namespace Enmax.AutoCAD
                 Guid drawingId = service.Create(drawing);
                 created++;
 
-                for (int i = 1; i <= sheetCount; i++)
+                if (createChildren)
                 {
-                    var sheet = new Entity(SheetEntity)
+                    for (int i = 1; i <= sheetCount; i++)
                     {
-                        ["enmax_acdndrawing"]     = new EntityReference(DrawingEntity, drawingId),
-                        ["enmax_acdnsheetnumber"] = i,
-                        ["enmax_acdnstate"]       = new OptionSetValue(SheetStateAvailable),
-                    };
-                    if (owner != null) sheet["ownerid"] = owner;
-                    service.Create(sheet);
+                        var sheet = new Entity(SheetEntity)
+                        {
+                            ["enmax_acdndrawing"]     = new EntityReference(DrawingEntity, drawingId),
+                            ["enmax_acdnsheetnumber"] = i,
+                            ["enmax_acdnstate"]       = new OptionSetValue(SheetStateAvailable),
+                        };
+                        if (owner != null) sheet["ownerid"] = owner;
+                        service.Create(sheet);
+                    }
                 }
 
                 service.Create(new Entity(AuditEntity)
@@ -163,6 +177,18 @@ namespace Enmax.AutoCAD
                 return null;
 
             return $"{biz}-{asset}-{unit}-{domain}-{system}-{kind}";
+        }
+
+        /// <summary>
+        /// Document/Standard reservations are base-only (a single Standard Document, no
+        /// child items). Drawing, Document/Procedure, and legacy/null-type reservations
+        /// all create child items — preserving the pre-taxonomy Drawing behavior.
+        /// </summary>
+        private static bool CreatesChildItems(Entity reservation)
+        {
+            var type    = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
+            var subtype = reservation.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value;
+            return !(type == ReservationTypeDocument && subtype == DocumentSubtypeStandard);
         }
 
         private static void CopyLookup(Entity source, Entity target, string attribute)
