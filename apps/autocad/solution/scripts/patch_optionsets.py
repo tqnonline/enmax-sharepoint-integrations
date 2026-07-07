@@ -96,6 +96,16 @@ OPTIONSET_PATCHES: dict[str, list[tuple[int, str]]] = {
         (2, "Six Month"),
         (3, "Twelve Month"),
     ],
+    "enmax_acdn_reservationtype": [
+        (0, "None"),
+        (1, "Drawing"),
+        (2, "Document"),
+    ],
+    "enmax_acdn_documentsubtype": [
+        (0, "None"),
+        (1, "Standard"),
+        (2, "Procedure"),
+    ],
 }
 
 

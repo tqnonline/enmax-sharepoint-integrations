@@ -59,12 +59,22 @@ function Connect-PpDataverse {
         }
     }
 
-    # Select by environment URL (not --index 1) so the right profile is
-    # activated even when the machine has multiple pac auth profiles. --index 1
-    # picks whichever profile sorted first, which can silently target the wrong
-    # environment.
+    # Select the profile whose Environment Url matches $cfg.Url. pac CLI 2.x only
+    # supports --index / --name (not --environment), so parse `pac auth list`.
     if ($PSCmdlet.ShouldProcess($cfg.Url, 'pac auth select')) {
-        Invoke-PpPac auth select --environment $cfg.Url
+        $targetUrl = $cfg.Url.TrimEnd('/').ToLowerInvariant()
+        $profileIndex = $null
+        foreach ($line in $authList) {
+            if ($line -match '\[(\d+)\]' -and $line.ToLowerInvariant().Contains($targetUrl)) {
+                $profileIndex = [int]$Matches[1]
+                break
+            }
+        }
+        if ($null -eq $profileIndex) {
+            throw "Connect-PpDataverse: no pac auth profile found for $($cfg.Url). Run 'pac auth list' and create or select the correct profile."
+        }
+        Write-PpLog "Selecting pac auth profile index $profileIndex for $($cfg.Url)..." -Level Verbose
+        Invoke-PpPac auth select --index $profileIndex
         Assert-PpExitCode -Operation 'pac auth select'
     }
 

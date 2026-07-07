@@ -8,6 +8,11 @@
     <displayname description="Reservation Type" languagecode="1033" />
   </displaynames>
   <options>
+    <option value="0" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="None" languagecode="1033" />
+      </labels>
+    </option>
     <option value="1" ExternalValue="" IsHidden="0">
       <labels>
         <label description="Drawing" languagecode="1033" />

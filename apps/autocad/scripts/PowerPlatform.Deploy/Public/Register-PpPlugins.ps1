@@ -251,6 +251,11 @@ function Get-PpAccessToken {
         [Parameter(Mandatory)][string]$ClientSecret,
         [Parameter(Mandatory)][string]$ResourceUrl
     )
+    $byo = $env:DATAVERSE_ACCESS_TOKEN
+    if ($byo) {
+        Write-PpLog "Using DATAVERSE_ACCESS_TOKEN from environment." -Level Verbose
+        return $byo.Trim()
+    }
     $tok = Invoke-RestMethod -Method Post `
         -Uri "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token" `
         -Body @{

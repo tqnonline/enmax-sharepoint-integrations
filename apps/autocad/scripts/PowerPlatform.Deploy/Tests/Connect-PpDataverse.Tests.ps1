@@ -82,19 +82,18 @@ Describe 'Connect-PpDataverse' {
             }
         }
 
-        It 'selects the auth profile by --environment URL (not --index)' {
-            # WHY: --index 1 picks whichever profile sorted first on the machine, which can
-            # silently target the wrong environment when multiple pac auth profiles exist.
-            # Selection must be by the environment URL to be unambiguous.
+        It 'selects the auth profile by parsed index matching the environment URL' {
+            # WHY: pac CLI 2.x has no --environment on auth select; parse auth list and
+            # pick the profile whose Environment Url matches (not blind --index 1).
             Connect-PpDataverse -Environment dev
 
             Should -Invoke Invoke-PpPac -ModuleName PowerPlatform.Deploy -ParameterFilter {
                 ($Arguments -contains 'select') -and
-                ($Arguments -contains '--environment') -and
-                ($Arguments -contains 'https://dev.crm.dynamics.com')
+                ($Arguments -contains '--index') -and
+                ($Arguments -contains '1')
             }
             Should -Invoke Invoke-PpPac -ModuleName PowerPlatform.Deploy -Times 0 -ParameterFilter {
-                ($Arguments -contains 'select') -and ($Arguments -contains '--index')
+                ($Arguments -contains 'select') -and ($Arguments -contains '--environment')
             }
         }
     }
