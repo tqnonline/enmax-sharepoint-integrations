@@ -53,7 +53,7 @@ function compositionFor(r: MyReservation, maps?: CompositionMaps): string {
 
 const CHK_COLUMNS: ColumnDef<MyCheckout>[] = [
   {
-    id: "drawingNumber", header: "ENMAX Number",
+    id: "drawingNumber", header: "Drawing/Document Number",
     accessor: r => r.drawingNumber,
     sortable: true,
     cell: r => <Text weight="semibold">{r.drawingNumber}</Text>,
@@ -135,7 +135,7 @@ export function MyItemsPage() {
       cell: r => <Badge appearance="tint" color={STATUS_COLORS[r.status]}>{r.statusLabel}</Badge>,
     },
     {
-      id: "composition", header: "Composition",
+      id: "composition", header: "Drawing/Document Number",
       accessor: r => compositionFor(r, compMaps),
       cell: r => <Text size={200} style={{ fontFamily: "monospace" }}>{compositionFor(r, compMaps)}</Text>,
     },
@@ -195,8 +195,8 @@ export function MyItemsPage() {
         selectedValue={activeTab}
         onTabSelect={(_, d) => setActiveTab(d.value as TabValue)}
       >
-        <Tab value="reservations">My Drawing Reservations</Tab>
-        <Tab value="checkouts">My Checked-Out Drawings</Tab>
+        <Tab value="reservations">My Document/Drawing Number Reservations</Tab>
+        <Tab value="checkouts">My Checked Out Drawings</Tab>
       </TabList>
 
       {activeTab === "reservations" && (

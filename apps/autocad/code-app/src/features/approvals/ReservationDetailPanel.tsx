@@ -224,7 +224,7 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
               <Divider style={{ marginBottom: tokens.spacingVerticalM }} />
 
               <div className={styles.field}>
-                <span className={styles.label}>Composition</span>
+                <span className={styles.label}>Drawing/Document Number</span>
                 <Text
                   style={{ fontFamily: "monospace", overflowWrap: "break-word", wordBreak: "break-all" }}
                 >

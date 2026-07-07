@@ -101,3 +101,11 @@ rows:
     value: "true"
     value_type: Boolean
     description: When true, Check Out is a gated action — a user request creates a checkout in the 'Requested' state and an Approver/Admin must approve it before the drawing is checked out and drop-off upload is enabled. Mandatory per governance; leave true.
+  - key: ShowFinalizeButton
+    value: "false"
+    value_type: Boolean
+    description: When true, the Finalize action is shown on the drawing/document actions panel. Hidden by default per requirement #14 — set true per environment to expose it.
+  - key: ShowObsoleteButton
+    value: "false"
+    value_type: Boolean
+    description: When true, the Mark Obsolete action is shown on the drawing/document actions panel (Admins only). Hidden by default per requirement #14 — set true per environment to expose it.

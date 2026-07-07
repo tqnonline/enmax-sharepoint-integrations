@@ -136,20 +136,20 @@ test("hides Declined reservations by default; show-finalised toggle reveals them
   await waitFor(() => expect(screen.getByText("RES-00002")).toBeInTheDocument());
 });
 
-// Test 18 — My Checked-Out tab renders joined checkout + drawing data
-test("My Checked-Out Drawings tab shows drawing data from checkout join", async () => {
+// Test 18 — My Checked Out Drawings tab renders joined checkout + drawing data
+test("My Checked Out Drawings tab shows drawing data from checkout join", async () => {
   const user = userEvent.setup();
   renderWithProviders(<MyItemsPage />);
-  await user.click(screen.getByRole("tab", { name: /my checked-out drawings/i }));
+  await user.click(screen.getByRole("tab", { name: /my checked out drawings/i }));
   await waitFor(() => expect(screen.getByText("GG-CG-00-ECS-AST-DD-0001")).toBeInTheDocument());
   expect(screen.getByText("Schematic A")).toBeInTheDocument();
   expect(screen.getByText("49")).toBeInTheDocument();
 });
 
-// Test 20 — Reservations tab is labelled "My Drawing Reservations"
-test("reservations tab is labelled 'My Drawing Reservations'", () => {
+// Test 20 — Reservations tab is labelled "My Document/Drawing Number Reservations" (item 12)
+test("reservations tab is labelled 'My Document/Drawing Number Reservations'", () => {
   renderWithProviders(<MyItemsPage />);
-  expect(screen.getByRole("tab", { name: "My Drawing Reservations" })).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: "My Document/Drawing Number Reservations" })).toBeInTheDocument();
 });
 
 // Test 20b — Composition renders short codes (not display names) + zero-padded

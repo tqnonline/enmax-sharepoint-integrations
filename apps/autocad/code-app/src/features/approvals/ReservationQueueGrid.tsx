@@ -38,7 +38,7 @@ const COLUMNS: ColumnDef<PendingReservation>[] = [
   {
     id: "requester", header: "Requester",
     accessor: r => r._createdby_value_Formatted,
-    sortable: true,
+    sortable: true, filterable: true,
     cell: r => (
       <Persona
         name={r._createdby_value_Formatted}
@@ -48,8 +48,9 @@ const COLUMNS: ColumnDef<PendingReservation>[] = [
     ),
   },
   {
-    id: "composition", header: "Composition",
+    id: "composition", header: "Drawing/Document Number",
     accessor: r => formatComposition(r),
+    filterable: true,
     cell: r => (
       <Text style={{ fontFamily: "monospace", whiteSpace: "nowrap" }}>
         {formatComposition(r)}
@@ -100,6 +101,12 @@ export function ReservationQueueGrid({ reservations, onSelect, onBulkApprove, em
           r._createdby_value_Formatted ?? "",
           r.enmax_acdnreason ?? "",
         ],
+        // Item 13: inline search on Requestor + Drawing/Document Number.
+        filterText: {
+          enmax_acdnreservationnumber: r => r.enmax_acdnreservationnumber ?? "",
+          requester: r => r._createdby_value_Formatted ?? "",
+          composition: r => formatComposition(r),
+        },
       }),
     [reservations],
   );
@@ -124,6 +131,7 @@ export function ReservationQueueGrid({ reservations, onSelect, onBulkApprove, em
         bulkActions={bulkActions}
         enableColumnVisibility
         enableQuickSearch={false}
+        exportFileName="reservations.csv"
         initialPageSize={pageSize}
         defaultSort={{ column: "createdon", direction: "desc" }}
         emptyMessage={emptyMessage ?? "No reservations found."}

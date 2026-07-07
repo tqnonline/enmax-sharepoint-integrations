@@ -52,7 +52,10 @@ export interface EnmaxDataGridProps<T> {
   rowKey: (row: T) => string;
   rowActions?: RowAction<T>[];
   bulkActions?: BulkAction<T>[];
+  /** CSV export toolbar button. Defaults to true (item 11: on every grid, all users). */
   enableExport?: boolean;
+  /** File name for the CSV export. Defaults to "export.csv". */
+  exportFileName?: string;
   enableColumnVisibility?: boolean;
   defaultSort?: { column: string; direction: "asc" | "desc" };
   initialPageSize?: number;

@@ -31,9 +31,9 @@ export function ReservePage() {
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <Title2 as="h1">Reserve Drawing Numbers</Title2>
+        <Title2 as="h1">Reserve Drawing/Document Numbers</Title2>
         <Text size={300} className={styles.subtitle}>
-          Create an official reservation for AutoCAD document numbers. Pending approver review.
+          Create an official Drawing/Document Reservation. Pending approver review.
         </Text>
       </div>
       <Suspense fallback={<Spinner label="Loading…" />}>

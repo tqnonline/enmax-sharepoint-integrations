@@ -65,7 +65,7 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
   const styles = useStyles();
   const { role } = useUserRole();
   const { data: currentUser } = useCurrentUser();
-  const { RequireCheckOutApproval } = useAppConfig();
+  const { RequireCheckOutApproval, ShowFinalizeButton, ShowObsoleteButton } = useAppConfig();
   const isAdmin    = role === "Admin";
   const isApprover = role === "Approver";
   const isOwner      = !!drawing.ownerId && drawing.ownerId === currentUser?.id;
@@ -119,8 +119,8 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
             primaryLoading={checkOut.isPending}
             onPrimary={() => checkOut.mutate(drawing.id)}
             items={[
-              ...(hasCheckin ? [{ key: "finalize", label: "Finalize", onClick: () => setOpenDialog("finalize") }] : []),
-              ...(isAdmin && hasCheckin ? [{ key: "obsolete", label: "Mark Obsolete", onClick: () => setOpenDialog("obsolete") }] : []),
+              ...(ShowFinalizeButton && hasCheckin ? [{ key: "finalize", label: "Finalize", onClick: () => setOpenDialog("finalize") }] : []),
+              ...(ShowObsoleteButton && isAdmin && hasCheckin ? [{ key: "obsolete", label: "Mark Obsolete", onClick: () => setOpenDialog("obsolete") }] : []),
               ...(canRelease ? [{ key: "release", label: "Release", onClick: () => setOpenDialog("release") }] : []),
             ]}
           />
@@ -136,8 +136,8 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
     return (
       <div className={styles.actionRow}>
         <CheckOutButton drawingId={drawing.id} />
-        {hasCheckin && <FinalizeDialog drawingId={drawing.id} />}
-        {isAdmin && hasCheckin && <MarkObsoleteDialog drawingId={drawing.id} />}
+        {ShowFinalizeButton && hasCheckin && <FinalizeDialog drawingId={drawing.id} />}
+        {ShowObsoleteButton && isAdmin && hasCheckin && <MarkObsoleteDialog drawingId={drawing.id} />}
         {canRelease && <ReleaseDrawingDialog drawingId={drawing.id} forceRelease={forceRelease} />}
       </div>
     );

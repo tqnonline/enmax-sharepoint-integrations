@@ -52,7 +52,7 @@ export function FinalizeDialog({ drawingId, open, onOpenChange, hideTrigger }: P
           <DialogBody>
             <DialogContent>
               <Text className={styles.intro}>
-                Finalizing locks this drawing and its sheets as the final revision. No further check-out or check-in is possible. This cannot be undone.
+                Finalizing locks this drawing and its sheets as the final revision. No further Check Out or Check In is possible. This cannot be undone.
               </Text>
               <Field
                 label="Reason (required)"

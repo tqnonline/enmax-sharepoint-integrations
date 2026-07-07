@@ -36,6 +36,11 @@ export const AppConfigSchema = z.object({
   // WS3: Check Out is a gated/approved action. Mandatory per requirement #8, but
   // exposed as a toggle (mirrors RequireCheckInApproval) and defaults to enabled.
   RequireCheckOutApproval:        z.boolean().default(true),
+  // WS4 item 14: Finalize and Mark Obsolete are hidden by default. Admins opt in
+  // per environment by seeding these true; when the keys are absent they default
+  // false so the actions stay hidden.
+  ShowFinalizeButton:             z.boolean().default(false),
+  ShowObsoleteButton:             z.boolean().default(false),
 });
 
 export type AppConfig = z.infer<typeof AppConfigSchema>;

@@ -27,7 +27,6 @@ import {
   SearchRegular,
   DismissRegular,
 } from "@fluentui/react-icons";
-import { useUserRole } from "../../auth/useUserRole";
 import { usePageSize } from "../../config/usePageSize";
 import { useGridState } from "./useGridState";
 import { exportToCsv } from "./csvExport";
@@ -88,7 +87,7 @@ const useStyles = makeStyles({
 export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
   const {
     queryKey, fetcher, columns, rowKey, rowActions, bulkActions,
-    enableExport, enableColumnVisibility, defaultSort,
+    enableExport = true, exportFileName = "export.csv", enableColumnVisibility, defaultSort,
     initialPageSize, quickSearchPlaceholder = "Search…",
     emptyMessage = "No results.", emptySubtitle, emptyAction,
     errorMessage = "Failed to load data.",
@@ -97,8 +96,6 @@ export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
   } = props;
 
   const styles = useStyles();
-  const { role } = useUserRole();
-  const isAdmin = role === "Admin";
   const configPageSize = usePageSize();
   const effectivePageSize = initialPageSize ?? configPageSize;
 
@@ -198,7 +195,7 @@ export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
   async function handleExport() {
     setExporting(true);
     try {
-      await exportToCsv(visibleColumns, fetcher, deferredParams, 10000, "export.csv");
+      await exportToCsv(visibleColumns, fetcher, deferredParams, 10000, exportFileName);
     } finally {
       setExporting(false);
     }
@@ -231,7 +228,7 @@ export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
 
         <div className={styles.spacer} />
 
-        {enableExport && isAdmin && (
+        {enableExport && (
           <Button
             icon={<ArrowDownloadRegular />}
             disabled={exporting}

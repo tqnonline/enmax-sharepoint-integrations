@@ -52,7 +52,7 @@ test("status line summarizes open work", () => {
   checkoutsRef.value = [{ checkoutId: "c1", drawingNumber: "0042", status: 1, daysOut: 3, checkedOutOn: new Date().toISOString() }];
   reservationsRef.value = [{ id: "r1", reservationNumber: "RES-1", status: 1, createdOn: new Date().toISOString() }];
   renderWithProviders(<HomePage />);
-  expect(screen.getByText(/1 open check-out.*1 pending reservation/i)).toBeInTheDocument();
+  expect(screen.getByText(/1 open Check Out.*1 pending reservation/i)).toBeInTheDocument();
 });
 
 test("Approver sees pending-approval attention with a Review action", () => {
@@ -66,7 +66,7 @@ test("Approver sees pending-approval attention with a Review action", () => {
 test("a stale check-out surfaces in the attention panel", () => {
   checkoutsRef.value = [{ checkoutId: "c1", drawingNumber: "GG-CG-00-0042", status: 1, daysOut: 120, checkedOutOn: "2026-01-01T00:00:00Z" }];
   renderWithProviders(<HomePage />);
-  expect(screen.getByText(/stale check-out/i)).toBeInTheDocument();
+  expect(screen.getByText(/stale Check Out/i)).toBeInTheDocument();
 });
 
 test("Admin sees the number sequence health card", () => {

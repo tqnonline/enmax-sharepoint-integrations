@@ -1,10 +1,10 @@
-# ENMAX AutoCAD Document Numbering
+# EEC Generation Document Management system
 
-Power Platform Code App for structured, concurrency-safe drawing number issuance and lifecycle management at ENMAX.
+Power Platform Code App for structured, concurrency-safe Drawing/Document number issuance and lifecycle management at ENMAX.
 
 ## Purpose
 
-Replaces the legacy manual process for assigning AutoCAD drawing numbers across six cascading segments (Business, Asset, Unit, Domain, System, Kind). Ensures uniqueness, auditability, and concurrent access safety via a Dataverse plug-in–backed custom action.
+Replaces the legacy manual process for assigning Drawing/Document Numbers across six independent segments (Business, Asset, Unit, Domain, System, Kind) for Drawings, Standards, and Procedures. Ensures uniqueness, auditability, and concurrent access safety via a Dataverse plug-in–backed custom action.
 
 ## Repository layout
 

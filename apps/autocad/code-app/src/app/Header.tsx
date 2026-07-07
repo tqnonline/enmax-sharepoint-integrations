@@ -317,7 +317,7 @@ export function Header() {
           />
         </Tooltip>
         <img src={enmaxLogo} alt="ENMAX" className={styles.logo} />
-        <Text className={styles.title}>AutoCAD Document Numbering</Text>
+        <Text className={styles.title}>EEC Generation Document Management system</Text>
       </div>
 
       {/* Centre: search */}

@@ -52,7 +52,7 @@ export function SearchPage() {
     return [
       {
         id: "enmax_acdnnumber",
-        header: "ENMAX Number",
+        header: "Drawing/Document Number",
         accessor: r => r.enmax_acdnnumber,
         sortable: true,
         filterable: true,
@@ -307,11 +307,11 @@ export function SearchPage() {
             columns={drawingColumns}
             rowKey={r => r.id}
             defaultSort={{ column: "enmax_acdnnumber", direction: "asc" }}
-            enableExport
             enableColumnVisibility
+            exportFileName="drawings.csv"
             requireSearch
-            searchPrompt="Search by ENMAX Number or title to find drawings."
-            quickSearchPlaceholder="Search by ENMAX Number or title…"
+            searchPrompt="Search by Drawing/Document Number or title to find drawings."
+            quickSearchPlaceholder="Search by Drawing/Document Number or title…"
             emptyMessage="No drawings found. Try adjusting your search or filters."
             onRowClick={setSelectedDrawing}
           />

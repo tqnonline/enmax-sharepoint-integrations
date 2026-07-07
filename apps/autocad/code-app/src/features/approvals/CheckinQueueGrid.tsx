@@ -31,7 +31,7 @@ const STATUS_COLOR: Record<number, BadgeProps["color"]> = {
 
 const BASE_COLUMNS: ColumnDef<CheckinRow>[] = [
   {
-    id: "drawingNumber", header: "Drawing", accessor: (r) => r.drawingNumber, sortable: true,
+    id: "drawingNumber", header: "Drawing/Document Number", accessor: (r) => r.drawingNumber, sortable: true,
     cell: (r) => <Text style={{ fontFamily: "monospace", whiteSpace: "nowrap" }}>{r.drawingNumber || "—"}</Text>,
   },
   {
@@ -75,6 +75,7 @@ interface Applied {
   from: string;
   to: string;
   submittedBy: string[];
+  number: string;
 }
 
 export function CheckinQueueGrid({ checkins }: Props) {
@@ -117,7 +118,8 @@ export function CheckinQueueGrid({ checkins }: Props) {
   const [to, setTo] = useState(defaultTo);
   const [selectedSubmitters, setSelectedSubmitters] = useState<string[]>([]);
   const [submitterQuery, setSubmitterQuery] = useState("");
-  const [applied, setApplied] = useState<Applied>({ from: defaultFrom, to: defaultTo, submittedBy: [] });
+  const [numberQuery, setNumberQuery] = useState("");
+  const [applied, setApplied] = useState<Applied>({ from: defaultFrom, to: defaultTo, submittedBy: [], number: "" });
 
   const submitters = useMemo(
     () => [...new Set(checkins.map((c) => c.submittedByName).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
@@ -136,10 +138,12 @@ export function CheckinQueueGrid({ checkins }: Props) {
   const filtered = useMemo(() => {
     const fromMs = applied.from ? new Date(applied.from).getTime() : Number.NEGATIVE_INFINITY;
     const toMs = applied.to ? new Date(applied.to).getTime() + 86_400_000 : Number.POSITIVE_INFINITY; // inclusive end-of-day
+    const numberNeedle = applied.number.trim().toLowerCase();
     return checkins.filter((c) => {
       const t = c.submittedOn ? new Date(c.submittedOn).getTime() : 0;
       if (t < fromMs || t > toMs) return false;
       if (applied.submittedBy.length > 0 && !applied.submittedBy.includes(c.submittedByName)) return false;
+      if (numberNeedle && !(c.drawingNumber ?? "").toLowerCase().includes(numberNeedle)) return false;
       return true;
     });
   }, [checkins, applied]);
@@ -151,7 +155,7 @@ export function CheckinQueueGrid({ checkins }: Props) {
   );
 
   const queryKey = useMemo(
-    () => ["checkin-queue", applied.from, applied.to, applied.submittedBy.join(","), filtered.map((c) => c.checkoutId).join(",")],
+    () => ["checkin-queue", applied.from, applied.to, applied.submittedBy.join(","), applied.number, filtered.map((c) => c.checkoutId).join(",")],
     [applied, filtered],
   );
 
@@ -160,12 +164,22 @@ export function CheckinQueueGrid({ checkins }: Props) {
     setTo(defaultTo);
     setSelectedSubmitters([]);
     setSubmitterQuery("");
-    setApplied({ from: defaultFrom, to: defaultTo, submittedBy: [] });
+    setNumberQuery("");
+    setApplied({ from: defaultFrom, to: defaultTo, submittedBy: [], number: "" });
   }
 
   return (
     <div style={{ flex: "1 0 auto", minHeight: "500px" }}>
       <div className={styles.filters} role="search" aria-label="Check In filters">
+        <Field label="Drawing/Document Number">
+          <Input
+            value={numberQuery}
+            onChange={(_, d) => setNumberQuery(d.value)}
+            placeholder="e.g. 01-AA-01-…"
+            contentBefore={<SearchRegular />}
+            aria-label="Search by Drawing/Document Number"
+          />
+        </Field>
         <Field label="From date">
           <Input type="date" value={from} onChange={(_, d) => setFrom(d.value)} aria-label="From date" />
         </Field>
@@ -203,7 +217,7 @@ export function CheckinQueueGrid({ checkins }: Props) {
         <Button
           appearance="primary"
           icon={<SearchRegular />}
-          onClick={() => setApplied({ from, to, submittedBy: selectedSubmitters })}
+          onClick={() => setApplied({ from, to, submittedBy: selectedSubmitters, number: numberQuery })}
         >
           Query
         </Button>
@@ -218,6 +232,7 @@ export function CheckinQueueGrid({ checkins }: Props) {
         rowKey={(r) => r.checkoutId}
         enableColumnVisibility
         enableQuickSearch={false}
+        exportFileName="check-ins.csv"
         initialPageSize={pageSize}
         defaultSort={{ column: "submittedOn", direction: "desc" }}
         emptyMessage="No Check Ins in selected range."

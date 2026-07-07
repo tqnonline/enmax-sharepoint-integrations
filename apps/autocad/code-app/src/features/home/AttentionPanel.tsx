@@ -84,7 +84,7 @@ export function AttentionPanel({ isApproverOrAdmin, pendingApprovals, pendingChe
         <div className={`${styles.row} ${styles.urgent}`}>
           <DocumentArrowUp20Regular />
           <Text className={styles.text} weight="semibold">
-            {pendingCheckins} check-in{pendingCheckins !== 1 ? "s" : ""} to validate
+            {pendingCheckins} Check In{pendingCheckins !== 1 ? "s" : ""} to validate
           </Text>
           <Button appearance="primary" size="small" className={styles.cta} onClick={() => navigate("/approvals?tab=checkins")}>
             Validate
@@ -96,7 +96,7 @@ export function AttentionPanel({ isApproverOrAdmin, pendingApprovals, pendingChe
         <div key={c.checkoutId} className={`${styles.row} ${styles.warn}`}>
           <Clock20Regular />
           <Text className={styles.text}>
-            Stale check-out · <span className={styles.num}>{c.drawingNumber || "drawing"}</span> out {c.daysOut} day{c.daysOut !== 1 ? "s" : ""}
+            Stale Check Out · <span className={styles.num}>{c.drawingNumber || "drawing"}</span> out {c.daysOut} day{c.daysOut !== 1 ? "s" : ""}
           </Text>
           <Button appearance="secondary" size="small" className={styles.cta} onClick={() => navigate("/my-items?tab=checkouts")}>
             Open

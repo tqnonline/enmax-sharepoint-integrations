@@ -83,8 +83,15 @@ vi.mock("../../features/checkout/hooks/useReleaseDrawing", () => ({
   useReleaseDrawing: () => ({ mutate: mockReleaseMutate, isPending: false, isError: false, error: null, reset: vi.fn() }),
 }));
 
-// Default: RequireCheckInApproval=false → trigger="Check In", confirm="Confirm Check In"
-const mockConfig: { RequireCheckInApproval: boolean } = { RequireCheckInApproval: false };
+// Default: RequireCheckInApproval=false → trigger="Check In", confirm="Confirm Check In".
+// WS4 item 14: Finalize/Obsolete are hidden unless ShowFinalizeButton/ShowObsoleteButton
+// are true. The visibility tests below exercise the OTHER gates (hasCheckin, isAdmin), so
+// the default mock turns the flags ON; dedicated tests flip them OFF to prove the hide.
+const mockConfig: { RequireCheckInApproval: boolean; ShowFinalizeButton: boolean; ShowObsoleteButton: boolean } = {
+  RequireCheckInApproval: false,
+  ShowFinalizeButton: true,
+  ShowObsoleteButton: true,
+};
 vi.mock("../../config/useAppConfig", () => ({
   useAppConfig: () => mockConfig,
 }));
@@ -101,6 +108,8 @@ afterEach(() => {
   server.resetHandlers();
   mockRole.value = "User";
   mockConfig.RequireCheckInApproval = false;
+  mockConfig.ShowFinalizeButton = true;
+  mockConfig.ShowObsoleteButton = true;
   mockCheckOutState.isPending = false;
   mockCheckOutState.isError = false;
   mockCheckOutMutate.mockClear();
@@ -398,6 +407,21 @@ test("Admin sees Mark Obsolete on a checked-in Available drawing; Mark Void is g
 // Test 14 — Non-admin does NOT see Mark Obsolete on an Available drawing
 test("Non-admin does NOT see Mark Obsolete on an Available drawing", () => {
   mockRole.value = "User";
+  renderWithProviders(<DrawingActionsPanel drawing={makeDrawing(DrawingState.Available)} />);
+  expect(screen.queryByRole("button", { name: /mark obsolete/i })).not.toBeInTheDocument();
+});
+
+// WS4 item 14 — Finalize is hidden when ShowFinalizeButton is false (the default)
+test("Finalize is hidden when ShowFinalizeButton config is false", () => {
+  mockConfig.ShowFinalizeButton = false;
+  renderWithProviders(<DrawingActionsPanel drawing={makeDrawing(DrawingState.Available)} />);
+  expect(screen.queryByRole("button", { name: /finalize/i })).not.toBeInTheDocument();
+});
+
+// WS4 item 14 — Mark Obsolete is hidden when ShowObsoleteButton is false (the default), even for Admin
+test("Mark Obsolete is hidden when ShowObsoleteButton config is false, even for an Admin", () => {
+  mockRole.value = "Admin";
+  mockConfig.ShowObsoleteButton = false;
   renderWithProviders(<DrawingActionsPanel drawing={makeDrawing(DrawingState.Available)} />);
   expect(screen.queryByRole("button", { name: /mark obsolete/i })).not.toBeInTheDocument();
 });

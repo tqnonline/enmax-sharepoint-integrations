@@ -57,38 +57,17 @@ export function MyWorkCards({ checkouts, checkoutsLoading, reservations, reserva
   const topCheckouts = checkouts.slice(0, 5);
   const topReservations = reservations.slice(0, 5);
 
+  // Item 12: reservations card leads, checked-out drawings follows (positions swapped).
   return (
     <div className={styles.grid}>
       <DashboardCard
-        title="My open check-outs"
-        count={checkouts.length}
-        countColor="important"
-        viewAllTo="/my-items"
-        isLoading={checkoutsLoading}
-        isEmpty={topCheckouts.length === 0}
-        emptyText="No open check-outs. Reserve and check out a drawing to start working."
-      >
-        {topCheckouts.map((c) => {
-          const badge = CHK_BADGE[c.status] ?? { label: c.statusLabel, color: "subtle" as BadgeColor };
-          return (
-            <div key={c.checkoutId} className={styles.row} onClick={() => navigate("/my-items?tab=checkouts")} role="button" tabIndex={0}
-              onKeyDown={(e) => { if (e.key === "Enter") navigate("/my-items?tab=checkouts"); }}>
-              <Text className={styles.num} title={c.drawingNumber}>{c.drawingNumber || "—"}</Text>
-              <Badge className={styles.badge} appearance="tint" color={badge.color} shape="rounded">{badge.label}</Badge>
-              {c.checkedOutOn && <Text className={styles.meta}>{relativeTime(c.checkedOutOn)}</Text>}
-            </div>
-          );
-        })}
-      </DashboardCard>
-
-      <DashboardCard
-        title="My recent reservations"
+        title="My Document/Drawing Number Reservations"
         count={reservations.length}
         countColor="informative"
         viewAllTo="/my-items"
         isLoading={reservationsLoading}
         isEmpty={topReservations.length === 0}
-        emptyText="No active reservations. Reserve a drawing number to get started."
+        emptyText="No active reservations. Reserve a Drawing/Document Number to get started."
       >
         {topReservations.map((r) => {
           const badge = RES_BADGE[r.status] ?? { label: r.statusLabel, color: "subtle" as BadgeColor };
@@ -98,6 +77,28 @@ export function MyWorkCards({ checkouts, checkoutsLoading, reservations, reserva
               <Text className={styles.num} title={r.reservationNumber}>{r.reservationNumber || "—"}</Text>
               <Badge className={styles.badge} appearance="tint" color={badge.color} shape="rounded">{badge.label}</Badge>
               {r.createdOn && <Text className={styles.meta}>{relativeTime(r.createdOn)}</Text>}
+            </div>
+          );
+        })}
+      </DashboardCard>
+
+      <DashboardCard
+        title="My Checked Out Drawings"
+        count={checkouts.length}
+        countColor="important"
+        viewAllTo="/my-items?tab=checkouts"
+        isLoading={checkoutsLoading}
+        isEmpty={topCheckouts.length === 0}
+        emptyText="No open Check Outs. Reserve and Check Out a drawing to start working."
+      >
+        {topCheckouts.map((c) => {
+          const badge = CHK_BADGE[c.status] ?? { label: c.statusLabel, color: "subtle" as BadgeColor };
+          return (
+            <div key={c.checkoutId} className={styles.row} onClick={() => navigate("/my-items?tab=checkouts")} role="button" tabIndex={0}
+              onKeyDown={(e) => { if (e.key === "Enter") navigate("/my-items?tab=checkouts"); }}>
+              <Text className={styles.num} title={c.drawingNumber}>{c.drawingNumber || "—"}</Text>
+              <Badge className={styles.badge} appearance="tint" color={badge.color} shape="rounded">{badge.label}</Badge>
+              {c.checkedOutOn && <Text className={styles.meta}>{relativeTime(c.checkedOutOn)}</Text>}
             </div>
           );
         })}

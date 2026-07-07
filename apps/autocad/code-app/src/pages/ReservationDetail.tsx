@@ -636,7 +636,7 @@ export default function ReservationDetail() {
         {/* Composition flat row */}
         {hasComposition && (
           <div className={styles.compSection}>
-            <span className={styles.compSectionLabel}>Composition</span>
+            <span className={styles.compSectionLabel}>Drawing/Document Number</span>
             <div className={styles.compRow}>
               {res.businessCode && (
                 <div className={styles.compCol}>

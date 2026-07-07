@@ -154,7 +154,7 @@ export function ApprovalsPage() {
       <div className={styles.header}>
         <Title2 as="h1">Approvals</Title2>
         <Text size={300} className={styles.subtitle}>
-          Review and action pending drawing number reservations.
+          Review and action pending Drawing/Document Reservations and Check In / Check Out requests.
         </Text>
       </div>
 

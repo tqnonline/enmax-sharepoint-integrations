@@ -76,15 +76,15 @@ test("virtualisation: 10K rows render ≤60 DOM data rows at once", async () => 
   expect(dataRows.length).toBeLessThan(100);
 });
 
-// Test 4 — CSV export button hidden for non-Admin
-test("CSV export button hidden for User role", async () => {
+// Test 4 — WS4 item 11: CSV export is available to ALL users (no admin gate)
+test("CSV export button present for User role (all users can export)", async () => {
   mockRole.value = "User";
   const rows = makeRows(3);
   renderWithProviders(
     <EnmaxDataGrid queryKey={["test-export"]} fetcher={makeFetcher(rows)} columns={COLUMNS} rowKey={r => r.id} enableExport />,
   );
   await waitFor(() => expect(screen.getByText("Row 0")).toBeInTheDocument());
-  expect(screen.queryByRole("button", { name: /export csv/i })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /export csv/i })).toBeInTheDocument();
 });
 
 // Test 5 — CSV export button visible and clickable for Admin
@@ -95,6 +95,24 @@ test("CSV export button present for Admin", async () => {
   );
   await waitFor(() => screen.getByRole("button", { name: /export csv/i }));
   expect(screen.getByRole("button", { name: /export csv/i })).toBeInTheDocument();
+});
+
+// Test 5b — WS4 item 11: export defaults ON (no enableExport prop) and can be opted out
+test("CSV export defaults on, and is hidden only when enableExport={false}", async () => {
+  mockRole.value = "User";
+  const rows = makeRows(3);
+  const { unmount } = renderWithProviders(
+    <EnmaxDataGrid queryKey={["test-export-default"]} fetcher={makeFetcher(rows)} columns={COLUMNS} rowKey={r => r.id} />,
+  );
+  await waitFor(() => expect(screen.getByText("Row 0")).toBeInTheDocument());
+  expect(screen.getByRole("button", { name: /export csv/i })).toBeInTheDocument();
+  unmount();
+
+  renderWithProviders(
+    <EnmaxDataGrid queryKey={["test-export-off"]} fetcher={makeFetcher(rows)} columns={COLUMNS} rowKey={r => r.id} enableExport={false} />,
+  );
+  await waitFor(() => expect(screen.getByText("Row 0")).toBeInTheDocument());
+  expect(screen.queryByRole("button", { name: /export csv/i })).not.toBeInTheDocument();
 });
 
 // Test 6 — Quick-search debounces (state reflected in search params)

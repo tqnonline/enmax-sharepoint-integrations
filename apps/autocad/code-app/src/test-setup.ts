@@ -26,6 +26,9 @@ vi.mock("./config/useAppConfig", () => ({
     BroadcastFanOutCadenceMinutes: 60,
     GridPageSize: 10,
     RequireCheckInApproval: false,
+    RequireCheckOutApproval: false,
+    ShowFinalizeButton: false,
+    ShowObsoleteButton: false,
   }),
 }));
 

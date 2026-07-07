@@ -63,7 +63,7 @@ export function HomePage() {
   const pendingMyRes = reservations.filter((r) => r.status === 1).length;
   const statusLine = useMemo(() => {
     const parts: string[] = [];
-    if (checkouts.length) parts.push(`${checkouts.length} open check-out${checkouts.length !== 1 ? "s" : ""}`);
+    if (checkouts.length) parts.push(`${checkouts.length} open Check Out${checkouts.length !== 1 ? "s" : ""}`);
     if (pendingMyRes) parts.push(`${pendingMyRes} pending reservation${pendingMyRes !== 1 ? "s" : ""}`);
     if (isApproverOrAdmin && pendingApprovals) parts.push(`${pendingApprovals} awaiting your approval`);
     return parts.length ? parts.join(" · ") : "You have no open items right now — a calm day.";
