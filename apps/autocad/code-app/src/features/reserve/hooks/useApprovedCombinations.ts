@@ -1,3 +1,6 @@
+// ADR 0001 #4: combination tables are RETAINED READ-ONLY for historical rows and the
+// Phase 3 anomaly report only. The reserve wizard no longer gates on them — the six
+// segments are independent. These data/filter helpers stay for reporting/admin use.
 import { useQuery } from "@tanstack/react-query";
 import {
   Enmax_autocadbusinessassetsService,

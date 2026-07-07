@@ -1,8 +1,5 @@
 import { useFormContext } from "react-hook-form";
 import {
-  Text,
-  MessageBar,
-  MessageBarBody,
   Tooltip,
   Spinner,
   Button,
@@ -78,13 +75,6 @@ const useStyles = makeStyles({
     fontWeight: tokens.fontWeightSemibold,
     color: tokens.colorNeutralForeground2,
     paddingTop: "2px",
-  },
-  overrideWarn: {
-    animationName: FADE_UP,
-    animationDuration: "200ms",
-    animationFillMode: "both",
-    animationDelay: "100ms",
-    marginBottom: tokens.spacingVerticalM,
   },
   actions: {
     display: "flex",
@@ -186,19 +176,6 @@ export function Step4Review({ refData, onBack, onSubmit, isSubmitting }: Props) 
         <span className={styles.label}>Reason</span>
         <span>{form.reason}</span>
       </div>
-
-      {form.override && (
-        <div className={styles.overrideWarn}>
-          <MessageBar intent="warning">
-            <MessageBarBody>
-              <Text weight="semibold">Validation override active</Text>
-              <br />
-              {business?.code}–{asset?.code} is not in the approved list.
-              Justification: {form.overrideReason}
-            </MessageBarBody>
-          </MessageBar>
-        </div>
-      )}
 
       <div className={styles.actions}>
         <Button appearance="secondary" onClick={onBack} disabled={isSubmitting}>Back</Button>

@@ -12,7 +12,6 @@ const VALID_BASE = {
   sheetsPerDrawing: 5,
   sequenceType: "New" as const,
   reason: "test reservation reason text",
-  override: false,
 };
 
 // Test 4 — Zod rejects count > MaxDrawingsPerReservation ceiling (hard cap at 10 per default config)
@@ -35,26 +34,10 @@ test("rejects reason shorter than 10 characters", () => {
   }
 });
 
-// Test 6 — Override reason required when override=true
-test("requires overrideReason when override=true — form-level validation error", () => {
-  const result = reserveSchema.safeParse({ ...VALID_BASE, override: true, overrideReason: "" });
-  expect(result.success).toBe(false);
-  if (!result.success) {
-    const overridePaths = result.error.issues.map((e) => e.path[0]);
-    expect(overridePaths).toContain("overrideReason");
-  }
-});
+// Combination override removed (ADR 0001 #4): the six segments are independent,
+// so there is no override/justification path in the schema anymore.
 
-test("accepts valid form data with override and justification", () => {
-  const result = reserveSchema.safeParse({
-    ...VALID_BASE,
-    override: true,
-    overrideReason: "This is a valid justification text",
-  });
-  expect(result.success).toBe(true);
-});
-
-test("accepts valid form data without override", () => {
+test("accepts valid form data", () => {
   const result = reserveSchema.safeParse(VALID_BASE);
   expect(result.success).toBe(true);
 });

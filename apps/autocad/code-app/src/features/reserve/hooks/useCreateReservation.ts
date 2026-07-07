@@ -22,8 +22,6 @@ async function createReservation(form: ReserveForm): Promise<CreatedReservation>
     enmax_acdnsheetsperdrawing: Number(form.sheetsPerDrawing),
     enmax_acdnsequencetype:     form.sequenceType === "New" ? 1 : 2,
     enmax_acdnreason:           form.reason,
-    enmax_acdnoverride:         form.override,
-    enmax_acdnoverridereason:   form.overrideReason ?? null,
     enmax_acdnstatus:           1,
   } as unknown as Omit<Enmax_autocadreservationsBase, 'enmax_autocadreservationid'>;
 

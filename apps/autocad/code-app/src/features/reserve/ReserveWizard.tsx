@@ -18,7 +18,6 @@ import { Step2Composition } from "./steps/Step2Composition";
 import { Step3Details } from "./steps/Step3Details";
 import { Step4Review } from "./steps/Step4Review";
 import { useReferenceData } from "./hooks/useReferenceData";
-import { useApprovedCombinations } from "./hooks/useApprovedCombinations";
 import { useCreateReservation } from "./hooks/useCreateReservation";
 import { useAppConfig } from "../../config/useAppConfig";
 
@@ -108,12 +107,10 @@ export function ReserveWizard() {
       count: 1,
       sheetsPerDrawing: config.DefaultSheetsPerDrawing,
       sequenceType: "New",
-      override: false,
     },
   });
 
   const refDataQuery   = useReferenceData();
-  const combosQuery    = useApprovedCombinations();
   const createMutation = useCreateReservation();
 
   const next = useCallback(() => setStep((s) => Math.min(s + 1, 3)), []);
@@ -129,11 +126,11 @@ export function ReserveWizard() {
     }
   }
 
-  if (refDataQuery.isPending || combosQuery.isPending) {
+  if (refDataQuery.isPending) {
     return <Spinner label="Loading reference data…" />;
   }
 
-  if (refDataQuery.isError || combosQuery.isError) {
+  if (refDataQuery.isError) {
     return (
       <MessageBar intent="error">
         <MessageBarBody>Failed to load reference data. Please refresh the page.</MessageBarBody>
@@ -142,7 +139,6 @@ export function ReserveWizard() {
   }
 
   const refData = refDataQuery.data!;
-  const combos  = combosQuery.data!;
 
   // step 0 = RecordType (auto-advances); userStep maps steps 1-3 to 0-2 for the stepper display
   const userStep = Math.max(step - 1, 0);
@@ -228,7 +224,7 @@ export function ReserveWizard() {
 
       <div className={styles.content}>
         {step === 0 && <Step1RecordType onNext={next} />}
-        {step === 1 && <Step2Composition refData={refData} combos={combos} onNext={next} />}
+        {step === 1 && <Step2Composition refData={refData} onNext={next} />}
         {step === 2 && (
           <Step3Details
             maxCount={config.MaxDrawingsPerReservation}

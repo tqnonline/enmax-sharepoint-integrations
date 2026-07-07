@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+// The six segments are independent (ADR 0001 #4): any active value may be chosen
+// for each, with no cascade filtering and no Approved-combination gate.
 export const reserveSchema = z.object({
   recordType: z.literal("Drawing"),
   business:   z.string().min(1, "Business required"),
@@ -12,11 +14,6 @@ export const reserveSchema = z.object({
   sheetsPerDrawing: z.coerce.number().int().min(1, "Sheets must be at least 1"),
   sequenceType: z.enum(["New", "Existing"]),
   reason:     z.string().min(10, "Reason must be at least 10 characters").max(2000),
-  override:   z.boolean().default(false),
-  overrideReason: z.string().max(2000).optional(),
-}).refine(
-  (data) => !data.override || (data.overrideReason && data.overrideReason.length >= 10),
-  { message: "Override justification required (min 10 chars)", path: ["overrideReason"] },
-);
+});
 
 export type ReserveForm = z.infer<typeof reserveSchema>;

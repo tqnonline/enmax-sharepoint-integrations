@@ -1,12 +1,7 @@
-import { useEffect, useMemo } from "react";
 import { useFormContext, Controller } from "react-hook-form";
 import {
   Field,
   Select,
-  MessageBar,
-  MessageBarBody,
-  Switch,
-  Textarea,
   Tooltip,
   Text,
   Button,
@@ -16,13 +11,6 @@ import {
 } from "@fluentui/react-components";
 import type { ReserveForm } from "../schema";
 import type { RefItem, ReferenceData } from "../hooks/useReferenceData";
-import type { ApprovedCombinations } from "../hooks/useApprovedCombinations";
-import {
-  filterAssetsByBusiness,
-  filterUnitsByAsset,
-  filterSystemsByAssetAndDomain,
-  isBusinessAssetApproved,
-} from "../hooks/useApprovedCombinations";
 import { SEQUENCE_TOOLTIP } from "../hooks/usePreviewNumber";
 
 const useStyles = makeStyles({
@@ -87,13 +75,12 @@ const useStyles = makeStyles({
 
 interface Props {
   refData: ReferenceData;
-  combos: ApprovedCombinations;
   onNext: () => void;
 }
 
-export function Step2Composition({ refData, combos, onNext }: Props) {
+export function Step2Composition({ refData, onNext }: Props) {
   const styles = useStyles();
-  const { control, watch, setValue, formState: { errors }, trigger } = useFormContext<ReserveForm>();
+  const { control, watch, formState: { errors }, trigger } = useFormContext<ReserveForm>();
 
   const businessId = watch("business");
   const assetId    = watch("asset");
@@ -101,58 +88,21 @@ export function Step2Composition({ refData, combos, onNext }: Props) {
   const domainId   = watch("domain");
   const systemId   = watch("system");
   const kindId     = watch("kind");
-  const override   = watch("override");
-
-  const filteredAssets = useMemo(
-    () => businessId ? filterAssetsByBusiness(refData.assets, businessId, combos) : [],
-    [businessId, refData.assets, combos],
-  );
-  const filteredUnits = useMemo(
-    () => assetId ? filterUnitsByAsset(refData.units, assetId, combos) : [],
-    [assetId, refData.units, combos],
-  );
-
-  const assetCode  = refData.assets.find((a) => a.id === assetId)?.code  ?? "";
-  const domainCode = refData.domains.find((d) => d.id === domainId)?.code ?? "";
-  const filteredSystems = (assetId && domainId)
-    ? filterSystemsByAssetAndDomain(refData.systems, assetCode, domainCode, combos)
-    : refData.systems;
-
-  // Cascade clear: if selected value no longer in filtered list, clear it
-  useEffect(() => {
-    if (assetId && !filteredAssets.find((a) => a.id === assetId)) {
-      setValue("asset", "");
-      setValue("unit", "");
-    }
-  }, [businessId, assetId, filteredAssets, setValue]);
-
-  useEffect(() => {
-    if (unitId && !filteredUnits.find((u) => u.id === unitId)) {
-      setValue("unit", "");
-    }
-  }, [assetId, unitId, filteredUnits, setValue]);
-
-  useEffect(() => {
-    if (systemId && !filteredSystems.find((s) => s.id === systemId)) {
-      setValue("system", "");
-    }
-  }, [assetId, domainId, systemId, filteredSystems, setValue]);
 
   const businessCode = refData.businesses.find((b) => b.id === businessId)?.code ?? "";
+  const assetCode    = refData.assets.find((a) => a.id === assetId)?.code         ?? "";
   const unitCode     = refData.units.find((u) => u.id === unitId)?.code           ?? "";
+  const domainCode   = refData.domains.find((d) => d.id === domainId)?.code       ?? "";
   const systemCode   = refData.systems.find((s) => s.id === systemId)?.code       ?? "";
   const kindCode     = refData.kinds.find((k) => k.id === kindId)?.code           ?? "";
 
-  const showOverrideWarning = !!(businessId && assetId && !isBusinessAssetApproved(businessId, assetId, combos));
   const isComplete = !!(businessId && assetId && unitId && domainId && systemId && kindId);
-  const canProceed = isComplete && (!showOverrideWarning || override);
 
   function renderSelect(
     name: keyof ReserveForm,
     label: string,
     hint: string,
     items: RefItem[],
-    disabled: boolean,
   ) {
     return (
       <Controller
@@ -167,7 +117,6 @@ export function Step2Composition({ refData, combos, onNext }: Props) {
           >
             <Select
               {...field}
-              disabled={disabled}
               aria-label={label}
               value={field.value as string}
               onChange={(_, data) => field.onChange(data.value)}
@@ -203,7 +152,7 @@ export function Step2Composition({ refData, combos, onNext }: Props) {
     <div className={styles.root}>
       {/* Live number preview at top */}
       <Tooltip content={SEQUENCE_TOOLTIP} relationship="description">
-        <div className={styles.compBar} tabIndex={0} role="img" aria-label="Drawing number preview">
+        <div className={styles.compBar} tabIndex={0} role="img" aria-label="Drawing/Document number preview">
           {segments.map((seg, i) => (
             <span key={seg.label} style={{ display: "contents" }}>
               <div className={styles.seg}>
@@ -223,76 +172,28 @@ export function Step2Composition({ refData, combos, onNext }: Props) {
         </div>
       </Tooltip>
 
-      {/* Two-column layout: left = site identification chain, right = technical classification chain */}
+      {/* Each segment is independent — any active value is selectable (ADR 0001 #4) */}
       <div className={styles.columns}>
-        {/* Left: Business → Asset → Unit (cascade chain) */}
         <div className={styles.groupColumn}>
           <Text className={styles.groupHeader}>Site Identification</Text>
-          {renderSelect("business", "Business", "BB segment", refData.businesses, false)}
-          {renderSelect("asset",    "Asset",    !businessId ? "Select Business first" : "AA — filtered by Business", filteredAssets, !businessId)}
-          {renderSelect("unit",     "Unit",     !assetId    ? "Select Asset first"    : "UU — filtered by Asset",    filteredUnits,  !assetId)}
+          {renderSelect("business", "Business", "BB segment", refData.businesses)}
+          {renderSelect("asset",    "Asset",    "AA segment", refData.assets)}
+          {renderSelect("unit",     "Unit",     "UU segment", refData.units)}
         </div>
 
-        {/* Right: Domain → System → Kind (System depends on Asset + Domain) */}
         <div className={styles.groupColumn}>
           <Text className={styles.groupHeader}>Technical Classification</Text>
-          {renderSelect("domain", "Domain", "DDD segment", refData.domains, false)}
-          {renderSelect("system", "System", !(assetId && domainId) ? "Select Asset and Domain first" : "SSS — filtered by Asset + Domain", filteredSystems, !(assetId && domainId))}
-          {renderSelect("kind",   "Kind",   "KK segment",  refData.kinds,   false)}
+          {renderSelect("domain", "Domain", "DDD segment", refData.domains)}
+          {renderSelect("system", "System", "SSS segment", refData.systems)}
+          {renderSelect("kind",   "Kind",   "KK segment",  refData.kinds)}
         </div>
       </div>
-
-      {/* Override warning */}
-      {showOverrideWarning && (
-        <MessageBar intent="warning">
-          <MessageBarBody>
-            <strong>{businessCode}–{assetCode}</strong> is not in the approved combination list.
-            Enable the override toggle below and provide a justification to proceed.
-          </MessageBarBody>
-        </MessageBar>
-      )}
-      {showOverrideWarning && (
-        <Controller
-          name="override"
-          control={control}
-          render={({ field }) => (
-            <Field label="Override validation">
-              <Switch
-                checked={field.value}
-                onChange={(_, data) => field.onChange(data.checked)}
-                label="Use this combination anyway (requires justification)"
-              />
-            </Field>
-          )}
-        />
-      )}
-      {override && (
-        <Controller
-          name="overrideReason"
-          control={control}
-          render={({ field }) => (
-            <Field
-              label="Override justification"
-              validationMessage={errors.overrideReason?.message}
-              hint="Describe why this unapproved combination is needed (min 10 chars)"
-              required
-            >
-              <Textarea
-                {...field}
-                value={field.value ?? ""}
-                placeholder="Explain the reason for using this unapproved combination…"
-                rows={3}
-              />
-            </Field>
-          )}
-        />
-      )}
 
       {/* Navigation */}
       <div className={styles.actions}>
         <Button
           appearance="primary"
-          disabled={!canProceed}
+          disabled={!isComplete}
           onClick={() => void handleNext()}
         >
           Next: Details

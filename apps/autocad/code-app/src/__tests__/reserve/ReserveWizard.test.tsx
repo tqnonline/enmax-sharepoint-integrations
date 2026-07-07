@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../helpers/renderWithProviders";
 import { ReserveWizard } from "../../features/reserve/ReserveWizard";
 import type { AppConfig } from "../../config/AppConfigSchema";
-import type { ApprovedCombinations } from "../../features/reserve/hooks/useApprovedCombinations";
 import type { ReferenceData } from "../../features/reserve/hooks/useReferenceData";
 
 const MOCK_CONFIG: AppConfig = {
@@ -50,23 +49,9 @@ const MOCK_REF_DATA: ReferenceData = {
   kinds:   [{ id: "kind-1",  code: "DD",  name: "Design Drawing" }],
 };
 
-const MOCK_COMBOS: ApprovedCombinations = {
-  businessAssets: [{ businessId: "bus-1", assetId: "asset-a" }],
-  assetUnits:     [{ assetId: "asset-a", unitId: "unit-1" }],
-  systemScopes:   [],
-};
-
 vi.mock("../../features/reserve/hooks/useReferenceData", () => ({
   useReferenceData: () => ({ data: MOCK_REF_DATA, isPending: false, isError: false }),
 }));
-
-vi.mock("../../features/reserve/hooks/useApprovedCombinations", async (importOriginal) => {
-  const original = await importOriginal<typeof import("../../features/reserve/hooks/useApprovedCombinations")>();
-  return {
-    ...original,
-    useApprovedCombinations: () => ({ data: MOCK_COMBOS, isPending: false, isError: false }),
-  };
-});
 
 vi.mock("../../generated/services/Enmax_autocadreservationsService", () => ({
   Enmax_autocadreservationsService: { create: vi.fn() },
@@ -120,7 +105,8 @@ test("submitting valid form POSTs to enmax_autocadreservations with correct body
   expect(body["enmax_acdnBusiness@odata.bind"]).toBe("/enmax_autocadbusinesses(bus-1)");
   expect(body.enmax_acdndrawingcount).toBe(3);
   expect(body.enmax_acdnstatus).toBe(1);
-  expect(body.enmax_acdnoverride).toBe(false);
+  // Combination override is removed (ADR 0001 #4) — no longer sent.
+  expect(body.enmax_acdnoverride).toBeUndefined();
 });
 
 // Test 8 — Submit navigates to success page on 201
@@ -219,44 +205,47 @@ test("live preview shows ???? placeholder with tooltip — never a sequence numb
   expect(screen.queryByText(/\b\d{4}\b/)).not.toBeInTheDocument();
 });
 
-// Test 1 — Wizard step 2 cascading: Asset filter on Business change
-test("changing Business filters Asset dropdown to approved combinations only", async () => {
+// Test 1 — Independent dropdowns: every Asset is selectable for any Business (ADR 0001 #4)
+test("Asset dropdown shows all active assets regardless of Business — no cascade filter", async () => {
   const user = userEvent.setup();
   renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
 
   await waitFor(() => expect(screen.getByLabelText("Business")).toBeInTheDocument(), { timeout: 3000 });
 
-  await user.selectOptions(screen.getByLabelText("Business"), "bus-1");
-  await waitFor(() => expect(screen.getByLabelText("Asset")).not.toBeDisabled());
-
+  // Asset is enabled and fully populated before any Business is chosen.
   const assetSelect = screen.getByLabelText("Asset") as HTMLSelectElement;
+  expect(assetSelect).not.toBeDisabled();
+
+  await user.selectOptions(screen.getByLabelText("Business"), "bus-1");
+
   const visibleOptions = Array.from(assetSelect.options)
     .filter((o) => o.value !== "")
     .map((o) => o.value);
 
-  // bus-1 is approved with asset-a only (per MOCK_COMBOS fixture)
+  // Both assets available even though only bus-1/asset-a was ever an "approved" combo.
   expect(visibleOptions).toContain("asset-a");
-  expect(visibleOptions).not.toContain("asset-b");
+  expect(visibleOptions).toContain("asset-b");
 });
 
-// Test 2 — Override toggle appears for invalid BB-AA
-test("override warning and toggle appear when Business+Asset combo is not in approved list", async () => {
+// Test 2 — No override path: any Business+Asset proceeds without a warning/toggle
+test("no override warning or toggle for any Business+Asset combination", async () => {
   const user = userEvent.setup();
   renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
 
   await waitFor(() => expect(screen.getByLabelText("Business")).toBeInTheDocument(), { timeout: 3000 });
 
-  await user.selectOptions(screen.getByLabelText("Business"), "bus-1");
-  // With MOCK_COMBOS, bus-1 only has asset-a approved
-  const assetSelect = screen.getByLabelText("Asset") as HTMLSelectElement;
-  const visibleOptions = Array.from(assetSelect.options).filter((o) => o.value !== "");
-  expect(visibleOptions).toHaveLength(1);
-  expect(visibleOptions[0].value).toBe("asset-a");
-
-  // bus-2 has no combos → no assets
+  // Pick a combination that used to be "unapproved" (bus-2 + asset-b).
   await user.selectOptions(screen.getByLabelText("Business"), "bus-2");
-  await waitFor(() => {
-    const opts = Array.from((screen.getByLabelText("Asset") as HTMLSelectElement).options).filter(o => o.value !== "");
-    expect(opts).toHaveLength(0);
-  });
+  await user.selectOptions(screen.getByLabelText("Asset"), "asset-b");
+  await user.selectOptions(screen.getByLabelText("Unit"), "unit-1");
+  await user.selectOptions(screen.getByLabelText("Domain"), "dom-1");
+  await user.selectOptions(screen.getByLabelText("System"), "sys-1");
+  await user.selectOptions(screen.getByLabelText("Kind"), "kind-1");
+
+  // No override affordance exists anymore.
+  expect(screen.queryByText(/not in the approved/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Override/i)).not.toBeInTheDocument();
+
+  // And the wizard can advance directly.
+  expect(screen.getByRole("button", { name: /next/i })).toBeEnabled();
 });
