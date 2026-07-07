@@ -32,6 +32,16 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Install uv
         run: pip install uv
+      - name: Install PAC CLI
+        run: dotnet tool install --global Microsoft.PowerApps.CLI.Tool
+      - name: Authenticate PAC CLI
+        shell: pwsh
+        env:
+          DATAVERSE_URL: ${{ secrets.DEV_DATAVERSE_URL }}
+          DATAVERSE_CLIENT_ID: ${{ secrets.DEV_SP_CLIENT_ID }}
+          DATAVERSE_CLIENT_SECRET: ${{ secrets.DEV_SP_CLIENT_SECRET }}
+          DATAVERSE_TENANT_ID: ${{ secrets.DEV_TENANT_ID }}
+        run: pac auth create --url $env:DATAVERSE_URL --applicationId $env:DATAVERSE_CLIENT_ID --clientSecret $env:DATAVERSE_CLIENT_SECRET --tenant $env:DATAVERSE_TENANT_ID
       - name: Install Code App deps
         working-directory: apps/code-app
         run: npm ci
