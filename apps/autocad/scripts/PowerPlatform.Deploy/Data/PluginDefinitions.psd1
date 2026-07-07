@@ -99,6 +99,33 @@
             )
         }
 
+        # ── Global: Add to Existing (append child items) ─────────────────────
+        # ADR 0001 #2/#6: appends the next Count child items (-sss) to an
+        # already-issued base number (Drawing or Procedure), continuing after the
+        # last existing child. Standard documents are base-only and rejected.
+        # Unbound with explicit Drawing (Type=5) — same routing rationale as the
+        # reservation lifecycle APIs above. Concurrency backstop is the
+        # enmax_acdnsheet_drawing_num_ak alt key (Rule 14); caller retries on
+        # DuplicateDetected. Approver/Admin only.
+        @{
+            UniqueName  = "enmax_acdnAddChildItems"
+            DisplayName = "Add Child Items to Existing Number"
+            Description = "Appends the next Count child items (-sss) to an already-issued base Drawing or Procedure number, continuing after the last existing child (Approver/Admin only). New children are owned by the base drawing's owner. Rejects Standard (base-only) documents. Inputs: Drawing (base), Count (1-999). Returns ChildrenCreated, FirstChildNumber, LastChildNumber, BaseNumber."
+            PluginClass = "Enmax.AutoCAD.AddChildItemsPlugin"
+            BindingType = 0
+            BoundEntity = $null
+            Params = @(
+                @{ Name="Drawing"; Type=5; Optional=$false }
+                @{ Name="Count";   Type=7; Optional=$false }
+            )
+            Response = @(
+                @{ Name="ChildrenCreated";  Type=7  }
+                @{ Name="FirstChildNumber"; Type=7  }
+                @{ Name="LastChildNumber";  Type=7  }
+                @{ Name="BaseNumber";       Type=10 }
+            )
+        }
+
         # ── Entity-bound: Drawing checkout ───────────────────────────────────
         @{
             UniqueName  = "enmax_acdnCheckOutDrawing"

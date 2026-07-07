@@ -25,15 +25,16 @@ Describe 'Register-PpPlugins — parameter contract' {
 
 Describe 'Register-PpPlugins — PluginDefinitions data file' {
 
-    It 'PluginDefinitions.psd1 loads with exactly 11 CustomAPIDefs' {
+    It 'PluginDefinitions.psd1 loads with exactly 12 CustomAPIDefs' {
         # WHY: The number of Custom API definitions is load-bearing; adding or removing
         # an entry without a matching deployment would leave Dataverse in an inconsistent
         # state. This test guards against a [ordered]->@{} conversion silently breaking
         # the file parse, or a developer accidentally removing an entry.
+        # 12 = the original 11 + enmax_acdnAddChildItems (WS2c "Add to Existing").
         $RepoRoot  = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent | Split-Path -Parent
         $defsPath  = Join-Path $RepoRoot 'scripts/PowerPlatform.Deploy/Data/PluginDefinitions.psd1'
         $defs = Import-PowerShellDataFile $defsPath
-        $defs.CustomAPIDefs.Count | Should -Be 11
+        $defs.CustomAPIDefs.Count | Should -Be 12
     }
 
     It 'PluginDefinitions.psd1 loads with exactly 18 StepDefs' {
@@ -60,6 +61,21 @@ Describe 'Register-PpPlugins — PluginDefinitions data file' {
         $issueApi | Should -Not -BeNullOrEmpty
         $issueApi.BindingType | Should -Be 0
         $issueApi.BoundEntity | Should -BeNullOrEmpty
+    }
+
+    It 'enmax_acdnAddChildItems is Global with Drawing + Count inputs' {
+        # WHY: "Add to Existing" (WS2c) must stay unbound with an explicit Drawing
+        # (Type=5) input, matching the reservation-lifecycle routing rationale. A
+        # regression to entity-bound or a missing input would break the flow.
+        $RepoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent | Split-Path -Parent
+        $defsPath = Join-Path $RepoRoot 'scripts/PowerPlatform.Deploy/Data/PluginDefinitions.psd1'
+        $defs = Import-PowerShellDataFile $defsPath
+        $api = $defs.CustomAPIDefs | Where-Object { $_.UniqueName -eq 'enmax_acdnAddChildItems' }
+        $api | Should -Not -BeNullOrEmpty
+        $api.BindingType | Should -Be 0
+        $api.PluginClass | Should -Be 'Enmax.AutoCAD.AddChildItemsPlugin'
+        ($api.Params | Where-Object { $_.Name -eq 'Drawing' }).Type | Should -Be 5
+        ($api.Params | Where-Object { $_.Name -eq 'Count' }).Type   | Should -Be 7
     }
 }
 
