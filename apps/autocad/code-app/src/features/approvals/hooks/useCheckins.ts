@@ -13,7 +13,7 @@ export interface CheckinRow {
   status: number;
   statusLabel: string;
   currentRevision: string;
-  newRevision: string;
+  submissionInfo: string;
   newPdfUrls: string;
   missingSheets: string;
   spLibraryUrl: string;
@@ -28,6 +28,7 @@ const CHECKIN_STATUS_LABELS: Record<number, string> = {
   3: "Approved",
   4: "Declined",
   5: "Force-Closed",
+  6: "Requested",
 };
 
 async function resolve<T extends string>(
@@ -49,7 +50,7 @@ export async function fetchCheckins(): Promise<CheckinRow[]> {
   const res = await Enmax_autocadcheckoutsService.getAll({
     select: [
       "enmax_autocadcheckoutid", "_ownerid_value", "enmax_acdncheckedouton",
-      "enmax_acdnnewrevision", "enmax_acdnnewpdfurls", "_enmax_acdndrawing_value",
+      "enmax_acdnsubmissioninfo", "enmax_acdnnewpdfurls", "_enmax_acdndrawing_value",
       "enmax_acdnstatus", "createdon", "modifiedon",
     ],
     orderBy: ["modifiedon desc"],
@@ -100,7 +101,7 @@ export async function fetchCheckins(): Promise<CheckinRow[]> {
       status,
       statusLabel: CHECKIN_STATUS_LABELS[status] ?? String(status),
       currentRevision: (d["enmax_acdncurrentrevision"] as string) ?? "",
-      newRevision: (c["enmax_acdnnewrevision"] as string) ?? "",
+      submissionInfo: (c["enmax_acdnsubmissioninfo"] as string) ?? "",
       newPdfUrls: (c["enmax_acdnnewpdfurls"] as string) ?? "",
       missingSheets: (d["enmax_acdnmissingsheets"] as string) ?? "",
       spLibraryUrl: (d["enmax_acdnsplibraryurl"] as string) ?? "",

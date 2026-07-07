@@ -113,7 +113,12 @@ export function DrawingDetailPanel({ drawing, onClose }: DrawingDetailPanelProps
               <Text weight="semibold" size={500}>{d?.enmax_acdntitle}</Text>
               {d?.enmax_acdnsplibraryurl && (
                 <Link href={d.enmax_acdnsplibraryurl} target="_blank" rel="noopener noreferrer">
-                  Open in SharePoint <OpenRegular style={{ verticalAlign: "middle" }} />
+                  Open drop-off library <OpenRegular style={{ verticalAlign: "middle" }} />
+                </Link>
+              )}
+              {d?.enmax_acdnspdestinationurl && (
+                <Link href={d.enmax_acdnspdestinationurl} target="_blank" rel="noopener noreferrer">
+                  Open destination library <OpenRegular style={{ verticalAlign: "middle" }} />
                 </Link>
               )}
             </div>
@@ -124,8 +129,7 @@ export function DrawingDetailPanel({ drawing, onClose }: DrawingDetailPanelProps
 
             <div className={styles.metaGrid}>
               <MetaField label="State" value={DRAWING_STATE_LABELS[d?.enmax_acdnstate ?? drawing.enmax_acdnstate] ?? String(d?.enmax_acdnstate)} />
-              <MetaField label="Current Revision" value={d?.enmax_acdncurrentrevision ?? ""} />
-              <MetaField label="Revision Date" value={d?.enmax_acdnrevisiondate ? new Date(d.enmax_acdnrevisiondate).toLocaleDateString() : ""} />
+              <MetaField label="Last Check In" value={d?.enmax_acdnrevisiondate ? new Date(d.enmax_acdnrevisiondate).toLocaleDateString() : ""} />
               <MetaField label="Sheets" value={String(d?.enmax_acdnsheetcount ?? "")} />
               <MetaField label="Business" value={d?.businessDisplay ?? ""} />
               <MetaField label="Asset" value={d?.assetDisplay ?? ""} />

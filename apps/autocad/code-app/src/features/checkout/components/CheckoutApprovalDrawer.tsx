@@ -8,8 +8,6 @@ import {
   Field,
   Textarea,
   Text,
-  MessageBar,
-  MessageBarBody,
   Spinner,
   Divider,
   tokens,
@@ -19,13 +17,9 @@ import {
   Dismiss24Regular,
   CheckmarkCircle24Regular,
   DismissCircle24Regular,
-  DocumentSearch24Regular,
-  Open24Regular,
+  PersonAvailable24Regular,
 } from "@fluentui/react-icons";
-import { useApproveCheckin } from "../hooks/useApproveCheckin";
-import { parsePdfUrls } from "../api/checkoutClient";
-import type { CheckoutForPanel, DrawingForPanel } from "../api/checkoutClient";
-import { useAppConfig } from "../../../config/useAppConfig";
+import { useApproveCheckout } from "../hooks/useApproveCheckout";
 
 const useStyles = makeStyles({
   body: {
@@ -44,21 +38,6 @@ const useStyles = makeStyles({
     fontWeight: tokens.fontWeightSemibold,
     color: tokens.colorNeutralForeground2,
     paddingTop: "2px",
-  },
-  pdfList: {
-    listStyle: "none",
-    padding: 0,
-    margin: 0,
-    display: "flex",
-    flexDirection: "column",
-    gap: tokens.spacingVerticalXS,
-  },
-  pdfLink: {
-    color: tokens.colorBrandForeground1,
-    fontFamily: "monospace",
-    fontSize: tokens.fontSizeBase200,
-    overflowWrap: "break-word",
-    wordBreak: "break-all",
   },
   actions: {
     display: "flex",
@@ -82,22 +61,22 @@ const useStyles = makeStyles({
 });
 
 interface Props {
-  checkout: CheckoutForPanel;
-  drawing: DrawingForPanel;
+  checkoutId: string;
+  drawingNumber: string;
+  requestedByName: string;
 }
 
-export function ValidationDrawer({ checkout, drawing }: Props) {
+/**
+ * WS3 gated Check Out: an Approver/Admin approves or declines a pending Check Out request.
+ * Approve → the drawing is checked out to the requester; Decline (reason 10+ chars) → the
+ * request is closed and the drawing stays Available.
+ */
+export function CheckoutApprovalDrawer({ checkoutId, drawingNumber, requestedByName }: Props) {
   const styles = useStyles();
-  // Single SharePoint drop-off library, from App Config — the same URL the user
-  // uploads to in SubmitRevisionDrawer. (Per-asset-unit libraries: future phase.)
-  const { CheckInUploadLibraryUrl } = useAppConfig();
   const [open, setOpen] = useState(false);
   const [showDecline, setShowDecline] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
-  const mutation = useApproveCheckin();
-
-  const pdfUrls = parsePdfUrls(checkout.newPdfUrls);
-  const hasMissingSheets = !!drawing.missingSheets;
+  const mutation = useApproveCheckout();
 
   function handleOpen() {
     setShowDecline(false);
@@ -114,28 +93,21 @@ export function ValidationDrawer({ checkout, drawing }: Props) {
   }
 
   function handleApprove() {
-    mutation.mutate(
-      { checkoutId: checkout.id, decision: "Approved" },
-      { onSuccess: handleClose },
-    );
+    mutation.mutate({ checkoutId, decision: "Approved" }, { onSuccess: handleClose });
   }
 
   function handleDecline() {
     if (declineReason.length < 10) return;
     mutation.mutate(
-      { checkoutId: checkout.id, decision: "Declined", reason: declineReason },
+      { checkoutId, decision: "Declined", reason: declineReason },
       { onSuccess: handleClose },
     );
   }
 
   return (
     <>
-      <Button
-        appearance="primary"
-        icon={<DocumentSearch24Regular />}
-        onClick={handleOpen}
-      >
-        Review Revision
+      <Button appearance="primary" icon={<PersonAvailable24Regular />} onClick={handleOpen}>
+        Review Request
       </Button>
 
       <OverlayDrawer
@@ -148,73 +120,27 @@ export function ValidationDrawer({ checkout, drawing }: Props) {
         <DrawerHeader>
           <DrawerHeaderTitle
             action={
-              <Button
-                appearance="subtle"
-                icon={<Dismiss24Regular />}
-                onClick={handleClose}
-                aria-label="Close"
-              />
+              <Button appearance="subtle" icon={<Dismiss24Regular />} onClick={handleClose} aria-label="Close" />
             }
           >
-            Validate Revision
+            Review Check Out request
           </DrawerHeaderTitle>
         </DrawerHeader>
 
         <DrawerBody>
           <div className={styles.body}>
-            {checkout.submissionInfo && (
-              <div className={styles.field}>
-                <span className={styles.label}>Submission</span>
-                <Text style={{ whiteSpace: "pre-wrap" }}>{checkout.submissionInfo}</Text>
-              </div>
-            )}
-
             <div className={styles.field}>
-              <span className={styles.label}>PDF files</span>
-              <div>
-                {pdfUrls.length === 0 ? (
-                  <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                    No URLs captured yet
-                  </Text>
-                ) : (
-                  <ul className={styles.pdfList}>
-                    {pdfUrls.map((url) => (
-                      <li key={url}>
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={styles.pdfLink}
-                        >
-                          {url}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <span className={styles.label}>Drawing</span>
+              <Text weight="semibold" style={{ fontFamily: "monospace" }}>{drawingNumber || "—"}</Text>
+            </div>
+            <div className={styles.field}>
+              <span className={styles.label}>Requested by</span>
+              <Text>{requestedByName || "Unknown"}</Text>
             </div>
 
-            {CheckInUploadLibraryUrl && (
-              <Button
-                appearance="secondary"
-                icon={<Open24Regular />}
-                as="a"
-                href={CheckInUploadLibraryUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Open SharePoint library
-              </Button>
-            )}
-
-            {hasMissingSheets && (
-              <MessageBar intent="warning">
-                <MessageBarBody>
-                  Missing sheets: {drawing.missingSheets}. Verify all sheets are uploaded before approving.
-                </MessageBarBody>
-              </MessageBar>
-            )}
+            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+              Approving checks the drawing out to the requester and opens their drop-off upload window.
+            </Text>
 
             {mutation.isError && (
               <Text className={styles.error} size={200}>
@@ -229,7 +155,7 @@ export function ValidationDrawer({ checkout, drawing }: Props) {
                 <Button
                   appearance="primary"
                   icon={<CheckmarkCircle24Regular />}
-                  disabled={hasMissingSheets || mutation.isPending}
+                  disabled={mutation.isPending}
                   onClick={handleApprove}
                 >
                   {mutation.isPending ? <Spinner size="tiny" /> : "Approve"}
@@ -248,16 +174,12 @@ export function ValidationDrawer({ checkout, drawing }: Props) {
                 <Text weight="semibold">Decline reason</Text>
                 <Field
                   validationMessage={
-                    declineReason.length > 0 && declineReason.length < 10
-                      ? "Minimum 10 characters"
-                      : undefined
+                    declineReason.length > 0 && declineReason.length < 10 ? "Minimum 10 characters" : undefined
                   }
-                  validationState={
-                    declineReason.length > 0 && declineReason.length < 10 ? "error" : "none"
-                  }
+                  validationState={declineReason.length > 0 && declineReason.length < 10 ? "error" : "none"}
                 >
                   <Textarea
-                    placeholder="Explain why the revision is declined (min 10 chars)"
+                    placeholder="Explain why the Check Out is declined (min 10 chars)"
                     value={declineReason}
                     onChange={(_, d) => setDeclineReason(d.value)}
                     rows={3}
@@ -271,11 +193,7 @@ export function ValidationDrawer({ checkout, drawing }: Props) {
                   >
                     {mutation.isPending ? <Spinner size="tiny" /> : "Confirm decline"}
                   </Button>
-                  <Button
-                    appearance="secondary"
-                    onClick={() => setShowDecline(false)}
-                    disabled={mutation.isPending}
-                  >
+                  <Button appearance="secondary" onClick={() => setShowDecline(false)} disabled={mutation.isPending}>
                     Back
                   </Button>
                 </div>

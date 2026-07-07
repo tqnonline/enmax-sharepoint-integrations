@@ -393,9 +393,6 @@ function DrawingRow({ drawing, isOpen, checkout, missingSheets }: {
         <div className={styles.drawingRowContent}>
           <Text className={styles.monospace} weight="semibold">{drawing.number ?? drawing.id}</Text>
           <Badge appearance="tint" color={ds.color} size="small">{ds.label}</Badge>
-          {drawing.currentRevision && (
-            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>Rev {drawing.currentRevision}</Text>
-          )}
         </div>
       </AccordionHeader>
       <AccordionPanel>

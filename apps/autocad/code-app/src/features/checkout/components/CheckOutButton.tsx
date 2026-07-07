@@ -1,6 +1,7 @@
 import { Button, Spinner, Text, tokens, makeStyles } from "@fluentui/react-components";
 import { ArrowDownload24Regular } from "@fluentui/react-icons";
 import { useCheckOut } from "../hooks/useCheckOut";
+import { useAppConfig } from "../../../config/useAppConfig";
 
 const useStyles = makeStyles({
   error: {
@@ -16,7 +17,11 @@ interface Props {
 
 export function CheckOutButton({ drawingId }: Props) {
   const styles = useStyles();
+  const { RequireCheckOutApproval } = useAppConfig();
   const mutation = useCheckOut();
+  // WS3: when Check Out is gated, the action files a request for approval rather than
+  // checking the drawing out immediately.
+  const label = RequireCheckOutApproval ? "Request Check Out" : "Check Out";
 
   return (
     <div>
@@ -26,11 +31,11 @@ export function CheckOutButton({ drawingId }: Props) {
         disabled={mutation.isPending}
         onClick={() => mutation.mutate(drawingId)}
       >
-        Check Out
+        {mutation.isPending ? (RequireCheckOutApproval ? "Requesting…" : "Checking out…") : label}
       </Button>
       {mutation.isError && (
         <Text className={styles.error} size={200}>
-          {mutation.error?.message ?? "Check-out failed. Try again."}
+          {mutation.error?.message ?? "Check Out failed. Try again."}
         </Text>
       )}
     </div>

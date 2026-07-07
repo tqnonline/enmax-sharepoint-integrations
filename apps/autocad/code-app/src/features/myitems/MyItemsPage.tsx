@@ -96,6 +96,7 @@ function makeDrawingRow(c: MyCheckout): DrawingRow {
     enmax_acdnstate:           (c.status === 1 || c.status === 2) ? 2 : 4,
     enmax_acdnsheetcount:      0,
     enmax_acdnsplibraryurl:    c.drawingLibraryUrl,
+    enmax_acdnspdestinationurl: "",
     _enmax_acdnbusiness_value:   "",
     _enmax_acdnasset_value:      "",
     _enmax_acdnunit_value:       "",

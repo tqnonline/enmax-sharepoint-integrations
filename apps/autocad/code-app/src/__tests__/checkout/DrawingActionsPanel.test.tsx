@@ -187,9 +187,9 @@ test("SubmitRevisionDrawer trigger hidden when another user owns the checkout", 
   expect(screen.queryByRole("button", { name: /^check in$/i })).not.toBeInTheDocument();
 });
 
-// Test 4 — SubmitRevisionDrawer requires filesConfirmed checkbox before submit
+// Test 4 — WS3 Check In requires submission info AND the filesConfirmed checkbox before submit.
 // RequireCheckInApproval=false → trigger="Check In", confirm="Confirm Check In"
-test("SubmitRevisionDrawer submit is disabled until filesConfirmed checkbox is checked", async () => {
+test("SubmitRevisionDrawer submit is disabled until submission info and files-confirmed are both set", async () => {
   const user = userEvent.setup();
   renderWithProviders(
     <DrawingActionsPanel
@@ -198,7 +198,7 @@ test("SubmitRevisionDrawer submit is disabled until filesConfirmed checkbox is c
     />,
   );
 
-  await user.click(screen.getByRole("button", { name: /check in/i }));
+  await user.click(screen.getByRole("button", { name: /^check in$/i }));
 
   await waitFor(() =>
     expect(screen.getByRole("button", { name: /confirm check in/i })).toBeInTheDocument(),
@@ -208,13 +208,19 @@ test("SubmitRevisionDrawer submit is disabled until filesConfirmed checkbox is c
   const submitBtn = screen.getByRole("button", { name: /confirm check in/i });
   expect(submitBtn).toBeDisabled();
 
+  // Filling submission info alone is not enough — the upload confirmation is still required.
+  fireEvent.change(screen.getByLabelText(/submission information/i), {
+    target: { value: "Project Falcon, WO#12345" },
+  });
+  await waitFor(() => expect(submitBtn).toBeDisabled());
+
   const checkbox = screen.getByRole("checkbox");
   await user.click(checkbox);
 
   await waitFor(() => expect(submitBtn).not.toBeDisabled(), { timeout: 2000 });
 });
 
-// Test 4b — RequireCheckInApproval=true → trigger="Submit Revision", confirm="Submit for Validation"
+// Test 4b — RequireCheckInApproval=true → trigger="Check In", confirm="Submit for Validation"
 test("SubmitRevisionDrawer shows Submit for Validation when RequireCheckInApproval is true", async () => {
   mockConfig.RequireCheckInApproval = true;
   const user = userEvent.setup();
@@ -225,7 +231,7 @@ test("SubmitRevisionDrawer shows Submit for Validation when RequireCheckInApprov
     />,
   );
 
-  await user.click(screen.getByRole("button", { name: /submit revision/i }));
+  await user.click(screen.getByRole("button", { name: /^check in$/i }));
 
   await waitFor(() =>
     expect(screen.getByRole("button", { name: /submit for validation/i })).toBeInTheDocument(),
@@ -233,36 +239,20 @@ test("SubmitRevisionDrawer shows Submit for Validation when RequireCheckInApprov
   );
 });
 
-// Test 5 — SubmitRevisionDrawer suggests next revision letter (A→B)
-test("SubmitRevisionDrawer defaults to next letter revision when current revision is a letter", async () => {
+// Test 5 — WS3: the revision number is gone; Check In collects Submission information instead.
+test("SubmitRevisionDrawer shows a submission information field and no revision field", async () => {
   const user = userEvent.setup();
   renderWithProviders(
     <DrawingActionsPanel
-      drawing={makeDrawing(DrawingState.CheckedOut, { currentRevision: "A" })}
+      drawing={makeDrawing(DrawingState.CheckedOut)}
       openCheckout={makeCheckout()}
     />,
   );
 
-  await user.click(screen.getByRole("button", { name: /check in/i }));
+  await user.click(screen.getByRole("button", { name: /^check in$/i }));
 
-  await waitFor(() => expect(screen.getByLabelText(/new revision identifier/i)).toBeInTheDocument());
-  expect((screen.getByLabelText(/new revision identifier/i) as HTMLInputElement).value).toBe("B");
-});
-
-// Test 6 — SubmitRevisionDrawer suggests next revision number (01→02)
-test("SubmitRevisionDrawer defaults to next padded number when current revision is numeric", async () => {
-  const user = userEvent.setup();
-  renderWithProviders(
-    <DrawingActionsPanel
-      drawing={makeDrawing(DrawingState.CheckedOut, { currentRevision: "01" })}
-      openCheckout={makeCheckout()}
-    />,
-  );
-
-  await user.click(screen.getByRole("button", { name: /check in/i }));
-
-  await waitFor(() => expect(screen.getByLabelText(/new revision identifier/i)).toBeInTheDocument());
-  expect((screen.getByLabelText(/new revision identifier/i) as HTMLInputElement).value).toBe("02");
+  await waitFor(() => expect(screen.getByLabelText(/submission information/i)).toBeInTheDocument());
+  expect(screen.queryByLabelText(/new revision identifier/i)).not.toBeInTheDocument();
 });
 
 // Test 7 — ValidationDrawer visible to Approver/Admin when AwaitingValidation
@@ -320,7 +310,7 @@ test("ValidationDrawer Approve button is disabled when drawing has missing sheet
 });
 
 // Test 9 — ForceCheckInDialog visible to Admin/Approver when CheckedOut by another user
-// New matrix: Admin or Approver (not admin-only) sees Force Check-In
+// New matrix: Admin or Approver (not admin-only) sees Force Check In
 test("ForceCheckInDialog trigger visible to Admin when drawing is CheckedOut by another user", () => {
   mockRole.value = "Admin";
   renderWithProviders(
@@ -329,7 +319,7 @@ test("ForceCheckInDialog trigger visible to Admin when drawing is CheckedOut by 
       openCheckout={makeCheckout({ checkedOutBy: OTHER_USER_ID })}
     />,
   );
-  expect(screen.getByRole("button", { name: /force check-in/i })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /force check in/i })).toBeInTheDocument();
 });
 
 test("ForceCheckInDialog trigger not visible to non-Admin non-Approver", () => {
@@ -340,11 +330,10 @@ test("ForceCheckInDialog trigger not visible to non-Admin non-Approver", () => {
       openCheckout={makeCheckout({ checkedOutBy: OTHER_USER_ID })}
     />,
   );
-  expect(screen.queryByRole("button", { name: /force check-in/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /force check in/i })).not.toBeInTheDocument();
 });
 
-// Test 10 — ForceCheckInDialog requires revision + reason min 10 chars
-// New: confirm button also requires newRevision to be non-empty
+// Test 10 — WS3: Force Check In requires only a reason (min 10 chars); the revision number is gone.
 test("ForceCheckInDialog confirm button disabled when reason is shorter than 10 characters", async () => {
   mockRole.value = "Admin";
   const user = userEvent.setup();
@@ -355,15 +344,15 @@ test("ForceCheckInDialog confirm button disabled when reason is shorter than 10 
     />,
   );
 
-  await user.click(screen.getByRole("button", { name: /force check-in/i }));
+  await user.click(screen.getByRole("button", { name: /force check in/i }));
 
   await waitFor(() =>
-    expect(screen.getByRole("button", { name: /confirm force check-in/i })).toBeInTheDocument(),
+    expect(screen.getByRole("button", { name: /confirm force check in/i })).toBeInTheDocument(),
     { timeout: 3000 },
   );
 
-  const confirmBtn = screen.getByRole("button", { name: /confirm force check-in/i });
-  // Initially disabled (reason empty, even if revision pre-filled)
+  const confirmBtn = screen.getByRole("button", { name: /confirm force check in/i });
+  // Initially disabled (reason empty)
   expect(confirmBtn).toBeDisabled();
 
   const textarea = screen.getByPlaceholderText(/min 10 chars/i);
@@ -389,7 +378,7 @@ test("DrawingActionsPanel shows state badge (ReadOnlyStateLabel) when user has n
   // No action buttons
   expect(screen.queryByRole("button", { name: /check out/i })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /check in/i })).not.toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: /force check-in/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /force check in/i })).not.toBeInTheDocument();
 });
 
 // Test 12 — New: Finalize button visible when drawing is Available

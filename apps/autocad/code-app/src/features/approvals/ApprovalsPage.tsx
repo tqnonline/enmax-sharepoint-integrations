@@ -24,10 +24,12 @@ import { BulkApproveDialog } from "./BulkApproveDialog";
 import { ReservationDrawingsPanel } from "../checkout/components/ReservationDrawingsPanel";
 import { useCheckins, CHECKIN_STATUS_AWAITING } from "./hooks/useCheckins";
 import { CheckinQueueGrid } from "./CheckinQueueGrid";
+import { CheckoutRequestQueueGrid } from "./CheckoutRequestQueueGrid";
+import { CheckoutStatus } from "../checkout/api/checkoutClient";
 
 const TOASTER_ID = "approvals-toaster";
 
-type TabValue = "pending" | "approved" | "rejected" | "checkins";
+type TabValue = "pending" | "approved" | "rejected" | "checkouts" | "checkins";
 const TAB_STATUS: Record<"pending" | "approved" | "rejected", 1 | 2 | 3> = { pending: 1, approved: 2, rejected: 3 };
 
 const FADE_UP = {
@@ -39,7 +41,8 @@ const EMPTY_MESSAGES: Record<TabValue, string> = {
   pending:  "No reservations awaiting approval.",
   approved: "No approved reservations.",
   rejected: "No rejected reservations.",
-  checkins: "No check-ins awaiting validation.",
+  checkouts: "No Check Out requests awaiting approval.",
+  checkins: "No Check Ins awaiting validation.",
 };
 
 const useStyles = makeStyles({
@@ -74,17 +77,25 @@ export function ApprovalsPage() {
   const [searchParams] = useSearchParams();
   const paramTab = searchParams.get("tab");
   const initialTab: TabValue =
-    paramTab === "approved" || paramTab === "rejected" || paramTab === "checkins" ? paramTab : "pending";
+    paramTab === "approved" || paramTab === "rejected" || paramTab === "checkins" || paramTab === "checkouts"
+      ? paramTab
+      : "pending";
   const [activeTab, setActiveTab]               = useState<TabValue>(initialTab);
   const [selectedReservation, setSelectedReservation] = useState<PendingReservation | null>(null);
   const [bulkApproveList, setBulkApproveList]   = useState<PendingReservation[]>([]);
   const [bulkDialogOpen, setBulkDialogOpen]     = useState(false);
 
-  const isCheckins     = activeTab === "checkins";
-  const currentQuery   = usePendingReservations(isCheckins ? 1 : TAB_STATUS[activeTab]);
-  const checkinsQuery  = useCheckins(isCheckins);
+  const isCheckins         = activeTab === "checkins";
+  const isCheckoutRequests = activeTab === "checkouts";
+  const isReservationTab   = !isCheckins && !isCheckoutRequests;
+  // The checkout table backs both the Check Ins queue and the Check Out request queue.
+  const checkoutQuery  = useCheckins(isCheckins || isCheckoutRequests);
+  const currentQuery   = usePendingReservations(isReservationTab ? TAB_STATUS[activeTab as "pending" | "approved" | "rejected"] : 1);
   const approveMutation = useApproveReservation();
   const { dispatchToast } = useToastController(TOASTER_ID);
+
+  const checkinRows       = checkoutQuery.data?.filter((c) => c.status !== CheckoutStatus.Requested) ?? [];
+  const checkoutRequests  = checkoutQuery.data?.filter((c) => c.status === CheckoutStatus.Requested) ?? [];
 
   function handleTabChange(_: unknown, data: { value: unknown }) {
     setActiveTab(data.value as TabValue);
@@ -130,8 +141,9 @@ export function ApprovalsPage() {
 
   const isPending     = activeTab === "pending";
   const loadedCount   = currentQuery.data?.length ?? 0;
-  const showBadge     = !currentQuery.isPending && loadedCount > 0;
-  const awaitingCheckins = checkinsQuery.data?.filter((c) => c.status === CHECKIN_STATUS_AWAITING).length ?? 0;
+  const showBadge     = isReservationTab && !currentQuery.isPending && loadedCount > 0;
+  const awaitingCheckins = checkinRows.filter((c) => c.status === CHECKIN_STATUS_AWAITING).length;
+  const pendingCheckoutRequests = checkoutRequests.length;
 
   const tabCountLabel = `${loadedCount} ${activeTab === "pending" ? "pending" : activeTab === "approved" ? "approved" : "rejected"}`;
 
@@ -168,35 +180,53 @@ export function ApprovalsPage() {
             <CounterBadge count={loadedCount} color="informative" size="small" style={{ marginLeft: "6px" }} />
           )}
         </Tab>
+        <Tab value="checkouts">
+          Check Out requests
+          {isCheckoutRequests && !checkoutQuery.isPending && pendingCheckoutRequests > 0 && (
+            <CounterBadge count={pendingCheckoutRequests} color="danger" size="small" style={{ marginLeft: "6px" }} />
+          )}
+        </Tab>
         <Tab value="checkins">
-          Check-ins
-          {isCheckins && !checkinsQuery.isPending && awaitingCheckins > 0 && (
+          Check Ins
+          {isCheckins && !checkoutQuery.isPending && awaitingCheckins > 0 && (
             <CounterBadge count={awaitingCheckins} color="danger" size="small" style={{ marginLeft: "6px" }} />
           )}
         </Tab>
       </TabList>
 
-      {isCheckins && (
+      {isCheckoutRequests && (
         <div className={styles.content}>
-          {checkinsQuery.isPending && <Spinner label="Loading…" />}
-          {checkinsQuery.isError && (
+          {checkoutQuery.isPending && <Spinner label="Loading…" />}
+          {checkoutQuery.isError && (
             <MessageBar intent="error">
-              <MessageBarBody>Failed to load check-ins. Please refresh.</MessageBarBody>
+              <MessageBarBody>Failed to load Check Out requests. Please refresh.</MessageBarBody>
             </MessageBar>
           )}
-          {checkinsQuery.data && <CheckinQueueGrid checkins={checkinsQuery.data} />}
+          {checkoutQuery.data && <CheckoutRequestQueueGrid requests={checkoutRequests} />}
         </div>
       )}
 
-      {!isCheckins && currentQuery.isPending && <Spinner label="Loading…" />}
+      {isCheckins && (
+        <div className={styles.content}>
+          {checkoutQuery.isPending && <Spinner label="Loading…" />}
+          {checkoutQuery.isError && (
+            <MessageBar intent="error">
+              <MessageBarBody>Failed to load Check Ins. Please refresh.</MessageBarBody>
+            </MessageBar>
+          )}
+          {checkoutQuery.data && <CheckinQueueGrid checkins={checkinRows} />}
+        </div>
+      )}
 
-      {!isCheckins && currentQuery.isError && (
+      {isReservationTab && currentQuery.isPending && <Spinner label="Loading…" />}
+
+      {isReservationTab && currentQuery.isError && (
         <MessageBar intent="error">
           <MessageBarBody>Failed to load reservations. Please refresh.</MessageBarBody>
         </MessageBar>
       )}
 
-      {!isCheckins && currentQuery.data && (
+      {isReservationTab && currentQuery.data && (
         <div className={styles.content}>
           <ReservationQueueGrid
             reservations={currentQuery.data}

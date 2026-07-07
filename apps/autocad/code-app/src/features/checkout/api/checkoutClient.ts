@@ -46,13 +46,27 @@ export const CheckoutStatus = {
   ClosedApproved: 3,
   ClosedDeclined: 4,
   ClosedForced: 5,
+  // WS3 gated Check Out: a request awaiting Approver/Admin approval. The drawing stays
+  // Available until enmax_acdnApproveCheckout moves it to CheckedOut.
+  Requested: 6,
 } as const;
+
+export const CHECKOUT_STATUS_LABELS: Record<number, string> = {
+  1: "Open",
+  2: "Awaiting Validation",
+  3: "Approved",
+  4: "Declined",
+  5: "Force-Closed",
+  6: "Requested",
+};
 
 export interface DrawingForPanel {
   id: string;
   state: DrawingStateValue;
   number?: string;
   spLibraryUrl?: string;
+  /** WS3: read-only link to the final destination library copy (populated by the WS5 indexer). */
+  spDestinationUrl?: string;
   currentRevision?: string;
   missingSheets?: string;
   /** systemuser GUID of the drawing owner (reservation requester). Used to gate self-release. */
@@ -61,9 +75,12 @@ export interface DrawingForPanel {
 
 export interface CheckoutForPanel {
   id: string;
+  /** enmax_acdn_checkoutstatus value (Open=1, AwaitingValidation=2, Requested=6, ...). */
+  status?: number;
   checkedOutBy?: string;
   checkedOutOn?: string;
-  newRevision?: string;
+  /** WS3: mandatory Submission Information (Project, WO#, ...) captured at Check In. */
+  submissionInfo?: string;
   newPdfUrls?: string;
 }
 
@@ -88,8 +105,8 @@ export async function checkOut(drawingId: string): Promise<{ checkoutId: string 
 export interface SubmitRevisionInput {
   checkoutId: string;
   drawingId: string;
-  newRevision: string;
-  reason?: string;
+  /** WS3: mandatory Submission Information (Project, WO#, ...). Replaces the revision number. */
+  submissionInfo: string;
 }
 
 export async function submitRevision(input: SubmitRevisionInput): Promise<void> {
@@ -101,8 +118,7 @@ export async function submitRevision(input: SubmitRevisionInput): Promise<void> 
         tableName: "enmax_autocadcheckouts",
         body: {
           checkoutId: input.checkoutId,
-          NewRevision: input.newRevision,
-          Reason: input.reason ?? "",
+          SubmissionInfo: input.submissionInfo,
         },
       },
     },
@@ -140,14 +156,53 @@ export async function approveCheckin(input: ApproveCheckinInput): Promise<void> 
   }
 }
 
+export interface ApproveCheckoutInput {
+  checkoutId: string;
+  decision: "Approved" | "Declined";
+  reason?: string;
+}
+
+export interface ApproveCheckoutResult {
+  checkoutId: string;
+  newStatus: number;
+  drawingState: number;
+}
+
+export async function approveCheckout(input: ApproveCheckoutInput): Promise<ApproveCheckoutResult> {
+  const result = await client.executeAsync<Record<string, unknown>, Record<string, unknown>>({
+    dataverseRequest: {
+      action: "customapi",
+      parameters: {
+        operationName: "enmax_acdnApproveCheckout",
+        tableName: "enmax_autocadcheckouts",
+        body: {
+          checkoutId: input.checkoutId,
+          Decision: input.decision === "Approved" ? 1 : 2,
+          Reason: input.reason ?? "",
+        },
+      },
+    },
+  });
+  if (!result.success) {
+    const err = result.error as { message?: string } | undefined;
+    throw new Error(err?.message ?? "Approve checkout failed");
+  }
+  return {
+    checkoutId: (result.data?.["CheckoutId"] as string) ?? input.checkoutId,
+    newStatus: Number(result.data?.["NewStatus"] ?? 0),
+    drawingState: Number(result.data?.["DrawingState"] ?? 0),
+  };
+}
+
 export interface ForceCheckinInput {
   checkoutId: string;
   drawingId: string;
-  newRevision: string;
   reason: string;
 }
 
 export async function forceCheckin(input: ForceCheckinInput): Promise<void> {
+  // WS3: the revision number is gone — the server stamps an internal cycle token when
+  // NewRevision is omitted, so the client no longer sends one.
   const result = await client.executeAsync<Record<string, unknown>, unknown>({
     dataverseRequest: {
       action: "customapi",
@@ -156,7 +211,6 @@ export async function forceCheckin(input: ForceCheckinInput): Promise<void> {
         tableName: "enmax_autocadcheckouts",
         body: {
           checkoutId: input.checkoutId,
-          NewRevision: input.newRevision,
           Reason: input.reason,
         },
       },

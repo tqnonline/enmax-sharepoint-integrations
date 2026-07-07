@@ -9,9 +9,9 @@ vi.mock("../../features/checkout/hooks/useSubmitRevision", () => ({
 }));
 
 test("check-in drawer shows the configured upload library link, opening in a new tab", () => {
-  renderWithProviders(<SubmitRevisionDrawer checkoutId="c1" drawingId="d1" currentRevision="A" />);
+  renderWithProviders(<SubmitRevisionDrawer checkoutId="c1" drawingId="d1" />);
 
-  fireEvent.click(screen.getByRole("button", { name: /check in/i }));
+  fireEvent.click(screen.getByRole("button", { name: /^check in$/i }));
 
   const link = screen.getByRole("link", { name: /upload drawings to sharepoint/i });
   expect(link).toHaveAttribute("href", "https://example.com/library");

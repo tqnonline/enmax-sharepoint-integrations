@@ -5,7 +5,7 @@ import {
   DrawerHeader,
   DrawerHeaderTitle,
   Button,
-  Input,
+  Textarea,
   Checkbox,
   Field,
   Text,
@@ -15,7 +15,6 @@ import {
 } from "@fluentui/react-components";
 import { Dismiss24Regular, DocumentEdit24Regular, ArrowUpload24Regular } from "@fluentui/react-icons";
 import { useSubmitRevision } from "../hooks/useSubmitRevision";
-import { nextRevision } from "../api/checkoutClient";
 import { useAppConfig } from "../../../config/useAppConfig";
 
 const useStyles = makeStyles({
@@ -45,33 +44,32 @@ const useStyles = makeStyles({
 interface Props {
   checkoutId: string;
   drawingId: string;
-  currentRevision?: string;
 }
 
-export function SubmitRevisionDrawer({ checkoutId, drawingId, currentRevision }: Props) {
+export function SubmitRevisionDrawer({ checkoutId, drawingId }: Props) {
   const styles = useStyles();
   const { RequireCheckInApproval, CheckInUploadLibraryUrl } = useAppConfig();
   const [open, setOpen] = useState(false);
-  const [newRevision, setNewRevision] = useState(() => nextRevision(currentRevision));
+  const [submissionInfo, setSubmissionInfo] = useState("");
   const [filesConfirmed, setFilesConfirmed] = useState(false);
   const mutation = useSubmitRevision();
 
   function handleOpen() {
-    setNewRevision(nextRevision(currentRevision));
+    setSubmissionInfo("");
     setFilesConfirmed(false);
     mutation.reset();
     setOpen(true);
   }
 
   function handleSubmit() {
-    if (!newRevision.trim() || !filesConfirmed) return;
+    if (!submissionInfo.trim() || !filesConfirmed) return;
     mutation.mutate(
-      { checkoutId, drawingId, newRevision: newRevision.trim() },
+      { checkoutId, drawingId, submissionInfo: submissionInfo.trim() },
       { onSuccess: () => setOpen(false) },
     );
   }
 
-  const canSubmit = newRevision.trim().length > 0 && filesConfirmed && !mutation.isPending;
+  const canSubmit = submissionInfo.trim().length > 0 && filesConfirmed && !mutation.isPending;
 
   return (
     <>
@@ -80,7 +78,7 @@ export function SubmitRevisionDrawer({ checkoutId, drawingId, currentRevision }:
         icon={<DocumentEdit24Regular />}
         onClick={handleOpen}
       >
-        {RequireCheckInApproval ? "Submit Revision" : "Check In"}
+        Check In
       </Button>
 
       <OverlayDrawer
@@ -101,18 +99,24 @@ export function SubmitRevisionDrawer({ checkoutId, drawingId, currentRevision }:
               />
             }
           >
-            {RequireCheckInApproval ? "Submit Revision" : "Check In"}
+            Check In
           </DrawerHeaderTitle>
         </DrawerHeader>
 
         <DrawerBody>
           <div className={styles.body}>
-            <Field label="New revision identifier" required>
-              <Input
-                value={newRevision}
-                onChange={(_, d) => setNewRevision(d.value)}
-                placeholder="e.g. B or 02"
-                aria-label="New revision identifier"
+            <Field
+              label="Submission information"
+              hint="Project, WO#, and any context an approver needs. Required."
+              required
+            >
+              <Textarea
+                value={submissionInfo}
+                onChange={(_, d) => setSubmissionInfo(d.value)}
+                placeholder="e.g. Project Falcon, WO#12345 — issued-for-construction update"
+                aria-label="Submission information"
+                rows={4}
+                resize="vertical"
               />
             </Field>
 

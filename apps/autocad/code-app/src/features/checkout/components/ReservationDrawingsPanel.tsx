@@ -118,10 +118,14 @@ export function ReservationDrawingsPanel({ reservation, onClose }: Props) {
       ),
     }),
     createTableColumn<ReservationDrawingRow>({
-      columnId: "revision",
-      renderHeaderCell: () => "Rev",
-      renderCell: ({ drawing }) => (
-        <TableCellLayout>{drawing.currentRevision ?? "—"}</TableCellLayout>
+      columnId: "submission",
+      renderHeaderCell: () => "Submission",
+      renderCell: ({ checkout }) => (
+        <TableCellLayout truncate>
+          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }} title={checkout?.submissionInfo ?? ""}>
+            {checkout?.submissionInfo || "—"}
+          </Text>
+        </TableCellLayout>
       ),
     }),
     createTableColumn<ReservationDrawingRow>({

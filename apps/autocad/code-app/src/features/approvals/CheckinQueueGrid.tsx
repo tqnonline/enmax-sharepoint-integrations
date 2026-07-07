@@ -26,6 +26,7 @@ const STATUS_COLOR: Record<number, BadgeProps["color"]> = {
   3: "success",     // Approved
   4: "danger",      // Declined
   5: "subtle",      // Force-Closed
+  6: "brand",       // Requested
 };
 
 const BASE_COLUMNS: ColumnDef<CheckinRow>[] = [
@@ -37,7 +38,14 @@ const BASE_COLUMNS: ColumnDef<CheckinRow>[] = [
     id: "submittedByName", header: "Submitted by", accessor: (r) => r.submittedByName, sortable: true,
     cell: (r) => <Persona name={r.submittedByName || "Unknown"} size="small" />,
   },
-  { id: "newRevision", header: "New rev", accessor: (r) => r.newRevision, sortable: true, width: 100 },
+  {
+    id: "submissionInfo", header: "Submission", accessor: (r) => r.submissionInfo, sortable: false, width: 220,
+    cell: (r) => (
+      <Text title={r.submissionInfo} style={{ display: "block", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {r.submissionInfo || "—"}
+      </Text>
+    ),
+  },
   {
     id: "submittedOn", header: "Submitted", accessor: (r) => r.submittedOn, sortable: true, width: 150,
     cell: (r) => <>{fmtDate(r.submittedOn)}</>,
@@ -85,7 +93,7 @@ export function CheckinQueueGrid({ checkins }: Props) {
         cell: (r) =>
           r.status === CHECKIN_STATUS_AWAITING ? (
             <ValidationDrawer
-              checkout={{ id: r.checkoutId, checkedOutBy: r.submittedById, checkedOutOn: r.submittedOn, newRevision: r.newRevision, newPdfUrls: r.newPdfUrls }}
+              checkout={{ id: r.checkoutId, checkedOutBy: r.submittedById, checkedOutOn: r.submittedOn, submissionInfo: r.submissionInfo, newPdfUrls: r.newPdfUrls }}
               drawing={{ id: r.drawingId, state: DrawingState.AwaitingValidation, number: r.drawingNumber, currentRevision: r.currentRevision, missingSheets: r.missingSheets, spLibraryUrl: r.spLibraryUrl }}
             />
           ) : CheckInUploadLibraryUrl ? (
@@ -157,7 +165,7 @@ export function CheckinQueueGrid({ checkins }: Props) {
 
   return (
     <div style={{ flex: "1 0 auto", minHeight: "500px" }}>
-      <div className={styles.filters} role="search" aria-label="Check-in filters">
+      <div className={styles.filters} role="search" aria-label="Check In filters">
         <Field label="From date">
           <Input type="date" value={from} onChange={(_, d) => setFrom(d.value)} aria-label="From date" />
         </Field>
@@ -212,8 +220,8 @@ export function CheckinQueueGrid({ checkins }: Props) {
         enableQuickSearch={false}
         initialPageSize={pageSize}
         defaultSort={{ column: "submittedOn", direction: "desc" }}
-        emptyMessage="No check-ins in selected range."
-        errorMessage="Failed to load check-ins."
+        emptyMessage="No Check Ins in selected range."
+        errorMessage="Failed to load Check Ins."
       />
     </div>
   );

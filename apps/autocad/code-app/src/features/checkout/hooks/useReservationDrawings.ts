@@ -29,7 +29,7 @@ async function fetchReservationDrawings(reservationId: string): Promise<Reservat
     select: [
       "enmax_autocadcheckoutid", "_enmax_acdndrawing_value",
       "_enmax_acdncheckedoutby_value", "enmax_acdnstatus",
-      "enmax_acdnnewrevision", "enmax_acdnnewpdfurls", "createdon",
+      "enmax_acdnsubmissioninfo", "enmax_acdnnewpdfurls", "createdon",
     ],
   });
 
@@ -53,9 +53,10 @@ async function fetchReservationDrawings(reservationId: string): Promise<Reservat
       checkout: c
         ? {
             id: c.enmax_autocadcheckoutid,
+            status: (c as unknown as Record<string, unknown>)["enmax_acdnstatus"] as number | undefined,
             checkedOutBy: c._enmax_acdncheckedoutby_value,
             checkedOutOn: c.createdon,
-            newRevision: c.enmax_acdnnewrevision,
+            submissionInfo: c.enmax_acdnsubmissioninfo,
             newPdfUrls: c.enmax_acdnnewpdfurls,
           }
         : undefined,

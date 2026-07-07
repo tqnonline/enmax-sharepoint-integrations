@@ -23,7 +23,7 @@ async function fetchMyCheckedOutDrawings(userId: string): Promise<CheckedOutDraw
       "_enmax_acdndrawing_value",
       "_enmax_acdncheckedoutby_value",
       "enmax_acdnstatus",
-      "enmax_acdnnewrevision",
+      "enmax_acdnsubmissioninfo",
       "enmax_acdnnewpdfurls",
     ],
   });
@@ -67,8 +67,9 @@ async function fetchMyCheckedOutDrawings(userId: string): Promise<CheckedOutDraw
       },
       checkout: {
         id: c.enmax_autocadcheckoutid,
+        status: (c as unknown as Record<string, unknown>)["enmax_acdnstatus"] as number | undefined,
         checkedOutBy: c._enmax_acdncheckedoutby_value,
-        newRevision: c.enmax_acdnnewrevision,
+        submissionInfo: c.enmax_acdnsubmissioninfo,
         newPdfUrls: c.enmax_acdnnewpdfurls,
       },
       reservationId: d?._enmax_acdnreservation_value ?? undefined,

@@ -13,6 +13,7 @@ export interface Enmax_autocadcheckoutsBase {
   enmax_acdnnewrevision?: string;
   enmax_acdnnewpdfurls?: string;
   enmax_acdnvalidationreason?: string;
+  enmax_acdnsubmissioninfo?: string;
   ownerid: string;
   owneridtype: string;
   statecode: number;

@@ -2,8 +2,9 @@ import { Badge, Text, tokens, makeStyles } from "@fluentui/react-components";
 import { useState } from "react";
 import { useUserRole } from "../../../auth/useUserRole";
 import { useCurrentUser } from "../../../auth/useCurrentUser";
+import { useAppConfig } from "../../../config/useAppConfig";
 import { useCheckOut } from "../hooks/useCheckOut";
-import { DrawingState, DRAWING_STATE_LABELS, DRAWING_STATE_BADGE_COLOR } from "../api/checkoutClient";
+import { DrawingState, DRAWING_STATE_LABELS, DRAWING_STATE_BADGE_COLOR, CheckoutStatus } from "../api/checkoutClient";
 import type { DrawingForPanel, CheckoutForPanel } from "../api/checkoutClient";
 import { CheckOutButton } from "./CheckOutButton";
 import { SubmitRevisionDrawer } from "./SubmitRevisionDrawer";
@@ -50,11 +51,6 @@ function ReadOnlyStateLabel({ drawing, openCheckout }: ReadOnlyProps) {
           checked out by someone else
         </Text>
       )}
-      {drawing.currentRevision && (
-        <Text size={200} className={styles.meta}>
-          Rev {drawing.currentRevision}
-        </Text>
-      )}
     </div>
   );
 }
@@ -69,6 +65,7 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
   const styles = useStyles();
   const { role } = useUserRole();
   const { data: currentUser } = useCurrentUser();
+  const { RequireCheckOutApproval } = useAppConfig();
   const isAdmin    = role === "Admin";
   const isApprover = role === "Approver";
   const isOwner      = !!drawing.ownerId && drawing.ownerId === currentUser?.id;
@@ -92,12 +89,32 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
     return <ReadOnlyStateLabel drawing={drawing} openCheckout={openCheckout} />;
   }
 
+  // WS3 gated Check Out: while a request is pending, the drawing is still Available but must
+  // not offer another Check Out. Show a read-only "requested" badge instead.
+  if (openCheckout?.status === CheckoutStatus.Requested) {
+    const mine = openCheckout.checkedOutBy === currentUser?.id;
+    return (
+      <div className={styles.readOnly}>
+        <Badge appearance="filled" color="informative" shape="rounded">
+          Check Out requested
+        </Badge>
+        <Text size={200} className={styles.meta}>
+          {mine ? "Your Check Out is pending approval" : "Pending approver decision"}
+        </Text>
+      </div>
+    );
+  }
+
   if (drawing.state === DrawingState.Available) {
     if (variant === "split") {
       return (
         <>
           <SplitButton
-            primaryLabel={checkOut.isPending ? "Checking out…" : "Check Out"}
+            primaryLabel={
+              checkOut.isPending
+                ? (RequireCheckOutApproval ? "Requesting…" : "Checking out…")
+                : (RequireCheckOutApproval ? "Request Check Out" : "Check Out")
+            }
             primaryDisabled={checkOut.isPending}
             primaryLoading={checkOut.isPending}
             onPrimary={() => checkOut.mutate(drawing.id)}
@@ -108,7 +125,7 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
             ]}
           />
           {checkOut.isError && (
-            <Text size={200} style={{ color: tokens.colorPaletteRedForeground1, display: "block", marginTop: tokens.spacingVerticalXS }}>Check out failed. Try again.</Text>
+            <Text size={200} style={{ color: tokens.colorPaletteRedForeground1, display: "block", marginTop: tokens.spacingVerticalXS }}>Check Out failed. Try again.</Text>
           )}
           <FinalizeDialog drawingId={drawing.id} hideTrigger open={openDialog === "finalize"} onOpenChange={o => setOpenDialog(o ? "finalize" : null)} />
           <MarkObsoleteDialog drawingId={drawing.id} hideTrigger open={openDialog === "obsolete"} onOpenChange={o => setOpenDialog(o ? "obsolete" : null)} />
@@ -132,20 +149,18 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
       <SubmitRevisionDrawer
         checkoutId={openCheckout.id}
         drawingId={drawing.id}
-        currentRevision={drawing.currentRevision}
       />
     );
   }
 
   if (drawing.state === DrawingState.CheckedOut && openCheckout && (isAdmin || isApprover)) {
     // A checked-out drawing cannot be released/voided (it is "used"); the only admin
-    // action here is Force Check-In.
+    // action here is Force Check In.
     return (
       <div className={styles.actionRow}>
         <ForceCheckInDialog
           checkoutId={openCheckout.id}
           drawingId={drawing.id}
-          currentRevision={drawing.currentRevision}
         />
       </div>
     );

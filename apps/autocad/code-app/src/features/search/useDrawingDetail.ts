@@ -14,7 +14,7 @@ export function useDrawingDetail(id?: string) {
         select: [
           "enmax_autocaddrawingid", "enmax_acdnnumber", "enmax_acdntitle",
           "enmax_acdncurrentrevision", "enmax_acdnrevisiondate", "enmax_acdnstate",
-          "enmax_acdnsheetcount", "enmax_acdnsplibraryurl",
+          "enmax_acdnsheetcount", "enmax_acdnsplibraryurl", "enmax_acdnspdestinationurl",
           "_enmax_acdnbusiness_value", "_enmax_acdnasset_value", "_enmax_acdnunit_value",
           "_enmax_acdndomain_value", "_enmax_acdnsystem_value", "_enmax_acdnkind_value",
           "_enmax_acdnrecordtype_value", "_enmax_acdnrecordphase_value",
@@ -35,6 +35,7 @@ export function useDrawingDetail(id?: string) {
         enmax_acdnstate:             (r["enmax_acdnstate"] as number | undefined) ?? 1,
         enmax_acdnsheetcount:        (r["enmax_acdnsheetcount"] as number | undefined) ?? 0,
         enmax_acdnsplibraryurl:      (r["enmax_acdnsplibraryurl"] as string | undefined) ?? "",
+        enmax_acdnspdestinationurl:  (r["enmax_acdnspdestinationurl"] as string | undefined) ?? "",
         _enmax_acdnbusiness_value:   (r["_enmax_acdnbusiness_value"] as string | undefined) ?? "",
         _enmax_acdnasset_value:      (r["_enmax_acdnasset_value"] as string | undefined) ?? "",
         _enmax_acdnunit_value:       (r["_enmax_acdnunit_value"] as string | undefined) ?? "",
