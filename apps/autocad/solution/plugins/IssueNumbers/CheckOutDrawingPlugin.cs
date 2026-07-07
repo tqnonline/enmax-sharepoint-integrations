@@ -7,13 +7,16 @@ using System.ServiceModel;
 namespace Enmax.AutoCAD
 {
     /// <summary>
-    /// Dataverse plug-in for atomically checking out a drawing.
+    /// Dataverse plug-in for checking out a drawing.
     /// Custom API: enmax_acdnCheckOutDrawing (bound to enmax_autocaddrawing)
     ///
-    /// Transitions Drawing: Available(1) → CheckedOut(2).
-    /// Creates a new Open Checkout row.
-    /// Uses ConcurrencyBehavior.IfRowVersionMatches to prevent two callers
-    /// from checking out the same drawing simultaneously.
+    /// AppConfig RequireCheckOutApproval (WS3, defaults TRUE when absent — a governance control
+    /// must not silently disable itself):
+    ///  - true  (gated): creates a Requested(6) checkout and leaves the drawing Available(1). An
+    ///           Approver/Admin must run enmax_acdnApproveCheckout before it becomes CheckedOut and
+    ///           the drop-off upload window opens. A second request while one is pending/active is rejected.
+    ///  - false (legacy immediate): Available(1) -> CheckedOut(2) with optimistic concurrency, an Open(1)
+    ///           checkout, and sheet propagation.
     /// </summary>
     public class CheckOutDrawingPlugin : PluginBase
     {
@@ -40,9 +43,16 @@ namespace Enmax.AutoCAD
         private const string ColSheetState        = "enmax_acdnstate";
         private const int    SheetStateCheckedOut = 3;
 
-        private const int StateAvailable  = 1;
-        private const int StateCheckedOut = 2;
-        private const int StatusOpen      = 1;
+        private const int StateAvailable   = 1;
+        private const int StateCheckedOut  = 2;
+        private const int StatusOpen       = 1;
+        private const int StatusAwaiting   = 2;
+        private const int StatusRequested  = 6;
+
+        // Approver/Admin notification when a Check Out is requested.
+        private const int    NotifSeverityWarning = 2; // Info=1, Warning=2, Critical=3 (Code App severity map)
+        private const int    NotifSourceSystem    = 8; // "System Message" (no dedicated Check Out source event)
+        private const string CheckoutQueueDeepLink = "/approvals?tab=checkouts";
 
         // -----------------------------------------------------------------------
         // Constructors
@@ -100,6 +110,99 @@ namespace Enmax.AutoCAD
                     $"Drawing {target.Id} cannot be checked out from state {currentState}. " +
                     $"Expected {StateAvailable} (Available).");
 
+            if (GetRequireCheckOutApproval(service))
+                RequestCheckout(localPluginContext, service, context, target);
+            else
+                ImmediateCheckout(localPluginContext, service, context, target, drawing);
+        }
+
+        // -----------------------------------------------------------------------
+        // Gated path — create a Requested checkout; the drawing is NOT moved yet.
+        // -----------------------------------------------------------------------
+
+        private static void RequestCheckout(
+            ILocalPluginContext localPluginContext, IOrganizationService service,
+            IPluginExecutionContext context, EntityReference target)
+        {
+            // Advisory lock: reject a second request while one is already pending/active for this drawing.
+            var existing = new QueryExpression(CheckoutEntity) { ColumnSet = new ColumnSet(false), TopCount = 1 };
+            existing.Criteria.AddCondition(ColCheckoutDrawing, ConditionOperator.Equal, target.Id);
+            existing.Criteria.AddCondition(ColCheckoutStatus, ConditionOperator.In,
+                StatusRequested, StatusOpen, StatusAwaiting);
+            if (service.RetrieveMultiple(existing).Entities.Count > 0)
+                throw new InvalidPluginExecutionException(
+                    $"Drawing {target.Id} already has a pending or active check-out. Wait for it to be resolved.");
+
+            Guid checkoutId;
+            try
+            {
+                checkoutId = service.Create(new Entity(CheckoutEntity)
+                {
+                    [ColCheckoutStatus]       = new OptionSetValue(StatusRequested),
+                    [ColCheckoutDrawing]      = new EntityReference(DrawingEntity, target.Id),
+                    [ColCheckedOutBy]         = new EntityReference("systemuser", context.InitiatingUserId),
+                    [ColCheckedOutOn]         = DateTime.UtcNow,
+                    [ColCheckoutName]         = $"CHK-{target.Id}",
+                    // Empty placeholder satisfies the (Drawing + NewRevision + Status) alt key at create.
+                    ["enmax_acdnnewrevision"] = string.Empty,
+                    ["ownerid"]               = new EntityReference("systemuser", context.InitiatingUserId),
+                });
+            }
+            catch (FaultException<OrganizationServiceFault> ex)
+                when (ex.Detail?.ErrorCode == -2147220937 ||
+                      (ex.Message != null && ex.Message.Contains("Duplicate")))
+            {
+                // Alt-key collision = a concurrent request beat us to it.
+                throw new InvalidPluginExecutionException(
+                    $"Drawing {target.Id} already has a pending check-out request. Wait for it to be resolved.", ex);
+            }
+
+            localPluginContext.Trace($"Checkout {checkoutId} requested (pending approval).");
+            context.OutputParameters["CheckoutId"] = checkoutId.ToString();
+
+            service.Create(new Entity(AuditEntity)
+            {
+                ["enmax_acdnevent"]        = new OptionSetValue(AuditEventStateChanged),
+                ["enmax_acdnsource"]       = new OptionSetValue(AuditSourceAction),
+                ["enmax_acdnsubjectid"]    = target.Id.ToString(),
+                ["enmax_acdnsubjecttable"] = DrawingEntity,
+                ["enmax_acdnfromstate"]    = "Available",
+                ["enmax_acdntostate"]      = "CheckoutRequested",
+                ["enmax_acdnactedby"]      = new EntityReference("systemuser", context.InitiatingUserId),
+                ["enmax_acdnname"]         = $"Drawing {target.Id} check out requested",
+            });
+
+            NotifyApprovers(service, context, target.Id, checkoutId);
+        }
+
+        private static void NotifyApprovers(
+            IOrganizationService service, IPluginExecutionContext context, Guid drawingId, Guid checkoutId)
+        {
+            var recipients = NotificationWriter.GetApproverAndAdminUserIds(service, context.InitiatingUserId);
+            if (recipients.Count == 0) return;
+
+            string number = NotificationWriter.ResolveDrawingNumber(service, drawingId);
+            string actor  = NotificationWriter.ResolveActorName(service, context.InitiatingUserId);
+
+            foreach (var recipientId in recipients)
+                NotificationWriter.Create(service, recipientId,
+                    title:        $"Check Out requested: {number}",
+                    body:         $"{actor} requested to check out {number}. Approve or decline it on the Approvals page.",
+                    severity:     NotifSeverityWarning,
+                    sourceEvent:  NotifSourceSystem,
+                    subjectTable: CheckoutEntity,
+                    subjectId:    checkoutId.ToString(),
+                    deepLinkPath: CheckoutQueueDeepLink);
+        }
+
+        // -----------------------------------------------------------------------
+        // Legacy immediate path (RequireCheckOutApproval off).
+        // -----------------------------------------------------------------------
+
+        private static void ImmediateCheckout(
+            ILocalPluginContext localPluginContext, IOrganizationService service,
+            IPluginExecutionContext context, EntityReference target, Entity drawing)
+        {
             // Update drawing to CheckedOut using RowVersion to prevent double checkout
             var drawingUpdate = new Entity(DrawingEntity, target.Id)
             {
@@ -136,7 +239,7 @@ namespace Enmax.AutoCAD
             // enmax_acdnnewrevision is set to an empty placeholder (not null) so the
             // alternate key (Drawing + NewRevision + Status) is satisfied at create
             // time — Dataverse alt keys reject null columns. SubmitRevisionPlugin /
-            // ForceCheckinPlugin overwrite it with the actual revision on submit.
+            // ForceCheckinPlugin overwrite it with the actual cycle token on submit.
             var checkout = new Entity(CheckoutEntity)
             {
                 [ColCheckoutStatus]   = new OptionSetValue(StatusOpen),
@@ -165,6 +268,15 @@ namespace Enmax.AutoCAD
                 ["enmax_acdnactedby"]      = new EntityReference("systemuser", context.InitiatingUserId),
                 ["enmax_acdnname"]         = $"Drawing {target.Id} checked out",
             });
+        }
+
+        // Defaults to TRUE when the key is absent: a governance control must not silently disable itself.
+        private static bool GetRequireCheckOutApproval(IOrganizationService service)
+        {
+            string raw = AppConfigReader.GetValue(service, "RequireCheckOutApproval");
+            if (string.IsNullOrWhiteSpace(raw)) return true;
+            bool v;
+            return !bool.TryParse(raw, out v) || v;
         }
     }
 }

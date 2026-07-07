@@ -86,11 +86,14 @@ namespace Enmax.AutoCAD
             if (string.IsNullOrWhiteSpace(reason))
                 throw new InvalidPluginExecutionException("Reason is required for Force Check-In.");
 
+            // WS3: the user-facing revision number is gone (SharePoint version history is the trail).
+            // An admin-supplied NewRevision is still honored if present; otherwise stamp an internal
+            // cycle token so the drawing keeps a "has been checked in" marker for downstream gating.
             string newRevision = context.InputParameters.Contains("NewRevision")
                 ? context.InputParameters["NewRevision"] as string : null;
-            if (string.IsNullOrWhiteSpace(newRevision))
-                throw new InvalidPluginExecutionException("Missing required input: NewRevision");
-            newRevision = newRevision.Trim();
+            newRevision = string.IsNullOrWhiteSpace(newRevision)
+                ? DateTime.UtcNow.Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                : newRevision.Trim();
 
             Authorization.RequireApproverOrAdmin(service, context.InitiatingUserId, "force check-in");
 
@@ -187,8 +190,8 @@ namespace Enmax.AutoCAD
             {
                 string number = NotificationWriter.ResolveDrawingNumber(service, drawingRef.Id);
                 NotificationWriter.Create(service, submitter.Id,
-                    title:        $"Your check-out was force-closed: {number}",
-                    body:         $"An administrator force-checked-in drawing {number} (revision {newRevision}). Reason: {reason}",
+                    title:        $"Your Check Out was force-closed: {number}",
+                    body:         $"An administrator force-checked-in drawing {number}. Reason: {reason}",
                     severity:     NotifSeverityWarning,
                     sourceEvent:  NotifSourceForceCheckin,
                     subjectTable: CheckoutEntity,

@@ -347,13 +347,18 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         [Fact]
-        public void Missing_NewRevision_throws()
+        public void Missing_NewRevision_stamps_an_internal_cycle_token()
         {
-            var (ctx, pluginCtx, _, _) = BuildContext(StatusOpen);
+            // WS3: the revision number is gone. Force check-in no longer requires NewRevision — when
+            // omitted it stamps an internal cycle token so the drawing keeps a "has been checked in" marker.
+            var (ctx, pluginCtx, _, drawingId) = BuildContext(StatusOpen);
             pluginCtx.InputParameters["NewRevision"] = string.Empty;
             Action act = () => ctx.ExecutePluginWith<ForceCheckinPlugin>(pluginCtx);
-            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*NewRevision*",
-                because: "an admin force check-in must record the revision being finalised");
+            act.Should().NotThrow(because: "NewRevision is optional in WS3 — an internal token is stamped when omitted");
+            ctx.GetFakedOrganizationService()
+               .Retrieve(DrawingEntity, drawingId, new ColumnSet("enmax_acdncurrentrevision"))
+               .GetAttributeValue<string>("enmax_acdncurrentrevision").Should().NotBeNullOrEmpty(
+                   because: "a cycle token must still be stamped so Finalize/Obsolete gating keeps working");
         }
 
         [Fact]

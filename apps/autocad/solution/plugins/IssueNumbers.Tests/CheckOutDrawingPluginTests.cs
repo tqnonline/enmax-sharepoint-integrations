@@ -31,6 +31,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         private const int StateAvailable  = 1;
         private const int StateCheckedOut = 2;
         private const int StatusOpen      = 1;
+        private const int StatusRequested = 6;
 
         // -----------------------------------------------------------------------
         // Helpers
@@ -40,7 +41,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         private static readonly Guid ApproverTeamId = Guid.NewGuid();
 
         private static (XrmFakedContext ctx, XrmFakedPluginExecutionContext pluginCtx, Guid drawingId)
-            BuildContext(int drawingState = StateAvailable)
+            BuildContext(int drawingState = StateAvailable, bool requireApproval = false)
         {
             var ctx       = new XrmFakedContext();
             var drawingId = Guid.NewGuid();
@@ -66,6 +67,13 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 {
                     ["enmax_acdnkey"]   = "ApproverTeamId",
                     ["enmax_acdnvalue"] = ApproverTeamId.ToString(),
+                },
+                // WS3: gate flag. Defaults TRUE when absent, so the legacy immediate-checkout
+                // tests explicitly seed false; gated tests seed true.
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "RequireCheckOutApproval",
+                    ["enmax_acdnvalue"] = requireApproval ? "true" : "false",
                 },
             });
 
@@ -347,6 +355,12 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                     ["enmax_acdnkey"]   = "ApproverTeamId",
                     ["enmax_acdnvalue"] = ApproverTeamId.ToString(),
                 },
+                // Legacy immediate path — the gated path never touches sheets at request time.
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "RequireCheckOutApproval",
+                    ["enmax_acdnvalue"] = "false",
+                },
             });
 
             var pluginCtx = ctx.GetDefaultPluginContext();
@@ -363,6 +377,99 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 .RetrieveMultiple(new QueryExpression("enmax_autocadsheet") { ColumnSet = new ColumnSet("enmax_acdnstate") });
             sheets.Entities.Should().OnlyContain(s => s.GetAttributeValue<OptionSetValue>("enmax_acdnstate").Value == 3,
                 because: "all sheets of a checked-out drawing must move to sheet CheckedOut = 3");
+        }
+
+        // -----------------------------------------------------------------------
+        // WS3 — gated Check Out (RequireCheckOutApproval = true)
+        // -----------------------------------------------------------------------
+
+        [Fact]
+        public void Gated_checkout_creates_a_Requested_checkout_and_leaves_drawing_Available()
+        {
+            var (ctx, pluginCtx, drawingId) = BuildContext(StateAvailable, requireApproval: true);
+
+            ctx.ExecutePluginWith<CheckOutDrawingPlugin>(pluginCtx);
+
+            var svc      = ctx.GetFakedOrganizationService();
+            var checkouts = svc.RetrieveMultiple(new QueryExpression(CheckoutEntity) { ColumnSet = new ColumnSet(true) });
+            checkouts.Entities.Should().HaveCount(1, because: "a gated request still creates one checkout row");
+            checkouts.Entities[0].GetAttributeValue<OptionSetValue>("enmax_acdnstatus").Value
+                .Should().Be(StatusRequested, because: "a gated Check Out lands in Requested until an approver acts");
+
+            svc.Retrieve(DrawingEntity, drawingId, new ColumnSet(ColDrawingState))
+               .GetAttributeValue<OptionSetValue>(ColDrawingState).Value
+               .Should().Be(StateAvailable, because: "the drawing must NOT be checked out until the request is approved");
+        }
+
+        [Fact]
+        public void Gated_checkout_does_not_move_sheets()
+        {
+            var ctx       = new XrmFakedContext();
+            var drawingId = Guid.NewGuid();
+            var userId    = Guid.NewGuid();
+            var drawing = new Entity(DrawingEntity, drawingId)
+            {
+                [ColDrawingState] = new OptionSetValue(StateAvailable),
+                ["ownerid"]       = new EntityReference("systemuser", userId),
+            };
+            var sheet = new Entity("enmax_autocadsheet", Guid.NewGuid())
+                { ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId), ["enmax_acdnstate"] = new OptionSetValue(2) };
+            ctx.Initialize(new Entity[]
+            {
+                drawing, sheet,
+                new Entity("enmax_autocadappconfig", Guid.NewGuid()) { ["enmax_acdnkey"] = "AdminTeamId",    ["enmax_acdnvalue"] = AdminTeamId.ToString() },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid()) { ["enmax_acdnkey"] = "ApproverTeamId", ["enmax_acdnvalue"] = ApproverTeamId.ToString() },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid()) { ["enmax_acdnkey"] = "RequireCheckOutApproval", ["enmax_acdnvalue"] = "true" },
+            });
+            var pluginCtx = ctx.GetDefaultPluginContext();
+            pluginCtx.MessageName      = "enmax_acdnCheckOutDrawing";
+            pluginCtx.Stage            = 40;
+            pluginCtx.InitiatingUserId = userId;
+            pluginCtx.InputParameters  = new ParameterCollection();
+            pluginCtx.OutputParameters = new ParameterCollection();
+            pluginCtx.InputParameters["Target"] = new EntityReference(DrawingEntity, drawingId);
+
+            ctx.ExecutePluginWith<CheckOutDrawingPlugin>(pluginCtx);
+
+            ctx.GetFakedOrganizationService()
+               .RetrieveMultiple(new QueryExpression("enmax_autocadsheet") { ColumnSet = new ColumnSet("enmax_acdnstate") })
+               .Entities.Should().OnlyContain(s => s.GetAttributeValue<OptionSetValue>("enmax_acdnstate").Value == 2,
+                   because: "sheets stay Available until the Check Out is approved");
+        }
+
+        [Fact]
+        public void Gated_checkout_writes_a_CheckoutRequested_audit_event()
+        {
+            var (ctx, pluginCtx, drawingId) = BuildContext(StateAvailable, requireApproval: true);
+
+            ctx.ExecutePluginWith<CheckOutDrawingPlugin>(pluginCtx);
+
+            var audit = ctx.GetFakedOrganizationService()
+                .RetrieveMultiple(new QueryExpression("enmax_autocadauditevent") { ColumnSet = new ColumnSet(true) })
+                .Entities.Should().ContainSingle().Subject;
+            audit.GetAttributeValue<string>("enmax_acdntostate").Should().Be("CheckoutRequested",
+                because: "the gated request must be audited as a CheckoutRequested transition on the drawing");
+            audit.GetAttributeValue<string>("enmax_acdnsubjectid").Should().Be(drawingId.ToString());
+        }
+
+        [Fact]
+        public void Gated_checkout_rejects_a_second_request_while_one_is_pending()
+        {
+            var (ctx, pluginCtx, drawingId) = BuildContext(StateAvailable, requireApproval: true);
+
+            // Pre-seed a pending Requested checkout for this drawing.
+            ctx.GetFakedOrganizationService().Create(new Entity(CheckoutEntity)
+            {
+                ["enmax_acdnstatus"]      = new OptionSetValue(StatusRequested),
+                ["enmax_acdndrawing"]     = new EntityReference(DrawingEntity, drawingId),
+                ["enmax_acdnnewrevision"] = string.Empty,
+            });
+
+            Action act = () => ctx.ExecutePluginWith<CheckOutDrawingPlugin>(pluginCtx);
+
+            act.Should().Throw<InvalidPluginExecutionException>()
+               .WithMessage("*pending or active check-out*",
+                   because: "the advisory lock must reject a duplicate Check Out request while one is outstanding");
         }
     }
 }

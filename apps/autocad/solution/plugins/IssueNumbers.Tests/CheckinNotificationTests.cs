@@ -78,8 +78,8 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             pluginCtx.InitiatingUserId = submitter;
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
-            pluginCtx.InputParameters["Target"]      = new EntityReference(CheckoutEntity, checkoutId);
-            pluginCtx.InputParameters["NewRevision"] = "B";
+            pluginCtx.InputParameters["Target"]         = new EntityReference(CheckoutEntity, checkoutId);
+            pluginCtx.InputParameters["SubmissionInfo"] = "Project Falcon, WO#12345";
 
             return (ctx, pluginCtx, submitter, adminUser, approverUser, checkoutId);
         }

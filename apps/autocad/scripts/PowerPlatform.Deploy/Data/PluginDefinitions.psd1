@@ -159,14 +159,32 @@
         }
 
         @{
+            UniqueName  = "enmax_acdnApproveCheckout"
+            DisplayName = "Approve Check Out"
+            Description = "Resolves a gated Check Out request (Approver/Admin only). Approve: checkout Requested -> Open, drawing Available -> CheckedOut with optimistic concurrency, sheets follow, and the drop-off upload window opens for the requester. Decline (reason 10+ chars): checkout -> ClosedDeclined, drawing stays Available. Requester notified; audited against the drawing. Inputs: Target, Decision (1 or 2), Reason."
+            PluginClass = "Enmax.AutoCAD.ApproveCheckoutPlugin"
+            BindingType = 1
+            BoundEntity = "enmax_autocadcheckout"
+            Params = @(
+                @{ Name="Decision"; Type=7;  Optional=$false }
+                @{ Name="Reason";   Type=10; Optional=$true  }
+            )
+            Response = @(
+                @{ Name="CheckoutId";   Type=10 }
+                @{ Name="NewStatus";    Type=7  }
+                @{ Name="DrawingState"; Type=7  }
+            )
+        }
+
+        @{
             UniqueName  = "enmax_acdnForceCheckin"
             DisplayName = "Force Check-In"
-            Description = "Administrative force-close of an open or stuck checkout (Approver/Admin only). Closes it as ClosedForced, returns the drawing to Available with the supplied NewRevision, propagates sheets, audits, and notifies the affected user. Inputs: Target, NewRevision and Reason (both required)."
+            Description = "Administrative force-close of an open or stuck checkout (Approver/Admin only). Closes it as ClosedForced, returns the drawing to Available, propagates sheets, audits, and notifies the affected user. Inputs: Target, Reason (required); NewRevision (optional, legacy — an internal cycle token is stamped when omitted)."
             PluginClass = "Enmax.AutoCAD.ForceCheckinPlugin"
             BindingType = 1
             BoundEntity = "enmax_autocadcheckout"
             Params = @(
-                @{ Name="NewRevision"; Type=10; Optional=$false }
+                @{ Name="NewRevision"; Type=10; Optional=$true  }
                 @{ Name="Reason";      Type=10; Optional=$false }
             )
             Response = @(
@@ -179,13 +197,12 @@
         @{
             UniqueName  = "enmax_acdnSubmitRevision"
             DisplayName = "Submit Revision"
-            Description = "Submits a revised drawing on an open checkout (checkout owner only). AppConfig RequireCheckInApproval off: checkout closes, drawing returns to Available with the new revision. On: both move to AwaitingValidation for approval. Inputs: Target, NewRevision, Reason."
+            Description = "Checks in a revised drawing on an open checkout (checkout owner only). Captures mandatory Submission Information (Project, WO#, ...); the revision number is gone — SharePoint version history is the revision trail. AppConfig RequireCheckInApproval off: checkout closes, drawing returns to Available. On: both move to AwaitingValidation for approval. Inputs: Target, SubmissionInfo."
             PluginClass = "Enmax.AutoCAD.SubmitRevisionPlugin"
             BindingType = 1
             BoundEntity = "enmax_autocadcheckout"
             Params = @(
-                @{ Name="NewRevision"; Type=10; Optional=$false }
-                @{ Name="Reason";      Type=10; Optional=$true  }
+                @{ Name="SubmissionInfo"; Type=10; Optional=$false }
             )
             Response = @(
                 @{ Name="NewStatus";    Type=7 }

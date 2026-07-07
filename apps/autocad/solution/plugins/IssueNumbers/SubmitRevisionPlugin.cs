@@ -21,6 +21,7 @@ namespace Enmax.AutoCAD
         private const string ColCheckoutStatus   = "enmax_acdnstatus";
         private const string ColCheckoutDrawing  = "enmax_acdndrawing";
         private const string ColNewRevision      = "enmax_acdnnewrevision";
+        private const string ColSubmissionInfo   = "enmax_acdnsubmissioninfo";
 
         private const string DrawingEntity       = "enmax_autocaddrawing";
         private const string ColDrawingState     = "enmax_acdnstate";
@@ -71,11 +72,18 @@ namespace Enmax.AutoCAD
             if (!string.Equals(target.LogicalName, CheckoutEntity, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidPluginExecutionException($"Target must be {CheckoutEntity}, got {target.LogicalName}");
 
-            string newRevision = context.InputParameters.Contains("NewRevision")
-                ? context.InputParameters["NewRevision"] as string : null;
-            if (string.IsNullOrWhiteSpace(newRevision))
-                throw new InvalidPluginExecutionException("Missing required input: NewRevision");
-            newRevision = newRevision.Trim();
+            // WS3: the revision number is gone — SharePoint version history is the revision trail.
+            // Check In now captures mandatory Submission Information (Project, WO#, ...) instead.
+            string submissionInfo = context.InputParameters.Contains("SubmissionInfo")
+                ? context.InputParameters["SubmissionInfo"] as string : null;
+            if (string.IsNullOrWhiteSpace(submissionInfo))
+                throw new InvalidPluginExecutionException("Missing required input: SubmissionInfo");
+            submissionInfo = submissionInfo.Trim();
+
+            // Internal, non-user cycle token. Kept on enmax_acdnnewrevision so the checkout alt key
+            // (Drawing + NewRevision + Status) stays unique across cycles, and mirrored onto the
+            // drawing's current-revision marker so "has been checked in" gating keeps working.
+            string cycleToken = DateTime.UtcNow.Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
             Entity checkout;
             try
@@ -119,7 +127,7 @@ namespace Enmax.AutoCAD
                 RowVersion        = drawing.RowVersion,
                 [ColDrawingState] = new OptionSetValue(targetDrawingState),
             };
-            if (!requireApproval) drawingUpdate[ColCurrentRevision] = newRevision;
+            if (!requireApproval) drawingUpdate[ColCurrentRevision] = cycleToken;
 
             try
             {
@@ -140,7 +148,8 @@ namespace Enmax.AutoCAD
             var checkoutUpdate = new Entity(CheckoutEntity, target.Id)
             {
                 [ColCheckoutStatus] = new OptionSetValue(targetStatus),
-                [ColNewRevision]    = newRevision,
+                [ColNewRevision]    = cycleToken,
+                [ColSubmissionInfo] = submissionInfo,
             };
             if (!requireApproval)
             {
@@ -163,12 +172,12 @@ namespace Enmax.AutoCAD
                 ["enmax_acdnfromstate"]    = "CheckedOut",
                 ["enmax_acdntostate"]      = requireApproval ? "AwaitingValidation" : "Available",
                 ["enmax_acdnactedby"]      = new EntityReference("systemuser", context.InitiatingUserId),
-                ["enmax_acdnname"]         = $"Drawing {drawingRef.Id} revision {newRevision} submitted",
+                ["enmax_acdnname"]         = $"Drawing {drawingRef.Id} checked in",
             });
 
             // A check-in always notifies approvers/admins — to validate it (approval on) or to move the
             // files to SharePoint (approval off). Admins must hear about every check-in either way.
-            NotifyApprovers(service, context, drawing, target.Id, newRevision, requireApproval);
+            NotifyApprovers(service, context, drawing, target.Id, requireApproval);
 
             context.OutputParameters["NewStatus"]    = targetStatus;
             context.OutputParameters["DrawingState"] = targetDrawingState;
@@ -178,7 +187,7 @@ namespace Enmax.AutoCAD
         // ask is "validate it"; when not, the ask is "move the files" — but admins are told either way.
         private static void NotifyApprovers(
             IOrganizationService service, IPluginExecutionContext context,
-            Entity drawing, Guid checkoutId, string newRevision, bool requireApproval)
+            Entity drawing, Guid checkoutId, bool requireApproval)
         {
             var recipients = NotificationWriter.GetApproverAndAdminUserIds(service, context.InitiatingUserId);
             if (recipients.Count == 0) return;
@@ -188,11 +197,11 @@ namespace Enmax.AutoCAD
             string actor = NotificationWriter.ResolveActorName(service, context.InitiatingUserId);
 
             string title = requireApproval
-                ? $"Check-in pending validation: {number}"
+                ? $"Check In pending validation: {number}"
                 : $"Drawing checked in: {number}";
             string body = requireApproval
-                ? $"{actor} checked in drawing {number} (revision {newRevision}). Review and validate it on the Approvals page."
-                : $"{actor} checked in drawing {number} (revision {newRevision}). Please move the files to the SharePoint library.";
+                ? $"{actor} checked in {number}. Review and validate it on the Approvals page."
+                : $"{actor} checked in {number}. Please move the files to the SharePoint library.";
 
             foreach (var recipientId in recipients)
                 NotificationWriter.Create(service, recipientId,

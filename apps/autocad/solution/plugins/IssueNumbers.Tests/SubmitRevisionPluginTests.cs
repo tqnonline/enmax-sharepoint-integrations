@@ -70,9 +70,8 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             pluginCtx.InitiatingUserId = userId;
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
-            pluginCtx.InputParameters["Target"]      = new EntityReference(CheckoutEntity, checkoutId);
-            pluginCtx.InputParameters["NewRevision"]  = "B";
-            pluginCtx.InputParameters["Reason"]       = string.Empty;
+            pluginCtx.InputParameters["Target"]         = new EntityReference(CheckoutEntity, checkoutId);
+            pluginCtx.InputParameters["SubmissionInfo"] = "Project Falcon, WO#12345";
 
             return (ctx, pluginCtx, checkoutId, drawingId);
         }
@@ -89,8 +88,19 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 because: "with approval OFF, submitting a revision closes the checkout immediately");
             drawing.GetAttributeValue<OptionSetValue>(ColDrawingState).Value.Should().Be(StateAvailable,
                 because: "approval-off submit returns the drawing to Available");
-            drawing.GetAttributeValue<string>(ColCurrentRevision).Should().Be("B",
-                because: "the new revision must be stamped on the drawing");
+            drawing.GetAttributeValue<string>(ColCurrentRevision).Should().NotBeNullOrEmpty(
+                because: "WS3: the revision number is gone, but an internal cycle token is stamped so 'has been checked in' gating still works");
+        }
+
+        [Fact]
+        public void SubmissionInfo_is_persisted_on_the_checkout()
+        {
+            var (ctx, pluginCtx, checkoutId, _) = BuildContext(requireApproval: false);
+            ctx.ExecutePluginWith<SubmitRevisionPlugin>(pluginCtx);
+            var checkout = ctx.GetFakedOrganizationService()
+                .Retrieve(CheckoutEntity, checkoutId, new ColumnSet("enmax_acdnsubmissioninfo"));
+            checkout.GetAttributeValue<string>("enmax_acdnsubmissioninfo").Should().Be("Project Falcon, WO#12345",
+                because: "the mandatory Submission Information must be recorded on the checkout for traceability/audit");
         }
 
         [Fact]
@@ -114,8 +124,8 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var drawing  = svc.Retrieve(DrawingEntity,  drawingId,  new ColumnSet(ColDrawingState));
             checkout.GetAttributeValue<OptionSetValue>(ColCheckoutStatus).Value.Should().Be(StatusAwaitingValidation,
                 because: "with approval ON, the checkout waits for an approver");
-            checkout.GetAttributeValue<string>(ColNewRevision).Should().Be("B",
-                because: "the proposed revision is stored on the checkout until approved");
+            checkout.GetAttributeValue<string>(ColNewRevision).Should().NotBeNullOrEmpty(
+                because: "an internal cycle token is stored on the checkout to keep the (Drawing + NewRevision + Status) alt key unique across cycles");
             drawing.GetAttributeValue<OptionSetValue>(ColDrawingState).Value.Should().Be(StateAwaitingValidation,
                 because: "approval-on submit moves the drawing to AwaitingValidation");
         }
@@ -147,13 +157,13 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         [Fact]
-        public void Missing_NewRevision_throws()
+        public void Missing_SubmissionInfo_throws()
         {
             var (ctx, pluginCtx, _, _) = BuildContext(requireApproval: false);
-            pluginCtx.InputParameters["NewRevision"] = string.Empty;
+            pluginCtx.InputParameters["SubmissionInfo"] = string.Empty;
             Action act = () => ctx.ExecutePluginWith<SubmitRevisionPlugin>(pluginCtx);
-            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*NewRevision*",
-                because: "a revision identifier is mandatory");
+            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*SubmissionInfo*",
+                because: "WS3: Submission Information (Project, WO#, ...) is mandatory at Check In");
         }
 
         [Fact]
@@ -213,8 +223,8 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             pluginCtx.InitiatingUserId = actingUser;
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
-            pluginCtx.InputParameters["Target"]      = new EntityReference(CheckoutEntity, checkoutId);
-            pluginCtx.InputParameters["NewRevision"] = "B";
+            pluginCtx.InputParameters["Target"]         = new EntityReference(CheckoutEntity, checkoutId);
+            pluginCtx.InputParameters["SubmissionInfo"] = "Project Falcon, WO#12345";
 
             Action act = () => ctx.ExecutePluginWith<SubmitRevisionPlugin>(pluginCtx);
 

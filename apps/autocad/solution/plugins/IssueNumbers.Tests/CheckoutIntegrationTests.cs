@@ -170,14 +170,13 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             await _client.ExecuteAsync(request).ConfigureAwait(false);
         }
 
-        /// <summary>Invokes enmax_acdnSubmitRevision (bound to checkout).</summary>
-        public async Task InvokeSubmitRevisionAsync(Guid checkoutId, string newRevision, string reason = "")
+        /// <summary>Invokes enmax_acdnSubmitRevision (bound to checkout). WS3: captures Submission Information, not a revision.</summary>
+        public async Task InvokeSubmitRevisionAsync(Guid checkoutId, string submissionInfo)
         {
             EnsureReady();
             var request = new OrganizationRequest(SubmitRevisionAction);
-            request.Parameters["Target"]      = new EntityReference(CheckoutEntity, checkoutId);
-            request.Parameters["NewRevision"] = newRevision;
-            request.Parameters["Reason"]      = reason ?? string.Empty;
+            request.Parameters["Target"]         = new EntityReference(CheckoutEntity, checkoutId);
+            request.Parameters["SubmissionInfo"] = submissionInfo;
             await _client.ExecuteAsync(request).ConfigureAwait(false);
         }
 
@@ -530,11 +529,15 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 co.Success.Should().BeTrue();
                 Guid.TryParse(co.CheckoutId, out checkoutId).Should().BeTrue();
 
-                await _fx.InvokeSubmitRevisionAsync(checkoutId, "B");
+                // WS3 note: with RequireCheckOutApproval on (the default), a live run needs an
+                // ApproveCheckout step between CheckOut and SubmitRevision. This integration test is
+                // skipped without a live org; when run, seed RequireCheckOutApproval=false or insert approval.
+                await _fx.InvokeSubmitRevisionAsync(checkoutId, "Project Falcon, WO#12345");
 
                 var afterSubmit = await _fx.GetDrawingSnapshotAsync(drawingId);
                 afterSubmit.State.Should().Be(1, "approval-off submit returns the drawing to Available");
-                afterSubmit.CurrentRevision.Should().Be("B");
+                afterSubmit.CurrentRevision.Should().NotBeNullOrEmpty(
+                    "WS3: the revision number is gone; an internal cycle token is stamped instead");
 
                 var fin = await _fx.InvokeFinalizeAsync(drawingId, "Final issued-for-construction revision.");
                 fin.Success.Should().BeTrue();
