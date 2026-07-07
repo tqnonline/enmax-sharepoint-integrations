@@ -11,6 +11,9 @@ export interface Enmax_autocaddrawingsBase {
   enmax_acdncurrentrevision?: string;
   enmax_acdnsplibraryurl?: string;
   enmax_acdnspdestinationurl?: string;
+  enmax_acdnpresentindropoff?: boolean;
+  enmax_acdnpresentindestination?: boolean;
+  enmax_acdnlastindexedon?: string;
   enmax_acdnvendordocnumber?: string;
   enmax_acdnstate?: number;
   enmax_acdnsequencenumber?: number;

@@ -45,6 +45,22 @@ rows:
     value: https://enmax.sharepoint.com/sites/GenerationDrawings/Shared%20Documents
     value_type: String
     description: Single SharePoint document library where users upload revised drawing files at check-in. ALL drawings use this one library; admins move files to the right location afterward. Set to the actual library URL.
+  - key: DrawingsDropOffLibraryUrl
+    value: https://enmax.sharepoint.com/sites/GenerationDrawings/DropOff
+    value_type: String
+    description: WS5 - Drawings site drop-off (read/write) library base URL. Users upload working PDFs here while a drawing is checked out. Set to the actual library URL per environment.
+  - key: DrawingsDestinationLibraryUrl
+    value: https://enmax.sharepoint.com/sites/GenerationDrawings/Destination
+    value_type: String
+    description: WS5 - Drawings site destination (read-only) library base URL, organized with 1-level vendor/project folders holding final checked-in PDFs. Set to the actual library URL per environment.
+  - key: DocumentsDropOffLibraryUrl
+    value: https://enmax.sharepoint.com/sites/GenerationDocuments/DropOff
+    value_type: String
+    description: WS5 - Documents site (Standards + Procedures) drop-off (read/write) library base URL. Set to the actual library URL per environment.
+  - key: DocumentsDestinationLibraryUrl
+    value: https://enmax.sharepoint.com/sites/GenerationDocuments/Destination
+    value_type: String
+    description: WS5 - Documents site destination (read-only) library base URL, 1-level vendor/project folders. Set to the actual library URL per environment.
   - key: BusinessUnitName
     value: Enmax AutoCAD
     value_type: String

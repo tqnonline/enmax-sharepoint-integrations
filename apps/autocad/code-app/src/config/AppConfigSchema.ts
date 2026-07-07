@@ -19,6 +19,13 @@ export const AppConfigSchema = z.object({
   SharedMailboxAddress:           z.email(),
   SharePointSiteUrl:              z.url(),
   CheckInUploadLibraryUrl:        z.url().optional(),
+  // WS5 two-site SharePoint topology: four library base URLs (Drawings + Documents,
+  // each drop-off + destination). Optional so environments without them configured
+  // fall back gracefully; the indexer flow and upload surface read these.
+  DrawingsDropOffLibraryUrl:      z.url().optional(),
+  DrawingsDestinationLibraryUrl:  z.url().optional(),
+  DocumentsDropOffLibraryUrl:     z.url().optional(),
+  DocumentsDestinationLibraryUrl: z.url().optional(),
   BusinessUnitName:               z.string(),
   BrandPrimary:                   z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   BrandSecondary:                 z.string().regex(/^#[0-9A-Fa-f]{6}$/),

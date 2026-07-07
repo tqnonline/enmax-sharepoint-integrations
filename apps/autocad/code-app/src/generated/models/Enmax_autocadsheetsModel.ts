@@ -8,6 +8,9 @@ export interface Enmax_autocadsheetsBase {
   enmax_acdnfilename?: string;
   enmax_acdnsharepointurl?: string;
   enmax_acdnspdestinationurl?: string;
+  enmax_acdnpresentindropoff?: boolean;
+  enmax_acdnpresentindestination?: boolean;
+  enmax_acdnlastindexedon?: string;
   enmax_acdnsharepointitemid?: string;
   enmax_acdnsheetnumber?: number;
   enmax_acdnstate?: number;
