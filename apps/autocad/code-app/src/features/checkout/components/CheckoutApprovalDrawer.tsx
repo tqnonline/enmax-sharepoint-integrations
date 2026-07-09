@@ -63,15 +63,17 @@ const useStyles = makeStyles({
 interface Props {
   checkoutId: string;
   drawingNumber: string;
+  /** "Drawing" | "Standard Document" | "Procedure Form" — used in field label + copy. */
+  typeLabel?: string;
   requestedByName: string;
 }
 
 /**
  * WS3 gated Check Out: an Approver/Admin approves or declines a pending Check Out request.
- * Approve → the drawing is checked out to the requester; Decline (reason 10+ chars) → the
- * request is closed and the drawing stays Available.
+ * Approve → the record is checked out to the requester; Decline (reason 10+ chars) → the
+ * request is closed and the record stays Available.
  */
-export function CheckoutApprovalDrawer({ checkoutId, drawingNumber, requestedByName }: Props) {
+export function CheckoutApprovalDrawer({ checkoutId, drawingNumber, typeLabel = "Drawing", requestedByName }: Props) {
   const styles = useStyles();
   const [open, setOpen] = useState(false);
   const [showDecline, setShowDecline] = useState(false);
@@ -130,7 +132,7 @@ export function CheckoutApprovalDrawer({ checkoutId, drawingNumber, requestedByN
         <DrawerBody>
           <div className={styles.body}>
             <div className={styles.field}>
-              <span className={styles.label}>Drawing</span>
+              <span className={styles.label}>{typeLabel}</span>
               <Text weight="semibold" style={{ fontFamily: "monospace" }}>{drawingNumber || "—"}</Text>
             </div>
             <div className={styles.field}>
@@ -139,7 +141,7 @@ export function CheckoutApprovalDrawer({ checkoutId, drawingNumber, requestedByN
             </div>
 
             <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-              Approving checks the drawing out to the requester and opens their drop-off upload window.
+              Approving checks this {typeLabel.toLowerCase()} out to the requester and opens their drop-off upload window.
             </Text>
 
             {mutation.isError && (

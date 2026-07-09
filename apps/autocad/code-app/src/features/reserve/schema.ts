@@ -13,7 +13,7 @@ export const reserveSchema = z.object({
   domain:     z.string().min(1, "Domain required"),
   system:     z.string().min(1, "System required"),
   kind:       z.string().min(1, "Kind required"),
-  count:      z.coerce.number().int().min(1, "Count must be at least 1").max(10),
+  count:      z.coerce.number().int().min(1, "Count must be at least 1").max(999),
   sheetsPerDrawing: z.coerce.number().int().min(1, "Must be at least 1"),
   sequenceType: z.enum(["New", "Existing"]),
   reason:     z.string().min(10, "Reason must be at least 10 characters").max(2000),

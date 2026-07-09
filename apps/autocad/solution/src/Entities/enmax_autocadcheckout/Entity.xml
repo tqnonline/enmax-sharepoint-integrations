@@ -310,6 +310,46 @@
             <displayname description="Drawing" languagecode="1033" />
           </displaynames>
         </attribute>
+        <attribute PhysicalName="enmax_acdnBatchId">
+          <Type>nvarchar</Type>
+          <Name>enmax_acdnbatchid</Name>
+          <LogicalName>enmax_acdnbatchid</LogicalName>
+          <RequiredLevel>none</RequiredLevel>
+          <DisplayMask>ValidForAdvancedFind|ValidForForm|ValidForGrid</DisplayMask>
+          <ImeMode>auto</ImeMode>
+          <ValidForUpdateApi>1</ValidForUpdateApi>
+          <ValidForReadApi>1</ValidForReadApi>
+          <ValidForCreateApi>1</ValidForCreateApi>
+          <IsCustomField>1</IsCustomField>
+          <IsAuditEnabled>1</IsAuditEnabled>
+          <IsSecured>0</IsSecured>
+          <IntroducedVersion>1.0.0.0</IntroducedVersion>
+          <IsCustomizable>1</IsCustomizable>
+          <IsRenameable>1</IsRenameable>
+          <CanModifySearchSettings>1</CanModifySearchSettings>
+          <CanModifyRequirementLevelSettings>1</CanModifyRequirementLevelSettings>
+          <CanModifyAdditionalSettings>1</CanModifyAdditionalSettings>
+          <SourceType>0</SourceType>
+          <IsGlobalFilterEnabled>0</IsGlobalFilterEnabled>
+          <IsSortableEnabled>0</IsSortableEnabled>
+          <CanModifyGlobalFilterSettings>1</CanModifyGlobalFilterSettings>
+          <CanModifyIsSortableSettings>1</CanModifyIsSortableSettings>
+          <IsDataSourceSecret>0</IsDataSourceSecret>
+          <AutoNumberFormat></AutoNumberFormat>
+          <IsSearchable>0</IsSearchable>
+          <IsFilterable>0</IsFilterable>
+          <IsRetrievable>0</IsRetrievable>
+          <IsLocalizable>0</IsLocalizable>
+          <Format>text</Format>
+          <MaxLength>100</MaxLength>
+          <Length>200</Length>
+          <displaynames>
+            <displayname description="Batch ID" languagecode="1033" />
+          </displaynames>
+          <Descriptions>
+            <Description description="Correlates checkouts created in a single bulk action." languagecode="1033" />
+          </Descriptions>
+        </attribute>
         <attribute PhysicalName="enmax_acdnName">
           <Type>nvarchar</Type>
           <Name>enmax_acdnname</Name>
@@ -453,6 +493,42 @@
           <OptionSetName>enmax_acdn_checkoutreminderstage</OptionSetName>
           <displaynames>
             <displayname description="Reminder Stage" languagecode="1033" />
+          </displaynames>
+        </attribute>
+        <attribute PhysicalName="enmax_acdnSheet">
+          <Type>lookup</Type>
+          <Name>enmax_acdnsheet</Name>
+          <LogicalName>enmax_acdnsheet</LogicalName>
+          <RequiredLevel>none</RequiredLevel>
+          <DisplayMask>ValidForAdvancedFind|ValidForForm|ValidForGrid</DisplayMask>
+          <ValidForUpdateApi>1</ValidForUpdateApi>
+          <ValidForReadApi>1</ValidForReadApi>
+          <ValidForCreateApi>1</ValidForCreateApi>
+          <IsCustomField>1</IsCustomField>
+          <IsAuditEnabled>0</IsAuditEnabled>
+          <IsSecured>0</IsSecured>
+          <IntroducedVersion>1.0.0.0</IntroducedVersion>
+          <IsCustomizable>1</IsCustomizable>
+          <IsRenameable>1</IsRenameable>
+          <CanModifySearchSettings>1</CanModifySearchSettings>
+          <CanModifyRequirementLevelSettings>1</CanModifyRequirementLevelSettings>
+          <CanModifyAdditionalSettings>1</CanModifyAdditionalSettings>
+          <SourceType>0</SourceType>
+          <IsGlobalFilterEnabled>0</IsGlobalFilterEnabled>
+          <IsSortableEnabled>0</IsSortableEnabled>
+          <CanModifyGlobalFilterSettings>1</CanModifyGlobalFilterSettings>
+          <CanModifyIsSortableSettings>1</CanModifyIsSortableSettings>
+          <ExternalName>enmax_acdnsheet</ExternalName>
+          <IsDataSourceSecret>0</IsDataSourceSecret>
+          <AutoNumberFormat></AutoNumberFormat>
+          <IsSearchable>0</IsSearchable>
+          <IsFilterable>0</IsFilterable>
+          <IsRetrievable>0</IsRetrievable>
+          <IsLocalizable>0</IsLocalizable>
+          <LookupStyle>single</LookupStyle>
+          <LookupTypes />
+          <displaynames>
+            <displayname description="Sheet" languagecode="1033" />
           </displaynames>
         </attribute>
         <attribute PhysicalName="enmax_acdnStatus">
@@ -1178,6 +1254,19 @@
           </EntityKeyAttributes>
           <displaynames>
             <displayname description="Drawing + NewRevision + Status" languagecode="1033" />
+          </displaynames>
+        </EntityKey>
+        <EntityKey>
+          <Name>enmax_acdncheckout_sheet_status_ak</Name>
+          <LogicalName>enmax_acdncheckout_sheet_status_ak</LogicalName>
+          <IntroducedVersion>1.0.0.0</IntroducedVersion>
+          <IsCustomizable>0</IsCustomizable>
+          <EntityKeyAttributes>
+            <AttributeName>enmax_acdnsheet</AttributeName>
+            <AttributeName>enmax_acdnstatus</AttributeName>
+          </EntityKeyAttributes>
+          <displaynames>
+            <displayname description="Sheet + Status" languagecode="1033" />
           </displaynames>
         </EntityKey>
       </EntityKeys>

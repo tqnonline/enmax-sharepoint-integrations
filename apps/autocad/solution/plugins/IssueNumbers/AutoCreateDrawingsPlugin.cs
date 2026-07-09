@@ -14,7 +14,7 @@ namespace Enmax.AutoCAD
     /// Post-image alias "postImage": enmax_acdnstatus, enmax_acdnissuednumbers,
     ///   enmax_acdnsheetsperdrawing, enmax_acdnreservationtype, enmax_acdndocumentsubtype,
     ///   ownerid, enmax_acdnbusiness, enmax_acdnasset, enmax_acdnunit, enmax_acdndomain,
-    ///   enmax_acdnsystem, enmax_acdnkind
+    ///   enmax_acdnsystem, enmax_acdnkind, enmax_acdntargetdrawing
     /// </summary>
     public class AutoCreateDrawingsPlugin : PluginBase
     {
@@ -43,6 +43,7 @@ namespace Enmax.AutoCAD
         {
             var context = localPluginContext.PluginExecutionContext;
             var service = localPluginContext.SystemUserService;
+            var actorId = localPluginContext.ActingUserId;
             var tracing = localPluginContext.TracingService;
 
             if (!context.PostEntityImages.Contains("postImage"))
@@ -52,6 +53,13 @@ namespace Enmax.AutoCAD
             }
 
             var post = context.PostEntityImages["postImage"];
+
+            var targetDrawing = GetTargetDrawing(service, post, context.PrimaryEntityId);
+            if (targetDrawing != null)
+            {
+                tracing.Trace("AutoCreateDrawings: append reservation (target drawing set) — skipping.");
+                return;
+            }
 
             var status = post.GetAttributeValue<OptionSetValue>("enmax_acdnstatus");
             if (status?.Value != StatusApproved)
@@ -105,6 +113,8 @@ namespace Enmax.AutoCAD
             // Type-aware issuance (ADR 0001): Document/Standard is base-only. Type/Subtype
             // are carried on the post-image (missing -> null -> legacy Drawing behavior).
             bool createChildren = CreatesChildItems(post);
+            bool createSingletonStandardSheet = IsStandardDocument(post);
+            int issuedSheetCount = createChildren ? sheetCount : 1;
 
             int created = 0;
             foreach (int number in numbers)
@@ -115,6 +125,7 @@ namespace Enmax.AutoCAD
                     ["enmax_acdnsequencenumber"] = number,
                     ["enmax_acdnstate"]          = new OptionSetValue(StateAvailable),
                     ["enmax_acdnreservation"]    = new EntityReference(ReservationEntity, context.PrimaryEntityId),
+                    ["enmax_acdnsheetcount"]     = issuedSheetCount,
                 };
                 if (owner != null)                            drawing["ownerid"]          = owner;
                 CopyLookup(post, drawing, "enmax_acdnbusiness");
@@ -123,21 +134,28 @@ namespace Enmax.AutoCAD
                 CopyLookup(post, drawing, "enmax_acdndomain");
                 CopyLookup(post, drawing, "enmax_acdnsystem");
                 CopyLookup(post, drawing, "enmax_acdnkind");
+                // Denormalize the taxonomy onto the record so a base item is
+                // self-identifying without joining back to its reservation (ADR 0001).
+                CopyLookup(post, drawing, "enmax_acdnreservationtype");
+                CopyLookup(post, drawing, "enmax_acdndocumentsubtype");
 
                 Guid drawingId = service.Create(drawing);
                 created++;
 
-                if (createChildren)
+                if (createChildren || createSingletonStandardSheet)
                 {
-                    for (int i = 1; i <= sheetCount; i++)
+                    int loops = createChildren ? sheetCount : 1;
+                    for (int i = 1; i <= loops; i++)
                     {
                         var sheet = new Entity(SheetEntity)
                         {
                             ["enmax_acdndrawing"]     = new EntityReference(DrawingEntity, drawingId),
-                            ["enmax_acdnsheetnumber"] = i,
                             ["enmax_acdnstate"]       = new OptionSetValue(SheetStateAvailable),
                         };
+                        if (createChildren) sheet["enmax_acdnsheetnumber"] = i;
                         if (owner != null) sheet["ownerid"] = owner;
+                        CopyLookup(post, sheet, "enmax_acdnreservationtype");
+                        CopyLookup(post, sheet, "enmax_acdndocumentsubtype");
                         service.Create(sheet);
                     }
                 }
@@ -148,12 +166,26 @@ namespace Enmax.AutoCAD
                     ["enmax_acdnsource"]       = new OptionSetValue(AuditSourceAction),
                     ["enmax_acdnsubjectid"]    = drawingId.ToString(),
                     ["enmax_acdnsubjecttable"] = DrawingEntity,
-                    ["enmax_acdnactedby"]      = new EntityReference("systemuser", context.InitiatingUserId),
+                    ["enmax_acdnactedby"]      = new EntityReference("systemuser", actorId),
                     ["enmax_acdnname"]         = $"Drawing {drawingId} created",
                 });
             }
 
             tracing.Trace($"AutoCreateDrawings: created {created} drawings × {sheetCount} sheet(s) each.");
+        }
+
+        private static EntityReference GetTargetDrawing(
+            IOrganizationService service, Entity post, Guid reservationId)
+        {
+            if (post.Contains("enmax_acdntargetdrawing"))
+            {
+                var fromPost = post.GetAttributeValue<EntityReference>("enmax_acdntargetdrawing");
+                if (fromPost != null) return fromPost;
+            }
+
+            var reservation = service.Retrieve(
+                ReservationEntity, reservationId, new ColumnSet("enmax_acdntargetdrawing"));
+            return reservation.GetAttributeValue<EntityReference>("enmax_acdntargetdrawing");
         }
 
         private static string BuildSequenceKey(IOrganizationService service, ITracingService tracing, Entity post)
@@ -189,6 +221,13 @@ namespace Enmax.AutoCAD
             var type    = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
             var subtype = reservation.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value;
             return !(type == ReservationTypeDocument && subtype == DocumentSubtypeStandard);
+        }
+
+        private static bool IsStandardDocument(Entity reservation)
+        {
+            var type = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
+            var subtype = reservation.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value;
+            return type == ReservationTypeDocument && subtype == DocumentSubtypeStandard;
         }
 
         private static void CopyLookup(Entity source, Entity target, string attribute)

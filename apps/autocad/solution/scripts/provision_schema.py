@@ -360,25 +360,6 @@ TABLE_DEFS: list[dict] = [
         ],
     },
     {
-        "logical": "enmax_autocadbusinessasset",
-        "display": "Approved BB-AA Combination",
-        "plural": "Approved BB-AA Combinations",
-        "primary_attr": "enmax_acdnname",
-        "attrs": [
-            _str_attr("enmax_acdnName", "Name", 200, primary=True),
-        ],
-    },
-    {
-        "logical": "enmax_autocadassetunit",
-        "display": "Asset-Unit",
-        "plural": "Asset-Units",
-        "primary_attr": "enmax_acdnname",
-        "attrs": [
-            _str_attr("enmax_acdnName", "Name", 200, primary=True),
-            _str_attr("enmax_acdnSharePointLibraryUrl", "SharePoint Library URL", 1000),
-        ],
-    },
-    {
         "logical": "enmax_autocadsystemscope",
         "display": "System Scoping Rule",
         "plural": "System Scoping Rules",
@@ -457,6 +438,7 @@ TABLE_DEFS: list[dict] = [
             _memo_attr("enmax_acdnValidationReason", "Validation Reason"),
             _choice_attr("enmax_acdnReminderStage", "Reminder Stage", "enmax_acdn_checkoutreminderstage"),
             _dt_attr("enmax_acdnClosedOn", "Closed On"),
+            _str_attr("enmax_acdnBatchId", "Batch ID", 100),
         ],
     },
     {
@@ -588,16 +570,6 @@ RELATIONSHIP_DEFS: list[dict] = [
          "enmax_autocadbusiness"),
     _rel("enmax_asset_enmax_unit", "enmax_autocadunit", "enmax_acdnAsset", "Asset",
          "enmax_autocadasset"),
-    # BusinessAsset junction
-    _rel("enmax_business_enmax_businessasset", "enmax_autocadbusinessasset",
-         "enmax_acdnBusiness", "Business", "enmax_autocadbusiness", required=True),
-    _rel("enmax_asset_enmax_businessasset", "enmax_autocadbusinessasset",
-         "enmax_acdnAsset", "Asset", "enmax_autocadasset", required=True),
-    # AssetUnit junction
-    _rel("enmax_asset_enmax_assetunit", "enmax_autocadassetunit",
-         "enmax_acdnAsset", "Asset", "enmax_autocadasset", required=True),
-    _rel("enmax_unit_enmax_assetunit", "enmax_autocadassetunit",
-         "enmax_acdnUnit", "Unit", "enmax_autocadunit", required=True),
     # SystemScope
     _rel("enmax_system_enmax_systemscope", "enmax_autocadsystemscope",
          "enmax_acdnSystem", "System", "enmax_autocadsystem", required=True),
@@ -614,6 +586,8 @@ RELATIONSHIP_DEFS: list[dict] = [
          "enmax_acdnSystem", "System", "enmax_autocadsystem", required=True),
     _rel("enmax_kind_enmax_reservation", "enmax_autocadreservation",
          "enmax_acdnKind", "Kind", "enmax_autocadkind", required=True),
+    _rel("enmax_drawing_enmax_reservation_target", "enmax_autocadreservation",
+         "enmax_acdnTargetDrawing", "Target Drawing/Document", "enmax_autocaddrawing"),
     _rel("enmax_sysuser_approver_reservation", "enmax_autocadreservation",
          "enmax_acdnApprover", "Approver", "systemuser"),
     # Drawing lookups
@@ -644,6 +618,8 @@ RELATIONSHIP_DEFS: list[dict] = [
     # Checkout lookups
     _rel("enmax_drawing_enmax_checkout", "enmax_autocadcheckout",
          "enmax_acdnDrawing", "Drawing", "enmax_autocaddrawing", required=True),
+    _rel("enmax_sheet_enmax_checkout", "enmax_autocadcheckout",
+         "enmax_acdnSheet", "Sheet", "enmax_autocadsheet"),
     _rel("enmax_sysuser_checkedoutby", "enmax_autocadcheckout",
          "enmax_acdnCheckedOutBy", "Checked Out By", "systemuser", required=True),
     _rel("enmax_sysuser_closedby", "enmax_autocadcheckout",
@@ -716,22 +692,16 @@ ALTERNATE_KEY_DEFS: list[dict] = [
         "columns": ["enmax_acdndrawing", "enmax_acdnstatus"],
     },
     {
+        "table": "enmax_autocadcheckout",
+        "schema": "enmax_acdncheckout_sheet_status_ak",
+        "display": "Sheet + Status",
+        "columns": ["enmax_acdnsheet", "enmax_acdnstatus"],
+    },
+    {
         "table": "enmax_autocadbroadcastdismissal",
         "schema": "enmax_acdndismissal_broadcast_user_ak",
         "display": "Broadcast + User",
         "columns": ["enmax_acdnbroadcast", "enmax_acdnuser"],
-    },
-    {
-        "table": "enmax_autocadbusinessasset",
-        "schema": "enmax_acdnbusinessasset_ak",
-        "display": "Business + Asset",
-        "columns": ["enmax_acdnbusiness", "enmax_acdnasset"],
-    },
-    {
-        "table": "enmax_autocadassetunit",
-        "schema": "enmax_acdnassetunit_ak",
-        "display": "Asset + Unit",
-        "columns": ["enmax_acdnasset", "enmax_acdnunit"],
     },
 ]
 

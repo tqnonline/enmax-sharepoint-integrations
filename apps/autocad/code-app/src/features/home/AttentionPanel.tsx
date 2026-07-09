@@ -74,7 +74,7 @@ export function AttentionPanel({ isApproverOrAdmin, pendingApprovals, pendingChe
           <Text className={styles.text} weight="semibold">
             {pendingApprovals} reservation{pendingApprovals !== 1 ? "s" : ""} pending your approval
           </Text>
-          <Button appearance="primary" size="small" className={styles.cta} onClick={() => navigate("/approvals?tab=pending")}>
+          <Button appearance="primary" size="small" className={styles.cta} onClick={() => navigate("/approvals?section=reservations&tab=pending")}>
             Review
           </Button>
         </div>
@@ -86,7 +86,7 @@ export function AttentionPanel({ isApproverOrAdmin, pendingApprovals, pendingChe
           <Text className={styles.text} weight="semibold">
             {pendingCheckins} Check In{pendingCheckins !== 1 ? "s" : ""} to validate
           </Text>
-          <Button appearance="primary" size="small" className={styles.cta} onClick={() => navigate("/approvals?tab=checkins")}>
+          <Button appearance="primary" size="small" className={styles.cta} onClick={() => navigate("/approvals?section=documents&tab=checkin")}>
             Validate
           </Button>
         </div>
@@ -98,7 +98,7 @@ export function AttentionPanel({ isApproverOrAdmin, pendingApprovals, pendingChe
           <Text className={styles.text}>
             Stale Check Out · <span className={styles.num}>{c.drawingNumber || "drawing"}</span> out {c.daysOut} day{c.daysOut !== 1 ? "s" : ""}
           </Text>
-          <Button appearance="secondary" size="small" className={styles.cta} onClick={() => navigate("/my-items?tab=checkouts")}>
+          <Button appearance="secondary" size="small" className={styles.cta} onClick={() => navigate("/my-items?type=drawings&state=checkedout")}>
             Open
           </Button>
         </div>

@@ -5,7 +5,7 @@ import "@testing-library/jest-dom";
 vi.mock("./config/useAppConfig", () => ({
   useAppConfig: () => ({
     SingleAdminMode: false,
-    MaxDrawingsPerReservation: 10,
+    MaxRecordsPerReservation: 10,
     MaxSheetsPerDrawing: 50,
     DefaultSheetsPerDrawing: 5,
     StaleCheckoutMonths: "3,6,12",
@@ -33,6 +33,12 @@ vi.mock("./config/useAppConfig", () => ({
     RequireCheckOutApproval: false,
     ShowFinalizeButton: false,
     ShowObsoleteButton: false,
+    EnableDrawingCheckout: true,
+    EnableDrawingCheckIn: true,
+    EnableProcedureCheckout: true,
+    EnableProcedureCheckIn: true,
+    EnableStandardCheckout: true,
+    EnableStandardCheckIn: true,
   }),
 }));
 

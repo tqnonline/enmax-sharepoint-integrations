@@ -16,6 +16,7 @@ export function useApproveCheckout() {
       void queryClient.invalidateQueries({ queryKey: ["reservation-detail"] });
       void queryClient.invalidateQueries({ queryKey: ["checkouts"] });
       void queryClient.invalidateQueries({ queryKey: ["drawings"] });
+      void queryClient.invalidateQueries({ queryKey: ["notification-feed"] });
     },
   });
 }

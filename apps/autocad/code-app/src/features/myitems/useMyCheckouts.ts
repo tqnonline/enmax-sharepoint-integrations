@@ -3,6 +3,7 @@ import type { GridFetchParams } from "../../components/DataGrid";
 import { clientPage } from "../../components/DataGrid/clientPage";
 import { logDataverseError } from "../../components/DataGrid/dataverseError";
 import { isGuid } from "../../lib/guid";
+import { fetchReservationTaxonomyMap, typeLabelForDrawingRow } from "../../lib/drawingTaxonomy";
 
 export interface MyCheckout {
   checkoutId: string;
@@ -10,6 +11,9 @@ export interface MyCheckout {
   drawingNumber: string;
   drawingTitle: string;
   drawingLibraryUrl: string;
+  drawingDestinationUrl: string;
+  /** Derived "Drawing" | "Standard Document" | "Procedure Form" from the record. */
+  typeLabel: string;
   checkedOutOn: string;
   daysOut: number;
   reminderStage: number;
@@ -38,31 +42,56 @@ const CHECKOUT_SELECT = [
   "enmax_acdncheckedouton", "_enmax_acdndrawing_value",
 ] as const;
 
+interface ResolvedDrawing {
+  number: string;
+  title: string;
+  libraryUrl: string;
+  destinationUrl: string;
+  typeLabel: string;
+}
+
 async function resolveDrawings(checkouts: { _enmax_acdndrawing_value?: string | null }[]) {
   const drawingIds = [...new Set(
     checkouts.map(c => c._enmax_acdndrawing_value).filter(isGuid),
   )];
-  const map = new Map<string, { number: string; title: string; libraryUrl: string }>();
+  const map = new Map<string, ResolvedDrawing>();
   if (drawingIds.length > 0) {
     const filter = drawingIds.map(id => `enmax_autocaddrawingid eq '${id}'`).join(" or ");
     const dr = await Enmax_autocaddrawingsService.getAll({
       filter: `(${filter})`,
-      select: ["enmax_autocaddrawingid", "enmax_acdnnumber", "enmax_acdntitle", "enmax_acdnsplibraryurl"],
+      select: [
+        "enmax_autocaddrawingid", "enmax_acdnnumber", "enmax_acdntitle",
+        "enmax_acdnsplibraryurl", "enmax_acdnspdestinationurl",
+        "enmax_acdnreservationtype", "enmax_acdndocumentsubtype",
+        "_enmax_acdnreservation_value",
+      ],
     });
+    const reservationMap = await fetchReservationTaxonomyMap(
+      (dr.data ?? []).map((d) => (d as { _enmax_acdnreservation_value?: string })._enmax_acdnreservation_value ?? ""),
+    );
     for (const d of dr.data ?? []) {
-      map.set(d.enmax_autocaddrawingid, {
-        number:     d.enmax_acdnnumber ?? "",
-        title:      d.enmax_acdntitle  ?? "",
-        libraryUrl: d.enmax_acdnsplibraryurl ?? "",
+      const dd = d as typeof d & {
+        enmax_acdnspdestinationurl?: string;
+        enmax_acdnreservationtype?: number;
+        enmax_acdndocumentsubtype?: number;
+        _enmax_acdnreservation_value?: string;
+      };
+      map.set(dd.enmax_autocaddrawingid, {
+        number:         dd.enmax_acdnnumber ?? "",
+        title:          dd.enmax_acdntitle  ?? "",
+        libraryUrl:     dd.enmax_acdnsplibraryurl ?? "",
+        destinationUrl: dd.enmax_acdnspdestinationurl ?? "",
+        typeLabel:      typeLabelForDrawingRow(dd as unknown as Record<string, unknown>, reservationMap),
       });
     }
   }
   return map;
 }
 
-function mapCheckout(c: Record<string, unknown>, drawingMap: Map<string, { number: string; title: string; libraryUrl: string }>): MyCheckout {
+function mapCheckout(c: Record<string, unknown>, drawingMap: Map<string, ResolvedDrawing>): MyCheckout {
   const drawingId = c["_enmax_acdndrawing_value"] as string | undefined ?? "";
-  const drawing   = drawingMap.get(drawingId) ?? { number: "", title: "", libraryUrl: "" };
+  const drawing   = drawingMap.get(drawingId)
+    ?? { number: "", title: "", libraryUrl: "", destinationUrl: "", typeLabel: "Drawing" };
   const checkedOutMs = c["enmax_acdncheckedouton"] ? new Date(c["enmax_acdncheckedouton"] as string).getTime() : Date.now();
   const daysOut      = Math.floor((Date.now() - checkedOutMs) / (1000 * 60 * 60 * 24));
   const status        = (c["enmax_acdnstatus"] as number | undefined) ?? 1;
@@ -73,6 +102,8 @@ function mapCheckout(c: Record<string, unknown>, drawingMap: Map<string, { numbe
     drawingNumber:      drawing.number,
     drawingTitle:       drawing.title,
     drawingLibraryUrl:  drawing.libraryUrl,
+    drawingDestinationUrl: drawing.destinationUrl,
+    typeLabel:          drawing.typeLabel,
     checkedOutOn:       (c["enmax_acdncheckedouton"] as string | undefined) ?? "",
     daysOut,
     reminderStage,
@@ -111,6 +142,6 @@ export async function fetchMyCheckoutRows(
   const rows = (checkouts as unknown as Record<string, unknown>[]).map(c => mapCheckout(c, drawingMap));
 
   return clientPage(rows, params, {
-    searchText: r => [r.drawingNumber, r.drawingTitle, r.statusLabel],
+    searchText: r => [r.drawingNumber, r.drawingTitle, r.statusLabel, r.typeLabel],
   });
 }

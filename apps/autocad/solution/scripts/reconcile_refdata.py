@@ -1,8 +1,8 @@
 """Audit / reconcile / verify reference data in a target Dataverse environment.
 
-  --audit   : print active counts per reference + combination table (read-only)
+  --audit   : print active counts per reference table (read-only)
   (default) : deactivate reference rows whose code is NOT in the regenerated YAML
-  --verify  : assert active counts match the YAML (+ combos 108/1350, system_scope 0)
+  --verify  : assert active counts match the YAML (+ system_scope 0)
 
 Credentials via load_env(<environment>): apps/code-app/.env.<env> or DATAVERSE_* vars.
 
@@ -29,8 +29,6 @@ SEED_REF_DIR = SCRIPTS_DIR.parent / "seed" / "reference"
 REFERENCE = ["business", "asset", "unit", "domain", "system", "kind",
              "vendor", "record_type", "record_phase"]
 COMBO_EXPECT = {
-    "enmax_autocadbusinessasset": 108,
-    "enmax_autocadassetunit": 1350,
     "enmax_autocadsystemscope": 0,
 }
 

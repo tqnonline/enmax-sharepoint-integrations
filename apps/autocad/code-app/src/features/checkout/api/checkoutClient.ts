@@ -1,7 +1,4 @@
-import { getClient } from "@microsoft/power-apps/data";
-import { dataSourcesInfo } from "../../../../.power/schemas/appschemas/dataSourcesInfo";
-
-const client = getClient(dataSourcesInfo);
+import { executeCustomApi } from "../../../lib/executeCustomApi";
 
 export const DrawingState = {
   None: 0,
@@ -60,6 +57,27 @@ export const CHECKOUT_STATUS_LABELS: Record<number, string> = {
   6: "Requested",
 };
 
+/** OData filter for pending/active checkouts (Requested, Open, AwaitingValidation). */
+export function openCheckoutStatusFilter(): string {
+  return `(enmax_acdnstatus eq ${CheckoutStatus.Requested} or enmax_acdnstatus eq ${CheckoutStatus.Open} or enmax_acdnstatus eq ${CheckoutStatus.AwaitingValidation})`;
+}
+
+export function openCheckoutFilterForDrawing(drawingId: string): string {
+  return `_enmax_acdndrawing_value eq '${drawingId}' and ${openCheckoutStatusFilter()}`;
+}
+
+export function openCheckoutFilterForDrawings(drawingIds: string[]): string {
+  const drawingClause = drawingIds.map((id) => `_enmax_acdndrawing_value eq '${id}'`).join(" or ");
+  return `(${drawingClause}) and ${openCheckoutStatusFilter()}`;
+}
+
+function friendlyCheckoutError(message: string): string {
+  if (/pending or active check-out|pending check-out request/i.test(message)) {
+    return "A Check Out is already pending or in progress for this item. Check Approvals → Check Out Requests, or wait for it to be resolved.";
+  }
+  return message;
+}
+
 export interface DrawingForPanel {
   id: string;
   state: DrawingStateValue;
@@ -85,21 +103,57 @@ export interface CheckoutForPanel {
 }
 
 export async function checkOut(drawingId: string): Promise<{ checkoutId: string }> {
-  const result = await client.executeAsync<Record<string, unknown>, Record<string, unknown>>({
-    dataverseRequest: {
-      action: "customapi",
-      parameters: {
-        operationName: "enmax_acdnCheckOutDrawing",
-        tableName: "enmax_autocaddrawings",
-        body: { drawingId },
-      },
-    },
+  const result = await executeCustomApi<Record<string, unknown>>({
+    operationName: "enmax_acdnCheckOutDrawing",
+    tableName: "enmax_autocaddrawings",
+    body: { drawingId },
   });
   if (!result.success) {
     const err = result.error as { message?: string } | undefined;
-    throw new Error(err?.message ?? "CheckOut failed");
+    throw new Error(friendlyCheckoutError(err?.message ?? "CheckOut failed"));
   }
   return { checkoutId: (result.data?.["CheckoutId"] as string) ?? "" };
+}
+
+export interface CheckOutSheetsInput {
+  drawingId: string;
+  /** Per-sheet checkout by Dataverse sheet id (ADR 0002). */
+  sheetIds?: string[];
+  /** Check out every Available sheet on the drawing. */
+  allAvailable?: boolean;
+}
+
+/**
+ * Invokes unbound enmax_acdnCheckOutSheets (ADR 0002).
+ * Pass sheetIds for a selection, or allAvailable with drawingId for bulk checkout.
+ */
+export async function checkOutSheets(input: CheckOutSheetsInput): Promise<{ checkoutIds: string[] }> {
+  const body: Record<string, unknown> = {};
+
+  if (input.sheetIds && input.sheetIds.length > 0) {
+    body.Sheets = input.sheetIds.join(",");
+  } else if (input.allAvailable) {
+    body.Drawing = {
+      "@odata.type": "Microsoft.Dynamics.CRM.enmax_autocaddrawing",
+      enmax_autocaddrawingid: input.drawingId,
+    };
+    body.AllAvailable = true;
+  } else {
+    throw new Error("Specify sheetIds or allAvailable for checkout");
+  }
+
+  const result = await executeCustomApi<Record<string, unknown>>({
+    operationName: "enmax_acdnCheckOutSheets",
+    tableName: "enmax_acdncheckoutsheets",
+    body,
+  });
+  if (!result.success) {
+    const err = result.error as { message?: string } | undefined;
+    throw new Error(friendlyCheckoutError(err?.message ?? "Document check out failed"));
+  }
+  const raw = result.data?.["CheckoutIds"];
+  const checkoutIds = Array.isArray(raw) ? raw.map(String) : [];
+  return { checkoutIds };
 }
 
 export interface SubmitRevisionInput {
@@ -110,17 +164,12 @@ export interface SubmitRevisionInput {
 }
 
 export async function submitRevision(input: SubmitRevisionInput): Promise<void> {
-  const result = await client.executeAsync<Record<string, unknown>, unknown>({
-    dataverseRequest: {
-      action: "customapi",
-      parameters: {
-        operationName: "enmax_acdnSubmitRevision",
-        tableName: "enmax_autocadcheckouts",
-        body: {
-          checkoutId: input.checkoutId,
-          SubmissionInfo: input.submissionInfo,
-        },
-      },
+  const result = await executeCustomApi({
+    operationName: "enmax_acdnSubmitRevision",
+    tableName: "enmax_autocadcheckouts",
+    body: {
+      checkoutId: input.checkoutId,
+      SubmissionInfo: input.submissionInfo,
     },
   });
   if (!result.success) {
@@ -136,18 +185,13 @@ export interface ApproveCheckinInput {
 }
 
 export async function approveCheckin(input: ApproveCheckinInput): Promise<void> {
-  const result = await client.executeAsync<Record<string, unknown>, unknown>({
-    dataverseRequest: {
-      action: "customapi",
-      parameters: {
-        operationName: "enmax_acdnApproveCheckin",
-        tableName: "enmax_autocadcheckouts",
-        body: {
-          checkoutId: input.checkoutId,
-          Decision: input.decision === "Approved" ? 1 : 2,
-          Reason: input.reason ?? "",
-        },
-      },
+  const result = await executeCustomApi({
+    operationName: "enmax_acdnApproveCheckin",
+    tableName: "enmax_autocadcheckouts",
+    body: {
+      checkoutId: input.checkoutId,
+      Decision: input.decision === "Approved" ? 1 : 2,
+      Reason: input.reason ?? "",
     },
   });
   if (!result.success) {
@@ -169,18 +213,13 @@ export interface ApproveCheckoutResult {
 }
 
 export async function approveCheckout(input: ApproveCheckoutInput): Promise<ApproveCheckoutResult> {
-  const result = await client.executeAsync<Record<string, unknown>, Record<string, unknown>>({
-    dataverseRequest: {
-      action: "customapi",
-      parameters: {
-        operationName: "enmax_acdnApproveCheckout",
-        tableName: "enmax_autocadcheckouts",
-        body: {
-          checkoutId: input.checkoutId,
-          Decision: input.decision === "Approved" ? 1 : 2,
-          Reason: input.reason ?? "",
-        },
-      },
+  const result = await executeCustomApi<Record<string, unknown>>({
+    operationName: "enmax_acdnApproveCheckout",
+    tableName: "enmax_autocadcheckouts",
+    body: {
+      checkoutId: input.checkoutId,
+      Decision: input.decision === "Approved" ? 1 : 2,
+      Reason: input.reason ?? "",
     },
   });
   if (!result.success) {
@@ -203,17 +242,12 @@ export interface ForceCheckinInput {
 export async function forceCheckin(input: ForceCheckinInput): Promise<void> {
   // WS3: the revision number is gone — the server stamps an internal cycle token when
   // NewRevision is omitted, so the client no longer sends one.
-  const result = await client.executeAsync<Record<string, unknown>, unknown>({
-    dataverseRequest: {
-      action: "customapi",
-      parameters: {
-        operationName: "enmax_acdnForceCheckin",
-        tableName: "enmax_autocadcheckouts",
-        body: {
-          checkoutId: input.checkoutId,
-          Reason: input.reason,
-        },
-      },
+  const result = await executeCustomApi({
+    operationName: "enmax_acdnForceCheckin",
+    tableName: "enmax_autocadcheckouts",
+    body: {
+      checkoutId: input.checkoutId,
+      Reason: input.reason,
     },
   });
   if (!result.success) {
@@ -228,15 +262,10 @@ export interface FinalizeDrawingInput {
 }
 
 export async function finalizeDrawing(input: FinalizeDrawingInput): Promise<void> {
-  const result = await client.executeAsync<Record<string, unknown>, unknown>({
-    dataverseRequest: {
-      action: "customapi",
-      parameters: {
-        operationName: "enmax_acdnFinalizeDrawing",
-        tableName: "enmax_autocaddrawings",
-        body: { drawingId: input.drawingId, Reason: input.reason },
-      },
-    },
+  const result = await executeCustomApi({
+    operationName: "enmax_acdnFinalizeDrawing",
+    tableName: "enmax_autocaddrawings",
+    body: { drawingId: input.drawingId, Reason: input.reason },
   });
   if (!result.success) {
     const err = result.error as { message?: string } | undefined;
@@ -250,15 +279,10 @@ export interface MarkDrawingInput {
 }
 
 export async function markObsolete(input: MarkDrawingInput): Promise<void> {
-  const result = await client.executeAsync<Record<string, unknown>, unknown>({
-    dataverseRequest: {
-      action: "customapi",
-      parameters: {
-        operationName: "enmax_acdnMarkObsolete",
-        tableName: "enmax_autocaddrawings",
-        body: { drawingId: input.drawingId, Reason: input.reason ?? "" },
-      },
-    },
+  const result = await executeCustomApi({
+    operationName: "enmax_acdnMarkObsolete",
+    tableName: "enmax_autocaddrawings",
+    body: { drawingId: input.drawingId, Reason: input.reason ?? "" },
   });
   if (!result.success) {
     const err = result.error as { message?: string } | undefined;
@@ -274,15 +298,10 @@ export interface ReleaseDrawingInput {
 export async function releaseDrawing(
   input: ReleaseDrawingInput,
 ): Promise<{ newState: string; sequenceKeyBurned: string }> {
-  const result = await client.executeAsync<Record<string, unknown>, Record<string, unknown>>({
-    dataverseRequest: {
-      action: "customapi",
-      parameters: {
-        operationName: "enmax_acdnReleaseDrawing",
-        tableName: "enmax_autocaddrawings",
-        body: { drawingId: input.drawingId, Reason: input.reason },
-      },
-    },
+  const result = await executeCustomApi<Record<string, unknown>>({
+    operationName: "enmax_acdnReleaseDrawing",
+    tableName: "enmax_autocaddrawings",
+    body: { drawingId: input.drawingId, Reason: input.reason },
   });
   if (!result.success) {
     const err = result.error as { message?: string } | undefined;

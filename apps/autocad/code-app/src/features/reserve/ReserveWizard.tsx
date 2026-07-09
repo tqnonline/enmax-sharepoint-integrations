@@ -126,7 +126,7 @@ export function ReserveWizard() {
     const values = methods.getValues();
     try {
       const result = await createMutation.mutateAsync(values);
-      navigate(`/reserve/success?id=${result.enmax_acdnreservationid}`);
+      navigate(`/reserve/success?id=${result.id}&ref=${encodeURIComponent(result.number)}`);
     } catch {
       // error surfaced via createMutation.error below
     }
@@ -238,7 +238,7 @@ export function ReserveWizard() {
             {step === 1 && <Step2Composition refData={refData} onNext={next} onBack={back} />}
             {step === 2 && (
               <Step3Details
-                maxCount={config.MaxDrawingsPerReservation}
+                maxCount={config.MaxRecordsPerReservation}
                 maxSheets={config.MaxSheetsPerDrawing}
                 onNext={next}
                 onBack={back}

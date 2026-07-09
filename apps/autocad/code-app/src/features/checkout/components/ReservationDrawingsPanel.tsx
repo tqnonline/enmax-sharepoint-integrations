@@ -33,17 +33,7 @@ import { useUserRole } from "../../../auth/useUserRole";
 import { DrawingState, DRAWING_STATE_LABELS, DRAWING_STATE_BADGE_COLOR } from "../api/checkoutClient";
 import type { BadgeColor } from "../api/checkoutClient";
 import { formatComposition } from "../../approvals/compositionUtils";
-
-function checkedOutSince(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
-}
-
-
+import { formatGridDateTime } from "../../../lib/formatDateTime";
 
 function useScreenWidth(): number {
   const [width, setWidth] = useState(() => window.innerWidth);
@@ -140,7 +130,7 @@ export function ReservationDrawingsPanel({ reservation, onClose }: Props) {
                 size={100}
                 style={{ color: tokens.colorNeutralForeground3, display: "block", marginTop: "2px" }}
               >
-                Checked out {checkedOutSince(checkout.checkedOutOn)}
+                Checked out on {formatGridDateTime(checkout.checkedOutOn)}
               </Text>
             )}
           </div>

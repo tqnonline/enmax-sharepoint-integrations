@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { Enmax_autocaddrawingsService } from "../../generated";
+import { Enmax_autocaddrawingsService, Enmax_autocadreservationsService } from "../../generated";
 import type { DrawingRow } from "./useSearchDrawings";
+import { reservationTypeDisplayLabel } from "../reserve/terminology";
 
 export function useDrawingDetail(id?: string) {
   return useQuery<DrawingRow | null>({
@@ -14,12 +15,13 @@ export function useDrawingDetail(id?: string) {
         select: [
           "enmax_autocaddrawingid", "enmax_acdnnumber", "enmax_acdntitle",
           "enmax_acdncurrentrevision", "enmax_acdnrevisiondate", "enmax_acdnstate",
-          "enmax_acdnsheetcount", "enmax_acdnsplibraryurl", "enmax_acdnspdestinationurl",
+          "enmax_acdnsheetcount", "enmax_acdnreservationtype", "enmax_acdndocumentsubtype",
+          "enmax_acdnsplibraryurl", "enmax_acdnspdestinationurl",
           "enmax_acdnpresentindropoff", "enmax_acdnpresentindestination",
           "_enmax_acdnbusiness_value", "_enmax_acdnasset_value", "_enmax_acdnunit_value",
           "_enmax_acdndomain_value", "_enmax_acdnsystem_value", "_enmax_acdnkind_value",
           "_enmax_acdnrecordtype_value", "_enmax_acdnrecordphase_value",
-          "_enmax_acdnvendor_value", "_createdby_value",
+          "_enmax_acdnvendor_value", "_createdby_value", "_enmax_acdnreservation_value",
         ],
         top: 1,
       });
@@ -27,6 +29,22 @@ export function useDrawingDetail(id?: string) {
       const r = result.data[0] as unknown as Record<string, unknown>;
       const fv = (k: string) =>
         (r[`${k}@OData.Community.Display.V1.FormattedValue`] as string) ?? "";
+      const submittedById = (r["_createdby_value"] as string | undefined) ?? "";
+      const submittedByName = fv("_createdby_value");
+      let approvedById = "";
+      let approvedByName = "";
+      const reservationId = r["_enmax_acdnreservation_value"] as string | undefined;
+      if (reservationId) {
+        const res = await Enmax_autocadreservationsService.get(reservationId, {
+          select: ["_enmax_acdnapprover_value"],
+        });
+        if (res.success && res.data) {
+          const raw = res.data as unknown as Record<string, unknown>;
+          approvedById = (raw["_enmax_acdnapprover_value"] as string | undefined) ?? "";
+          approvedByName =
+            (raw["_enmax_acdnapprover_value@OData.Community.Display.V1.FormattedValue"] as string | undefined) ?? "";
+        }
+      }
       return {
         id:                          r["enmax_autocaddrawingid"] as string,
         enmax_acdnnumber:            (r["enmax_acdnnumber"] as string | undefined) ?? "",
@@ -35,6 +53,11 @@ export function useDrawingDetail(id?: string) {
         enmax_acdnrevisiondate:      (r["enmax_acdnrevisiondate"] as string | undefined) ?? "",
         enmax_acdnstate:             (r["enmax_acdnstate"] as number | undefined) ?? 1,
         enmax_acdnsheetcount:        (r["enmax_acdnsheetcount"] as number | undefined) ?? 0,
+        enmax_acdnreservationtype:   r["enmax_acdnreservationtype"] as number | undefined,
+        enmax_acdndocumentsubtype:   r["enmax_acdndocumentsubtype"] as number | undefined,
+        typeLabel:                   reservationTypeDisplayLabel(
+                                       r["enmax_acdnreservationtype"] as number | undefined,
+                                       r["enmax_acdndocumentsubtype"] as number | undefined),
         enmax_acdnsplibraryurl:      (r["enmax_acdnsplibraryurl"] as string | undefined) ?? "",
         enmax_acdnspdestinationurl:  (r["enmax_acdnspdestinationurl"] as string | undefined) ?? "",
         enmax_acdnpresentindropoff:  (r["enmax_acdnpresentindropoff"] as boolean | undefined) ?? false,
@@ -48,7 +71,11 @@ export function useDrawingDetail(id?: string) {
         _enmax_acdnrecordtype_value: (r["_enmax_acdnrecordtype_value"] as string | undefined) ?? "",
         _enmax_acdnrecordphase_value:(r["_enmax_acdnrecordphase_value"] as string | undefined) ?? "",
         _enmax_acdnvendor_value:     (r["_enmax_acdnvendor_value"] as string | undefined) ?? "",
-        _createdby_value:            (r["_createdby_value"] as string | undefined) ?? "",
+        _createdby_value:            submittedById,
+        submittedById,
+        submittedByName,
+        approvedById,
+        approvedByName,
         businessDisplay:    fv("_enmax_acdnbusiness_value"),
         assetDisplay:       fv("_enmax_acdnasset_value"),
         unitDisplay:        fv("_enmax_acdnunit_value"),
@@ -58,7 +85,7 @@ export function useDrawingDetail(id?: string) {
         recordTypeDisplay:  fv("_enmax_acdnrecordtype_value"),
         recordPhaseDisplay: fv("_enmax_acdnrecordphase_value"),
         vendorDisplay:      fv("_enmax_acdnvendor_value"),
-        requesterDisplay:   fv("_createdby_value"),
+        requesterDisplay:   submittedByName,
       } satisfies DrawingRow;
     },
   });

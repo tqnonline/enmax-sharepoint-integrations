@@ -39,15 +39,25 @@ vi.mock("../../generated", () => ({
   },
 }));
 
-afterEach(() => { mockRole.value = "Admin"; vi.clearAllMocks(); });
+import { GRID_DEFAULT_FROM_DAYS, isoDateDaysAgo, isoDateToday } from "../../lib/dateRangeDefaults";
 
-// Test 28 — Default date range = last 7 days
-test("default from-date is set to 7 days ago", () => {
+const FIXED_NOW = new Date("2026-07-09T12:00:00.000Z");
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(FIXED_NOW);
+});
+afterEach(() => {
+  mockRole.value = "Admin";
+  vi.clearAllMocks();
+  vi.useRealTimers();
+});
+
+// Default date range = last 30 days (aligned with all other grid pages)
+test(`default from-date is set to ${GRID_DEFAULT_FROM_DAYS} days ago`, () => {
   renderWithProviders(<AuditPage />);
   const fromInput = screen.getByLabelText("From date") as HTMLInputElement;
-  const today     = new Date();
-  const expected  = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  expect(fromInput.value).toBe(expected);
+  expect(fromInput.value).toBe(isoDateDaysAgo(GRID_DEFAULT_FROM_DAYS, FIXED_NOW));
 });
 
 // Test 29 — All filters compose correctly (data renders)
@@ -68,25 +78,22 @@ test("audit table has no edit/delete/action buttons — read-only", async () => 
   expect(screen.queryByRole("button", { name: /deactivate/i })).not.toBeInTheDocument();
 });
 
-// Additional: Clear filters resets from-date
-test("Clear button resets date range to last 7 days", async () => {
-  const user = userEvent.setup();
+// Clear filters resets from-date to default 30-day window
+test("Clear button resets date range to last 30 days", async () => {
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
   renderWithProviders(<AuditPage />);
   const fromInput = screen.getByLabelText("From date") as HTMLInputElement;
   await user.clear(fromInput);
   await user.type(fromInput, "2026-01-01");
   expect(fromInput.value).toBe("2026-01-01");
   await user.click(screen.getByRole("button", { name: /clear/i }));
-  const today    = new Date();
-  const expected = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  expect(fromInput.value).toBe(expected);
+  expect(fromInput.value).toBe(isoDateDaysAgo(GRID_DEFAULT_FROM_DAYS, FIXED_NOW));
 });
 
-test("default from-date is 7 days ago", () => {
+test(`default from-date is ${GRID_DEFAULT_FROM_DAYS} days ago`, () => {
   renderWithProviders(<AuditPage />);
   const from = screen.getByLabelText("From date") as HTMLInputElement;
-  const expected = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  expect(from.value).toBe(expected);
+  expect(from.value).toBe(isoDateDaysAgo(GRID_DEFAULT_FROM_DAYS, FIXED_NOW));
 });
 test("Subject Table filter is a dropdown (select)", () => {
   renderWithProviders(<AuditPage />);
@@ -127,11 +134,11 @@ test("subject id stays quoted, event/source stay unquoted", () => {
   expect(filter).toContain("enmax_acdnsource eq 1");
 });
 
-// Default To-date is today, so the preloaded filters show the full 7-day window.
+// Default To-date is today, so the preloaded filters show the full 30-day window.
 test("default to-date is today", () => {
   renderWithProviders(<AuditPage />);
   const toInput = screen.getByLabelText("To date") as HTMLInputElement;
-  expect(toInput.value).toBe(new Date().toISOString().slice(0, 10));
+  expect(toInput.value).toBe(isoDateToday(FIXED_NOW));
 });
 
 // Regression: Dataverse rejects $skip ("Skip Clause is not supported in CRM").

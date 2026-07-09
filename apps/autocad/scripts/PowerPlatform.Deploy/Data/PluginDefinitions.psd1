@@ -5,6 +5,8 @@
 #
 # CustomAPI bindingtype:           0=Global  1=Entity  2=EntityCollection
 # CustomAPIRequestParameter type:  5=EntityReference  7=Integer  9=Picklist  10=String
+# ActingUserId (optional, Type=10): WhoAmI user id from the Code App. Required at runtime when
+# InitiatingUserId is SYSTEM or an application user (Power Apps Code connection identity).
 # CustomAPIResponseProperty type:  same codes
 # PluginStep stage:                20=PreOperation  40=PostOperation
 # PluginStep mode:                 0=Synchronous  1=Asynchronous
@@ -27,12 +29,13 @@
             BindingType = 0
             BoundEntity = $null
             Params = @(
-                @{ Name="Business";    Type=10; Optional=$false }
-                @{ Name="Asset";       Type=10; Optional=$false }
-                @{ Name="Unit";        Type=10; Optional=$false }
-                @{ Name="Domain";      Type=10; Optional=$false }
-                @{ Name="System";      Type=10; Optional=$false }
-                @{ Name="Kind";        Type=10; Optional=$false }
+                @{ Name="ActingUserId"; Type=10; Optional=$true  }
+                @{ Name="Business";    Type=10; Optional=$true  }
+                @{ Name="Asset";       Type=10; Optional=$true  }
+                @{ Name="Unit";        Type=10; Optional=$true  }
+                @{ Name="Domain";      Type=10; Optional=$true  }
+                @{ Name="System";      Type=10; Optional=$true  }
+                @{ Name="Kind";        Type=10; Optional=$true  }
                 @{ Name="Count";       Type=7;  Optional=$false }
                 @{ Name="Reservation"; Type=5;  Optional=$true  }
             )
@@ -63,6 +66,7 @@
             BindingType = 0
             BoundEntity = $null
             Params = @(
+                @{ Name="ActingUserId"; Type=10; Optional=$true  }
                 @{ Name="Target"; Type=5; Optional=$false }
             )
             Response    = @()
@@ -76,6 +80,7 @@
             BindingType = 0
             BoundEntity = $null
             Params = @(
+                @{ Name="ActingUserId"; Type=10; Optional=$true  }
                 @{ Name="Target"; Type=5; Optional=$false }
                 @{ Name="Reason"; Type=10; Optional=$true }
             )
@@ -90,6 +95,7 @@
             BindingType = 0
             BoundEntity = $null
             Params = @(
+                @{ Name="ActingUserId"; Type=10; Optional=$true  }
                 @{ Name="Target";        Type=5;  Optional=$false }
                 @{ Name="IssuedNumbers"; Type=10; Optional=$false }
                 @{ Name="SequenceKey";   Type=10; Optional=$false }
@@ -115,6 +121,7 @@
             BindingType = 0
             BoundEntity = $null
             Params = @(
+                @{ Name="ActingUserId"; Type=10; Optional=$true  }
                 @{ Name="Drawing"; Type=5; Optional=$false }
                 @{ Name="Count";   Type=7; Optional=$false }
             )
@@ -126,7 +133,7 @@
             )
         }
 
-        # ── Entity-bound: Drawing checkout ───────────────────────────────────
+        # ── Entity-bound: Drawing checkout (deprecated — delegates to sheets) ──
         @{
             UniqueName  = "enmax_acdnCheckOutDrawing"
             DisplayName = "Check Out Drawing"
@@ -140,6 +147,29 @@
             )
         }
 
+        # ── Global: Sheet-level checkout (ADR 0002) ───────────────────────────
+        # Unbound with explicit inputs — same routing rationale as reservation
+        # lifecycle APIs. Callers supply Sheets (comma-separated GUIDs) and/or
+        # Drawing + optional AllAvailable. Returns CheckoutIds (GUID strings).
+        @{
+            UniqueName  = "enmax_acdnCheckOutSheets"
+            DisplayName = "Check Out Sheets"
+            Description = "Checks out one or more Available sheets for revision (sheet owner or Admin only). Creates per-sheet checkout rows, optionally gated by RequireCheckOutApproval. Inputs: Sheets (comma-separated GUIDs, optional), Drawing (optional), AllAvailable (optional bool), BatchId (optional). Returns CheckoutIds."
+            PluginClass = "Enmax.AutoCAD.CheckOutSheetsPlugin"
+            BindingType = 0
+            BoundEntity = $null
+            Params = @(
+                @{ Name="ActingUserId"; Type=10; Optional=$true  }
+                @{ Name="Sheets";        Type=10; Optional=$true  }
+                @{ Name="Drawing";       Type=5;  Optional=$true  }
+                @{ Name="AllAvailable";  Type=0;  Optional=$true  }
+                @{ Name="BatchId";       Type=10; Optional=$true  }
+            )
+            Response = @(
+                @{ Name="CheckoutIds"; Type=10 }
+            )
+        }
+
         @{
             UniqueName  = "enmax_acdnApproveCheckin"
             DisplayName = "Approve Check-In"
@@ -148,6 +178,7 @@
             BindingType = 1
             BoundEntity = "enmax_autocadcheckout"
             Params = @(
+                @{ Name="ActingUserId"; Type=10; Optional=$true  }
                 @{ Name="Decision"; Type=7;  Optional=$false }
                 @{ Name="Reason";   Type=10; Optional=$true  }
             )
@@ -166,6 +197,7 @@
             BindingType = 1
             BoundEntity = "enmax_autocadcheckout"
             Params = @(
+                @{ Name="ActingUserId"; Type=10; Optional=$true  }
                 @{ Name="Decision"; Type=7;  Optional=$false }
                 @{ Name="Reason";   Type=10; Optional=$true  }
             )
@@ -184,6 +216,7 @@
             BindingType = 1
             BoundEntity = "enmax_autocadcheckout"
             Params = @(
+                @{ Name="ActingUserId"; Type=10; Optional=$true  }
                 @{ Name="NewRevision"; Type=10; Optional=$true  }
                 @{ Name="Reason";      Type=10; Optional=$false }
             )
@@ -197,11 +230,12 @@
         @{
             UniqueName  = "enmax_acdnSubmitRevision"
             DisplayName = "Submit Revision"
-            Description = "Checks in a revised drawing on an open checkout (checkout owner only). Captures mandatory Submission Information (Project, WO#, ...); the revision number is gone — SharePoint version history is the revision trail. AppConfig RequireCheckInApproval off: checkout closes, drawing returns to Available. On: both move to AwaitingValidation for approval. Inputs: Target, SubmissionInfo."
+            Description = "Checks in a revised drawing on an open checkout (checkout owner only). Captures mandatory Submission Information (Project, WO#, ...); the revision number is gone — SharePoint version history is the revision trail. AppConfig RequireCheckInApproval (defaults ON when the row is absent) off: checkout closes, drawing returns to Available. On: both move to AwaitingValidation for approval. Inputs: Target, SubmissionInfo."
             PluginClass = "Enmax.AutoCAD.SubmitRevisionPlugin"
             BindingType = 1
             BoundEntity = "enmax_autocadcheckout"
             Params = @(
+                @{ Name="ActingUserId"; Type=10; Optional=$true  }
                 @{ Name="SubmissionInfo"; Type=10; Optional=$false }
             )
             Response = @(
@@ -218,6 +252,7 @@
             BindingType = 1
             BoundEntity = "enmax_autocaddrawing"
             Params = @(
+                @{ Name="ActingUserId"; Type=10; Optional=$true  }
                 @{ Name="Reason"; Type=10; Optional=$false }
             )
             Response = @()
@@ -231,6 +266,7 @@
             BindingType = 1
             BoundEntity = "enmax_autocaddrawing"
             Params = @(
+                @{ Name="ActingUserId"; Type=10; Optional=$true  }
                 @{ Name="Reason"; Type=10; Optional=$true }
             )
             Response = @()
@@ -245,6 +281,7 @@
             BindingType = 1
             BoundEntity = "enmax_autocaddrawing"
             Params = @(
+                @{ Name="ActingUserId"; Type=10; Optional=$true  }
                 @{ Name="Reason"; Type=10; Optional=$false }
             )
             Response = @(
@@ -266,6 +303,7 @@
             BindingType = 0
             BoundEntity = $null
             Params = @(
+                @{ Name="ActingUserId"; Type=10; Optional=$true  }
                 @{ Name="Target";       Type=5;  Optional=$false }
                 @{ Name="RecordNumber"; Type=10; Optional=$false }
                 @{ Name="FoundFiles";   Type=10; Optional=$true  }
@@ -443,30 +481,6 @@
         }
 
         @{
-            Name             = "Enmax.AutoCAD.SetAppOwnerPlugin: Create of enmax_autocadbusinessasset"
-            PluginClass      = "Enmax.AutoCAD.SetAppOwnerPlugin"
-            Message          = "Create"
-            Entity           = "enmax_autocadbusinessasset"
-            Stage            = 10
-            Mode             = 0    # Synchronous
-            Rank             = 1
-            FilterAttributes = $null
-            Images           = @()
-        }
-
-        @{
-            Name             = "Enmax.AutoCAD.SetAppOwnerPlugin: Create of enmax_autocadassetunit"
-            PluginClass      = "Enmax.AutoCAD.SetAppOwnerPlugin"
-            Message          = "Create"
-            Entity           = "enmax_autocadassetunit"
-            Stage            = 10
-            Mode             = 0    # Synchronous
-            Rank             = 1
-            FilterAttributes = $null
-            Images           = @()
-        }
-
-        @{
             Name             = "Enmax.AutoCAD.SetAppOwnerPlugin: Create of enmax_autocadsystemscope"
             PluginClass      = "Enmax.AutoCAD.SetAppOwnerPlugin"
             Message          = "Create"
@@ -503,7 +517,7 @@
                 @{
                     Name       = "postImage"
                     ImageType  = 1   # PostImage
-                    Attributes = "enmax_acdnstatus,enmax_acdnissuednumbers,enmax_acdnsheetsperdrawing,enmax_acdnreservationtype,enmax_acdndocumentsubtype,ownerid,enmax_acdnbusiness,enmax_acdnasset,enmax_acdnunit,enmax_acdndomain,enmax_acdnsystem,enmax_acdnkind"
+                    Attributes = "enmax_acdnstatus,enmax_acdnissuednumbers,enmax_acdnsheetsperdrawing,enmax_acdnreservationtype,enmax_acdndocumentsubtype,ownerid,enmax_acdnbusiness,enmax_acdnasset,enmax_acdnunit,enmax_acdndomain,enmax_acdnsystem,enmax_acdnkind,enmax_acdntargetdrawing"
                 }
             )
         }

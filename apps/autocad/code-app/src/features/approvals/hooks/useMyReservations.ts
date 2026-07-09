@@ -10,6 +10,17 @@ import {
   SystemusersService,
 } from "../../../generated";
 import type { PendingReservation } from "./usePendingReservations";
+import { reservationTypeDisplayLabel } from "../../reserve/terminology";
+
+type RawMyReservation = {
+  enmax_acdnreservationtype?: number;
+  enmax_acdndocumentsubtype?: number;
+  enmax_acdnsequencetype?: number;
+  _enmax_acdntargetdrawing_value?: string;
+};
+
+/** enmax_acdnsequencetype option value for "Existing" (append to a base). */
+const SEQUENCE_TYPE_EXISTING = 2;
 
 async function fetchMyReservations(userId: string): Promise<PendingReservation[]> {
   const res = await Enmax_autocadreservationsService.getAll({
@@ -18,8 +29,11 @@ async function fetchMyReservations(userId: string): Promise<PendingReservation[]
       "enmax_autocadreservationid", "enmax_acdnreservationid", "_createdby_value",
       "enmax_acdndrawingcount", "enmax_acdnoverride", "enmax_acdnreason",
       "enmax_acdnstatus", "enmax_acdndeclinereason", "enmax_acdnissuednumbers", "createdon",
+      "_enmax_acdnapprover_value",
       "_enmax_acdnbusiness_value", "_enmax_acdnasset_value", "_enmax_acdnunit_value",
       "_enmax_acdndomain_value", "_enmax_acdnsystem_value", "_enmax_acdnkind_value",
+      "enmax_acdnreservationtype", "enmax_acdndocumentsubtype",
+      "enmax_acdnsequencetype", "_enmax_acdntargetdrawing_value",
     ],
     orderBy: ["createdon desc"],
   });
@@ -61,12 +75,29 @@ async function fetchMyReservations(userId: string): Promise<PendingReservation[]
     // non-fatal — display name will fall back to userId
   }
 
-  return res.data!.map((r) => ({
+  return res.data!.map((r) => {
+    const raw = r as typeof r & {
+      "_createdby_value@OData.Community.Display.V1.FormattedValue"?: string;
+      "_enmax_acdnapprover_value@OData.Community.Display.V1.FormattedValue"?: string;
+    };
+    const submitterName =
+      raw["_createdby_value@OData.Community.Display.V1.FormattedValue"] ??
+      user?.fullname ??
+      r._createdby_value ?? "";
+    const approverName =
+      raw["_enmax_acdnapprover_value@OData.Community.Display.V1.FormattedValue"] ?? "";
+    return {
     enmax_acdnreservationid:     r.enmax_autocadreservationid,
     enmax_acdnreservationnumber: r.enmax_acdnreservationid ?? "",
     _createdby_value:            r._createdby_value ?? "",
-    _createdby_value_Formatted:  user?.fullname ?? r._createdby_value ?? "",
+    _createdby_value_Formatted:  submitterName,
     createdByJobTitle:           user?.jobtitle ?? "",
+    _enmax_acdnapprover_value:   r._enmax_acdnapprover_value ?? "",
+    _enmax_acdnapprover_value_Formatted: approverName,
+    submittedById:               r._createdby_value ?? "",
+    submittedByName:             submitterName,
+    approvedById:                r._enmax_acdnapprover_value ?? "",
+    approvedByName:              approverName,
     enmax_acdndrawingcount:      r.enmax_acdndrawingcount ?? 0,
     enmax_acdnoverride:          r.enmax_acdnoverride ?? false,
     enmax_acdnreason:            r.enmax_acdnreason ?? "",
@@ -80,7 +111,18 @@ async function fetchMyReservations(userId: string): Promise<PendingReservation[]
     domainCode:   r._enmax_acdndomain_value   ? domainMap.get(r._enmax_acdndomain_value): undefined,
     systemCode:   r._enmax_acdnsystem_value   ? sysMap.get(r._enmax_acdnsystem_value)   : undefined,
     kindCode:     r._enmax_acdnkind_value     ? kindMap.get(r._enmax_acdnkind_value)    : undefined,
-  }));
+    typeLabel:    reservationTypeDisplayLabel(
+      (r as RawMyReservation).enmax_acdnreservationtype,
+      (r as RawMyReservation).enmax_acdndocumentsubtype),
+    sequenceType:        (r as RawMyReservation).enmax_acdnsequencetype,
+    reservationType:     (r as RawMyReservation).enmax_acdnreservationtype,
+    targetDrawingId:     (r as RawMyReservation)._enmax_acdntargetdrawing_value,
+    targetDrawingNumber: undefined,
+    isAppend:
+      (r as RawMyReservation).enmax_acdnsequencetype === SEQUENCE_TYPE_EXISTING &&
+      !!(r as RawMyReservation)._enmax_acdntargetdrawing_value,
+  };
+  });
 }
 
 export function useMyReservations(userId: string | undefined) {

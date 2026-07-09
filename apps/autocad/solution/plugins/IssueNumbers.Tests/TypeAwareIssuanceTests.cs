@@ -90,7 +90,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         private static int CountDrawings(XrmFakedContext ctx) => ctx.CreateQuery(DrawingEntity).Count();
 
         [Fact]
-        public void CreateDrawings_StandardDocument_CreatesBaseOnly_NoChildItems()
+        public void CreateDrawings_StandardDocument_CreatesSingletonSheet()
         {
             var (ctx, pluginCtx) = BuildCreateDrawingsContext(
                 new[] { 1 }, TypeDocument, SubtypeStandard, sheetsPer: 3);
@@ -98,7 +98,11 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             ctx.ExecutePluginWith<CreateDrawingsPlugin>(pluginCtx);
 
             CountDrawings(ctx).Should().Be(1, because: "a Standard document is a single base record");
-            CountSheets(ctx).Should().Be(0, because: "Standard documents are base-only — no child items");
+            CountSheets(ctx).Should().Be(1, because: "Standard now gets a singleton sheet carrier for checkout/check-in");
+            var drawing = ctx.CreateQuery(DrawingEntity).Single();
+            drawing.GetAttributeValue<int>("enmax_acdnsheetcount").Should().Be(1);
+            var sheet = ctx.CreateQuery(SheetEntity).Single();
+            sheet.Contains("enmax_acdnsheetnumber").Should().BeFalse("singleton Standard sheet stores no numeric suffix");
         }
 
         [Fact]
@@ -208,7 +212,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         [Fact]
-        public void AutoCreate_StandardDocument_CreatesBaseOnly_NoChildItems()
+        public void AutoCreate_StandardDocument_CreatesSingletonSheet()
         {
             var (ctx, pluginCtx) = BuildAutoCreateContext(
                 new[] { 1 }, TypeDocument, SubtypeStandard, sheetsPer: 3);
@@ -216,7 +220,11 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             ctx.ExecutePluginWith<AutoCreateDrawingsPlugin>(pluginCtx);
 
             CountDrawings(ctx).Should().Be(1);
-            CountSheets(ctx).Should().Be(0, because: "Standard documents are base-only on the async path too");
+            CountSheets(ctx).Should().Be(1, because: "Standard now gets a singleton sheet carrier on async issuance too");
+            var drawing = ctx.CreateQuery(DrawingEntity).Single();
+            drawing.GetAttributeValue<int>("enmax_acdnsheetcount").Should().Be(1);
+            var sheet = ctx.CreateQuery(SheetEntity).Single();
+            sheet.Contains("enmax_acdnsheetnumber").Should().BeFalse("singleton Standard sheet stores no numeric suffix");
         }
 
         [Fact]

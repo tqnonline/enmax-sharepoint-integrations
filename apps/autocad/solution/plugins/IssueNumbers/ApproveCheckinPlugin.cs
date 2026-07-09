@@ -21,6 +21,7 @@ namespace Enmax.AutoCAD
         private const string CheckoutEntity          = "enmax_autocadcheckout";
         private const string ColCheckoutStatus       = "enmax_acdnstatus";
         private const string ColCheckoutDrawing      = "enmax_acdndrawing";
+        private const string ColCheckoutSheet        = "enmax_acdnsheet";
         private const string ColClosedBy             = "enmax_acdnclosedby";
         private const string ColClosedOn             = "enmax_acdnclosedon";
         private const string ColNewRevision          = "enmax_acdnnewrevision";
@@ -45,8 +46,7 @@ namespace Enmax.AutoCAD
         private const int DecisionApproved         = 1;
         private const int DecisionDeclined         = 2;
 
-        private const string SheetEntity           = "enmax_autocadsheet";
-        private const string ColSheetDrawing       = "enmax_acdndrawing";
+        private const string SheetEntity           = CheckOutSheetsPlugin.SheetEntity;
         private const string ColSheetState         = "enmax_acdnstate";
         private const int    SheetStateAvailable   = 2;
         private const int    SheetStateCheckedOut  = 3;
@@ -75,6 +75,7 @@ namespace Enmax.AutoCAD
         {
             var context = localPluginContext.PluginExecutionContext;
             var service = localPluginContext.SystemUserService;
+            var actorId = PluginActor.ResolveForCustomApi(context, service);
 
             if (!context.InputParameters.Contains("Target"))
                 throw new InvalidPluginExecutionException("Missing required input: Target");
@@ -87,7 +88,7 @@ namespace Enmax.AutoCAD
                 throw new InvalidPluginExecutionException(
                     $"Target must be {CheckoutEntity}, got {target.LogicalName}");
 
-            Authorization.RequireApproverOrAdmin(service, context.InitiatingUserId, "validate a check-in");
+            Authorization.RequireApproverOrAdmin(service, actorId, "validate a check-in");
 
             if (!context.InputParameters.Contains("Decision"))
                 throw new InvalidPluginExecutionException("Missing required input: Decision");
@@ -106,14 +107,14 @@ namespace Enmax.AutoCAD
                     "Reason must be at least 10 characters when declining a revision.");
 
             localPluginContext.Trace(
-                $"ApproveCheckin: checkout={target.Id}, decision={decision}, user={context.InitiatingUserId}");
+                $"ApproveCheckin: checkout={target.Id}, decision={decision}, user={actorId}");
 
             // Retrieve checkout + drawing FK
             Entity checkout;
             try
             {
                 checkout = service.Retrieve(CheckoutEntity, target.Id,
-                    new ColumnSet(ColCheckoutStatus, ColCheckoutDrawing, ColNewRevision, ColCheckoutOwner));
+                    new ColumnSet(ColCheckoutStatus, ColCheckoutDrawing, ColCheckoutSheet, ColNewRevision, ColCheckoutOwner));
             }
             catch (FaultException<OrganizationServiceFault> ex)
             {
@@ -137,10 +138,14 @@ namespace Enmax.AutoCAD
                     $"Checkout {target.Id} cannot be reviewed from status {currentStatus}. " +
                     $"Expected {StatusAwaitingValidation} (AwaitingValidation).");
 
-            var drawingRef = checkout.GetAttributeValue<EntityReference>(ColCheckoutDrawing);
+            var sheetRef = checkout.GetAttributeValue<EntityReference>(ColCheckoutSheet);
+            if (sheetRef == null)
+                throw new InvalidPluginExecutionException($"Checkout {target.Id} has no associated sheet.");
+            var sheet = service.Retrieve(SheetEntity, sheetRef.Id, new ColumnSet("enmax_acdndrawing"));
+            var drawingRef = sheet.GetAttributeValue<EntityReference>("enmax_acdndrawing")
+                ?? checkout.GetAttributeValue<EntityReference>(ColCheckoutDrawing);
             if (drawingRef == null)
-                throw new InvalidPluginExecutionException(
-                    $"Checkout {target.Id} has no associated drawing.");
+                throw new InvalidPluginExecutionException($"Checkout {target.Id} has no associated drawing.");
 
             string newRevision = checkout.GetAttributeValue<string>(ColNewRevision);
             int    newStatus;
@@ -154,22 +159,23 @@ namespace Enmax.AutoCAD
                 {
                     [ColCheckoutStatus] = new OptionSetValue(StatusClosedApproved),
                     [ColClosedOn]       = DateTime.UtcNow,
-                    [ColClosedBy]       = new EntityReference("systemuser", context.InitiatingUserId),
+                    [ColClosedBy]       = new EntityReference("systemuser", actorId),
                 });
 
-                // Transition drawing back to Available and bump revision
                 var drawingUpdate = new Entity(DrawingEntity, drawingRef.Id)
                 {
-                    [ColDrawingState]    = new OptionSetValue(StateAvailable),
                     [ColCurrentRevision] = newRevision,
                 };
                 service.Update(drawingUpdate);
 
-                PropagateSheetState(service, drawingRef.Id, SheetStateAvailable);
+                service.Update(new Entity(SheetEntity, sheetRef.Id)
+                {
+                    [ColSheetState] = new OptionSetValue(SheetStateAvailable),
+                });
 
                 newStatus   = StatusClosedApproved;
-                drawingState = StateAvailable;
                 auditEvent  = AuditEventApproved;
+                drawingState = DrawingRollupHelper.RecomputeDrawingRollup(service, drawingRef.Id);
 
                 localPluginContext.Trace($"Checkout {target.Id} approved; drawing {drawingRef.Id} Available, revision={newRevision}.");
             }
@@ -182,17 +188,14 @@ namespace Enmax.AutoCAD
                     [ColValidationReason] = reason,
                 });
 
-                // Revert drawing from AwaitingValidation back to CheckedOut
-                service.Update(new Entity(DrawingEntity, drawingRef.Id)
+                service.Update(new Entity(SheetEntity, sheetRef.Id)
                 {
-                    [ColDrawingState] = new OptionSetValue(StateCheckedOut),
+                    [ColSheetState] = new OptionSetValue(SheetStateCheckedOut),
                 });
 
-                PropagateSheetState(service, drawingRef.Id, SheetStateCheckedOut);
-
                 newStatus    = StatusOpen;
-                drawingState = StateCheckedOut;
                 auditEvent   = AuditEventDeclined;
+                drawingState = DrawingRollupHelper.RecomputeDrawingRollup(service, drawingRef.Id);
 
                 localPluginContext.Trace($"Checkout {target.Id} declined; drawing {drawingRef.Id} reverted to CheckedOut.");
             }
@@ -202,17 +205,17 @@ namespace Enmax.AutoCAD
             {
                 ["enmax_acdnevent"]        = new OptionSetValue(auditEvent),
                 ["enmax_acdnsource"]       = new OptionSetValue(AuditSourceAction),
-                ["enmax_acdnsubjectid"]    = drawingRef.Id.ToString(),
-                ["enmax_acdnsubjecttable"] = DrawingEntity,
+                ["enmax_acdnsubjectid"]    = sheetRef.Id.ToString(),
+                ["enmax_acdnsubjecttable"] = SheetEntity,
                 ["enmax_acdnfromstate"]    = "AwaitingValidation",
                 ["enmax_acdntostate"]      = decision == DecisionApproved ? "Available" : "CheckedOut",
-                ["enmax_acdnactedby"]      = new EntityReference("systemuser", context.InitiatingUserId),
+                ["enmax_acdnactedby"]      = new EntityReference("systemuser", actorId),
                 ["enmax_acdnname"]         = $"Checkout {target.Id} {(decision == DecisionApproved ? "approved" : "declined")}",
             });
 
             // Notify the submitter of the validation outcome.
             var submitter = checkout.GetAttributeValue<EntityReference>(ColCheckoutOwner);
-            if (submitter != null && submitter.Id != context.InitiatingUserId)
+            if (submitter != null && submitter.Id != actorId)
             {
                 string number = NotificationWriter.ResolveDrawingNumber(service, drawingRef.Id);
                 if (decision == DecisionApproved)
@@ -242,12 +245,5 @@ namespace Enmax.AutoCAD
             context.OutputParameters["DrawingState"] = drawingState;
         }
 
-        private static void PropagateSheetState(IOrganizationService service, Guid drawingId, int sheetState)
-        {
-            var q = new QueryExpression(SheetEntity) { ColumnSet = new ColumnSet("enmax_autocadsheetid") };
-            q.Criteria.AddCondition(ColSheetDrawing, ConditionOperator.Equal, drawingId);
-            foreach (var sheet in service.RetrieveMultiple(q).Entities)
-                service.Update(new Entity(SheetEntity, sheet.Id) { [ColSheetState] = new OptionSetValue(sheetState) });
-        }
     }
 }

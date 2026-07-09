@@ -40,15 +40,37 @@ function Publish-PpCodeApp {
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
-        [string]$Environment
+        [string]$Environment,
+
+        # User-auth path: use an existing pac USER profile (no SPN / .env required).
+        [string]$PacProfileName,
+
+        # Push via `pac code push` (user auth) instead of `npx power-apps push` (SPN).
+        [switch]$UsePacCodePush,
+
+        [string]$AppId = $env:APP_ID,
+        [string]$AppDisplayName = 'EEC Generation Document Management system'
     )
 
-    $cfg = Get-PpEnvConfig -Environment $Environment
-
-    # Ensure pac CLI is authenticated (idempotent; honours -WhatIf via SupportsShouldProcess)
-    $connectParams = @{ Environment = $Environment }
-    if ($WhatIfPreference) { $connectParams['WhatIf'] = $true }
-    Connect-PpDataverse @connectParams
+    if ($PacProfileName) {
+        Connect-PpDataverse -Environment $Environment -PacProfileName $PacProfileName
+        $org = Get-PpPacOrgWho
+        $cfg = @{
+            Url               = $org.Url
+            ENVIRONMENT_ID    = $org.ENVIRONMENT_ID
+            APP_ID            = $AppId
+            APP_DISPLAY_NAME  = $AppDisplayName
+        }
+        if (-not $cfg['APP_ID']) {
+            throw "Publish-PpCodeApp: APP_ID is required when using -PacProfileName. Pass -AppId or set `$env:APP_ID."
+        }
+    } else {
+        $cfg = Get-PpEnvConfig -Environment $Environment
+        # Ensure pac CLI is authenticated (idempotent; honours -WhatIf via SupportsShouldProcess)
+        $connectParams = @{ Environment = $Environment }
+        if ($WhatIfPreference) { $connectParams['WhatIf'] = $true }
+        Connect-PpDataverse @connectParams
+    }
 
     # ── Resolve paths ─────────────────────────────────────────────────────────
     $moduleRoot = Split-Path $PSScriptRoot -Parent                    # scripts/PowerPlatform.Deploy/
@@ -69,8 +91,13 @@ function Publish-PpCodeApp {
         Assert-PpExitCode -Operation 'npm run build'
 
         Write-PpLog "Pushing to Power Apps..."
-        Invoke-PpPowerAppsPush -WorkingDir $codeApp -Cfg $cfg
-        Assert-PpExitCode -Operation 'power-apps push'
+        if ($UsePacCodePush -or $PacProfileName) {
+            Invoke-PpPac code push
+            Assert-PpExitCode -Operation 'pac code push'
+        } else {
+            Invoke-PpPowerAppsPush -WorkingDir $codeApp -Cfg $cfg
+            Assert-PpExitCode -Operation 'power-apps push'
+        }
 
         Write-PpLog "Done! Open app at:"
         Write-PpLog "  https://apps.powerapps.com/play/e/$($cfg['ENVIRONMENT_ID'])/app/$($cfg['APP_ID'])"
@@ -116,8 +143,6 @@ function Get-PpCodeAppConfig {
                     enmax_autocaddomains             = @{ entitySetName = "enmax_autocaddomains";             logicalName = "enmax_autocaddomain";             isHidden = $false }
                     enmax_autocadsystems             = @{ entitySetName = "enmax_autocadsystems";             logicalName = "enmax_autocadsystem";             isHidden = $false }
                     enmax_autocadkinds               = @{ entitySetName = "enmax_autocadkinds";               logicalName = "enmax_autocadkind";               isHidden = $false }
-                    enmax_autocadbusinessassets      = @{ entitySetName = "enmax_autocadbusinessassets";      logicalName = "enmax_autocadbusinessasset";      isHidden = $false }
-                    enmax_autocadassetunits          = @{ entitySetName = "enmax_autocadassetunits";          logicalName = "enmax_autocadassetunit";          isHidden = $false }
                     enmax_autocadsystemscopes        = @{ entitySetName = "enmax_autocadsystemscopes";        logicalName = "enmax_autocadsystemscope";        isHidden = $false }
                     enmax_autocadnumbersequences     = @{ entitySetName = "enmax_autocadnumbersequences";     logicalName = "enmax_autocadnumbersequence";     isHidden = $false }
                     enmax_autocadauditevents         = @{ entitySetName = "enmax_autocadauditevents";         logicalName = "enmax_autocadauditevent";         isHidden = $false }

@@ -5,27 +5,6 @@
  */
 
 export const dataSourcesInfo = {
-  "enmax_autocadappconfigs": {
-    "tableId": "",
-    "version": "",
-    "primaryKey": "enmax_autocadappconfigid",
-    "dataSourceType": "Dataverse",
-    "apis": {}
-  },
-  "teams": {
-    "tableId": "",
-    "version": "",
-    "primaryKey": "teamid",
-    "dataSourceType": "Dataverse",
-    "apis": {}
-  },
-  "systemusers": {
-    "tableId": "",
-    "version": "",
-    "primaryKey": "systemuserid",
-    "dataSourceType": "Dataverse",
-    "apis": {}
-  },
   "whoami": {
     "tableId": "",
     "version": "",
@@ -44,10 +23,10 @@ export const dataSourcesInfo = {
       }
     }
   },
-  "enmax_autocadbusinesses": {
+  "enmax_autocadappconfigs": {
     "tableId": "",
     "version": "",
-    "primaryKey": "enmax_autocadbusinessid",
+    "primaryKey": "enmax_autocadappconfigid",
     "dataSourceType": "Dataverse",
     "apis": {}
   },
@@ -58,10 +37,10 @@ export const dataSourcesInfo = {
     "dataSourceType": "Dataverse",
     "apis": {}
   },
-  "enmax_autocadunits": {
+  "enmax_autocadbusinesses": {
     "tableId": "",
     "version": "",
-    "primaryKey": "enmax_autocadunitid",
+    "primaryKey": "enmax_autocadbusinessid",
     "dataSourceType": "Dataverse",
     "apis": {}
   },
@@ -72,10 +51,10 @@ export const dataSourcesInfo = {
     "dataSourceType": "Dataverse",
     "apis": {}
   },
-  "enmax_autocadsystems": {
+  "enmax_autocadinappnotifications": {
     "tableId": "",
     "version": "",
-    "primaryKey": "enmax_autocadsystemid",
+    "primaryKey": "enmax_autocadinappnotificationid",
     "dataSourceType": "Dataverse",
     "apis": {}
   },
@@ -86,17 +65,17 @@ export const dataSourcesInfo = {
     "dataSourceType": "Dataverse",
     "apis": {}
   },
-  "enmax_autocadbusinessassets": {
+  "enmax_autocadreservations": {
     "tableId": "",
     "version": "",
-    "primaryKey": "enmax_autocadbusinessassetid",
+    "primaryKey": "enmax_autocadreservationid",
     "dataSourceType": "Dataverse",
     "apis": {}
   },
-  "enmax_autocadassetunits": {
+  "enmax_autocadsystems": {
     "tableId": "",
     "version": "",
-    "primaryKey": "enmax_autocadassetunitid",
+    "primaryKey": "enmax_autocadsystemid",
     "dataSourceType": "Dataverse",
     "apis": {}
   },
@@ -107,254 +86,24 @@ export const dataSourcesInfo = {
     "dataSourceType": "Dataverse",
     "apis": {}
   },
-  "enmax_autocadreservations": {
+  "teams": {
     "tableId": "",
     "version": "",
-    "primaryKey": "enmax_autocadreservationid",
-    "dataSourceType": "Dataverse",
-    "apis": {
-      "enmax_acdnApproveReservation": {
-        "path": "/api/data/v9.2/enmax_acdnApproveReservation",
-        "method": "POST",
-        "parameters": [
-          { "name": "Target", "in": "body", "required": true, "type": "object" }
-        ],
-        "responseInfo": { "200": { "type": "object" } }
-      },
-      "enmax_acdnDeclineReservation": {
-        "path": "/api/data/v9.2/enmax_acdnDeclineReservation",
-        "method": "POST",
-        "parameters": [
-          { "name": "Target",  "in": "body", "required": true,  "type": "object" },
-          { "name": "Reason",  "in": "body", "required": false, "type": "string" }
-        ],
-        "responseInfo": { "200": { "type": "object" } }
-      },
-      "enmax_acdnCreateDrawings": {
-        "path": "/api/data/v9.2/enmax_acdnCreateDrawings",
-        "method": "POST",
-        "parameters": [
-          { "name": "Target",        "in": "body", "required": true, "type": "object" },
-          { "name": "IssuedNumbers", "in": "body", "required": true, "type": "string" },
-          { "name": "SequenceKey",   "in": "body", "required": true, "type": "string" }
-        ],
-        "responseInfo": { "200": { "type": "object" } }
-      }
-    }
-  },
-  "enmax_acdnissuenumbers": {
-    "tableId": "",
-    "version": "",
-    "primaryKey": "",
-    "dataSourceType": "Dataverse",
-    "apis": {
-      "enmax_acdnIssueNumbers": {
-        "path": "/api/data/v9.2/enmax_acdnIssueNumbers",
-        "method": "POST",
-        "parameters": [
-          { "name": "Business", "in": "body", "required": true, "type": "string" },
-          { "name": "Asset",    "in": "body", "required": true, "type": "string" },
-          { "name": "Unit",     "in": "body", "required": true, "type": "string" },
-          { "name": "Domain",   "in": "body", "required": true, "type": "string" },
-          { "name": "System",   "in": "body", "required": true, "type": "string" },
-          { "name": "Kind",     "in": "body", "required": true, "type": "string" },
-          { "name": "Count",    "in": "body", "required": true, "type": "integer" }
-        ],
-        "responseInfo": { "200": { "type": "object" } }
-      }
-    }
-  },
-  "enmax_acdnaddchilditems": {
-    "tableId": "",
-    "version": "",
-    "primaryKey": "",
-    "dataSourceType": "Dataverse",
-    "apis": {
-      "enmax_acdnAddChildItems": {
-        "path": "/api/data/v9.2/enmax_acdnAddChildItems",
-        "method": "POST",
-        "parameters": [
-          { "name": "Drawing", "in": "body", "required": true, "type": "object" },
-          { "name": "Count",   "in": "body", "required": true, "type": "integer" }
-        ],
-        "responseInfo": { "200": { "type": "object" } }
-      }
-    }
-  },
-  "enmax_acdnupsertsharepointlinks": {
-    "tableId": "",
-    "version": "",
-    "primaryKey": "",
-    "dataSourceType": "Dataverse",
-    "apis": {
-      "enmax_acdnUpsertSharePointLinks": {
-        "path": "/api/data/v9.2/enmax_acdnUpsertSharePointLinks",
-        "method": "POST",
-        "parameters": [
-          { "name": "Target",       "in": "body", "required": true,  "type": "object" },
-          { "name": "RecordNumber", "in": "body", "required": true,  "type": "string" },
-          { "name": "FoundFiles",   "in": "body", "required": false, "type": "string" }
-        ],
-        "responseInfo": { "200": { "type": "object" } }
-      }
-    }
-  },
-  "enmax_autocaddrawings": {
-    "tableId": "",
-    "version": "",
-    "primaryKey": "enmax_autocaddrawingid",
-    "dataSourceType": "Dataverse",
-    "apis": {
-      "enmax_acdnFinalizeDrawing": {
-        "path": "/api/data/v9.2/enmax_autocaddrawings({drawingId})/Microsoft.Dynamics.CRM.enmax_acdnFinalizeDrawing",
-        "method": "POST",
-        "parameters": [
-          { "name": "drawingId", "in": "path", "required": true,  "type": "string" },
-          { "name": "Reason",    "in": "body", "required": true,  "type": "string" }
-        ],
-        "responseInfo": { "200": { "type": "object" } }
-      },
-      "enmax_acdnMarkObsolete": {
-        "path": "/api/data/v9.2/enmax_autocaddrawings({drawingId})/Microsoft.Dynamics.CRM.enmax_acdnMarkObsolete",
-        "method": "POST",
-        "parameters": [
-          { "name": "drawingId", "in": "path", "required": true,  "type": "string" },
-          { "name": "Reason",    "in": "body", "required": false, "type": "string" }
-        ],
-        "responseInfo": { "200": { "type": "object" } }
-      },
-      "enmax_acdnReleaseDrawing": {
-        "path": "/api/data/v9.2/enmax_autocaddrawings({drawingId})/Microsoft.Dynamics.CRM.enmax_acdnReleaseDrawing",
-        "method": "POST",
-        "parameters": [
-          { "name": "drawingId", "in": "path", "required": true,  "type": "string" },
-          { "name": "Reason",    "in": "body", "required": true,  "type": "string" }
-        ],
-        "responseInfo": { "200": { "type": "object" } }
-      },
-      "enmax_acdnCheckOutDrawing": {
-        "path": "/api/data/v9.2/enmax_autocaddrawings({drawingId})/Microsoft.Dynamics.CRM.enmax_acdnCheckOutDrawing",
-        "method": "POST",
-        "parameters": [
-          { "name": "drawingId", "in": "path", "required": true, "type": "string" }
-        ],
-        "responseInfo": { "200": { "type": "object" } }
-      }
-    }
-  },
-  "enmax_autocadsheets": {
-    "tableId": "",
-    "version": "",
-    "primaryKey": "enmax_autocadsheetid",
+    "primaryKey": "teamid",
     "dataSourceType": "Dataverse",
     "apis": {}
   },
-  "enmax_autocadcheckouts": {
+  "enmax_autocadunits": {
     "tableId": "",
     "version": "",
-    "primaryKey": "enmax_autocadcheckoutid",
-    "dataSourceType": "Dataverse",
-    "apis": {
-      "enmax_acdnSubmitRevision": {
-        "path": "/api/data/v9.2/enmax_autocadcheckouts({checkoutId})/Microsoft.Dynamics.CRM.enmax_acdnSubmitRevision",
-        "method": "POST",
-        "parameters": [
-          { "name": "checkoutId",     "in": "path", "required": true, "type": "string" },
-          { "name": "SubmissionInfo", "in": "body", "required": true, "type": "string" }
-        ],
-        "responseInfo": { "200": { "type": "object" } }
-      },
-      "enmax_acdnApproveCheckin": {
-        "path": "/api/data/v9.2/enmax_autocadcheckouts({checkoutId})/Microsoft.Dynamics.CRM.enmax_acdnApproveCheckin",
-        "method": "POST",
-        "parameters": [
-          { "name": "checkoutId", "in": "path",  "required": true,  "type": "string" },
-          { "name": "Decision",   "in": "body",  "required": true,  "type": "integer" },
-          { "name": "Reason",     "in": "body",  "required": false, "type": "string" }
-        ],
-        "responseInfo": { "200": { "type": "object" } }
-      },
-      "enmax_acdnApproveCheckout": {
-        "path": "/api/data/v9.2/enmax_autocadcheckouts({checkoutId})/Microsoft.Dynamics.CRM.enmax_acdnApproveCheckout",
-        "method": "POST",
-        "parameters": [
-          { "name": "checkoutId", "in": "path",  "required": true,  "type": "string" },
-          { "name": "Decision",   "in": "body",  "required": true,  "type": "integer" },
-          { "name": "Reason",     "in": "body",  "required": false, "type": "string" }
-        ],
-        "responseInfo": { "200": { "type": "object" } }
-      },
-      "enmax_acdnForceCheckin": {
-        "path": "/api/data/v9.2/enmax_autocadcheckouts({checkoutId})/Microsoft.Dynamics.CRM.enmax_acdnForceCheckin",
-        "method": "POST",
-        "parameters": [
-          { "name": "checkoutId", "in": "path", "required": true, "type": "string" },
-          { "name": "Reason",     "in": "body", "required": true, "type": "string" }
-        ],
-        "responseInfo": { "200": { "type": "object" } }
-      }
-    }
-  },
-  "enmax_autocadnumbersequences": {
-    "tableId": "",
-    "version": "",
-    "primaryKey": "enmax_autocadnumbersequenceid",
+    "primaryKey": "enmax_autocadunitid",
     "dataSourceType": "Dataverse",
     "apis": {}
   },
-  "enmax_autocadauditevents": {
+  "systemusers": {
     "tableId": "",
     "version": "",
-    "primaryKey": "enmax_autocadauditeventid",
-    "dataSourceType": "Dataverse",
-    "apis": {}
-  },
-  "enmax_autocadrecordtypes": {
-    "tableId": "",
-    "version": "",
-    "primaryKey": "enmax_autocadrecordtypeid",
-    "dataSourceType": "Dataverse",
-    "apis": {}
-  },
-  "enmax_autocadrecordphases": {
-    "tableId": "",
-    "version": "",
-    "primaryKey": "enmax_autocadrecordphaseid",
-    "dataSourceType": "Dataverse",
-    "apis": {}
-  },
-  "enmax_autocadvendors": {
-    "tableId": "",
-    "version": "",
-    "primaryKey": "enmax_autocadvendorid",
-    "dataSourceType": "Dataverse",
-    "apis": {}
-  },
-  "enmax_autocadbroadcasts": {
-    "tableId": "",
-    "version": "",
-    "primaryKey": "enmax_autocadbroadcastid",
-    "dataSourceType": "Dataverse",
-    "apis": {}
-  },
-  "enmax_autocadbroadcastdismissals": {
-    "tableId": "",
-    "version": "",
-    "primaryKey": "enmax_autocadbroadcastdismissalid",
-    "dataSourceType": "Dataverse",
-    "apis": {}
-  },
-  "enmax_autocaduserpreferences": {
-    "tableId": "",
-    "version": "",
-    "primaryKey": "enmax_autocaduserpreferenceid",
-    "dataSourceType": "Dataverse",
-    "apis": {}
-  },
-  "enmax_autocadinappnotifications": {
-    "tableId": "",
-    "version": "",
-    "primaryKey": "enmax_autocadinappnotificationid",
+    "primaryKey": "systemuserid",
     "dataSourceType": "Dataverse",
     "apis": {}
   }

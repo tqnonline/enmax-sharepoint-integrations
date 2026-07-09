@@ -243,11 +243,17 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 
             ctx.ExecutePluginWith<OnReservationCreatedPlugin>(p);
 
-            var n = OnlyNotification(ctx);
-            n.GetAttributeValue<EntityReference>("enmax_acdnrecipient").Id.Should().Be(approver);
-            n.GetAttributeValue<OptionSetValue>("enmax_acdnsourceevent").Value.Should().Be(9, "Reservation Pending");
-            n.GetAttributeValue<string>("enmax_acdndeeplinkpath").Should().Be("/approvals");
-            n.GetAttributeValue<string>("enmax_acdnbody").Should().Contain("Pat Requester").And.Contain("RES-0099");
+            var all = Notifications(ctx);
+            all.Should().HaveCount(2, "approver + requester confirmation");
+
+            var approverNotif = all.Single(n => n.GetAttributeValue<EntityReference>("enmax_acdnrecipient").Id == approver);
+            approverNotif.GetAttributeValue<OptionSetValue>("enmax_acdnsourceevent").Value.Should().Be(9, "Reservation Pending");
+            approverNotif.GetAttributeValue<string>("enmax_acdndeeplinkpath").Should().Be("/approvals");
+            approverNotif.GetAttributeValue<string>("enmax_acdnbody").Should().Contain("Pat Requester").And.Contain("RES-0099");
+
+            var requesterNotif = all.Single(n => n.GetAttributeValue<EntityReference>("enmax_acdnrecipient").Id == requester);
+            requesterNotif.GetAttributeValue<string>("enmax_acdntitle").Should().Contain("submitted");
+            requesterNotif.GetAttributeValue<string>("enmax_acdndeeplinkpath").Should().Be($"/reservations/{resId}");
         }
 
         // ── Drawing lifecycle: finalized / obsolete → owner ───────────────────

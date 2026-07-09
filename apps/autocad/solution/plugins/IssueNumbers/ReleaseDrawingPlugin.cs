@@ -47,6 +47,7 @@ namespace Enmax.AutoCAD
         {
             var context = localPluginContext.PluginExecutionContext;
             var service = localPluginContext.SystemUserService;
+            var actorId = PluginActor.ResolveForCustomApi(context, service);
 
             var target = context.InputParameters.Contains("Target")
                 ? context.InputParameters["Target"] as EntityReference : null;
@@ -81,7 +82,7 @@ namespace Enmax.AutoCAD
                     $"Drawing {target.Id} has been checked out and cannot be released. Use Mark Obsolete to retire a used drawing.");
 
             var owner    = drawing.GetAttributeValue<EntityReference>(ColOwner);
-            var callerId = context.InitiatingUserId;
+            var callerId = actorId;
             bool isForce = owner == null || owner.Id != callerId;
             string number = drawing.GetAttributeValue<string>(ColDrawingNumber) ?? string.Empty;
 

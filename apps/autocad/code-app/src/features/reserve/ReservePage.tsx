@@ -31,7 +31,7 @@ export function ReservePage() {
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <Title2 as="h1">Reserve Drawing/Document Numbers</Title2>
+        <Title2 as="h1">Reserve Drawing Numbers &amp; Documents</Title2>
         <Text size={300} className={styles.subtitle}>
           Create an official Drawing/Document Reservation. Pending approver review.
         </Text>

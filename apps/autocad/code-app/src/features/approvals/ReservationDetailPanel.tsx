@@ -15,8 +15,15 @@ import {
 } from "@fluentui/react-components";
 import { Dismiss24Regular, Warning24Regular, ArrowSquareUpRightRegular } from "@fluentui/react-icons";
 import type { PendingReservation } from "./hooks/usePendingReservations";
-import { formatComposition, formatNumberRange } from "./compositionUtils";
+import {
+  formatReservationDisplay,
+  formatAppendDisplay,
+  formatNumberRange,
+} from "./compositionUtils";
 import { useApproveReservation } from "./hooks/useApproveReservation";
+import { useRetryIssueNumbers } from "./hooks/useRetryIssueNumbers";
+import { useRetryAppend } from "./hooks/useRetryAppend";
+import { approveInputFromReservation } from "./approveInputFromReservation";
 import { useApprovalAudit } from "./hooks/useApprovalAudit";
 import { DeclineDialog } from "./DeclineDialog";
 import { useCurrentUser } from "../../auth/useCurrentUser";
@@ -128,6 +135,8 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
   const [declineOpen, setDeclineOpen] = useState(false);
   const screenWidth = useScreenWidth();
   const approveMutation = useApproveReservation();
+  const retryIssueMutation = useRetryIssueNumbers();
+  const retryAppendMutation = useRetryAppend();
   const auditQuery = useApprovalAudit(reservation?.enmax_acdnreservationid ?? null);
   const { data: currentUser } = useCurrentUser();
 
@@ -137,18 +146,10 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
   function handleApprove() {
     if (!reservation) return;
     const num = reservation.enmax_acdnreservationnumber;
+    // Append reservations only need the target base + count; composition codes are
+    // not used (issuance happens via AddChildItems, not IssueNumbers).
     approveMutation.mutate(
-      {
-        reservationId: reservation.enmax_acdnreservationid,
-        decision:      "Approved",
-        businessCode:  reservation.businessCode,
-        assetCode:     reservation.assetCode,
-        unitCode:      reservation.unitCode,
-        domainCode:    reservation.domainCode,
-        systemCode:    reservation.systemCode,
-        kindCode:      reservation.kindCode,
-        drawingCount:  reservation.enmax_acdndrawingcount,
-      },
+      approveInputFromReservation(reservation, "Approved"),
       { onSuccess: () => { onClose(); onApproved?.(num); } },
     );
   }
@@ -162,7 +163,13 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
     );
   }
 
-  const compositionPreview = reservation ? formatComposition(reservation) : "";
+  const compositionPreview = reservation
+    ? formatReservationDisplay({
+        ...reservation,
+        enmax_acdnissuednumbers: reservation.enmax_acdnissuednumbers,
+        targetDrawingId: reservation.targetDrawingId,
+      })
+    : "";
 
   return (
     <>
@@ -224,7 +231,11 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
               <Divider style={{ marginBottom: tokens.spacingVerticalM }} />
 
               <div className={styles.field}>
-                <span className={styles.label}>Drawing/Document Number</span>
+                <span className={styles.label}>Type</span>
+                <span>{reservation.typeLabel}</span>
+              </div>
+              <div className={styles.field}>
+                <span className={styles.label}>Issued number</span>
                 <Text
                   style={{ fontFamily: "monospace", overflowWrap: "break-word", wordBreak: "break-all" }}
                 >
@@ -235,6 +246,64 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
                 <span className={styles.label}>Drawings</span>
                 <span>{reservation.enmax_acdndrawingcount}</span>
               </div>
+              {reservation.isAppend && (
+                <div className={styles.field}>
+                  <span className={styles.label}>Add to existing</span>
+                  <span>
+                    Append {reservation.enmax_acdndrawingcount} item(s) to{" "}
+                    <Text weight="semibold" style={{ fontFamily: "monospace" }}>
+                      {reservation.targetDrawingNumber ?? "selected base"}
+                    </Text>
+                  </span>
+                </div>
+              )}
+              {reservation.enmax_acdnstatus === 2 && !reservation.enmax_acdnissuednumbers && !reservation.isAppend && (
+                <div className={styles.field}>
+                  <span className={styles.label}>Issuance</span>
+                  <span>
+                    Approved without issue numbers — no records were created.{" "}
+                    <Button
+                      appearance="primary"
+                      size="small"
+                      disabled={retryIssueMutation.isPending}
+                      onClick={() => retryIssueMutation.mutate({ reservationId: reservation.enmax_acdnreservationid })}
+                    >
+                      {retryIssueMutation.isPending ? <Spinner size="tiny" /> : "Retry number issuance"}
+                    </Button>
+                  </span>
+                </div>
+              )}
+
+              {reservation.enmax_acdnstatus === 2 && reservation.isAppend && reservation.appendFirst == null && (
+                <div className={styles.field}>
+                  <span className={styles.label}>Append</span>
+                  <span>
+                    Approved but child items were not added.{" "}
+                    <Button
+                      appearance="primary"
+                      size="small"
+                      disabled={retryAppendMutation.isPending}
+                      onClick={() => retryAppendMutation.mutate({ reservationId: reservation.enmax_acdnreservationid })}
+                    >
+                      {retryAppendMutation.isPending ? <Spinner size="tiny" /> : "Retry append"}
+                    </Button>
+                  </span>
+                </div>
+              )}
+
+              {reservation.appendFirst != null && reservation.appendLast != null && (
+                <div className={styles.field}>
+                  <span className={styles.label}>Appended items</span>
+                  <span style={{ fontFamily: "monospace" }}>
+                    {formatAppendDisplay(
+                      reservation.targetDrawingNumber,
+                      reservation.appendFirst,
+                      reservation.appendLast,
+                    )}
+                  </span>
+                </div>
+              )}
+
               {reservation.enmax_acdnissuednumbers && (
                 <div className={styles.field}>
                   <span className={styles.label}>Issued numbers</span>

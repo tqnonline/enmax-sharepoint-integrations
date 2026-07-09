@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   Badge,
   Button,
@@ -20,8 +20,8 @@ import {
   type ConfigRowMutation,
 } from "./useAppConfigAdmin";
 import { AppConfigRowPanel } from "./AppConfigRowPanel";
-import { EnmaxDataGrid } from "../../components/DataGrid";
-import type { ColumnDef, RowAction } from "../../components/DataGrid";
+import { EnmaxDataGrid, GridQueryFilterBar } from "../../components/DataGrid";
+import type { ColumnDef, GridFetchParams, RowAction } from "../../components/DataGrid";
 
 const TOASTER_ID = "app-config-toaster";
 
@@ -37,7 +37,7 @@ const CONFIG_COLUMNS: ColumnDef<ConfigRow>[] = [
     id: "key", header: "Key",
     accessor: r => r.key,
     sortable: true,
-    filterable: true, filterType: "text",
+    filterable: false, filterType: "text",
     cell: r => <Text weight="semibold">{r.key}</Text>,
   },
   {
@@ -61,6 +61,13 @@ export function AppConfigPage() {
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [editing, setEditing]     = useState<ConfigRow | null>(null);
+  const [filterDraft, setFilterDraft] = useState({ number: "", from: "", to: "" });
+  const [appliedSearch, setAppliedSearch] = useState("");
+
+  const configFetcher = useCallback(
+    (params: GridFetchParams) => fetchAppConfigRows({ ...params, search: appliedSearch }),
+    [appliedSearch],
+  );
 
   function openAdd()                 { setEditing(null); setPanelOpen(true); }
   function openEdit(row: ConfigRow)  { setEditing(row);  setPanelOpen(true); }
@@ -90,16 +97,29 @@ export function AppConfigPage() {
         <Button icon={<AddRegular />} appearance="primary" onClick={openAdd}>Add Configuration</Button>
       </div>
 
+      <GridQueryFilterBar
+        numberLabel="Key"
+        numberPlaceholder="Search by key or value…"
+        draft={{ number: filterDraft.number, from: filterDraft.from, to: filterDraft.to }}
+        onDraftChange={(patch) => setFilterDraft((prev) => ({ ...prev, ...patch }))}
+        onQuery={() => setAppliedSearch(filterDraft.number.trim())}
+        onClear={() => {
+          setFilterDraft({ number: "", from: "", to: "" });
+          setAppliedSearch("");
+        }}
+        showDateRange={false}
+      />
+
       <div className={styles.grid}>
         <EnmaxDataGrid
-          queryKey={["app-config-admin-grid"]}
-          fetcher={fetchAppConfigRows}
+          queryKey={["app-config-admin-grid", appliedSearch]}
+          fetcher={configFetcher}
           columns={CONFIG_COLUMNS}
           rowKey={r => r.id}
           rowActions={rowActions}
           enableColumnVisibility
+          enableQuickSearch={false}
           defaultSort={{ column: "key", direction: "asc" }}
-          quickSearchPlaceholder="Search by key or value…"
           emptyMessage="No configuration rows. Click Add Configuration to create one."
           errorMessage="Failed to load configuration rows."
         />

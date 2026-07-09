@@ -2,6 +2,7 @@ using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Enmax.AutoCAD
 {
@@ -84,19 +85,63 @@ namespace Enmax.AutoCAD
         public static List<Guid> GetApproverAndAdminUserIds(IOrganizationService service, Guid exclude)
         {
             var result = new HashSet<Guid>();
-            foreach (var key in new[] { "AdminTeamId", "ApproverTeamId" })
+            foreach (var (idKey, nameKey) in new[] {
+                ("AdminTeamId", "AdminTeamName"),
+                ("ApproverTeamId", "ApproverTeamName"),
+            })
             {
-                if (!Guid.TryParse(GetConfigValue(service, key), out var teamId)) continue;
+                var teamId = ResolveTeamId(service, idKey, nameKey);
+                if (!teamId.HasValue) continue;
 
                 var q = new QueryExpression(TeamMembership) { ColumnSet = new ColumnSet("systemuserid") };
-                q.Criteria.AddCondition("teamid", ConditionOperator.Equal, teamId);
+                q.Criteria.AddCondition("teamid", ConditionOperator.Equal, teamId.Value);
                 foreach (var member in service.RetrieveMultiple(q).Entities)
                 {
                     var userId = member.GetAttributeValue<Guid>("systemuserid");
                     if (userId != Guid.Empty && userId != exclude) result.Add(userId);
                 }
             }
+
+            // Match Code App useUserRole: System Administrator / Customizer users are treated as
+            // Admin and must receive approver-targeted notices even when team ids are unset.
+            foreach (var userId in GetSystemRoleUserIds(service))
+            {
+                if (userId != exclude) result.Add(userId);
+            }
+
             return new List<Guid>(result);
+        }
+
+        private static Guid? ResolveTeamId(IOrganizationService service, string idConfigKey, string nameConfigKey)
+        {
+            if (Guid.TryParse(GetConfigValue(service, idConfigKey), out var teamId))
+                return teamId;
+
+            var teamName = GetConfigValue(service, nameConfigKey);
+            if (string.IsNullOrWhiteSpace(teamName)) return null;
+
+            var q = new QueryExpression("team")
+            {
+                ColumnSet = new ColumnSet("teamid"),
+                TopCount  = 1,
+            };
+            q.Criteria.AddCondition("name", ConditionOperator.Equal, teamName.Trim());
+            var team = service.RetrieveMultiple(q).Entities.FirstOrDefault();
+            return team?.Id;
+        }
+
+        private static IEnumerable<Guid> GetSystemRoleUserIds(IOrganizationService service)
+        {
+            var q = new QueryExpression("systemuser") { ColumnSet = new ColumnSet("systemuserid") };
+            var link = q.AddLink("systemuserroles", "systemuserid", "systemuserid");
+            var roleLink = link.AddLink("role", "roleid", "roleid");
+            roleLink.LinkCriteria.AddCondition("name", ConditionOperator.In,
+                "System Administrator", "System Customizer");
+            foreach (var user in service.RetrieveMultiple(q).Entities)
+            {
+                var id = user.Id;
+                if (id != Guid.Empty) yield return id;
+            }
         }
 
         private static string GetConfigValue(IOrganizationService service, string key)

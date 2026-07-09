@@ -19,35 +19,42 @@ import {
 import { NotificationBell } from "./NotificationBell";
 import { useCurrentUser } from "../auth/useCurrentUser";
 import { useUiStore } from "../store/uiStore";
-import { useHeaderSearch, type HeaderSearchResult, type MatchingGuids } from "./useHeaderSearch";
+import { useHeaderSearch, type HeaderSearchResult } from "./useHeaderSearch";
 import { useCompositionLookups } from "../features/approvals/hooks/useCompositionLookups";
+import { matchingGuidsFromQuery, guidsToCompositionFilter } from "../features/search/compositionQuery";
+import {
+  buildDocumentDetailUrl,
+  buildSearchPageUrl,
+  type HeaderSearchTab,
+} from "../features/search/searchUrlState";
+import { GLOBAL_SEARCH_PLACEHOLDER } from "../features/reserve/numberingTerms";
 import enmaxLogo from "../assets/brand/ENX_Logo_RED.svg";
 
 type BadgeColor = "success" | "warning" | "informative" | "subtle";
-const STATUS: Record<number, { label: string; color: BadgeColor }> = {
-  1: { label: "Pending",  color: "informative" },
-  2: { label: "Approved", color: "success" },
-  3: { label: "Declined", color: "subtle" },
+
+const STATE_BADGE: Record<string, BadgeColor> = {
+  Available: "success",
+  "Checked Out": "warning",
+  "Awaiting Validation": "informative",
+  "Checked In": "success",
+  Finalized: "subtle",
+  Obsolete: "subtle",
+  Void: "subtle",
 };
 
-type SearchTab = "all" | "pending" | "approved" | "rejected";
-const TAB_STATUS: Record<SearchTab, number | undefined> = {
-  all: undefined, pending: 1, approved: 2, rejected: 3,
-};
-const TABS: { key: SearchTab; label: string }[] = [
-  { key: "all",      label: "All" },
-  { key: "pending",  label: "Pending" },
-  { key: "approved", label: "Approved" },
-  { key: "rejected", label: "Rejected" },
+const TABS: { key: HeaderSearchTab; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "drawings", label: "Drawings" },
+  { key: "documents", label: "Documents" },
 ];
 
 function relativeTime(iso: string): string {
   if (!iso) return "";
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 60)  return `${mins}m ago`;
+  if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24)   return `${hrs}h ago`;
+  if (hrs < 24) return `${hrs}h ago`;
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
@@ -198,31 +205,28 @@ const useStyles = makeStyles({
 });
 
 export function Header() {
-  const styles      = useStyles();
-  const navigate    = useNavigate();
-  const { data: user }  = useCurrentUser();
-  const toggleSidebar   = useUiStore((s) => s.toggleSidebar);
+  const styles = useStyles();
+  const navigate = useNavigate();
+  const { data: user } = useCurrentUser();
+  const toggleSidebar = useUiStore((s) => s.toggleSidebar);
 
-  const [value, setValue]         = useState("");
-  const [open, setOpen]           = useState(false);
+  const [value, setValue] = useState("");
+  const [open, setOpen] = useState(false);
   const [debounced, setDebounced] = useState("");
   const [highlighted, setHighlighted] = useState(-1);
-  const [activeTab, setActiveTab] = useState<SearchTab>("all");
+  const [activeTab, setActiveTab] = useState<HeaderSearchTab>("all");
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const { data: lookups } = useCompositionLookups();
 
-  // Debounce input → query
   useEffect(() => {
     const t = setTimeout(() => setDebounced(value.trim()), 300);
     return () => clearTimeout(t);
   }, [value]);
 
-  // Reset highlight when results change
   // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional highlight reset when result set changes
   useEffect(() => { setHighlighted(-1); }, [debounced, activeTab]);
 
-  // Click outside → close
   useEffect(() => {
     function onMouseDown(e: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
@@ -233,59 +237,31 @@ export function Header() {
     return () => document.removeEventListener("mousedown", onMouseDown);
   }, []);
 
-  const matchingGuids = useMemo((): MatchingGuids | undefined => {
-    if (!lookups || debounced.trim().length < 2) return undefined;
-    const q = debounced.trim().toLowerCase();
+  const matchingGuids = useMemo(
+    () => (lookups ? matchingGuidsFromQuery(debounced, lookups) : undefined),
+    [lookups, debounced],
+  );
 
-    // Composition search: "DG-VS-00" → positional match (part[0]=biz, part[1]=asset, ...)
-    const parts = q.split("-").filter((p) => p.length > 0);
-    if (parts.length >= 2) {
-      const [p0 = "", p1 = "", p2 = "", p3 = "", p4 = "", p5 = ""] = parts;
-      const ids = (map: Map<string, string>, part: string) =>
-        part ? [...map.entries()].filter(([, c]) => c.toLowerCase().startsWith(part)).map(([id]) => id) : [];
-      return {
-        businessIds: ids(lookups.bizMap,    p0),
-        assetIds:    ids(lookups.assetMap,  p1),
-        unitIds:     ids(lookups.unitMap,   p2),
-        domainIds:   ids(lookups.domainMap, p3),
-        systemIds:   ids(lookups.sysMap,    p4),
-        kindIds:     ids(lookups.kindMap,   p5),
-        positional:  true,
-      };
-    }
-
-    // Single-token search: substring match across all lookup codes
-    return {
-      businessIds: [...lookups.bizMap.entries()].filter(([, code]) => code.toLowerCase().includes(q)).map(([id]) => id),
-      assetIds:    [...lookups.assetMap.entries()].filter(([, code]) => code.toLowerCase().includes(q)).map(([id]) => id),
-      unitIds:     [...lookups.unitMap.entries()].filter(([, code]) => code.toLowerCase().includes(q)).map(([id]) => id),
-      domainIds:   [...lookups.domainMap.entries()].filter(([, code]) => code.toLowerCase().includes(q)).map(([id]) => id),
-      systemIds:   [...lookups.sysMap.entries()].filter(([, code]) => code.toLowerCase().includes(q)).map(([id]) => id),
-      kindIds:     [...lookups.kindMap.entries()].filter(([, code]) => code.toLowerCase().includes(q)).map(([id]) => id),
-    };
-  }, [lookups, debounced]);
-
-  const { data: results = [], isFetching } = useHeaderSearch(debounced, TAB_STATUS[activeTab], matchingGuids);
+  const { data: results = [], isFetching } = useHeaderSearch(debounced, activeTab, matchingGuids);
   const showDropdown = open && value.trim().length >= 2;
 
+  const searchReturnUrl = useCallback(() => buildSearchPageUrl({
+    q: debounced,
+    tab: activeTab,
+    composition: guidsToCompositionFilter(matchingGuids),
+  }), [debounced, activeTab, matchingGuids]);
+
   const handleSelect = useCallback((r: HeaderSearchResult) => {
-    navigate(`/reservations/${r.id}`);
+    const returnTo = searchReturnUrl();
+    navigate(buildDocumentDetailUrl({
+      documentId: r.id,
+      drawingId: r.drawingId,
+      tab: r.tab,
+      returnTo,
+    }), { state: { returnTo } });
     setValue("");
     setOpen(false);
-  }, [navigate]);
-
-  function buildComp(r: HeaderSearchResult): string {
-    if (!lookups) return "";
-    const parts = [
-      r.businessId ? lookups.bizMap.get(r.businessId)   : undefined,
-      r.assetId    ? lookups.assetMap.get(r.assetId)    : undefined,
-      r.unitId     ? lookups.unitMap.get(r.unitId)      : undefined,
-      r.domainId   ? lookups.domainMap.get(r.domainId)  : undefined,
-      r.systemId   ? lookups.sysMap.get(r.systemId)     : undefined,
-      r.kindId     ? lookups.kindMap.get(r.kindId)      : undefined,
-    ].filter(Boolean);
-    return parts.join("-");
-  }
+  }, [navigate, searchReturnUrl]);
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (!showDropdown) return;
@@ -306,7 +282,6 @@ export function Header() {
 
   return (
     <header className={styles.root}>
-      {/* Left: nav toggle + brand */}
       <div className={styles.brandGroup}>
         <Tooltip content="Toggle navigation" relationship="label">
           <Button
@@ -320,17 +295,16 @@ export function Header() {
         <Text className={styles.title}>EEC Generation Document Management system</Text>
       </div>
 
-      {/* Centre: search */}
       <div className={styles.searchArea} ref={wrapperRef}>
         <Input
           className={styles.searchInput}
           contentBefore={<Search24Regular />}
-          placeholder="Search reservations…"
+          placeholder={GLOBAL_SEARCH_PLACEHOLDER}
           value={value}
           onChange={(_, d) => { setValue(d.value); setOpen(true); }}
           onFocus={() => { if (value.trim().length >= 2) setOpen(true); }}
           onKeyDown={handleKeyDown}
-          aria-label="Search reservations"
+          aria-label="Search documents"
           aria-expanded={showDropdown}
           aria-autocomplete="list"
           autoComplete="off"
@@ -338,11 +312,11 @@ export function Header() {
 
         {showDropdown && (
           <div className={styles.dropdown} role="listbox">
-            {/* Tabs */}
             <div className={styles.tabBar} role="tablist">
               {TABS.map((tab) => (
                 <button
                   key={tab.key}
+                  type="button"
                   role="tab"
                   aria-selected={activeTab === tab.key}
                   className={`${styles.tab}${activeTab === tab.key ? ` ${styles.tabActive}` : ""}`}
@@ -362,16 +336,15 @@ export function Header() {
 
             {!isFetching && results.length === 0 && (
               <div className={styles.dropdownCenter}>
-                <Text size={200}>No results for "{value}"</Text>
+                <Text size={200}>No documents for "{value}"</Text>
               </div>
             )}
 
             {!isFetching && results.map((r, i) => {
-              const s = STATUS[r.status] ?? STATUS[1];
-              const comp = buildComp(r);
+              const badgeColor = STATE_BADGE[r.stateLabel] ?? "informative";
               return (
                 <div
-                  key={r.id}
+                  key={`${r.tab}-${r.id}`}
                   className={styles.dropdownItem}
                   role="option"
                   aria-selected={i === highlighted}
@@ -383,21 +356,20 @@ export function Header() {
                   <div className={styles.dropdownItemBody}>
                     <div className={styles.dropdownItemTitle}>
                       <Text size={300} weight="semibold" style={{ fontFamily: tokens.fontFamilyMonospace }}>
-                        {r.number}
+                        {r.documentNumber}
                       </Text>
-                      <Badge appearance="tint" color={s.color} size="small">{s.label}</Badge>
+                      <Badge appearance="tint" color={badgeColor} size="small">{r.stateLabel}</Badge>
+                      <Badge appearance="outline" size="small">{r.typeLabel}</Badge>
                     </div>
-                    {comp && (
-                      <div className={styles.dropdownItemComp}>{comp}</div>
+                    {r.compositionSummary && (
+                      <div className={styles.dropdownItemComp}>{r.compositionSummary}</div>
                     )}
                     <Text size={200} className={styles.dropdownItemMeta}>
-                      {r.creatorName ? `${r.creatorName}` : ""}
-                      {r.creatorName && r.reason ? " · " : ""}
-                      {r.reason ? r.reason.slice(0, 80) : ""}
+                      {r.filename || r.title}
                     </Text>
                   </div>
                   <Text size={200} className={styles.dropdownItemDate}>
-                    {relativeTime(r.createdon)}
+                    {relativeTime(r.revisionDate)}
                   </Text>
                 </div>
               );
@@ -408,7 +380,10 @@ export function Header() {
                 <Divider />
                 <div
                   className={styles.dropdownFooter}
-                  onClick={() => { navigate(`/search?q=${encodeURIComponent(value)}`); setOpen(false); }}
+                  onClick={() => {
+                    navigate(searchReturnUrl());
+                    setOpen(false);
+                  }}
                 >
                   <Text size={200} style={{ color: tokens.colorBrandForeground1 }}>
                     View all results for "{value}"
@@ -420,7 +395,6 @@ export function Header() {
         )}
       </div>
 
-      {/* Right: actions */}
       <div className={styles.actions}>
         <NotificationBell />
         <div className={styles.userGreeting}>

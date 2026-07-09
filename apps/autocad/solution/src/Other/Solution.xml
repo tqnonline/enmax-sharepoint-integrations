@@ -80,12 +80,10 @@
     <RootComponents>
       <RootComponent type="1" schemaName="enmax_autocadappconfig" behavior="0" />
       <RootComponent type="1" schemaName="enmax_autocadasset" behavior="0" />
-      <RootComponent type="1" schemaName="enmax_autocadassetunit" behavior="0" />
       <RootComponent type="1" schemaName="enmax_autocadauditevent" behavior="0" />
       <RootComponent type="1" schemaName="enmax_autocadbroadcast" behavior="0" />
       <RootComponent type="1" schemaName="enmax_autocadbroadcastdismissal" behavior="0" />
       <RootComponent type="1" schemaName="enmax_autocadbusiness" behavior="0" />
-      <RootComponent type="1" schemaName="enmax_autocadbusinessasset" behavior="0" />
       <RootComponent type="1" schemaName="enmax_autocadcheckout" behavior="0" />
       <RootComponent type="1" schemaName="enmax_autocaddomain" behavior="0" />
       <RootComponent type="1" schemaName="enmax_autocaddrawing" behavior="0" />

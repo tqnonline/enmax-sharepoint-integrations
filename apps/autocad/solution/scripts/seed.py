@@ -21,6 +21,7 @@ import re
 import sys
 import time
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -60,8 +61,6 @@ REFERENCE_LOAD_ORDER = [
     "record_type",
     "record_phase",
     "vendor",
-    "approved_bb_aa",
-    "asset_unit",
     "system_scope",
 ]
 
@@ -84,7 +83,7 @@ TEAM_OWNED_TABLES: set[str] = {
     "enmax_autocadbusiness", "enmax_autocadasset", "enmax_autocadunit",
     "enmax_autocaddomain", "enmax_autocadsystem", "enmax_autocadkind",
     "enmax_autocadvendor", "enmax_autocadrecordtype", "enmax_autocadrecordphase",
-    "enmax_autocadbusinessasset", "enmax_autocadassetunit", "enmax_autocadsystemscope",
+    "enmax_autocadsystemscope",
     "enmax_autocadappconfig", "enmax_autocadnumbersequence",
 }
 
@@ -169,7 +168,7 @@ def acquire_token(dataverse_url: str, auth: str = "spn") -> str:
     """
     byo = os.environ.get("DATAVERSE_ACCESS_TOKEN", "").strip()
     if byo:
-        print("Using DATAVERSE_ACCESS_TOKEN from environment.")
+        print("Using DATAVERSE_ACCESS_TOKEN from environment.", file=sys.stderr)
         return byo
 
     if auth == "spn":
@@ -195,11 +194,23 @@ def acquire_token(dataverse_url: str, auth: str = "spn") -> str:
 
     scope = dataverse_url.rstrip("/") + "/.default"
     tenant = os.environ.get("DATAVERSE_TENANT_ID", "").strip() or None
+
+    def _device_code_prompt(verification_uri: str, user_code: str, expires_on) -> None:
+        message = (
+            f"\n>>> Microsoft sign-in required <<<\n"
+            f"Open: {verification_uri}\n"
+            f"Code: {user_code}\n"
+            f"(expires {expires_on})\n"
+        )
+        print(message, file=sys.stderr, flush=True)
+        print(message, flush=True)
+
     if auth == "device":
-        cred = DeviceCodeCredential(tenant_id=tenant)
+        cred = DeviceCodeCredential(tenant_id=tenant, prompt_callback=_device_code_prompt)
     elif auth == "azcli":
         cred = AzureCliCredential()
     elif auth == "interactive":
+        print("Opening browser for Microsoft sign-in...", file=sys.stderr, flush=True)
         cred = InteractiveBrowserCredential(tenant_id=tenant)
     else:
         print(f"ERROR: unknown auth mode '{auth}'.", file=sys.stderr)
@@ -257,41 +268,39 @@ def _load_option_sets() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Natural key computation per table
+# Natural key computation per table (dispatch table — add new tables here)
 # ---------------------------------------------------------------------------
+
+def _nk_join(*parts: str) -> str:
+    return "|".join(parts)
+
+
+def _nk_first(row: dict, *cols: str) -> str:
+    for col in cols:
+        if col in row:
+            return str(row[col])
+    raise ValueError(f"row missing any of {cols}: {row}")
+
+
+_NATURAL_KEY_FN: dict[str, Callable[[dict, dict[str, dict]], str]] = {
+    "enmax_autocadasset":           lambda r, _: r["code"],
+    "enmax_autocadunit":            lambda r, _: r["code"],
+    "enmax_autocadsystemscope":     lambda r, _: _nk_join(r["system_code"], r["scope_type"], r["scope_value"]),
+    "enmax_autocadappconfig":       lambda r, _: r["key"],
+    "enmax_autocadnumbersequence":  lambda r, _: r["sequence_key"],
+    "enmax_autocadreservation":     lambda r, _: r["_nk"],
+    "enmax_autocaddrawing":         lambda r, _: r.get("number", r.get("enmax_acdnnumber", "")),
+    "enmax_autocadsheet":           lambda r, _: r.get("filename", r.get("enmax_acdnfilename", "")),
+    "enmax_autocadbroadcast":       lambda r, _: r.get("title", ""),
+    "enmax_autocadinappnotification": lambda r, _: r.get("title", ""),
+}
+
 
 def _natural_key(table: str, row: dict, loaded_rows: dict[str, dict]) -> str:
     """Compute the natural key string used for deterministic_id."""
-    if table == "enmax_autocadasset":
-        return row["code"]
-    if table == "enmax_autocadunit":
-        return row["code"]
-    if table == "enmax_autocadbusinessasset":
-        return f"{row['business_code']}|{row['asset_code']}"
-    if table == "enmax_autocadassetunit":
-        return f"{row['asset_code']}|{row['unit_code']}"
-    if table == "enmax_autocadsystemscope":
-        return f"{row['system_code']}|{row['scope_type']}|{row['scope_value']}"
-    if table == "enmax_autocadappconfig":
-        return row["key"]
-    if table == "enmax_autocadnumbersequence":
-        return row["sequence_key"]
-    if table == "enmax_autocadreservation":
-        return row["_nk"]
-    if table == "enmax_autocaddrawing":
-        return row.get("number", row.get("enmax_acdnnumber", ""))
-    if table == "enmax_autocadsheet":
-        return row.get("filename", row.get("enmax_acdnfilename", ""))
-    if table == "enmax_autocadbroadcast":
-        return row.get("title", "")
-    if table == "enmax_autocadinappnotification":
-        return row.get("title", "")
-    # Default: use code / name
-    nk_cols = ["code", "key", "name"]
-    for col in nk_cols:
-        if col in row:
-            return str(row[col])
-    raise ValueError(f"Cannot compute natural key for table {table}, row {row}")
+    if fn := _NATURAL_KEY_FN.get(table):
+        return fn(row, loaded_rows)
+    return _nk_first(row, "code", "key", "name")
 
 
 # ---------------------------------------------------------------------------

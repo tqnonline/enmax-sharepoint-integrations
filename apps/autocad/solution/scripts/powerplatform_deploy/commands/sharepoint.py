@@ -1,17 +1,15 @@
 """SharePoint command stub — plan-11 B4.
 
 Intended interface (NOT YET IMPLEMENTED):
-    Provision a SharePoint document library for each active Asset-Unit combination
-    (one library per active enmax_autocadassetunit row).
+    Provision SharePoint document libraries per taxonomy segment (e.g. per asset
+    code) under the configured Drawings/Documents site collections.
 
     High-level Graph/SP calls:
-    1. Query Dataverse for all active enmax_autocadassetunit rows.
-    2. For each asset-unit, call the SharePoint REST API (or Microsoft Graph) to
-       create a document library named after the asset-unit code under the
-       configured SharePoint site collection.
+    1. Query Dataverse for active taxonomy reference rows (or read URLs from App Config).
+    2. For each target segment, call SharePoint REST / Microsoft Graph to create or
+       verify the document library under the configured site collection.
     3. Set appropriate permissions on the library (e.g. site-member read/write).
-    4. Write the resulting library URL back onto the asset-unit row's
-       enmax_acdnsharepointlibraryurl column via a Dataverse PATCH.
+    4. Write the resulting library URL back via Dataverse PATCH where applicable.
 
     Required credentials (from load_env):
         DATAVERSE_URL, DATAVERSE_CLIENT_ID, DATAVERSE_CLIENT_SECRET, DATAVERSE_TENANT_ID
@@ -27,7 +25,7 @@ from powerplatform_deploy import logging as pp_logging
 
 
 def run(environment: str, dry_run: bool, verbose: bool) -> None:
-    """Provision SharePoint document libraries per active Asset-Unit (STUB).
+    """Provision SharePoint document libraries per taxonomy segment (STUB).
 
     On --dry-run, logs the intended plan and returns without raising.
     On a real run, raises NotImplementedError with a description of the
@@ -44,15 +42,13 @@ def run(environment: str, dry_run: bool, verbose: bool) -> None:
         raise ValueError("environment must be a non-empty string.")
 
     logger.info(
-        "sharepoint: would provision one SharePoint document library per active "
-        "enmax_autocadassetunit in environment '%s'.",
+        "sharepoint: would provision SharePoint document libraries for environment '%s'.",
         environment,
     )
     logger.info(
-        "sharepoint: intended steps — (1) query active asset-units from Dataverse, "
-        "(2) create/verify SP library per unit via Microsoft Graph, "
-        "(3) set permissions, "
-        "(4) PATCH enmax_acdnsharepointlibraryurl back onto each asset-unit row.",
+        "sharepoint: intended steps — (1) resolve target segments from App Config / "
+        "reference data, (2) create/verify SP libraries via Microsoft Graph, "
+        "(3) set permissions, (4) PATCH library URLs back to Dataverse where needed.",
     )
 
     if dry_run:
@@ -61,7 +57,6 @@ def run(environment: str, dry_run: bool, verbose: bool) -> None:
 
     raise NotImplementedError(
         "sharepoint command is not yet implemented (plan-11 B4). "
-        "Intended interface: provision one SharePoint document library per active "
-        "enmax_autocadassetunit via Microsoft Graph / SharePoint REST, then write "
-        "the library URL back to enmax_acdnsharepointlibraryurl on each row."
+        "Intended interface: provision SharePoint document libraries per taxonomy "
+        "segment via Microsoft Graph / SharePoint REST, then write URLs back to Dataverse."
     )

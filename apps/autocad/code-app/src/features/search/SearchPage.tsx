@@ -1,8 +1,9 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
-  Badge,
-  Link,
+  Field,
+  Select,
   Tab,
   TabList,
   Text,
@@ -10,333 +11,242 @@ import {
   makeStyles,
   tokens,
 } from "@fluentui/react-components";
-import { EnmaxDataGrid } from "../../components/DataGrid";
-import type { ColumnDef } from "../../components/DataGrid";
-import { useCompositionLookups } from "../approvals/hooks/useCompositionLookups";
-import { DrawingDetailPanel } from "./DrawingDetailPanel";
-import { fetchSearchDrawings, DRAWING_STATE_LABELS, type DrawingRow } from "./useSearchDrawings";
-import { fetchSearchReservations, type ReservationRow } from "./useUnifiedSearch";
+import { GridQueryFilterBar } from "../../components/DataGrid";
+import { defaultGridDateRange } from "../../lib/dateRangeDefaults";
+import {
+  NUMBERING_GROUP_LABEL,
+  NUMBERING_GROUP_PATTERN,
+} from "../reserve/numberingTerms";
+import { useReferenceData } from "../reserve/hooks/useReferenceData";
+import { CompositionFilterFields } from "./CompositionFilterFields";
+import { SearchResultsList } from "./SearchResultsList";
+import { fetchSearchDocuments, type SearchDocumentRow } from "./useSearchDocuments";
+import {
+  emptyComposition,
+  type DocumentSubtypeSearchFilter,
+  type SearchListFilters,
+  type SearchTab,
+} from "./searchListFilters";
+import {
+  buildDocumentDetailUrl,
+  filtersFromSearchParams,
+  hasSearchPrefill,
+  parseSearchTab,
+} from "./searchUrlState";
+import { usePageSize } from "../../config/usePageSize";
 
 const useStyles = makeStyles({
-  root: { display: "flex", flexDirection: "column", height: "100%", gap: tokens.spacingVerticalM },
-  stateBadge: { minWidth: "80px" },
+  root: {
+    display: "flex",
+    flexDirection: "column",
+    height: "100%",
+    gap: tokens.spacingVerticalM,
+    overflow: "hidden",
+  },
+  intro: {
+    color: tokens.colorNeutralForeground3,
+    maxWidth: "720px",
+  },
+  filters: {
+    display: "flex",
+    flexDirection: "column",
+    gap: tokens.spacingVerticalXS,
+    flexShrink: 0,
+  },
+  results: {
+    flex: 1,
+    minHeight: 0,
+    display: "flex",
+    flexDirection: "column",
+  },
 });
 
-const STATE_COLORS: Record<number, "success" | "warning" | "danger" | "informative" | "brand" | undefined> = {
-  1: "success",
-  2: "informative",
-  3: "warning",
-  4: "warning",
-  5: "danger",
-  6: "danger",
-  7: "brand",
-};
+const DOCUMENT_TYPE_OPTIONS: { value: DocumentSubtypeSearchFilter; label: string }[] = [
+  { value: "all", label: "All types" },
+  { value: "standard", label: "Standard Document" },
+  { value: "procedure", label: "Procedure form" },
+];
 
-type BadgeColor = "success" | "informative" | "subtle";
-const RESERVATION_STATUS: Record<number, { label: string; color: BadgeColor }> = {
-  1: { label: "Pending",  color: "informative" },
-  2: { label: "Approved", color: "success" },
-  3: { label: "Declined", color: "subtle" },
-};
+function initialFilters(): SearchListFilters {
+  const { from, to } = defaultGridDateRange();
+  return {
+    number: "",
+    from,
+    to,
+    documentSubtype: "all",
+    peopleIds: [],
+    composition: emptyComposition(),
+  };
+}
+
+function parseTab(raw: string | null): SearchTab {
+  return parseSearchTab(raw);
+}
 
 export function SearchPage() {
   const styles = useStyles();
   const navigate = useNavigate();
-  const [selectedTab, setSelectedTab] = useState<"drawings" | "reservations">("drawings");
-  const [selectedDrawing, setSelectedDrawing] = useState<DrawingRow | null>(null);
-  const { data: compMaps } = useCompositionLookups();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const pageSize = usePageSize();
+  const { data: refData } = useReferenceData();
 
-  const drawingColumns = useMemo((): ColumnDef<DrawingRow>[] => {
-    const toOpts = (m: Map<string, string>) =>
-      Array.from(m.entries()).map(([value, label]) => ({ value, label }));
-    return [
-      {
-        id: "enmax_acdnnumber",
-        header: "Drawing/Document Number",
-        accessor: r => r.enmax_acdnnumber,
-        sortable: true,
-        filterable: true,
-        filterType: "text",
-        visibleByDefault: true,
-        width: 160,
-        cell: r => <Text weight="semibold">{r.enmax_acdnnumber}</Text>,
-      },
-      {
-        id: "enmax_acdntitle",
-        header: "Title",
-        accessor: r => r.enmax_acdntitle,
-        sortable: true,
-        filterable: true,
-        filterType: "text",
-        visibleByDefault: true,
-        cell: r => /^https?:\/\//i.test(r.enmax_acdnsplibraryurl ?? "")
-          ? <Link href={r.enmax_acdnsplibraryurl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>{r.enmax_acdntitle}</Link>
-          : <span>{r.enmax_acdntitle}</span>,
-      },
-      {
-        id: "business",
-        header: "Business",
-        accessor: r => r.businessDisplay,
-        sortable: true,
-        filterable: true,
-        filterType: "select",
-        filterOptions: toOpts(compMaps?.bizMap ?? new Map()),
-        visibleByDefault: true,
-        width: 100,
-      },
-      {
-        id: "asset",
-        header: "Asset",
-        accessor: r => r.assetDisplay,
-        sortable: true,
-        filterable: true,
-        filterType: "select",
-        filterOptions: toOpts(compMaps?.assetMap ?? new Map()),
-        visibleByDefault: true,
-        width: 100,
-      },
-      {
-        id: "unit",
-        header: "Unit",
-        accessor: r => r.unitDisplay,
-        sortable: true,
-        filterable: true,
-        filterType: "select",
-        filterOptions: toOpts(compMaps?.unitMap ?? new Map()),
-        visibleByDefault: true,
-        width: 80,
-      },
-      {
-        id: "domain",
-        header: "Domain",
-        accessor: r => r.domainDisplay,
-        sortable: true,
-        filterable: true,
-        filterType: "select",
-        filterOptions: toOpts(compMaps?.domainMap ?? new Map()),
-        visibleByDefault: true,
-        width: 100,
-      },
-      {
-        id: "system",
-        header: "System",
-        accessor: r => r.systemDisplay,
-        sortable: true,
-        filterable: true,
-        filterType: "select",
-        filterOptions: toOpts(compMaps?.sysMap ?? new Map()),
-        visibleByDefault: true,
-        width: 100,
-      },
-      {
-        id: "kind",
-        header: "Kind",
-        accessor: r => r.kindDisplay,
-        sortable: true,
-        filterable: true,
-        filterType: "select",
-        filterOptions: toOpts(compMaps?.kindMap ?? new Map()),
-        visibleByDefault: true,
-        width: 80,
-      },
-      {
-        id: "recordType",
-        header: "Record Type",
-        accessor: r => r.recordTypeDisplay,
-        sortable: true,
-        filterable: true,
-        filterType: "text",
-        visibleByDefault: false,
-        width: 120,
-      },
-      {
-        id: "recordPhase",
-        header: "Record Phase",
-        accessor: r => r.recordPhaseDisplay,
-        sortable: true,
-        filterable: true,
-        filterType: "text",
-        visibleByDefault: false,
-        width: 120,
-      },
-      {
-        id: "vendor",
-        header: "Vendor",
-        accessor: r => r.vendorDisplay,
-        sortable: true,
-        filterable: true,
-        filterType: "text",
-        visibleByDefault: false,
-        width: 120,
-      },
-      {
-        id: "enmax_acdncurrentrevision",
-        header: "Current Revision",
-        accessor: r => r.enmax_acdncurrentrevision,
-        sortable: true,
-        filterable: true,
-        filterType: "text",
-        visibleByDefault: true,
-        width: 120,
-      },
-      {
-        id: "enmax_acdnrevisiondate",
-        header: "Revision Date",
-        accessor: r => r.enmax_acdnrevisiondate,
-        sortable: true,
-        filterable: true,
-        filterType: "date",
-        visibleByDefault: true,
-        width: 130,
-        cell: r => <span>{r.enmax_acdnrevisiondate ? new Date(r.enmax_acdnrevisiondate).toLocaleDateString() : ""}</span>,
-        exportFormatter: v => v ? new Date(String(v)).toLocaleDateString() : "",
-      },
-      {
-        id: "enmax_acdnstate",
-        header: "State",
-        accessor: r => DRAWING_STATE_LABELS[r.enmax_acdnstate] ?? String(r.enmax_acdnstate),
-        sortable: true,
-        filterable: true,
-        filterType: "select",
-        filterOptions: Object.entries(DRAWING_STATE_LABELS).map(([k, v]) => ({ value: k, label: v })),
-        visibleByDefault: true,
-        width: 140,
-        cell: r => (
-          <Badge appearance="tint" color={STATE_COLORS[r.enmax_acdnstate]}>
-            {DRAWING_STATE_LABELS[r.enmax_acdnstate] ?? String(r.enmax_acdnstate)}
-          </Badge>
-        ),
-        exportFormatter: v => String(v),
-      },
-      {
-        id: "requester",
-        header: "Requester",
-        accessor: r => r.requesterDisplay,
-        sortable: true,
-        filterable: true,
-        filterType: "text",
-        visibleByDefault: true,
-        width: 140,
-      },
-      {
-        id: "enmax_acdnsheetcount",
-        header: "Sheets",
-        accessor: r => r.enmax_acdnsheetcount,
-        sortable: true,
-        filterable: false,
-        visibleByDefault: false,
-        width: 80,
-      },
-    ];
-  }, [compMaps]);
+  const [activeTab, setActiveTab] = useState<SearchTab>(() => parseTab(searchParams.get("tab")));
+  const [filterDraft, setFilterDraft] = useState(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState<SearchListFilters>(() => initialFilters());
+  const [page, setPage] = useState(0);
 
-  const reservationColumns = useMemo((): ColumnDef<ReservationRow>[] => [
-    {
-      id: "number",
-      header: "Reservation #",
-      accessor: r => r.number,
-      sortable: true,
-      filterable: true,
-      filterType: "text",
-      visibleByDefault: true,
-      width: 160,
-      cell: r => <Text weight="semibold">{r.number}</Text>,
-    },
-    {
-      id: "status",
-      header: "Status",
-      accessor: r => RESERVATION_STATUS[r.status]?.label ?? String(r.status),
-      sortable: true,
-      filterable: true,
-      filterType: "select",
-      filterOptions: Object.entries(RESERVATION_STATUS).map(([k, v]) => ({ value: k, label: v.label })),
-      visibleByDefault: true,
-      width: 120,
-      cell: r => {
-        const s = RESERVATION_STATUS[r.status] ?? RESERVATION_STATUS[1];
-        return <Badge appearance="tint" color={s.color}>{s.label}</Badge>;
-      },
-    },
-    {
-      id: "reason",
-      header: "Reason",
-      accessor: r => r.reason,
-      sortable: false,
-      filterable: true,
-      filterType: "text",
-      visibleByDefault: true,
-    },
-    {
-      id: "requesterName",
-      header: "Requester",
-      accessor: r => r.requesterName,
-      sortable: false,
-      filterable: false,
-      visibleByDefault: true,
-      width: 160,
-    },
-    {
-      id: "createdon",
-      header: "Date",
-      accessor: r => r.createdon,
-      sortable: true,
-      filterable: false,
-      visibleByDefault: true,
-      width: 130,
-      cell: r => <span>{r.createdon ? new Date(r.createdon).toLocaleDateString() : ""}</span>,
-    },
-  ], []);
+  useEffect(() => {
+    const tab = parseTab(searchParams.get("tab"));
+    if (tab !== activeTab) setActiveTab(tab);
+  }, [searchParams, activeTab]);
+
+  useEffect(() => {
+    if (!hasSearchPrefill(searchParams)) return;
+    const prefilled = filtersFromSearchParams(searchParams, refData);
+    const tab = parseTab(searchParams.get("tab"));
+    setActiveTab(tab);
+    setFilterDraft(prefilled);
+    setAppliedFilters(prefilled);
+    setPage(0);
+  }, [searchParams, refData]);
+
+  const queryKey = useMemo(
+    () => ["search-documents", activeTab, appliedFilters, page, pageSize],
+    [activeTab, appliedFilters, page, pageSize],
+  );
+
+  const { data, isFetching, isError } = useQuery({
+    queryKey,
+    enabled: true,
+    queryFn: () => fetchSearchDocuments(activeTab, appliedFilters, {
+      search: "",
+      filters: {},
+      sort: { column: "documentNumber", direction: "asc" },
+      page,
+      pageSize,
+    }),
+  });
+
+  function handleTabChange(tab: SearchTab) {
+    setActiveTab(tab);
+    setSearchParams({ tab });
+    setPage(0);
+    setFilterDraft(initialFilters());
+    setAppliedFilters(initialFilters());
+  }
+
+  function handleQuery() {
+    if (!filterDraft.from || !filterDraft.to) return;
+    setAppliedFilters({
+      number: filterDraft.number,
+      from: filterDraft.from,
+      to: filterDraft.to,
+      documentSubtype: filterDraft.documentSubtype,
+      peopleIds: [...filterDraft.peopleIds],
+      composition: { ...filterDraft.composition },
+    });
+    setPage(0);
+  }
+
+  function handleClear() {
+    const cleared = initialFilters();
+    setFilterDraft(cleared);
+    setAppliedFilters(cleared);
+    setPage(0);
+  }
+
+  const handleRowClick = useCallback((row: SearchDocumentRow) => {
+    const returnTo = `${location.pathname}${location.search}`;
+    navigate(buildDocumentDetailUrl({
+      documentId: row.id,
+      drawingId: row.drawingId,
+      tab: activeTab,
+      returnTo,
+    }), { state: { returnTo } });
+  }, [navigate, activeTab, location.pathname, location.search]);
+
+  const emptyMessage = activeTab === "drawings"
+    ? "No Drawing documents found. Try widening the numbering group filters or the date range."
+    : "No Standard Documents or Procedure forms found. Try adjusting filters.";
 
   return (
     <div className={styles.root}>
-      <Title2 as="h1">Search</Title2>
+      <div>
+        <Title2 as="h1">Search</Title2>
+        <Text className={styles.intro} size={300} block>
+          Find Drawing documents, Standard Documents, and Procedure forms by issued number
+          or {NUMBERING_GROUP_LABEL} ({NUMBERING_GROUP_PATTERN}). Results list each file you
+          can open in SharePoint or view in detail.
+        </Text>
+      </div>
 
       <TabList
-        selectedValue={selectedTab}
-        onTabSelect={(_, d) => setSelectedTab(d.value as "drawings" | "reservations")}
+        selectedValue={activeTab}
+        onTabSelect={(_, d) => handleTabChange(d.value as SearchTab)}
       >
-        <Tab value="drawings">Drawings</Tab>
-        <Tab value="reservations">Reservations</Tab>
+        <Tab value="drawings">Drawings (Drawing documents)</Tab>
+        <Tab value="documents">Standard Documents &amp; Procedure forms</Tab>
       </TabList>
 
-      {selectedTab === "drawings" && (
-        <>
-          <EnmaxDataGrid
-            queryKey={["drawings-search"]}
-            fetcher={fetchSearchDrawings}
-            columns={drawingColumns}
-            rowKey={r => r.id}
-            defaultSort={{ column: "enmax_acdnnumber", direction: "asc" }}
-            enableColumnVisibility
-            exportFileName="drawings.csv"
-            requireSearch
-            searchPrompt="Search by Drawing/Document Number or title to find drawings."
-            quickSearchPlaceholder="Search by Drawing/Document Number or title…"
-            emptyMessage="No drawings found. Try adjusting your search or filters."
-            onRowClick={setSelectedDrawing}
-          />
-
-          <DrawingDetailPanel
-            drawing={selectedDrawing}
-            onClose={() => setSelectedDrawing(null)}
-          />
-        </>
-      )}
-
-      {selectedTab === "reservations" && (
-        <EnmaxDataGrid
-          queryKey={["reservations-search"]}
-          fetcher={fetchSearchReservations}
-          columns={reservationColumns}
-          rowKey={r => r.id}
-          defaultSort={{ column: "number", direction: "asc" }}
-          requireSearch
-          searchPrompt="Search by reservation # or reason to find reservations."
-          quickSearchPlaceholder="Search by reservation # or reason…"
-          emptyMessage="No reservations found. Try adjusting your search."
-          onRowClick={r => navigate(`/reservations/${r.id}`)}
+      <div className={styles.filters}>
+        <GridQueryFilterBar
+          numberLabel="Drawing document / Standard Document / Procedure form number"
+          numberPlaceholder="e.g. GG-CG-00-ECS-AST-DD-0001-001"
+          draft={{ number: filterDraft.number, from: filterDraft.from, to: filterDraft.to }}
+          onDraftChange={(patch) => setFilterDraft((prev) => ({ ...prev, ...patch }))}
+          onQuery={handleQuery}
+          onClear={handleClear}
+          isQuerying={isFetching}
+          personLabel="Submitted or approved by"
+          peopleIds={filterDraft.peopleIds}
+          onPeopleChange={(ids) => setFilterDraft((prev) => ({ ...prev, peopleIds: ids }))}
+          extraFields={activeTab === "documents" ? (
+            <Field label="Type">
+              <Select
+                value={filterDraft.documentSubtype}
+                onChange={(_, d) => setFilterDraft((prev) => ({
+                  ...prev,
+                  documentSubtype: d.value as DocumentSubtypeSearchFilter,
+                }))}
+                aria-label="Filter by document type"
+              >
+                {DOCUMENT_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </Select>
+            </Field>
+          ) : undefined}
         />
-      )}
+
+        <CompositionFilterFields
+          refData={refData}
+          value={filterDraft.composition}
+          onChange={(patch) => setFilterDraft((prev) => ({
+            ...prev,
+            composition: { ...prev.composition, ...patch },
+          }))}
+        />
+      </div>
+
+      <div className={styles.results}>
+        {isError && (
+          <Text style={{ color: tokens.colorPaletteRedForeground1 }}>
+            Search failed. Please try again.
+          </Text>
+        )}
+        <SearchResultsList
+          rows={data?.rows ?? []}
+          totalCount={data?.totalCount ?? 0}
+          page={page}
+          pageSize={pageSize}
+          isLoading={isFetching}
+          hasQueried={true}
+          emptyMessage={emptyMessage}
+          onPageChange={setPage}
+          onRowClick={handleRowClick}
+        />
+      </div>
     </div>
   );
 }

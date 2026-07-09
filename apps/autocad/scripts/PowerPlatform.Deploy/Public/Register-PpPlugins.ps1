@@ -62,8 +62,18 @@ function Register-PpPlugins {
 
         [switch]$SkipBuild,
 
-        [string]$SolutionName = 'enmax_autocadsln'
+        [string]$SolutionName = 'enmax_autocadsln',
+
+        # User-auth path: acquire token via python (device/interactive); no SPN required.
+        [ValidateSet('device', 'interactive', 'azcli')]
+        [string]$UserAuth = '',
+
+        [string]$DataverseUrl = ''
     )
+
+    # ── Resolve paths (needed early for user-auth token script) ───────────────
+    $moduleRoot = Split-Path $PSScriptRoot -Parent
+    $repoRoot   = Split-Path (Split-Path $moduleRoot -Parent) -Parent
 
     # ── Resolve credentials ───────────────────────────────────────────────────
     # Prefer DATAVERSE_* env vars (CI passes these as secrets); fall back to .env file.
@@ -73,12 +83,42 @@ function Register-PpPlugins {
     $clientSecret = $env:DATAVERSE_CLIENT_SECRET
 
     if (-not ($envUrl -and $tenantId -and $clientId -and $clientSecret)) {
-        Write-PpLog "DATAVERSE_* env vars not fully set — loading from .env.$Environment" -Level Verbose
-        $cfg = Get-PpEnvConfig -Environment $Environment
-        if (-not $envUrl)       { $envUrl       = $cfg.Url }
-        if (-not $tenantId)     { $tenantId     = $cfg.TenantId }
-        if (-not $clientId)     { $clientId     = $cfg.ClientId }
-        if (-not $clientSecret) { $clientSecret = $cfg.ClientSecret }
+        if ($UserAuth) {
+            Write-PpLog "UserAuth=$UserAuth — acquiring Dataverse token (no SPN)..." -Level Verbose
+            if (-not $envUrl) {
+                if ($DataverseUrl) {
+                    $envUrl = $DataverseUrl
+                } else {
+                    $org = Get-PpPacOrgWho
+                    $envUrl = $org.Url
+                }
+            }
+            $envUrl = $envUrl.TrimEnd('/')
+            $tokenScript = Join-Path $repoRoot "solution/scripts/get_dataverse_token.py"
+            if (-not (Test-PpFileExists -Path $tokenScript)) {
+                throw "Register-PpPlugins: get_dataverse_token.py not found at $tokenScript"
+            }
+            $prevUrl = $env:DATAVERSE_URL
+            $env:DATAVERSE_URL = $envUrl
+            try {
+                $tokenOut = & python3 $tokenScript --auth $UserAuth --url $envUrl 2>&1
+                if ($LASTEXITCODE -ne 0) { throw ($tokenOut -join "`n") }
+                $env:DATAVERSE_ACCESS_TOKEN = ($tokenOut | Select-Object -Last 1).ToString().Trim()
+            }
+            finally {
+                if ($prevUrl) { $env:DATAVERSE_URL = $prevUrl } else { Remove-Item Env:DATAVERSE_URL -ErrorAction SilentlyContinue }
+            }
+            $tenantId = 'user-auth'
+            $clientId = 'user-auth'
+            $clientSecret = 'user-auth'
+        } else {
+            Write-PpLog "DATAVERSE_* env vars not fully set — loading from .env.$Environment" -Level Verbose
+            $cfg = Get-PpEnvConfig -Environment $Environment
+            if (-not $envUrl)       { $envUrl       = $cfg.Url }
+            if (-not $tenantId)     { $tenantId     = $cfg.TenantId }
+            if (-not $clientId)     { $clientId     = $cfg.ClientId }
+            if (-not $clientSecret) { $clientSecret = $cfg.ClientSecret }
+        }
     }
 
     if (-not ($envUrl -and $tenantId -and $clientId -and $clientSecret)) {
@@ -86,10 +126,7 @@ function Register-PpPlugins {
     }
     $envUrl = $envUrl.TrimEnd('/')
 
-    # ── Resolve paths ─────────────────────────────────────────────────────────
-    $moduleRoot = Split-Path $PSScriptRoot -Parent                    # scripts/PowerPlatform.Deploy/
-    $repoRoot   = Split-Path (Split-Path $moduleRoot -Parent) -Parent # repo root (module -> scripts -> repo)
-
+    # ── Resolve paths (plugin project, DLL, definitions) ──────────────────────
     $pluginProj = Join-Path $repoRoot "solution/plugins/IssueNumbers/IssueNumbers.csproj"
     $dllPath    = Join-Path $repoRoot "solution/plugins/IssueNumbers/bin/Release/net462/Enmax.AutoCAD.dll"
     $defsPath   = Join-Path $moduleRoot "Data/PluginDefinitions.psd1"
@@ -160,6 +197,44 @@ function Register-PpPlugins {
             foreach ($rp in $def.Response) {
                 Ensure-PpResponseProp -ApiId $apiId -Name $rp.Name -Type $rp.Type `
                                       -Token $token -EnvUrl $envUrl
+            }
+
+            # Prune stale request params / response props no longer in the definition.
+            # Without this, a removed-then-renamed param (e.g. NewRevision -> SubmissionInfo)
+            # lingers as a still-required parameter and every call fails with
+            # "missing parameters: <old name>".
+            $wantParams = @($def.Params | ForEach-Object { $_.Name })
+            # Entity-bound APIs (bindingtype=1) get an implicit platform-managed Target
+            # parameter. It is not in PluginDefinitions.psd1 but must never be pruned.
+            if ($def.BindingType -eq 1 -and ($wantParams -notcontains 'Target')) {
+                $wantParams += 'Target'
+            }
+            foreach ($ex in (Invoke-PpDataverse -Method Get -Token $token -EnvUrl $envUrl `
+                -Path "customapirequestparameters?`$filter=_customapiid_value eq $apiId&`$select=customapirequestparameterid,uniquename").value) {
+                if ($wantParams -notcontains $ex.uniquename) {
+                    try {
+                        $null = Invoke-PpDataverse -Method Delete -Token $token -EnvUrl $envUrl -NoPrefer `
+                            -Path "customapirequestparameters($($ex.customapirequestparameterid))"
+                        Write-PpLog "  Pruned stale request param: $($ex.uniquename)" -Level Verbose
+                    } catch {
+                        $detail = if ($_.ErrorDetails.Message) { $_.ErrorDetails.Message } else { $_.Exception.Message }
+                        Write-PpLog "  WARN: Could not prune stale request param '$($ex.uniquename)' on $($def.UniqueName): $detail" -Level Warning
+                    }
+                }
+            }
+            $wantProps = @($def.Response | ForEach-Object { $_.Name })
+            foreach ($ex in (Invoke-PpDataverse -Method Get -Token $token -EnvUrl $envUrl `
+                -Path "customapiresponseproperties?`$filter=_customapiid_value eq $apiId&`$select=customapiresponsepropertyid,uniquename").value) {
+                if ($wantProps -notcontains $ex.uniquename) {
+                    try {
+                        $null = Invoke-PpDataverse -Method Delete -Token $token -EnvUrl $envUrl -NoPrefer `
+                            -Path "customapiresponseproperties($($ex.customapiresponsepropertyid))"
+                        Write-PpLog "  Pruned stale response prop: $($ex.uniquename)" -Level Verbose
+                    } catch {
+                        $detail = if ($_.ErrorDetails.Message) { $_.ErrorDetails.Message } else { $_.Exception.Message }
+                        Write-PpLog "  WARN: Could not prune stale response prop '$($ex.uniquename)' on $($def.UniqueName): $detail" -Level Warning
+                    }
+                }
             }
         }
     }
@@ -273,7 +348,7 @@ function Invoke-PpDataverse {
     unless -NoPrefer is set (needed for PATCH which returns 204). #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)][ValidateSet('Get','Post','Patch')][string]$Method,
+        [Parameter(Mandatory)][ValidateSet('Get','Post','Patch','Delete','Put')][string]$Method,
         [Parameter(Mandatory)][string]$Path,
         [hashtable]$Body = $null,
         [Parameter(Mandatory)][string]$Token,
@@ -286,12 +361,17 @@ function Invoke-PpDataverse {
         "OData-MaxVersion" = "4.0"
         "OData-Version"    = "4.0"
     }
-    if (-not $NoPrefer) { $headers["Prefer"] = "return=representation" }
+    if (-not $NoPrefer -and $Method -ne 'Delete') { $headers["Prefer"] = "return=representation" }
 
     $uri      = "$EnvUrl/api/data/v9.2/$Path"
     $callArgs = @{ Method = $Method; Uri = $uri; Headers = $headers }
     if ($Body) { $callArgs.Body = ($Body | ConvertTo-Json -Depth 5 -Compress) }
-    return Invoke-RestMethod @callArgs
+    try {
+        return Invoke-RestMethod @callArgs
+    } catch {
+        $detail = if ($_.ErrorDetails.Message) { $_.ErrorDetails.Message } else { $_.Exception.Message }
+        throw "Invoke-PpDataverse $Method $Path failed: $detail"
+    }
 }
 
 function Add-PpSolutionComponent {
@@ -424,9 +504,43 @@ function Ensure-PpRequestParam {
         [Parameter(Mandatory)][string]$EnvUrl
     )
     $r = Invoke-PpDataverse -Method Get `
-        -Path "customapirequestparameters?`$filter=uniquename eq '$Name' and _customapiid_value eq $ApiId&`$select=customapirequestparameterid" `
+        -Path "customapirequestparameters?`$filter=uniquename eq '$Name' and _customapiid_value eq $ApiId&`$select=customapirequestparameterid,isoptional,type" `
         -Token $Token -EnvUrl $EnvUrl
-    if ($r.value.Count -gt 0) { Write-PpLog "  Param exists: $Name" -Level Verbose; return }
+    if ($r.value.Count -gt 0) {
+        # Heal drift: an existing param may have a stale type or requiredness (e.g. a
+        # param that changed from required to optional). PATCH when it differs so the
+        # API contract matches the definition.
+        $existing = $r.value[0]
+        $patch = @{}
+        if ($existing.isoptional -ne $Optional) { $patch['isoptional'] = $Optional }
+        if ($existing.type       -ne $Type)     { $patch['type']       = $Type }
+        if ($patch.Count -gt 0) {
+            try {
+                $null = Invoke-PpDataverse -Method Patch -Path "customapirequestparameters($($existing.customapirequestparameterid))" `
+                    -Token $Token -EnvUrl $EnvUrl -NoPrefer -Body $patch
+                Write-PpLog "  Patched param ${Name}: $($patch.Keys -join ', ')" -Level Verbose
+            } catch {
+                # type/isoptional are immutable after creation; delete+recreate is the
+                # supported path when the contract drifts.
+                Write-PpLog "  WARN: PATCH param ${Name} failed; recreating ($($_.Exception.Message))" -Level Warning
+                $null = Invoke-PpDataverse -Method Delete -Token $Token -EnvUrl $EnvUrl -NoPrefer `
+                    -Path "customapirequestparameters($($existing.customapirequestparameterid))"
+                Invoke-PpDataverse -Method Post -Path "customapirequestparameters" -Token $Token -EnvUrl $EnvUrl -Body @{
+                    uniquename   = $Name
+                    name         = $Name
+                    displayname  = $Name
+                    description  = $Name
+                    type         = $Type
+                    isoptional   = $Optional
+                    "CustomAPIId@odata.bind" = "/customapis($ApiId)"
+                } | Out-Null
+                Write-PpLog "  Recreated param: $Name (type=$Type, optional=$Optional)" -Level Verbose
+            }
+        } else {
+            Write-PpLog "  Param exists: $Name" -Level Verbose
+        }
+        return
+    }
     Write-PpLog "  Creating param: $Name (type=$Type, optional=$Optional)" -Level Verbose
     Invoke-PpDataverse -Method Post -Path "customapirequestparameters" -Token $Token -EnvUrl $EnvUrl -Body @{
         uniquename   = $Name
@@ -494,6 +608,35 @@ function Get-PpMessageFilterId {
     return $r.value[0].sdkmessagefilterid
 }
 
+function Get-PpImageMessagePropertyName {
+    <#
+    .SYNOPSIS Message property that carries the entity for a step image.
+    Create uses Id; SetState* uses EntityMoniker; everything else uses Target. #>
+    param([Parameter(Mandatory)][string]$MessageName)
+    switch ($MessageName) {
+        'Create' { return 'Id' }
+        'SetState' { return 'EntityMoniker' }
+        'SetStateDynamicEntity' { return 'EntityMoniker' }
+        default { return 'Target' }
+    }
+}
+
+function New-PpStepImageBody {
+    param(
+        [Parameter(Mandatory)][string]$StepId,
+        [Parameter(Mandatory)][hashtable]$Img,
+        [Parameter(Mandatory)][string]$MessagePropertyName
+    )
+    @{
+        name                  = $Img.Name
+        entityalias           = $Img.Name
+        imagetype             = $Img.ImageType
+        attributes            = $Img.Attributes
+        messagepropertyname   = $MessagePropertyName
+        "sdkmessageprocessingstepid@odata.bind" = "/sdkmessageprocessingsteps($StepId)"
+    }
+}
+
 function Ensure-PpPluginStep {
     [CmdletBinding()]
     param(
@@ -534,20 +677,31 @@ function Ensure-PpPluginStep {
     }
 
     foreach ($img in $Def.Images) {
+        $defaultMsgProp = Get-PpImageMessagePropertyName -MessageName $Def.Message
         $imgR = Invoke-PpDataverse -Method Get `
-            -Path "sdkmessageprocessingstepimages?`$filter=_sdkmessageprocessingstepid_value eq $stepId and name eq '$($img.Name)'&`$select=sdkmessageprocessingstepimageid" `
+            -Path "sdkmessageprocessingstepimages?`$filter=_sdkmessageprocessingstepid_value eq $stepId and name eq '$($img.Name)'&`$select=sdkmessageprocessingstepimageid,attributes,messagepropertyname" `
             -Token $Token -EnvUrl $EnvUrl
         if ($imgR.value.Count -gt 0) {
-            Write-PpLog "  Image exists: $($img.Name)" -Level Verbose
+            $existing = $imgR.value[0]
+            $imgId = $existing.sdkmessageprocessingstepimageid
+            $msgProp = if ($existing.messagepropertyname) { $existing.messagepropertyname } else { $defaultMsgProp }
+            # Heal attribute drift: a previously-registered image may lack newly-added
+            # columns (e.g. taxonomy fields). Attributes are not reliably PATCHable, so
+            # delete+recreate with the preserved messagepropertyname.
+            if ($existing.attributes -ne $img.Attributes) {
+                Write-PpLog "  Heal image attributes: $($img.Name)" -Level Verbose
+                $null = Invoke-PpDataverse -Method Delete -Token $Token -EnvUrl $EnvUrl -NoPrefer `
+                    -Path "sdkmessageprocessingstepimages($imgId)"
+                Invoke-PpDataverse -Method Post -Path "sdkmessageprocessingstepimages" -Token $Token -EnvUrl $EnvUrl `
+                    -Body (New-PpStepImageBody -StepId $stepId -Img $img -MessagePropertyName $msgProp) | Out-Null
+                Write-PpLog "  Recreated image: $($img.Name)" -Level Verbose
+            } else {
+                Write-PpLog "  Image exists: $($img.Name)" -Level Verbose
+            }
         } else {
             Write-PpLog "  Creating image: $($img.Name)" -Level Verbose
-            Invoke-PpDataverse -Method Post -Path "sdkmessageprocessingstepimages" -Token $Token -EnvUrl $EnvUrl -Body @{
-                name        = $img.Name
-                entityalias = $img.Name
-                imagetype   = $img.ImageType
-                attributes  = $img.Attributes
-                "sdkmessageprocessingstepid@odata.bind" = "/sdkmessageprocessingsteps($stepId)"
-            } | Out-Null
+            Invoke-PpDataverse -Method Post -Path "sdkmessageprocessingstepimages" -Token $Token -EnvUrl $EnvUrl `
+                -Body (New-PpStepImageBody -StepId $stepId -Img $img -MessagePropertyName $defaultMsgProp) | Out-Null
         }
     }
 }

@@ -5,23 +5,22 @@ import { renderWithProviders } from "../helpers/renderWithProviders";
 import type { ReserveForm } from "../../features/reserve/schema";
 import type { ExistingBase } from "../../features/reserve/hooks/useSearchExistingBases";
 
-const { addMutate, createMutate, searchRef } = vi.hoisted(() => ({
-  addMutate: vi.fn(),
+const { createMutate, searchRef } = vi.hoisted(() => ({
   createMutate: vi.fn(),
-  searchRef: { data: [] as ExistingBase[], isFetching: false },
+  searchRef: { data: [] as ExistingBase[], isFetching: false, lastArgs: null as unknown },
 }));
 
 vi.mock("../../config/useAppConfig", () => ({
-  useAppConfig: () => ({ MaxDrawingsPerReservation: 10 }),
+  useAppConfig: () => ({ MaxRecordsPerReservation: 10 }),
 }));
 vi.mock("../../features/reserve/hooks/useSearchExistingBases", () => ({
-  useSearchExistingBases: (q: string) => ({
-    data: q.trim().length >= 2 ? searchRef.data : [],
-    isFetching: searchRef.isFetching,
-  }),
-}));
-vi.mock("../../features/reserve/hooks/useAddChildItems", () => ({
-  useAddChildItems: () => ({ mutateAsync: addMutate, isPending: false, error: null, reset: vi.fn() }),
+  useSearchExistingBases: (q: string, reservationType: string, documentSubtype?: string) => {
+    searchRef.lastArgs = { q, reservationType, documentSubtype };
+    return {
+      data: q.trim().length >= 2 ? searchRef.data : [],
+      isFetching: searchRef.isFetching,
+    };
+  },
 }));
 vi.mock("../../features/reserve/hooks/useCreateReservation", () => ({
   useCreateReservation: () => ({ mutateAsync: createMutate, isPending: false, error: null, reset: vi.fn() }),
@@ -57,22 +56,21 @@ function Harness({ subtype }: { subtype?: "Standard" | "Procedure" }) {
 }
 
 beforeEach(() => {
-  addMutate.mockReset();
   createMutate.mockReset();
   searchRef.data = [];
   searchRef.isFetching = false;
+  searchRef.lastArgs = null;
 });
 
-test("Drawing: selecting an existing base appends child items via enmax_acdnAddChildItems", async () => {
+test("Drawing: creates an append reservation with target base", async () => {
   searchRef.data = [BASE];
-  addMutate.mockResolvedValue({
-    childrenCreated: 2, firstChildNumber: 4, lastChildNumber: 5, baseNumber: BASE.number,
-  });
+  createMutate.mockResolvedValue({ id: "RES-1", number: "RES-1057" });
 
   const user = userEvent.setup();
   renderWithProviders(<Harness />, { initialPath: "/reserve" });
 
   await user.type(screen.getByPlaceholderText(/GG-CG-00/i), "GG");
+  expect(searchRef.lastArgs).toMatchObject({ reservationType: "Drawing" });
   await user.click(await screen.findByText(BASE.number));
 
   const count = await screen.findByRole("spinbutton");
@@ -80,28 +78,51 @@ test("Drawing: selecting an existing base appends child items via enmax_acdnAddC
 
   await user.click(screen.getByRole("button", { name: /Add Drawing Documents/i }));
 
-  await waitFor(() => expect(addMutate).toHaveBeenCalledWith({ drawingId: "d1", count: 2 }));
-  expect(await screen.findByText(/Added 2 item/i)).toBeInTheDocument();
+  await waitFor(() => expect(createMutate).toHaveBeenCalledWith(expect.objectContaining({
+    targetDrawingId: "d1",
+    count: 2,
+    sequenceType: "Existing",
+  })));
+});
+
+test("Procedure: search is scoped to procedure taxonomy", async () => {
+  searchRef.data = [BASE];
+  const user = userEvent.setup();
+  renderWithProviders(<Harness subtype="Procedure" />, { initialPath: "/reserve" });
+  await user.type(screen.getByPlaceholderText(/GG-CG-00/i), "GG");
+  expect(searchRef.lastArgs).toMatchObject({ reservationType: "Document", documentSubtype: "Procedure" });
 });
 
 test("Standard: selecting an existing coding issues the next base via the reservation path", async () => {
   searchRef.data = [{ ...BASE, childCount: 0 }];
-  createMutate.mockResolvedValue({ enmax_acdnreservationid: "RES-2" });
+  createMutate.mockResolvedValue({ id: "RES-2", number: "RES-2" });
 
+  const user = userEvent.setup();
+  renderWithProviders(<Harness subtype="Standard" />, { initialPath: "/reserve" });
+
+  await user.type(screen.getByPlaceholderText(/GG-CG-00/i), "GG");
+  expect(searchRef.lastArgs).toMatchObject({ documentSubtype: "Standard" });
+  await user.click(await screen.findByText(BASE.number));
+
+  await user.click(screen.getByRole("button", { name: /Add standard document/i }));
+
+  await waitFor(() => expect(createMutate).toHaveBeenCalledTimes(1));
+  const form = createMutate.mock.calls[0][0] as ReserveForm & { targetDrawingId?: string };
+  expect(form.reservationType).toBe("Document");
+  expect(form.documentSubtype).toBe("Standard");
+  expect(form.sequenceType).toBe("Existing");
+  expect(form.targetDrawingId).toBeUndefined();
+});
+
+test("Standard: count input is capped by MaxRecordsPerReservation", async () => {
+  searchRef.data = [{ ...BASE, childCount: 0 }];
   const user = userEvent.setup();
   renderWithProviders(<Harness subtype="Standard" />, { initialPath: "/reserve" });
 
   await user.type(screen.getByPlaceholderText(/GG-CG-00/i), "GG");
   await user.click(await screen.findByText(BASE.number));
 
-  await user.click(screen.getByRole("button", { name: /Add standard document/i }));
-
-  await waitFor(() => expect(createMutate).toHaveBeenCalledTimes(1));
-  const form = createMutate.mock.calls[0][0] as ReserveForm;
-  expect(form.reservationType).toBe("Document");
-  expect(form.documentSubtype).toBe("Standard");
-  expect(form.sequenceType).toBe("Existing");
-  expect(form.business).toBe("bus-1");
-  expect(form.kind).toBe("kind-1");
-  expect(form.count).toBe(1);
+  const count = await screen.findByRole("spinbutton");
+  expect(count).toHaveAttribute("max", "10");
+  expect(screen.getByText(/How many standard documents to add \(1–10\)/i)).toBeInTheDocument();
 });

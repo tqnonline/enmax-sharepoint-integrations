@@ -18,6 +18,7 @@ namespace Enmax.AutoCAD
         private const int    AuditEventCreated  = 1;
         private const int    AuditSourceAction  = 4;
 
+        private const int NotifSeverityInfo             = 1;
         private const int NotifSeverityWarning          = 2;
         private const int NotifSourceReservationPending = 9;
 
@@ -30,6 +31,7 @@ namespace Enmax.AutoCAD
         {
             var context = localPluginContext.PluginExecutionContext;
             var service = localPluginContext.SystemUserService;
+            var actorId = localPluginContext.ActingUserId;
 
             if (!string.Equals(context.MessageName, "Create", StringComparison.OrdinalIgnoreCase))
                 return;
@@ -47,15 +49,15 @@ namespace Enmax.AutoCAD
                 ["enmax_acdnsubjectid"]    = reservationId.ToString(),
                 ["enmax_acdnsubjecttable"] = EntityName,
                 ["enmax_acdntostate"]      = "Pending",
-                ["enmax_acdnactedby"]      = new EntityReference("systemuser", context.InitiatingUserId),
+                ["enmax_acdnactedby"]      = new EntityReference("systemuser", actorId),
                 ["enmax_acdnname"]         = $"Reservation {reservationId} submitted",
             };
             service.Create(auditEvent);
 
             // Notify approvers/admins (flow-free) that a reservation is awaiting approval.
             string number = ResolveNumber(service, reservationId);
-            string actor  = NotificationWriter.ResolveActorName(service, context.InitiatingUserId);
-            NotificationWriter.NotifyApproversAndAdmins(service, context.InitiatingUserId,
+            string actor  = NotificationWriter.ResolveActorName(service, actorId);
+            NotificationWriter.NotifyApproversAndAdmins(service, actorId,
                 title:        $"New reservation pending: {number}",
                 body:         $"{actor} submitted reservation {number} for approval.",
                 severity:     NotifSeverityWarning,
@@ -63,6 +65,16 @@ namespace Enmax.AutoCAD
                 subjectTable: EntityName,
                 subjectId:    reservationId.ToString(),
                 deepLinkPath: "/approvals");
+
+            // Confirm submission to the requester (they are excluded from the approver fan-out).
+            NotificationWriter.Create(service, actorId,
+                title:        $"Reservation submitted: {number}",
+                body:         $"Your reservation {number} was submitted and is pending approval.",
+                severity:     NotifSeverityInfo,
+                sourceEvent:  NotifSourceReservationPending,
+                subjectTable: EntityName,
+                subjectId:    reservationId.ToString(),
+                deepLinkPath: $"/reservations/{reservationId}");
 
             localPluginContext.Trace($"Audit + approver notifications written for reservation {reservationId}.");
         }

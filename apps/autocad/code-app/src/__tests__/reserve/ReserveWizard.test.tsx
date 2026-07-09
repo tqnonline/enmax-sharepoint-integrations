@@ -7,7 +7,7 @@ import type { ReferenceData } from "../../features/reserve/hooks/useReferenceDat
 
 const MOCK_CONFIG: AppConfig = {
   SingleAdminMode: false,
-  MaxDrawingsPerReservation: 10,
+  MaxRecordsPerReservation: 10,
   MaxSheetsPerDrawing: 50,
   DefaultSheetsPerDrawing: 5,
   StaleCheckoutMonths: "3,6,12",
@@ -163,6 +163,21 @@ test("Document/Standard reservation hides child count and sends type=2, subtype=
   const body = mockCreate.mock.calls[0][0] as Record<string, unknown>;
   expect(body.enmax_acdnreservationtype).toBe(2);
   expect(body.enmax_acdndocumentsubtype).toBe(1);
+});
+
+test("Standard: details step uses MaxRecordsPerReservation as count ceiling", async () => {
+  const user = userEvent.setup();
+  renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
+
+  await chooseTypeAndAdvance(user, "Standard");
+  await fillComposition(user);
+  await user.click(screen.getByRole("button", { name: /Next: Details/i }));
+
+  await waitFor(() =>
+    expect(screen.getByLabelText(/Number of standard documents \(1–10\)/i)).toBeInTheDocument(),
+  );
+  const countInput = screen.getByLabelText(/Number of standard documents \(1–10\)/i);
+  expect(countInput).toHaveAttribute("max", "10");
 });
 
 // Test 8 — Submit navigates to success page on 201

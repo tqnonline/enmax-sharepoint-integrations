@@ -24,6 +24,20 @@ from seed import acquire_token, _load_env_local, _require_env  # noqa: E402
 RESERVATION_ENTITY = "enmax_autocadreservations"
 DRAWING_TYPE = 1
 PAGE_SIZE = 5000
+RESERVATION_TYPE_ATTR = "enmax_acdnreservationtype"
+
+
+def _missing_attribute_hint(resp_text: str) -> str | None:
+    if RESERVATION_TYPE_ATTR not in resp_text and "0x80060888" not in resp_text:
+        return None
+    return (
+        f"\nThe attribute '{RESERVATION_TYPE_ATTR}' is not in this environment yet.\n"
+        "Re-import the Dataverse solution (additive upgrade), then re-run backfill:\n"
+        "  python solution/scripts/pack.py\n"
+        "  python solution/scripts/import.py\n"
+        "  python solution/scripts/patch_optionsets.py --auth azcli\n"
+        "Or: IMPORT_SOLUTION=1 ./scripts/deploy-user-dev.sh\n"
+    )
 
 
 def _headers(token: str) -> dict[str, str]:
@@ -45,8 +59,8 @@ def backfill(session: requests.Session, base: str, token: str, dry_run: bool) ->
     while True:
         url = (
             f"{base}/api/data/v9.2/{RESERVATION_ENTITY}"
-            f"?$select=enmax_autocadreservationid,enmax_acdnreservationtype"
-            f"&$filter=enmax_acdnreservationtype eq null"
+            f"?$select=enmax_autocadreservationid,{RESERVATION_TYPE_ATTR}"
+            f"&$filter={RESERVATION_TYPE_ATTR} eq null"
             f"&$top={PAGE_SIZE}"
         )
         if skip:
@@ -54,7 +68,10 @@ def backfill(session: requests.Session, base: str, token: str, dry_run: bool) ->
 
         resp = session.get(url, headers=_headers(token), timeout=120)
         if resp.status_code != 200:
+            hint = _missing_attribute_hint(resp.text)
             print(f"ERROR: list reservations → {resp.status_code}: {resp.text[:400]}", file=sys.stderr)
+            if hint:
+                print(hint, file=sys.stderr)
             return errors + 1
 
         rows = resp.json().get("value", [])
@@ -67,7 +84,7 @@ def backfill(session: requests.Session, base: str, token: str, dry_run: bool) ->
             body = {"enmax_acdnreservationtype": DRAWING_TYPE}
 
             if dry_run:
-                print(f"[dry-run] PATCH {rid} → enmax_acdnreservationtype={DRAWING_TYPE}")
+                print(f"[dry-run] PATCH {rid} → {RESERVATION_TYPE_ATTR}={DRAWING_TYPE}")
                 patched += 1
                 continue
 
@@ -97,16 +114,13 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    base = _require_env("DATAVERSE_URL") if not args.dry_run else os.environ.get(
-        "DATAVERSE_URL", "https://example.crm.dynamics.com"
-    )
+    base = _require_env("DATAVERSE_URL").rstrip("/")
 
-    token = ""
-    if not args.dry_run:
-        token = acquire_token(base, args.auth)
+    # Dry-run still lists live rows — a bearer token is required for reads.
+    token = acquire_token(base, args.auth)
 
     session = requests.Session()
-    return backfill(session, base.rstrip("/"), token, args.dry_run)
+    return backfill(session, base, token, args.dry_run)
 
 
 if __name__ == "__main__":

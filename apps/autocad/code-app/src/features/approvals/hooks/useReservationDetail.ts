@@ -10,13 +10,19 @@ import {
   Enmax_autocadkindsService,
   SystemusersService,
 } from "../../../generated";
+import { reservationTypeDisplayLabel } from "../../reserve/terminology";
 
 export interface DrawingDetail {
   id: string;
   number?: string;
   state: number;
   currentRevision?: string;
+  /** Drop-off (working) SharePoint library URL. */
   spLibraryUrl?: string;
+  /** Destination (published) SharePoint library URL. */
+  spDestinationUrl?: string;
+  presentInDropOff?: boolean;
+  presentInDestination?: boolean;
 }
 
 export interface ReservationDetail {
@@ -44,6 +50,18 @@ export interface ReservationDetail {
   domainName?: string;
   systemName?: string;
   kindName?: string;
+  reservationType?: number;
+  documentSubtype?: number;
+  typeLabel: string;
+  /** First appended sheet number for an "add to existing" reservation. */
+  appendFirst?: number;
+  /** Last appended sheet number (inclusive) for an "add to existing" reservation. */
+  appendLast?: number;
+  /** Drawing number the appended sheets belong to (target of the append). */
+  targetDrawingNumber?: string;
+  targetDrawingId?: string;
+  sequenceType?: number;
+  isAppend: boolean;
   drawings: DrawingDetail[];
 }
 
@@ -54,6 +72,9 @@ async function fetchReservationDetail(reservationId: string): Promise<Reservatio
       "enmax_acdnstatus", "enmax_acdndrawingcount",
       "enmax_acdnreason", "enmax_acdndeclinereason", "createdon",
       "enmax_acdnoverride", "enmax_acdnissuednumbers",
+      "enmax_acdnreservationtype", "enmax_acdndocumentsubtype",
+      "enmax_acdnsequencetype",
+      "enmax_acdnappendfirst", "enmax_acdnappendlast", "_enmax_acdntargetdrawing_value",
       "_createdby_value",
       "_enmax_acdnbusiness_value", "_enmax_acdnasset_value",
       "_enmax_acdnunit_value", "_enmax_acdndomain_value",
@@ -62,7 +83,32 @@ async function fetchReservationDetail(reservationId: string): Promise<Reservatio
   });
 
   if (!resResult.success || !resResult.data) throw new Error("Reservation not found");
-  const r = resResult.data;
+  const r = resResult.data as typeof resResult.data & {
+    enmax_acdnreservationtype?: number;
+    enmax_acdndocumentsubtype?: number;
+    enmax_acdnsequencetype?: number;
+    enmax_acdnappendfirst?: number;
+    enmax_acdnappendlast?: number;
+    _enmax_acdntargetdrawing_value?: string;
+  };
+
+  const targetDrawingId = r._enmax_acdntargetdrawing_value;
+  let targetDrawingNumber: string | undefined;
+  if (targetDrawingId) {
+    try {
+      const td = await Enmax_autocaddrawingsService.get(targetDrawingId, {
+        select: ["enmax_acdnnumber"],
+      });
+      targetDrawingNumber = td.data?.enmax_acdnnumber ?? undefined;
+    } catch { /* non-fatal */ }
+  }
+
+  // Append reservations don't create their own drawings — they add child sheets to an
+  // existing base. Show that base (and its sheets) here; otherwise show the drawings
+  // this reservation created.
+  const drawingsFilter = targetDrawingId
+    ? `enmax_autocaddrawingid eq ${targetDrawingId}`
+    : `_enmax_acdnreservation_value eq ${reservationId}`;
 
   // Parallel: drawings + all lookup tables (lookup fields use bare GUID, no quotes)
   const [
@@ -70,10 +116,11 @@ async function fetchReservationDetail(reservationId: string): Promise<Reservatio
     bizRes, assetRes, unitRes, domainRes, sysRes, kindRes,
   ] = await Promise.allSettled([
     Enmax_autocaddrawingsService.getAll({
-      filter: `_enmax_acdnreservation_value eq ${reservationId}`,
+      filter: drawingsFilter,
       select: [
         "enmax_autocaddrawingid", "enmax_acdnnumber", "enmax_acdnstate",
-        "enmax_acdncurrentrevision", "enmax_acdnsplibraryurl",
+        "enmax_acdncurrentrevision", "enmax_acdnsplibraryurl", "enmax_acdnspdestinationurl",
+        "enmax_acdnpresentindropoff", "enmax_acdnpresentindestination",
       ],
       orderBy: ["enmax_acdnnumber asc"],
     }),
@@ -145,13 +192,32 @@ async function fetchReservationDetail(reservationId: string): Promise<Reservatio
     domainName:   r._enmax_acdndomain_value   ? domainNameMap.get(r._enmax_acdndomain_value)   : undefined,
     systemName:   r._enmax_acdnsystem_value   ? sysNameMap.get(r._enmax_acdnsystem_value)      : undefined,
     kindName:     r._enmax_acdnkind_value     ? kindNameMap.get(r._enmax_acdnkind_value)       : undefined,
-    drawings: drawings.map(d => ({
-      id: d.enmax_autocaddrawingid,
-      number: d.enmax_acdnnumber,
-      state: d.enmax_acdnstate ?? 1,
-      currentRevision: d.enmax_acdncurrentrevision,
-      spLibraryUrl: d.enmax_acdnsplibraryurl,
-    })),
+    reservationType: r.enmax_acdnreservationtype,
+    documentSubtype: r.enmax_acdndocumentsubtype,
+    typeLabel: reservationTypeDisplayLabel(r.enmax_acdnreservationtype, r.enmax_acdndocumentsubtype),
+    appendFirst: r.enmax_acdnappendfirst ?? undefined,
+    appendLast: r.enmax_acdnappendlast ?? undefined,
+    targetDrawingId,
+    targetDrawingNumber,
+    sequenceType: r.enmax_acdnsequencetype,
+    isAppend: r.enmax_acdnsequencetype === 2 && !!targetDrawingId,
+    drawings: drawings.map(d => {
+      const dd = d as typeof d & {
+        enmax_acdnspdestinationurl?: string;
+        enmax_acdnpresentindropoff?: boolean;
+        enmax_acdnpresentindestination?: boolean;
+      };
+      return {
+        id: dd.enmax_autocaddrawingid,
+        number: dd.enmax_acdnnumber,
+        state: dd.enmax_acdnstate ?? 1,
+        currentRevision: dd.enmax_acdncurrentrevision,
+        spLibraryUrl: dd.enmax_acdnsplibraryurl,
+        spDestinationUrl: dd.enmax_acdnspdestinationurl,
+        presentInDropOff: dd.enmax_acdnpresentindropoff,
+        presentInDestination: dd.enmax_acdnpresentindestination,
+      };
+    }),
   };
 }
 

@@ -14,9 +14,9 @@ const VALID_BASE = {
   reason: "test reservation reason text",
 };
 
-// Test 4 — Zod rejects count > MaxDrawingsPerReservation ceiling (hard cap at 10 per default config)
-test("rejects count above schema maximum of 10", () => {
-  const result = reserveSchema.safeParse({ ...VALID_BASE, count: 11 });
+// Test 4 — Zod rejects count above schema ceiling (999); effective cap comes from MaxRecordsPerReservation config
+test("rejects count above schema maximum of 999", () => {
+  const result = reserveSchema.safeParse({ ...VALID_BASE, count: 1000 });
   expect(result.success).toBe(false);
   if (!result.success) {
     const msg = result.error.issues.map((e) => e.message).join(" ");

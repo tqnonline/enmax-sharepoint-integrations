@@ -30,6 +30,8 @@ namespace Enmax.AutoCAD
 
         private const string ColSheetNumber = "enmax_acdnsheetnumber";
         private const string ColDrawing     = "enmax_acdndrawing";
+        private const string ColSheetState  = "enmax_acdnstate";
+        private const int    SheetStateAvailable = 2;
 
         // Child items are hard-capped at 999 (the 3-digit -sss ceiling).
         private const int MaxChildItems = 999;
@@ -46,6 +48,7 @@ namespace Enmax.AutoCAD
         {
             var context = localPluginContext.PluginExecutionContext;
             var service = localPluginContext.SystemUserService;
+            var actorId = PluginActor.ResolveForCustomApi(context, service);
 
             // ── Validate inputs ──────────────────────────────────────────────────
             if (!context.InputParameters.Contains("Drawing"))
@@ -67,7 +70,7 @@ namespace Enmax.AutoCAD
                     $"Count must be between 1 and {MaxChildItems}");
 
             // Issuance is an approver/admin authority (Rule 14), matching CreateDrawings.
-            Authorization.RequireApproverOrAdmin(service, context.InitiatingUserId, "add items to an existing number");
+            Authorization.RequireApproverOrAdmin(service, actorId, "add items to an existing number");
 
             // ── Retrieve the base drawing ────────────────────────────────────────
             Entity drawing = service.Retrieve(DrawingEntity, drawingRef.Id, new ColumnSet(
@@ -99,6 +102,7 @@ namespace Enmax.AutoCAD
                 {
                     [ColDrawing]     = new EntityReference(DrawingEntity, drawingRef.Id),
                     [ColSheetNumber] = i,
+                    [ColSheetState]  = new OptionSetValue(SheetStateAvailable),
                 };
                 if (owner != null) sheet["ownerid"] = owner;
                 service.Create(sheet);

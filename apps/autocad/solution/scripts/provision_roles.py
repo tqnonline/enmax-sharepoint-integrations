@@ -296,7 +296,7 @@ def main() -> int:
     # back to MSAL client credentials.
     byo = os.environ.get("DATAVERSE_ACCESS_TOKEN", "").strip()
     if byo:
-        print("Using DATAVERSE_ACCESS_TOKEN from environment.")
+        print("Using DATAVERSE_ACCESS_TOKEN from environment.", file=sys.stderr)
         token = byo
     else:
         client_id = os.environ.get("DATAVERSE_CLIENT_ID", "")

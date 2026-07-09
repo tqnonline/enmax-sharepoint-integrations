@@ -24,7 +24,8 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         private static readonly Guid AdminTeamId     = Guid.NewGuid();
 
         private static (XrmFakedContext ctx, XrmFakedPluginExecutionContext pluginCtx, Guid reservationId, Guid ownerId)
-            BuildContext(int[] numbers, string sequenceKey = "BIZ-AST-UNT-DOM-SYS-KND", int sheetsPer = 2)
+            BuildContext(int[] numbers, string sequenceKey = "BIZ-AST-UNT-DOM-SYS-KND", int sheetsPer = 2,
+                int? reservationType = null, int? documentSubtype = null)
         {
             var ctx           = new XrmFakedContext();
             var reservationId = Guid.NewGuid();
@@ -37,6 +38,10 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 ["enmax_acdnsheetsperdrawing"] = sheetsPer,
                 ["enmax_acdnbusiness"]         = new EntityReference("enmax_autocadbusiness", bizId),
             };
+            if (reservationType.HasValue)
+                reservation["enmax_acdnreservationtype"] = new OptionSetValue(reservationType.Value);
+            if (documentSubtype.HasValue)
+                reservation["enmax_acdndocumentsubtype"] = new OptionSetValue(documentSubtype.Value);
 
             // Seed authz: AppConfig + approver membership so the gate passes for ownerId (the initiating user).
             ctx.Initialize(new[]
@@ -138,6 +143,25 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 
             actualBiz.Should().Be(expectedBiz);
             actualRes.Should().Be(reservationId);
+        }
+
+        [Fact]
+        public void Execute_Taxonomy_CopiedOntoDrawingAndSheet()
+        {
+            // Document/Procedure (type=2, subtype=2) creates children; both the base
+            // drawing and its child sheet must be self-identifying (ADR 0001).
+            var (ctx, pluginCtx, _, _) = BuildContext(
+                new[] { 1 }, sheetsPer: 1, reservationType: 2, documentSubtype: 2);
+
+            ctx.ExecutePluginWith<CreateDrawingsPlugin>(pluginCtx);
+
+            var drawing = ctx.CreateQuery(DrawingEntity).Single();
+            drawing.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value.Should().Be(2);
+            drawing.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value.Should().Be(2);
+
+            var sheet = ctx.CreateQuery(SheetEntity).Single();
+            sheet.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value.Should().Be(2);
+            sheet.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value.Should().Be(2);
         }
 
         [Fact]

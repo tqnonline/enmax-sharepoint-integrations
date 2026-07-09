@@ -1,6 +1,9 @@
+import { useCallback, useMemo, useState } from "react";
 import { Badge, Text, tokens } from "@fluentui/react-components";
-import { EnmaxDataGrid } from "../../components/DataGrid";
+import { EnmaxDataGrid, GridQueryFilterBar, dateTimeColumn } from "../../components/DataGrid";
 import type { ColumnDef, GridFetchParams } from "../../components/DataGrid";
+import { pagedGetAllOptions, pagedResult } from "../../components/DataGrid/serverPaging";
+import { logDataverseError } from "../../components/DataGrid/dataverseError";
 import { Enmax_autocadnumbersequencesService } from "../../generated";
 
 const SEQ_STATUS: Record<number, { label: string; color: "success" | "warning" | "danger" | undefined }> = {
@@ -27,29 +30,11 @@ type RawSeq = {
   "_enmax_acdnseededby_value@OData.Community.Display.V1.FormattedValue"?: string;
 };
 
-type SeqColId = "enmax_acdnsequencekey" | "business" | "asset" | "unit" | "domain" | "system" | "kind"
-  | "enmax_acdnseedvalue" | "enmax_acdnlastissued" | "remaining" | "enmax_acdnstatus"
-  | "enmax_acdnlastissuedat" | "seededby" | "enmax_acdnseedreason";
-
-function getSeqVal(s: RawSeq, col: SeqColId): unknown {
-  switch (col) {
-    case "remaining":  return 9999 - (s.enmax_acdnlastissued ?? 0);
-    case "business":   return s["_enmax_acdnbusiness_value@OData.Community.Display.V1.FormattedValue"] ?? "";
-    case "asset":      return s["_enmax_acdnasset_value@OData.Community.Display.V1.FormattedValue"] ?? "";
-    case "unit":       return s["_enmax_acdnunit_value@OData.Community.Display.V1.FormattedValue"] ?? "";
-    case "domain":     return s["_enmax_acdndomain_value@OData.Community.Display.V1.FormattedValue"] ?? "";
-    case "system":     return s["_enmax_acdnsystem_value@OData.Community.Display.V1.FormattedValue"] ?? "";
-    case "kind":       return s["_enmax_acdnkind_value@OData.Community.Display.V1.FormattedValue"] ?? "";
-    case "seededby":   return s["_enmax_acdnseededby_value@OData.Community.Display.V1.FormattedValue"] ?? "";
-    default:           return (s as Record<string, unknown>)[col] ?? 0;
-  }
-}
-
 const COLUMNS: ColumnDef<RawSeq>[] = [
   {
     id: "enmax_acdnsequencekey", header: "Sequence Key",
     accessor: r => r.enmax_acdnsequencekey ?? "",
-    sortable: true, filterable: true,
+    sortable: true,
     cell: r => <Text weight="semibold" size={200}>{r.enmax_acdnsequencekey}</Text>,
   },
   { id: "business", header: "Business", accessor: r => r["_enmax_acdnbusiness_value@OData.Community.Display.V1.FormattedValue"] ?? "", sortable: true },
@@ -72,90 +57,96 @@ const COLUMNS: ColumnDef<RawSeq>[] = [
   {
     id: "enmax_acdnstatus", header: "Status",
     accessor: r => r.enmax_acdnstatus ?? 1,
-    sortable: true, filterable: true, filterType: "select",
-    filterOptions: [
-      { value: "1", label: "Healthy" },
-      { value: "2", label: "Warning" },
-      { value: "3", label: "Critical" },
-      { value: "4", label: "Exhausted" },
-    ],
+    sortable: true,
     cell: r => {
       const info = SEQ_STATUS[r.enmax_acdnstatus ?? 1] ?? { label: String(r.enmax_acdnstatus ?? 1), color: undefined };
       return <Badge appearance="tint" color={info.color}>{info.label}</Badge>;
     },
   },
-  {
-    id: "enmax_acdnlastissuedat", header: "Last Issued At",
-    accessor: r => r.enmax_acdnlastissuedat ?? "",
-    sortable: true,
-    cell: r => <>{r.enmax_acdnlastissuedat ? new Date(r.enmax_acdnlastissuedat).toLocaleDateString() : ""}</>,
-  },
+  dateTimeColumn<RawSeq>({
+    id: "enmax_acdnlastissuedat",
+    header: "Last Issued At",
+    accessor: r => r.enmax_acdnlastissuedat,
+  }),
   { id: "seededby",           header: "Seeded By",    accessor: r => r["_enmax_acdnseededby_value@OData.Community.Display.V1.FormattedValue"] ?? "", sortable: true },
   { id: "enmax_acdnseedreason", header: "Seed Reason", accessor: r => r.enmax_acdnseedreason ?? "", visibleByDefault: false },
 ];
 
-async function fetchSequences(params: GridFetchParams): Promise<{ rows: RawSeq[]; totalCount: number }> {
-  const r = await Enmax_autocadnumbersequencesService.getAll({
+const ALLOWED_SORT_COLS = new Set([
+  "enmax_acdnsequencekey", "enmax_acdnseedvalue", "enmax_acdnlastissued",
+  "enmax_acdnstatus", "enmax_acdnlastissuedat",
+]);
+
+function buildFilter(search: string): string {
+  if (!search) return "";
+  const q = search.replace(/'/g, "''");
+  return `contains(enmax_acdnsequencekey,'${q}')`;
+}
+
+function buildOrderBy(params: GridFetchParams): string[] {
+  if (params.sort?.column === "remaining") {
+    return [`enmax_acdnlastissued ${params.sort.direction === "asc" ? "desc" : "asc"}`];
+  }
+  if (params.sort && ALLOWED_SORT_COLS.has(params.sort.column)) {
+    return [`${params.sort.column} ${params.sort.direction === "desc" ? "desc" : "asc"}`];
+  }
+  return ["enmax_acdnstatus asc"];
+}
+
+async function fetchSequences(search: string, params: GridFetchParams): Promise<{ rows: RawSeq[]; totalCount: number; skipToken?: string }> {
+  const filter = buildFilter(search);
+  const options = pagedGetAllOptions(params, {
+    filter: filter || undefined,
     select: [
       "enmax_autocadnumbersequenceid", "enmax_acdnsequencekey", "enmax_acdnstatus",
       "enmax_acdnlastissued", "enmax_acdnlastissuedat", "enmax_acdnseedvalue", "enmax_acdnseedreason",
       "_enmax_acdnbusiness_value", "_enmax_acdnasset_value", "_enmax_acdnunit_value",
       "_enmax_acdndomain_value", "_enmax_acdnsystem_value", "_enmax_acdnkind_value", "_enmax_acdnseededby_value",
     ],
+    orderBy: buildOrderBy(params),
   });
-  if (!r.success) throw new Error("Failed to fetch number sequences");
-  let rows = (r.data ?? []) as RawSeq[];
-
-  if (params.search) {
-    const q = params.search.toLowerCase();
-    rows = rows.filter(s =>
-      (s.enmax_acdnsequencekey ?? "").toLowerCase().includes(q) ||
-      (s["_enmax_acdnbusiness_value@OData.Community.Display.V1.FormattedValue"] ?? "").toLowerCase().includes(q) ||
-      (s["_enmax_acdnasset_value@OData.Community.Display.V1.FormattedValue"] ?? "").toLowerCase().includes(q) ||
-      (s["_enmax_acdnunit_value@OData.Community.Display.V1.FormattedValue"] ?? "").toLowerCase().includes(q),
-    );
+  const r = await Enmax_autocadnumbersequencesService.getAll(options);
+  if (!r.success) {
+    logDataverseError("ReferenceData/NumberSequences", r.error);
+    throw new Error("Failed to fetch number sequences");
   }
-
-  const statusFilter = params.filters["enmax_acdnstatus"];
-  const statusStr = Array.isArray(statusFilter) ? statusFilter[0] : statusFilter;
-  if (statusStr) {
-    const n = Number(statusStr);
-    rows = rows.filter(s => (s.enmax_acdnstatus ?? 1) === n);
-  }
-
-  if (params.sort) {
-    const col = params.sort.column as SeqColId;
-    const dir = params.sort.direction;
-    rows = [...rows].sort((a, b) => {
-      const av = getSeqVal(a, col);
-      const bv = getSeqVal(b, col);
-      const cmp = typeof av === "number" && typeof bv === "number"
-        ? av - bv
-        : String(av ?? "").localeCompare(String(bv ?? ""));
-      return dir === "asc" ? cmp : -cmp;
-    });
-  }
-
-  const totalCount = rows.length;
-  const start = params.page * params.pageSize;
-  return { rows: rows.slice(start, start + params.pageSize), totalCount };
+  return pagedResult(r, (r.data ?? []) as RawSeq[]);
 }
 
 export function NumberSequencesGrid() {
-  // Number Sequences are read-only in the app (view/search/filter). Seed values are
-  // preloaded via scripting (solution/seed + seed scripts); the CSV import was retired
-  // 2026-06-01 to remove manual bulk-load work from the Document Controller.
+  const [filterDraft, setFilterDraft] = useState({ number: "", from: "", to: "" });
+  const [appliedSearch, setAppliedSearch] = useState("");
+
+  const fetcher = useCallback(
+    (params: GridFetchParams) => fetchSequences(appliedSearch, params),
+    [appliedSearch],
+  );
+
+  const queryKey = useMemo(() => ["number-sequences-grid", appliedSearch], [appliedSearch]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+      <GridQueryFilterBar
+        numberLabel="Sequence key"
+        numberPlaceholder="Search by sequence key…"
+        draft={{ number: filterDraft.number, from: filterDraft.from, to: filterDraft.to }}
+        onDraftChange={(patch) => setFilterDraft((prev) => ({ ...prev, ...patch }))}
+        onQuery={() => setAppliedSearch(filterDraft.number.trim())}
+        onClear={() => {
+          setFilterDraft({ number: "", from: "", to: "" });
+          setAppliedSearch("");
+        }}
+        showDateRange={false}
+      />
       <div style={{ flex: 1, overflow: "hidden" }}>
         <EnmaxDataGrid
-          queryKey={["number-sequences-grid"]}
-          fetcher={fetchSequences}
+          queryKey={queryKey}
+          fetcher={fetcher}
           columns={COLUMNS}
           rowKey={r => r.enmax_autocadnumbersequenceid}
           enableColumnVisibility
+          enableQuickSearch={false}
           defaultSort={{ column: "enmax_acdnstatus", direction: "asc" }}
-          quickSearchPlaceholder="Search sequences…"
           emptyMessage="No number sequences found."
         />
       </div>

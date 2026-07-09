@@ -4,6 +4,7 @@ import type { GridFetchParams } from "../../components/DataGrid";
 import { clientPage } from "../../components/DataGrid/clientPage";
 import { logDataverseError } from "../../components/DataGrid/dataverseError";
 import { isGuid } from "../../lib/guid";
+import { reservationTypeDisplayLabel } from "../reserve/terminology";
 
 export interface MyReservation {
   id: string;
@@ -22,6 +23,7 @@ export interface MyReservation {
   domainId: string;
   systemId: string;
   kindId: string;
+  typeLabel: string;
 }
 
 type RawReservation = {
@@ -47,6 +49,8 @@ type RawReservation = {
   "_enmax_acdnsystem_value@OData.Community.Display.V1.FormattedValue"?: string;
   _enmax_acdnkind_value?: string;
   "_enmax_acdnkind_value@OData.Community.Display.V1.FormattedValue"?: string;
+  enmax_acdnreservationtype?: number;
+  enmax_acdndocumentsubtype?: number;
 };
 
 export const RESERVATION_STATUS: Record<number, string> = {
@@ -76,6 +80,7 @@ function toMyReservation(r: RawReservation): MyReservation {
     domainId:         r._enmax_acdndomain_value   ?? "",
     systemId:         r._enmax_acdnsystem_value   ?? "",
     kindId:           r._enmax_acdnkind_value     ?? "",
+    typeLabel:        reservationTypeDisplayLabel(r.enmax_acdnreservationtype, r.enmax_acdndocumentsubtype),
   };
 }
 
@@ -86,6 +91,7 @@ const RESERVATION_SELECT = [
   "_enmax_acdnapprover_value", "_enmax_acdnbusiness_value",
   "_enmax_acdnasset_value", "_enmax_acdnunit_value",
   "_enmax_acdndomain_value", "_enmax_acdnsystem_value", "_enmax_acdnkind_value",
+  "enmax_acdnreservationtype", "enmax_acdndocumentsubtype",
 ] as const;
 
 export async function fetchMyReservationRows(
@@ -99,8 +105,8 @@ export async function fetchMyReservationRows(
     logDataverseError("MyReservations", new Error(`invalid userId: ${userId}`));
     return { rows: [], totalCount: 0 };
   }
-  const activeFilter = `_ownerid_value eq '${userId}' and (enmax_acdnstatus eq 1 or enmax_acdnstatus eq 2)`;
-  const filter = showFinalised ? `_ownerid_value eq '${userId}'` : activeFilter;
+  const activeFilter = `_createdby_value eq '${userId}' and (enmax_acdnstatus eq 1 or enmax_acdnstatus eq 2)`;
+  const filter = showFinalised ? `_createdby_value eq '${userId}'` : activeFilter;
 
   const result = await Enmax_autocadreservationsService.getAll({
     filter,
@@ -114,7 +120,7 @@ export async function fetchMyReservationRows(
   const rows = (result.data ?? []).map(r => toMyReservation(r as RawReservation));
 
   return clientPage(rows, params, {
-    searchText: r => [r.reservationNumber, r.statusLabel, r.approverDisplay, r.reason],
+    searchText: r => [r.reservationNumber, r.statusLabel, r.typeLabel, r.approverDisplay, r.reason],
   });
 }
 

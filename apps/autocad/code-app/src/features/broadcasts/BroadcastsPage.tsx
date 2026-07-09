@@ -3,10 +3,12 @@ import {
   Title2, Text, Badge, Button, Spinner, MessageBar, MessageBarBody, tokens, makeStyles,
 } from "@fluentui/react-components";
 import { Add20Regular } from "@fluentui/react-icons";
-import { EnmaxDataGrid } from "../../components/DataGrid";
+import { EnmaxDataGrid, GridQueryFilterBar, dateTimeColumn } from "../../components/DataGrid";
 import type { ColumnDef, GridFetchParams } from "../../components/DataGrid";
 import { clientPage } from "../../components/DataGrid/clientPage";
 import { usePageSize } from "../../config/usePageSize";
+import { defaultGridDateRange } from "../../lib/dateRangeDefaults";
+import { applyBroadcastListFilters } from "./broadcastListFilters";
 import type { Enmax_autocadbroadcasts } from "../../generated/models/Enmax_autocadbroadcastsModel";
 import { useBroadcasts } from "./useBroadcasts";
 import { BroadcastEditorDrawer } from "./BroadcastEditorDrawer";
@@ -26,15 +28,14 @@ const useStyles = makeStyles({
   content: { animationName: FADE_UP, animationDuration: "150ms", animationFillMode: "both" },
 });
 
-function fmtDate(iso?: string): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-}
-
 const SEV_COLOR: Record<string, "informative" | "warning" | "danger"> = {
   info: "informative", warning: "warning", error: "danger", success: "informative",
 };
+
+function initialFilters() {
+  const { from, to } = defaultGridDateRange();
+  return { number: "", from, to };
+}
 
 export function BroadcastsPage() {
   const styles = useStyles();
@@ -43,21 +44,39 @@ export function BroadcastsPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [selected, setSelected] = useState<Enmax_autocadbroadcasts | null>(null);
 
+  const [filterDraft, setFilterDraft] = useState(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState(initialFilters);
+
   const rows = broadcastsQ.data ?? [];
+
+  const filteredRows = useMemo(
+    () => applyBroadcastListFilters(rows, appliedFilters),
+    [rows, appliedFilters],
+  );
 
   const columns = useMemo((): ColumnDef<Enmax_autocadbroadcasts>[] => [
     {
       id: "status", header: "Status", accessor: (r) => computeDisplayStatus(r), sortable: true, width: 110,
       cell: (r) => { const s = computeDisplayStatus(r); return <Badge appearance="tint" color={STATUS_COLOR[s]} shape="rounded">{s}</Badge>; },
     },
-    { id: "title", header: "Title", accessor: (r) => r.enmax_acdntitle ?? "", sortable: true, filterable: true },
+    { id: "title", header: "Title", accessor: (r) => r.enmax_acdntitle ?? "", sortable: true },
     {
       id: "severity", header: "Severity", accessor: (r) => SEVERITY_LABEL[r.enmax_acdnseverity ?? 1] ?? "", width: 110,
       cell: (r) => <Badge appearance="tint" color={SEV_COLOR[broadcastSeverityIntent(r.enmax_acdnseverity)]} shape="rounded">{SEVERITY_LABEL[r.enmax_acdnseverity ?? 1]}</Badge>,
     },
     { id: "audience", header: "Audience", accessor: (r) => audienceLabels(r.enmax_acdnaudience) },
-    { id: "startsat", header: "Starts", accessor: (r) => r.enmax_acdnstartsat ?? "", sortable: true, width: 140, cell: (r) => <>{fmtDate(r.enmax_acdnstartsat)}</> },
-    { id: "expiresat", header: "Expires", accessor: (r) => r.enmax_acdnexpiresat ?? "", sortable: true, width: 140, cell: (r) => <>{fmtDate(r.enmax_acdnexpiresat)}</> },
+    dateTimeColumn<Enmax_autocadbroadcasts>({
+      id: "startsat",
+      header: "Starts",
+      accessor: r => r.enmax_acdnstartsat,
+      width: 160,
+    }),
+    dateTimeColumn<Enmax_autocadbroadcasts>({
+      id: "expiresat",
+      header: "Expires",
+      accessor: r => r.enmax_acdnexpiresat,
+      width: 160,
+    }),
     {
       id: "pinned", header: "Pinned", accessor: (r) => (r.enmax_acdnpinned ? "Yes" : "No"), width: 90, visibleByDefault: false,
       cell: (r) => (r.enmax_acdnpinned ? <Badge appearance="tint" color="brand">Pinned</Badge> : <>—</>),
@@ -66,13 +85,23 @@ export function BroadcastsPage() {
 
   const fetcher = useCallback(
     async (params: GridFetchParams): Promise<{ rows: Enmax_autocadbroadcasts[]; totalCount: number }> =>
-      clientPage(rows, params, { searchText: (r) => [r.enmax_acdntitle ?? "", r.enmax_acdnbody ?? ""] }),
-    [rows],
+      clientPage(filteredRows, params, { searchText: (r) => [r.enmax_acdntitle ?? "", r.enmax_acdnbody ?? ""] }),
+    [filteredRows],
   );
   const queryKey = useMemo(
-    () => ["broadcast-grid", rows.map((r) => r.enmax_autocadbroadcastid + (r.enmax_acdnstatus ?? "")).join(",")],
-    [rows],
+    () => ["broadcast-grid", appliedFilters, filteredRows.map((r) => r.enmax_autocadbroadcastid + (r.enmax_acdnstatus ?? "")).join(",")],
+    [appliedFilters, filteredRows],
   );
+
+  function handleQuery() {
+    setAppliedFilters({ number: filterDraft.number, from: filterDraft.from, to: filterDraft.to });
+  }
+
+  function handleClear() {
+    const cleared = initialFilters();
+    setFilterDraft(cleared);
+    setAppliedFilters(cleared);
+  }
 
   return (
     <div className={styles.page}>
@@ -95,6 +124,14 @@ export function BroadcastsPage() {
       )}
       {broadcastsQ.data && (
         <div className={styles.content}>
+          <GridQueryFilterBar
+            numberLabel="Title"
+            numberPlaceholder="Search title or body…"
+            draft={{ number: filterDraft.number, from: filterDraft.from, to: filterDraft.to }}
+            onDraftChange={(patch) => setFilterDraft((prev) => ({ ...prev, ...patch }))}
+            onQuery={handleQuery}
+            onClear={handleClear}
+          />
           <EnmaxDataGrid
             queryKey={queryKey}
             fetcher={fetcher}
@@ -102,6 +139,7 @@ export function BroadcastsPage() {
             rowKey={(r) => r.enmax_autocadbroadcastid}
             onRowClick={(b) => { setSelected(b); setEditorOpen(true); }}
             enableColumnVisibility
+            enableQuickSearch={false}
             initialPageSize={pageSize}
             defaultSort={{ column: "startsat", direction: "desc" }}
             emptyMessage="No broadcasts yet. Create one to notify users."

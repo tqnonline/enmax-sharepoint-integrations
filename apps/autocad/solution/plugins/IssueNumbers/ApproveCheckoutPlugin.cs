@@ -22,14 +22,14 @@ namespace Enmax.AutoCAD
         private const string CheckoutEntity      = "enmax_autocadcheckout";
         private const string ColCheckoutStatus   = "enmax_acdnstatus";
         private const string ColCheckoutDrawing  = "enmax_acdndrawing";
+        private const string ColCheckoutSheet    = "enmax_acdnsheet";
         private const string ColValidationReason = "enmax_acdnvalidationreason";
         private const string ColCheckoutOwner    = "ownerid";
 
         private const string DrawingEntity   = "enmax_autocaddrawing";
         private const string ColDrawingState = "enmax_acdnstate";
 
-        private const string SheetEntity          = "enmax_autocadsheet";
-        private const string ColSheetDrawing      = "enmax_acdndrawing";
+        private const string SheetEntity          = CheckOutSheetsPlugin.SheetEntity;
         private const string ColSheetState        = "enmax_acdnstate";
         private const int    SheetStateCheckedOut = 3;
 
@@ -62,6 +62,7 @@ namespace Enmax.AutoCAD
         {
             var context = localPluginContext.PluginExecutionContext;
             var service = localPluginContext.SystemUserService;
+            var actorId = PluginActor.ResolveForCustomApi(context, service);
 
             if (!context.InputParameters.Contains("Target"))
                 throw new InvalidPluginExecutionException("Missing required input: Target");
@@ -74,7 +75,7 @@ namespace Enmax.AutoCAD
                 throw new InvalidPluginExecutionException(
                     $"Target must be {CheckoutEntity}, got {target.LogicalName}");
 
-            Authorization.RequireApproverOrAdmin(service, context.InitiatingUserId, "approve a check-out");
+            Authorization.RequireApproverOrAdmin(service, actorId, "approve a check-out");
 
             if (!context.InputParameters.Contains("Decision"))
                 throw new InvalidPluginExecutionException("Missing required input: Decision");
@@ -93,13 +94,13 @@ namespace Enmax.AutoCAD
                     "Reason must be at least 10 characters when declining a check-out.");
 
             localPluginContext.Trace(
-                $"ApproveCheckout: checkout={target.Id}, decision={decision}, user={context.InitiatingUserId}");
+                $"ApproveCheckout: checkout={target.Id}, decision={decision}, user={actorId}");
 
             Entity checkout;
             try
             {
                 checkout = service.Retrieve(CheckoutEntity, target.Id,
-                    new ColumnSet(ColCheckoutStatus, ColCheckoutDrawing, ColCheckoutOwner));
+                    new ColumnSet(ColCheckoutStatus, ColCheckoutDrawing, ColCheckoutSheet, ColCheckoutOwner));
             }
             catch (FaultException<OrganizationServiceFault> ex)
             {
@@ -124,7 +125,12 @@ namespace Enmax.AutoCAD
                     $"Checkout {target.Id} cannot be reviewed from status {currentStatus}. " +
                     $"Expected {StatusRequested} (Requested).");
 
-            var drawingRef = checkout.GetAttributeValue<EntityReference>(ColCheckoutDrawing);
+            var sheetRef = checkout.GetAttributeValue<EntityReference>(ColCheckoutSheet);
+            if (sheetRef == null)
+                throw new InvalidPluginExecutionException($"Checkout {target.Id} has no associated sheet.");
+            var sheet = service.Retrieve(SheetEntity, sheetRef.Id, new ColumnSet(ColSheetState, "enmax_acdndrawing"));
+            var drawingRef = sheet.GetAttributeValue<EntityReference>("enmax_acdndrawing")
+                ?? checkout.GetAttributeValue<EntityReference>(ColCheckoutDrawing);
             if (drawingRef == null)
                 throw new InvalidPluginExecutionException($"Checkout {target.Id} has no associated drawing.");
 
@@ -134,32 +140,35 @@ namespace Enmax.AutoCAD
 
             if (decision == DecisionApproved)
             {
-                // Only now does the drawing actually become CheckedOut — guarded by RowVersion so a
-                // concurrent state change (e.g. someone released/finalized it) forces a retry.
+                // First sheet in a batch moves the drawing Available -> CheckedOut. Later sheets in the
+                // same batch share the drawing and arrive here with drawing already CheckedOut.
                 Entity drawing = service.Retrieve(DrawingEntity, drawingRef.Id, new ColumnSet(ColDrawingState));
                 int drawingStateNow = drawing.GetAttributeValue<OptionSetValue>(ColDrawingState)?.Value ?? 0;
-                if (drawingStateNow != StateAvailable)
+                if (drawingStateNow != StateAvailable && drawingStateNow != StateCheckedOut)
                     throw new InvalidPluginExecutionException(
-                        $"Drawing {drawingRef.Id} must be Available ({StateAvailable}) to approve a check-out; was {drawingStateNow}.");
+                        $"Drawing {drawingRef.Id} must be Available ({StateAvailable}) or CheckedOut ({StateCheckedOut}) to approve a check-out; was {drawingStateNow}.");
 
-                try
+                if (drawingStateNow == StateAvailable)
                 {
-                    service.Execute(new UpdateRequest
+                    try
                     {
-                        Target = new Entity(DrawingEntity, drawingRef.Id)
+                        service.Execute(new UpdateRequest
                         {
-                            RowVersion        = drawing.RowVersion,
-                            [ColDrawingState] = new OptionSetValue(StateCheckedOut),
-                        },
-                        ConcurrencyBehavior = ConcurrencyBehavior.IfRowVersionMatches,
-                    });
-                }
-                catch (FaultException<OrganizationServiceFault> ex)
-                    when (ex.Detail?.ErrorCode == -2147088254 ||
-                          (ex.Message != null && ex.Message.Contains("ConcurrencyVersionMismatch")))
-                {
-                    throw new InvalidPluginExecutionException(
-                        $"Drawing {drawingRef.Id} was concurrently modified (ConcurrencyVersionMismatch). Retry.", ex);
+                            Target = new Entity(DrawingEntity, drawingRef.Id)
+                            {
+                                RowVersion        = drawing.RowVersion,
+                                [ColDrawingState] = new OptionSetValue(StateCheckedOut),
+                            },
+                            ConcurrencyBehavior = ConcurrencyBehavior.IfRowVersionMatches,
+                        });
+                    }
+                    catch (FaultException<OrganizationServiceFault> ex)
+                        when (ex.Detail?.ErrorCode == -2147088254 ||
+                              (ex.Message != null && ex.Message.Contains("ConcurrencyVersionMismatch")))
+                    {
+                        throw new InvalidPluginExecutionException(
+                            $"Drawing {drawingRef.Id} was concurrently modified (ConcurrencyVersionMismatch). Retry.", ex);
+                    }
                 }
 
                 service.Update(new Entity(CheckoutEntity, target.Id)
@@ -167,10 +176,14 @@ namespace Enmax.AutoCAD
                     [ColCheckoutStatus] = new OptionSetValue(StatusOpen),
                 });
 
-                PropagateSheetState(service, drawingRef.Id, SheetStateCheckedOut);
+                service.Update(new Entity(SheetEntity, sheetRef.Id)
+                {
+                    [ColSheetState] = new OptionSetValue(SheetStateCheckedOut),
+                });
+
+                drawingState = DrawingRollupHelper.RecomputeDrawingRollup(service, drawingRef.Id);
 
                 newStatus    = StatusOpen;
-                drawingState = StateCheckedOut;
                 auditEvent   = AuditEventApproved;
 
                 localPluginContext.Trace($"Checkout {target.Id} approved; drawing {drawingRef.Id} CheckedOut.");
@@ -185,7 +198,7 @@ namespace Enmax.AutoCAD
                 });
 
                 newStatus    = StatusClosedDeclined;
-                drawingState = StateAvailable;
+                drawingState = DrawingRollupHelper.RecomputeDrawingRollup(service, drawingRef.Id);
                 auditEvent   = AuditEventDeclined;
 
                 localPluginContext.Trace($"Checkout {target.Id} declined; drawing {drawingRef.Id} stays Available.");
@@ -195,17 +208,17 @@ namespace Enmax.AutoCAD
             {
                 ["enmax_acdnevent"]        = new OptionSetValue(auditEvent),
                 ["enmax_acdnsource"]       = new OptionSetValue(AuditSourceAction),
-                ["enmax_acdnsubjectid"]    = drawingRef.Id.ToString(),
-                ["enmax_acdnsubjecttable"] = DrawingEntity,
+                ["enmax_acdnsubjectid"]    = sheetRef.Id.ToString(),
+                ["enmax_acdnsubjecttable"] = SheetEntity,
                 ["enmax_acdnfromstate"]    = "CheckoutRequested",
                 ["enmax_acdntostate"]      = decision == DecisionApproved ? "CheckedOut" : "Available",
-                ["enmax_acdnactedby"]      = new EntityReference("systemuser", context.InitiatingUserId),
-                ["enmax_acdnname"]         = $"Check out {(decision == DecisionApproved ? "approved" : "declined")} for {drawingRef.Id}",
+                ["enmax_acdnactedby"]      = new EntityReference("systemuser", actorId),
+                ["enmax_acdnname"]         = $"Check out {(decision == DecisionApproved ? "approved" : "declined")} for {sheetRef.Id}",
             });
 
-            // Notify the requester of the outcome.
+            // Notify the requester of the outcome (including when they self-approve in small teams).
             var requester = checkout.GetAttributeValue<EntityReference>(ColCheckoutOwner);
-            if (requester != null && requester.Id != context.InitiatingUserId)
+            if (requester != null)
             {
                 string number = NotificationWriter.ResolveDrawingNumber(service, drawingRef.Id);
                 if (decision == DecisionApproved)
@@ -231,14 +244,6 @@ namespace Enmax.AutoCAD
             context.OutputParameters["CheckoutId"]   = target.Id.ToString();
             context.OutputParameters["NewStatus"]    = newStatus;
             context.OutputParameters["DrawingState"] = drawingState;
-        }
-
-        private static void PropagateSheetState(IOrganizationService service, Guid drawingId, int sheetState)
-        {
-            var q = new QueryExpression(SheetEntity) { ColumnSet = new ColumnSet("enmax_autocadsheetid") };
-            q.Criteria.AddCondition(ColSheetDrawing, ConditionOperator.Equal, drawingId);
-            foreach (var sheet in service.RetrieveMultiple(q).Entities)
-                service.Update(new Entity(SheetEntity, sheet.Id) { [ColSheetState] = new OptionSetValue(sheetState) });
         }
     }
 }

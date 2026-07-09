@@ -94,7 +94,7 @@ const JUNCTION_FIELD_MAP: Record<string, keyof CompositionMaps> = {
   _enmax_acdnkind_value:     "kindMap",
 };
 
-// Junction tables (e.g. Approved BB–AA Combinations) have no code/displayName/sortorder
+// Junction tables (e.g. System Scoping Rule) have no code/displayName/sortorder
 // columns — selecting those 400s. Instead select the lookup GUIDs + statecode and resolve
 // each GUID to its short code via the composition maps, rendering e.g. "GG–CG".
 export function makeJunctionFetcher(config: RefTableConfig, maps?: CompositionMaps) {

@@ -35,8 +35,22 @@ function Connect-PpDataverse {
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
-        [string]$Environment
+        [string]$Environment,
+
+        # User-auth path: select an existing pac profile by name (no .env / SPN required).
+        [string]$PacProfileName
     )
+
+    if ($PacProfileName) {
+        Write-PpLog "Selecting pac user profile '$PacProfileName'..."
+        if ($PSCmdlet.ShouldProcess($PacProfileName, 'pac auth select')) {
+            Invoke-PpPac auth select --name $PacProfileName
+            Assert-PpExitCode -Operation 'pac auth select'
+            Assert-PpUserPacAuth -PacProfileName $PacProfileName
+        }
+        Write-PpLog "pac CLI auth ready (user profile: $PacProfileName)."
+        return
+    }
 
     $cfg = Get-PpEnvConfig -Environment $Environment
 

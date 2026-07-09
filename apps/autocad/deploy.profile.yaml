@@ -21,8 +21,6 @@ tables:
   - enmax_autocaddomain
   - enmax_autocadsystem
   - enmax_autocadkind
-  - enmax_autocadbusinessasset
-  - enmax_autocadassetunit
   - enmax_autocadsystemscope
   - enmax_autocadnumbersequence
   - enmax_autocadauditevent

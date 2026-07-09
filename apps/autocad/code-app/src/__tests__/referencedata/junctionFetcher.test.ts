@@ -8,14 +8,14 @@ vi.mock("@microsoft/power-apps/data", () => ({
   getClient: () => ({ retrieveMultipleRecordsAsync: retrieveMock }),
 }));
 
-const bbaa = REF_TABLES.find(t => t.entityName === "enmax_autocadbusinessassets")!;
+const systemScope = REF_TABLES.find(t => t.entityName === "enmax_autocadsystemscopes")!;
 
 const maps: CompositionMaps = {
-  bizMap:    new Map([["biz-1", "GG"]]),
-  assetMap:  new Map([["ast-1", "CG"]]),
+  bizMap:    new Map(),
+  assetMap:  new Map(),
   unitMap:   new Map(),
   domainMap: new Map(),
-  sysMap:    new Map(),
+  sysMap:    new Map([["sys-1", "ELC"]]),
   kindMap:   new Map(),
 };
 
@@ -28,34 +28,33 @@ afterEach(() => vi.clearAllMocks());
 // The junction fetcher must select only the lookup GUIDs + statecode.
 test("junction fetcher selects lookup GUIDs, not code/displayname columns", async () => {
   retrieveMock.mockResolvedValue({ success: true, data: [] });
-  await makeJunctionFetcher(bbaa, maps)(params);
+  await makeJunctionFetcher(systemScope, maps)(params);
 
   const select = retrieveMock.mock.calls[0][1].select as string[];
-  expect(select).toContain("_enmax_acdnbusiness_value");
-  expect(select).toContain("_enmax_acdnasset_value");
+  expect(select).toContain("_enmax_acdnsystem_value");
   expect(select).toContain("statecode");
   expect(select).not.toContain("enmax_acdncode");
   expect(select).not.toContain("enmax_acdndisplayname");
 });
 
-// Each lookup GUID resolves to its short code via the composition maps.
-test("junction fetcher renders resolved code pair", async () => {
+// System scope junction renders system code from composition maps.
+test("junction fetcher renders resolved system code", async () => {
   retrieveMock.mockResolvedValue({
     success: true,
     data: [{
-      enmax_autocadbusinessassetid: "ba-1",
-      _enmax_acdnbusiness_value: "biz-1",
-      _enmax_acdnasset_value: "ast-1",
-      "_enmax_acdnbusiness_value@OData.Community.Display.V1.FormattedValue": "Generation",
-      "_enmax_acdnasset_value@OData.Community.Display.V1.FormattedValue": "Coal Gen",
+      enmax_autocadsystemscopeid: "ss-1",
+      _enmax_acdnsystem_value: "sys-1",
+      enmax_acdnscopetype: 1,
+      enmax_acdnscopevalue: "9A",
+      "_enmax_acdnsystem_value@OData.Community.Display.V1.FormattedValue": "Electrical",
       statecode: 0,
     }],
   });
 
-  const { rows } = await makeJunctionFetcher(bbaa, maps)(params);
+  const { rows } = await makeJunctionFetcher(systemScope, maps)(params);
   expect(rows).toHaveLength(1);
-  expect(rows[0].code).toBe("GG–CG");
-  expect(rows[0].displayName).toBe("Generation – Coal Gen");
+  expect(rows[0].code).toBe("ELC");
+  expect(rows[0].displayName).toBe("Electrical");
   expect(rows[0].statecode).toBe(0);
 });
 
@@ -63,8 +62,8 @@ test("junction fetcher renders resolved code pair", async () => {
 test("junction fetcher falls back to ? for unknown GUIDs", async () => {
   retrieveMock.mockResolvedValue({
     success: true,
-    data: [{ enmax_autocadbusinessassetid: "ba-2", _enmax_acdnbusiness_value: "unknown", _enmax_acdnasset_value: "ast-1", statecode: 0 }],
+    data: [{ enmax_autocadsystemscopeid: "ss-2", _enmax_acdnsystem_value: "unknown", enmax_acdnscopetype: 3, enmax_acdnscopevalue: "", statecode: 0 }],
   });
-  const { rows } = await makeJunctionFetcher(bbaa, maps)(params);
-  expect(rows[0].code).toBe("?–CG");
+  const { rows } = await makeJunctionFetcher(systemScope, maps)(params);
+  expect(rows[0].code).toBe("?");
 });

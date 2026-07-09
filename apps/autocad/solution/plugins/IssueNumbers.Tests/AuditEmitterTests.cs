@@ -56,8 +56,6 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         [InlineData("enmax_autocadrecordtype")]
         [InlineData("enmax_autocadrecordphase")]
         [InlineData("enmax_autocadvendor")]
-        [InlineData("enmax_autocadbusinessasset")]
-        [InlineData("enmax_autocadassetunit")]
         [InlineData("enmax_autocadsystemscope")]
         public void Create_OnReferenceTable_WritesAuditEvent(string entityName)
         {

@@ -78,6 +78,10 @@ export function ReserveSuccess() {
   const styles = useStyles();
   const [params] = useSearchParams();
   const id = params.get("id");
+  const ref = params.get("ref") ?? id;
+  // Append context (Add-to-existing): the base being appended to and how many items.
+  const base = params.get("base");
+  const count = params.get("count");
 
   return (
     <div className={styles.root}>
@@ -86,7 +90,16 @@ export function ReserveSuccess() {
           <CheckmarkCircle24Filled className={styles.checkIcon} />
           <Title2>Reservation submitted</Title2>
         </div>
-        {id && <span className={styles.idDisplay}>{id}</span>}
+        {ref && <span className={styles.idDisplay}>{ref}</span>}
+        {base && (
+          <Text
+            size={300}
+            style={{ display: "block", marginTop: tokens.spacingVerticalS, color: tokens.colorNeutralForeground2 }}
+          >
+            Appending {count ?? ""} item(s) to{" "}
+            <span style={{ fontFamily: "monospace" }}>{base}</span> once approved.
+          </Text>
+        )}
         <Badge
           appearance="tint"
           color="warning"

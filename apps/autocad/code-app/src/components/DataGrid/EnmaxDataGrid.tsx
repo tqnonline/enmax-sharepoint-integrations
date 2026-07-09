@@ -5,13 +5,6 @@ import {
   Button,
   Checkbox,
   Input,
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuList,
-  MenuPopover,
-  MenuTrigger,
-  Select,
   Spinner,
   Text,
   Toolbar,
@@ -23,18 +16,27 @@ import {
   ArrowSortDownRegular,
   ArrowSortUpRegular,
   ArrowDownloadRegular,
-  FilterRegular,
   SearchRegular,
-  DismissRegular,
 } from "@fluentui/react-icons";
 import { usePageSize } from "../../config/usePageSize";
+import { exportCsvFileName } from "../../lib/formatDateTime";
 import { useGridState } from "./useGridState";
 import { exportToCsv } from "./csvExport";
 import { EmptyState } from "../EmptyState";
-import type { ColumnDef, EnmaxDataGridProps, FilterValue } from "./types";
+import type { ColumnDef, EnmaxDataGridProps } from "./types";
+import type { CSSProperties } from "react";
 
-const ROW_HEIGHT = 40;
+const ROW_HEIGHT = 48;
 const OVERSCAN   = 10;
+const DEFAULT_COL_MIN = 120;
+
+function columnStyle<T>(col: ColumnDef<T>): CSSProperties | undefined {
+  if (col.width === "auto") return undefined;
+  if (typeof col.width === "number") {
+    return { width: col.width, minWidth: col.width };
+  }
+  return { minWidth: DEFAULT_COL_MIN };
+}
 
 const useStyles = makeStyles({
   root:      { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalS, height: "100%" },
@@ -48,19 +50,36 @@ const useStyles = makeStyles({
     borderRadius: tokens.borderRadiusMedium,
   },
   scrollPort: { overflow: "auto", height: "100%", width: "100%" },
-  table:     { width: "100%", borderCollapse: "collapse", tableLayout: "fixed" },
+  table: {
+    width: "max-content",
+    minWidth: "100%",
+    borderCollapse: "collapse",
+    tableLayout: "auto",
+  },
   thead:     { position: "sticky", top: 0, zIndex: 1, background: tokens.colorNeutralBackground3 },
   th: {
     padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
     textAlign: "left",
     borderBottom: `2px solid ${tokens.colorNeutralStroke1}`,
     whiteSpace: "nowrap",
+    verticalAlign: "middle",
     userSelect: "none",
+  },
+  thWrap: {
+    whiteSpace: "normal",
+    wordBreak: "break-word",
+    verticalAlign: "bottom",
   },
   thSortable: { cursor: "pointer", ":hover": { background: tokens.colorNeutralBackground3Hover } },
   thSortIcon: { marginLeft: tokens.spacingHorizontalXS, verticalAlign: "middle" },
   filterRow:  { background: tokens.colorNeutralBackground2 },
-  filterCell: { padding: `${tokens.spacingVerticalXXS} ${tokens.spacingHorizontalXS}` },
+  filterCell: {
+    padding: `${tokens.spacingVerticalXXS} ${tokens.spacingHorizontalXS}`,
+    verticalAlign: "top",
+    // People picker popover is portaled; still give the cell room so the control isn't crushed.
+    minWidth: "160px",
+    overflow: "visible",
+  },
   tr: {
     ":hover": { background: tokens.colorNeutralBackground2 },
     cursor: "default",
@@ -69,11 +88,20 @@ const useStyles = makeStyles({
   td: {
     padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
+    verticalAlign: "middle",
   },
-  actionCol: { width: "120px" },
+  tdWrap: {
+    whiteSpace: "normal",
+    wordBreak: "break-word",
+    overflowWrap: "anywhere",
+    overflow: "visible",
+    textOverflow: "clip",
+    verticalAlign: "top",
+  },
+  actionCol: { width: "120px", minWidth: "120px" },
   pagination: {
     display: "flex",
     alignItems: "center",
@@ -87,19 +115,20 @@ const useStyles = makeStyles({
 export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
   const {
     queryKey, fetcher, columns, rowKey, rowActions, bulkActions,
-    enableExport = true, exportFileName = "export.csv", enableColumnVisibility, defaultSort,
+    enableExport = true, exportFileName = "export", enableColumnVisibility: _enableColumnVisibility, defaultSort,
     initialPageSize, quickSearchPlaceholder = "Search…",
     emptyMessage = "No results.", emptySubtitle, emptyAction,
     errorMessage = "Failed to load data.",
     onRowClick, enableQuickSearch = true,
     requireSearch = false, searchPrompt = "Enter a search term to begin.",
+    allRecordsCount,
   } = props;
 
   const styles = useStyles();
   const configPageSize = usePageSize();
   const effectivePageSize = initialPageSize ?? configPageSize;
 
-  const { fetchParams, search, page, sortCol, sortDir, filters, setSearch, setPage, setSort, setFilter } =
+  const { fetchParams, search, page, sortCol, sortDir, setSearch, setPage, setSort } =
     useGridState(defaultSort, effectivePageSize);
 
   const deferredParams = useDeferredValue(fetchParams);
@@ -127,7 +156,7 @@ export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
   const [searchInput, setSearchInput] = useState(search);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [visibleCols, setVisibleCols] = useState<Set<string>>(
+  const [visibleCols] = useState<Set<string>>(
     () => new Set(columns.filter(c => c.visibleByDefault !== false).map(c => c.id)),
   );
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
@@ -195,7 +224,8 @@ export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
   async function handleExport() {
     setExporting(true);
     try {
-      await exportToCsv(visibleColumns, fetcher, deferredParams, 10000, exportFileName);
+      const prefix = exportFileName.replace(/\.csv$/i, "") || "export";
+      await exportToCsv(visibleColumns, fetcher, deferredParams, 10000, exportCsvFileName(prefix));
     } finally {
       setExporting(false);
     }
@@ -218,15 +248,21 @@ export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
           />
         )}
 
-        {bulkActions && bulkActions.length > 0 && selectedRowObjects.length > 0 &&
+        <div className={styles.spacer} />
+
+        {bulkActions && bulkActions.length > 0 &&
           bulkActions.map(action => (
-            <Button key={action.label} icon={action.icon ?? undefined} onClick={() => action.onClick(selectedRowObjects)}>
-              {action.label} ({selectedRowObjects.length})
+            <Button
+              key={action.label}
+              icon={action.icon ?? undefined}
+              disabled={selectedRowObjects.length === 0}
+              onClick={() => action.onClick(selectedRowObjects)}
+            >
+              {action.label}
+              {selectedRowObjects.length > 0 ? ` (${selectedRowObjects.length})` : ""}
             </Button>
           ))
         }
-
-        <div className={styles.spacer} />
 
         {enableExport && (
           <Button
@@ -234,35 +270,8 @@ export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
             disabled={exporting}
             onClick={() => void handleExport()}
           >
-            {exporting ? "Exporting…" : "Export CSV"}
+            {exporting ? "Exporting…" : "Export to Excel"}
           </Button>
-        )}
-
-        {enableColumnVisibility && (
-          <Menu>
-            <MenuTrigger>
-              <MenuButton icon={<FilterRegular />}>Columns</MenuButton>
-            </MenuTrigger>
-            <MenuPopover>
-              <MenuList>
-                {columns.map(col => (
-                  <MenuItem
-                    key={col.id}
-                    checkmark={visibleCols.has(col.id)
-                      ? <Checkbox checked={true} aria-hidden="true" />
-                      : <Checkbox checked={false} aria-hidden="true" />}
-                    onClick={() => setVisibleCols(prev => {
-                      const next = new Set(prev);
-                      if (next.has(col.id)) next.delete(col.id); else next.add(col.id);
-                      return next;
-                    })}
-                  >
-                    {col.header}
-                  </MenuItem>
-                ))}
-              </MenuList>
-            </MenuPopover>
-          </Menu>
         )}
       </div>
 
@@ -292,8 +301,8 @@ export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
                   {visibleColumns.map(col => (
                     <th
                       key={col.id}
-                      className={`${styles.th} ${col.sortable ? styles.thSortable : ""}`}
-                      style={col.width && col.width !== "auto" ? { width: col.width } : undefined}
+                      className={`${styles.th} ${col.wrap ? styles.thWrap : ""} ${col.sortable ? styles.thSortable : ""}`}
+                      style={columnStyle(col)}
                       onClick={() => col.sortable && handleSort(col.id)}
                       aria-sort={sortCol === col.id ? (sortDir === "asc" ? "ascending" : "descending") : undefined}
                     >
@@ -307,19 +316,6 @@ export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
                   ))}
                   {(rowActions?.length ?? 0) > 0 && <th className={`${styles.th} ${styles.actionCol}`}>Actions</th>}
                 </tr>
-
-                {/* Filter row */}
-                {visibleColumns.some(c => c.filterable) && (
-                  <tr className={styles.filterRow}>
-                    {(bulkActions?.length ?? 0) > 0 && <td className={styles.filterCell} />}
-                    {visibleColumns.map(col => (
-                      <td key={col.id} className={styles.filterCell}>
-                        {col.filterable && renderFilterCell(col, filters[col.id] ?? null, val => setFilter(col.id, val))}
-                      </td>
-                    ))}
-                    {(rowActions?.length ?? 0) > 0 && <td className={styles.filterCell} />}
-                  </tr>
-                )}
               </thead>
 
               <tbody>
@@ -364,11 +360,11 @@ export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
                           />
                         </td>
                       )}
-                      {visibleColumns.map(col => (
-                        <td key={col.id} className={styles.td}>
-                          {col.cell ? col.cell(row) : String(col.accessor(row) ?? "")}
-                        </td>
-                      ))}
+                    {visibleColumns.map(col => (
+                      <td key={col.id} className={`${styles.td} ${col.wrap ? styles.tdWrap : ""}`} style={columnStyle(col)}>
+                        {col.cell ? col.cell(row) : String(col.accessor(row) ?? "")}
+                      </td>
+                    ))}
                       {rowActions && rowActions.length > 0 && (
                         <td className={`${styles.td} ${styles.actionCol}`} onClick={e => e.stopPropagation()}>
                           <Toolbar size="small">
@@ -409,7 +405,7 @@ export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
       {/* Pagination */}
       {!gated && pageCount > 1 && (
         <div className={styles.pagination}>
-          <Text size={200}>{total} results</Text>
+          <Text size={200}>{recordCountLabel(total, allRecordsCount)}</Text>
           <Button size="small" disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</Button>
           <Text size={200}>Page {page + 1} of {pageCount}</Text>
           <Button size="small" disabled={page >= pageCount - 1} onClick={() => setPage(page + 1)}>Next</Button>
@@ -417,65 +413,16 @@ export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
       )}
       {!gated && pageCount <= 1 && total > 0 && (
         <div className={styles.pagination}>
-          <Text size={200}>{total} result{total !== 1 ? "s" : ""}</Text>
+          <Text size={200}>{recordCountLabel(total, allRecordsCount)}</Text>
         </div>
       )}
     </div>
   );
 }
 
-function renderFilterCell<T>(
-  col: ColumnDef<T>,
-  value: FilterValue,
-  onChange: (val: FilterValue) => void,
-) {
-  if (col.filterType === "select" && col.filterOptions) {
-    const current = Array.isArray(value) ? value[0] : (value ?? "");
-    return (
-      <Select
-        size="small"
-        value={current}
-        onChange={(_, d) => onChange(d.value || null)}
-        aria-label={`Filter ${col.header}`}
-      >
-        <option value="">All</option>
-        {col.filterOptions.map(o => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </Select>
-    );
+function recordCountLabel(filtered: number, all?: number): string {
+  if (all != null && all !== filtered) {
+    return `${filtered} of ${all} record${all !== 1 ? "s" : ""}`;
   }
-
-  if (col.filterType === "date") {
-    const current = Array.isArray(value) ? value[0] : (value ?? "");
-    return (
-      <Input
-        size="small"
-        type="date"
-        value={current}
-        onChange={(_, d) => onChange(d.value || null)}
-        aria-label={`Filter ${col.header}`}
-      />
-    );
-  }
-
-  // text (default)
-  const current = Array.isArray(value) ? value[0] : (value ?? "");
-  return (
-    <Input
-      size="small"
-      value={current}
-      onChange={(_, d) => onChange(d.value || null)}
-      contentAfter={current ? (
-        <Button
-          appearance="transparent"
-          size="small"
-          icon={<DismissRegular />}
-          onClick={() => onChange(null)}
-          aria-label="Clear filter"
-        />
-      ) : undefined}
-      aria-label={`Filter ${col.header}`}
-    />
-  );
+  return `${filtered} record${filtered !== 1 ? "s" : ""}`;
 }

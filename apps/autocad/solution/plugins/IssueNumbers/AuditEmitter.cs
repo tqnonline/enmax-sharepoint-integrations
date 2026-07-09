@@ -35,8 +35,6 @@ namespace Enmax.AutoCAD
             "enmax_autocadrecordtype",
             "enmax_autocadrecordphase",
             "enmax_autocadvendor",
-            "enmax_autocadbusinessasset",
-            "enmax_autocadassetunit",
             "enmax_autocadsystemscope",
         };
 
@@ -66,7 +64,7 @@ namespace Enmax.AutoCAD
                 ["enmax_acdnevent"]        = new OptionSetValue(EventReferenceDataChanged),
                 ["enmax_acdnreason"]       = BuildRefDataReason(message, entity, pluginCtx),
                 ["enmax_acdnsource"]       = new OptionSetValue(SourceAction),
-                ["enmax_acdnactedby"]      = new EntityReference("systemuser", pluginCtx.InitiatingUserId),
+                ["enmax_acdnactedby"]      = new EntityReference("systemuser", ctx.ActingUserId),
             };
 
             orgSvc.Create(auditRow);

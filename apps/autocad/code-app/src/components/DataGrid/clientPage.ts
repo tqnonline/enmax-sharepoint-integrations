@@ -11,6 +11,7 @@ import type { GridFetchParams } from "./types";
  * @param opts.searchText fields on a row to match params.search against (case-insensitive)
  * @param opts.filterText per-column-id accessor for the inline column filter inputs;
  *                        a column is only searchable if it appears in this map (case-insensitive substring)
+ * @param opts.filterIds  per-column-id accessor returning a user/lookup id for exact-match people filters
  */
 export function clientPage<T>(
   rows: T[],
@@ -19,6 +20,7 @@ export function clientPage<T>(
     filter?: (row: T) => boolean;
     searchText?: (row: T) => string[];
     filterText?: Record<string, (row: T) => string>;
+    filterIds?: Record<string, (row: T) => string>;
   },
 ): { rows: T[]; totalCount: number } {
   let out = opts?.filter ? rows.filter(opts.filter) : rows;
@@ -28,6 +30,7 @@ export function clientPage<T>(
   if (params.filters && opts?.filterText) {
     for (const [colId, raw] of Object.entries(params.filters)) {
       if (raw == null) continue;
+      if (opts.filterIds?.[colId]) continue;
       const accessor = opts.filterText[colId];
       if (!accessor) continue;
       const needles = (Array.isArray(raw) ? raw : [raw])
@@ -38,6 +41,18 @@ export function clientPage<T>(
         const hay = accessor(r).toLowerCase();
         return needles.some(n => hay.includes(n));
       });
+    }
+  }
+
+  // People filters — exact match on user/lookup id (string[] from PeoplePickerFilter).
+  if (params.filters && opts?.filterIds) {
+    for (const [colId, raw] of Object.entries(params.filters)) {
+      if (raw == null) continue;
+      const accessor = opts.filterIds[colId];
+      if (!accessor) continue;
+      const ids = (Array.isArray(raw) ? raw : [raw]).filter(v => v.length > 0);
+      if (ids.length === 0) continue;
+      out = out.filter(r => ids.includes(accessor(r)));
     }
   }
 

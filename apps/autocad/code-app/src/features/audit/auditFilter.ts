@@ -7,6 +7,7 @@ export type AppliedFilters = {
   filterTable: string;
   filterSubjectId: string;
   filterSource: string;
+  peopleIds: string[];
 };
 
 // Dataverse OData: DateTimeOffset literals are unquoted (quoting them is a type
@@ -23,5 +24,11 @@ export function buildAuditFilter(f: AppliedFilters): string | undefined {
   if (f.filterSubjectId) clauses.push(`enmax_acdnsubjectid eq '${f.filterSubjectId.replace(/'/g, "''")}'`);
   const src = Number(f.filterSource);
   if (f.filterSource && Number.isFinite(src)) clauses.push(`enmax_acdnsource eq ${src}`);
+  if (f.peopleIds?.length) {
+    const actedBy = f.peopleIds
+      .map((id) => `_enmax_acdnactedby_value eq '${id.replace(/'/g, "''")}'`)
+      .join(" or ");
+    clauses.push(`(${actedBy})`);
+  }
   return clauses.length ? clauses.join(" and ") : undefined;
 }

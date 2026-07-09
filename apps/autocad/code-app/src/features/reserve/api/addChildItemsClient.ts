@@ -1,7 +1,4 @@
-import { getClient } from "@microsoft/power-apps/data";
-import { dataSourcesInfo } from "../../../../.power/schemas/appschemas/dataSourcesInfo";
-
-const client = getClient(dataSourcesInfo);
+import { executeCustomApi } from "../../../lib/executeCustomApi";
 
 export interface AddChildItemsInput {
   /** GUID of the base Drawing/Procedure to append children to. */
@@ -19,22 +16,21 @@ export interface AddChildItemsResult {
 
 /**
  * Invokes the unbound enmax_acdnAddChildItems Custom API (ADR 0001 #2/#6).
- * The Drawing input is an EntityReference and MUST use the @odata.id binding —
- * the @odata.type+pk "Entity" shape does not bind to an EntityReference param
- * (same lesson as enmax_acdnIssueNumbers.Reservation in useApproveReservation).
+ * The Drawing input is an EntityReference and MUST use the @odata.type + pk "Entity"
+ * shape — the same shape enmax_acdnIssueNumbers.Reservation uses successfully in
+ * useApproveReservation. The bare @odata.id shape does NOT bind through the
+ * power-apps client, so children were never appended.
  */
 export async function addChildItems(input: AddChildItemsInput): Promise<AddChildItemsResult> {
-  const result = await client.executeAsync<Record<string, unknown>, Record<string, unknown>>({
-    dataverseRequest: {
-      action: "customapi",
-      parameters: {
-        operationName: "enmax_acdnAddChildItems",
-        tableName: "enmax_acdnaddchilditems",
-        body: {
-          Drawing: { "@odata.id": `enmax_autocaddrawings(${input.drawingId})` },
-          Count: input.count,
-        },
+  const result = await executeCustomApi<Record<string, unknown>>({
+    operationName: "enmax_acdnAddChildItems",
+    tableName: "enmax_acdnaddchilditems",
+    body: {
+      Drawing: {
+        "@odata.type": "Microsoft.Dynamics.CRM.enmax_autocaddrawing",
+        enmax_autocaddrawingid: input.drawingId,
       },
+      Count: input.count,
     },
   });
 

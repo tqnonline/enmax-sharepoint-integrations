@@ -46,5 +46,58 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 
             result.Should().BeNull();
         }
+
+        [Fact]
+        public void GetBoolDefaultTrue_MissingKey_ReturnsTrue()
+        {
+            var ctx = new XrmFakedContext();
+            ctx.Initialize(Array.Empty<Entity>());
+            var svc = ctx.GetFakedOrganizationService();
+
+            AppConfigReader.GetBoolDefaultTrue(svc, "EnableDrawingCheckout").Should().BeTrue();
+        }
+
+        [Fact]
+        public void GetBoolDefaultTrue_ExplicitFalse_ReturnsFalse()
+        {
+            var ctx = BuildContext("EnableDrawingCheckout", "false");
+            var svc = ctx.GetFakedOrganizationService();
+
+            AppConfigReader.GetBoolDefaultTrue(svc, "EnableDrawingCheckout").Should().BeFalse();
+        }
+
+        [Theory]
+        [InlineData(1, null, "EnableDrawingCheckout", "EnableDrawingCheckIn")]
+        [InlineData(2, 1, "EnableStandardCheckout", "EnableStandardCheckIn")]
+        [InlineData(2, 2, "EnableProcedureCheckout", "EnableProcedureCheckIn")]
+        public void TaxonomyCheckoutConfig_ResolvesKeysByTaxonomy(
+            int reservationType,
+            int? documentSubtype,
+            string checkoutKey,
+            string checkInKey)
+        {
+            var ctx = new XrmFakedContext();
+            ctx.Initialize(new[]
+            {
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = checkoutKey,
+                    ["enmax_acdnvalue"] = "false",
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = checkInKey,
+                    ["enmax_acdnvalue"] = "false",
+                },
+            });
+            var svc = ctx.GetFakedOrganizationService();
+
+            AppConfigReader.TaxonomyCheckoutConfig
+                .IsCheckoutEnabled(svc, reservationType, documentSubtype)
+                .Should().BeFalse();
+            AppConfigReader.TaxonomyCheckoutConfig
+                .IsCheckInEnabled(svc, reservationType, documentSubtype)
+                .Should().BeFalse();
+        }
     }
 }

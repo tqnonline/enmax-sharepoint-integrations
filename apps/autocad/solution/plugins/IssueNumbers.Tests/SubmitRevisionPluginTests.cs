@@ -115,6 +115,50 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         [Fact]
+        public void Missing_config_defaults_to_requiring_approval()
+        {
+            // No RequireCheckInApproval row seeded → default must be ON (gated), not auto-close.
+            var ctx        = new XrmFakedContext();
+            var drawingId  = Guid.NewGuid();
+            var checkoutId = Guid.NewGuid();
+            var userId     = Guid.NewGuid();
+
+            var drawing = new Entity(DrawingEntity, drawingId)
+            {
+                [ColDrawingState]    = new OptionSetValue(StateCheckedOut),
+                [ColCurrentRevision] = "A",
+            };
+            var checkout = new Entity(CheckoutEntity, checkoutId)
+            {
+                [ColCheckoutStatus]  = new OptionSetValue(StatusOpen),
+                [ColCheckoutDrawing] = new EntityReference(DrawingEntity, drawingId),
+                ["ownerid"]          = new EntityReference("systemuser", userId),
+            };
+            ctx.Initialize(new Entity[] { drawing, checkout });
+
+            var pluginCtx = ctx.GetDefaultPluginContext();
+            pluginCtx.MessageName      = "enmax_acdnSubmitRevision";
+            pluginCtx.Stage            = 40;
+            pluginCtx.InitiatingUserId = userId;
+            pluginCtx.InputParameters  = new ParameterCollection();
+            pluginCtx.OutputParameters = new ParameterCollection();
+            pluginCtx.InputParameters["Target"]         = new EntityReference(CheckoutEntity, checkoutId);
+            pluginCtx.InputParameters["SubmissionInfo"] = "Project Falcon, WO#12345";
+
+            ctx.ExecutePluginWith<SubmitRevisionPlugin>(pluginCtx);
+
+            var svc = ctx.GetFakedOrganizationService();
+            svc.Retrieve(CheckoutEntity, checkoutId, new ColumnSet(ColCheckoutStatus))
+               .GetAttributeValue<OptionSetValue>(ColCheckoutStatus).Value
+               .Should().Be(StatusAwaitingValidation,
+                   because: "with no config row, check-ins default to requiring approval");
+            svc.Retrieve(DrawingEntity, drawingId, new ColumnSet(ColDrawingState))
+               .GetAttributeValue<OptionSetValue>(ColDrawingState).Value
+               .Should().Be(StateAwaitingValidation,
+                   because: "the drawing must wait for validation rather than auto-returning to Available");
+        }
+
+        [Fact]
         public void Approval_on_sets_checkout_and_drawing_to_AwaitingValidation()
         {
             var (ctx, pluginCtx, checkoutId, drawingId) = BuildContext(requireApproval: true);

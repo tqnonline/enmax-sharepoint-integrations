@@ -9,7 +9,7 @@ const guidSchema = z.string().regex(
 
 export const AppConfigSchema = z.object({
   SingleAdminMode:                z.boolean(),
-  MaxDrawingsPerReservation:      z.number().int().min(1),
+  MaxRecordsPerReservation:       z.number().int().min(1),
   MaxSheetsPerDrawing:            z.number().int().min(1),
   DefaultSheetsPerDrawing:        z.number().int().min(1),
   StaleCheckoutMonths:            z.string().regex(/^(\d+,)*\d+$/),
@@ -39,7 +39,9 @@ export const AppConfigSchema = z.object({
   FooterCopyright:                z.string(),
   BroadcastFanOutCadenceMinutes:  z.number().int().min(1),
   GridPageSize:                   z.number().int().min(1).default(10),
-  RequireCheckInApproval:         z.boolean().default(false),
+  // Check In is a gated approval step by default (mirrors RequireCheckOutApproval).
+  // Seed an explicit false row to auto-close check-ins without approval.
+  RequireCheckInApproval:         z.boolean().default(true),
   // WS3: Check Out is a gated/approved action. Mandatory per requirement #8, but
   // exposed as a toggle (mirrors RequireCheckInApproval) and defaults to enabled.
   RequireCheckOutApproval:        z.boolean().default(true),
@@ -48,6 +50,14 @@ export const AppConfigSchema = z.object({
   // false so the actions stay hidden.
   ShowFinalizeButton:             z.boolean().default(false),
   ShowObsoleteButton:             z.boolean().default(false),
+  // Per-taxonomy checkout/check-in toggles (ADR 0001). Absent rows default ON so
+  // checkout flows stay enabled unless an admin explicitly disables a type.
+  EnableDrawingCheckout:          z.boolean().default(true),
+  EnableDrawingCheckIn:           z.boolean().default(true),
+  EnableProcedureCheckout:        z.boolean().default(true),
+  EnableProcedureCheckIn:         z.boolean().default(true),
+  EnableStandardCheckout:         z.boolean().default(true),
+  EnableStandardCheckIn:          z.boolean().default(true),
 });
 
 export type AppConfig = z.infer<typeof AppConfigSchema>;

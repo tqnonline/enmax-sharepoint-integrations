@@ -3,7 +3,7 @@ import type { AppConfig } from "../../config/AppConfigSchema";
 
 export const VALID_CONFIG: AppConfig = {
   SingleAdminMode: false,
-  MaxDrawingsPerReservation: 10,
+  MaxRecordsPerReservation: 10,
   MaxSheetsPerDrawing: 50,
   DefaultSheetsPerDrawing: 5,
   StaleCheckoutMonths: "3,6,12",
@@ -25,6 +25,12 @@ export const VALID_CONFIG: AppConfig = {
   FooterCopyright: "© 2026 ENMAX Corporation",
   BroadcastFanOutCadenceMinutes: 60,
   GridPageSize: 10,
+  EnableDrawingCheckout: true,
+  EnableDrawingCheckIn: true,
+  EnableProcedureCheckout: true,
+  EnableProcedureCheckIn: true,
+  EnableStandardCheckout: true,
+  EnableStandardCheckIn: true,
 };
 
 function configToRows(cfg: AppConfig) {

@@ -49,6 +49,7 @@ namespace Enmax.AutoCAD
         {
             var context = localPluginContext.PluginExecutionContext;
             var service = localPluginContext.SystemUserService;
+            var actorId = PluginActor.ResolveForCustomApi(context, service);
 
             // Bound Custom API — Target is an EntityReference to the reservation row
             if (!context.InputParameters.Contains("Target"))
@@ -62,9 +63,9 @@ namespace Enmax.AutoCAD
                 throw new InvalidPluginExecutionException(
                     $"Target must be {EntityName}, got {target.LogicalName}");
 
-            Authorization.RequireApproverOrAdmin(service, context.InitiatingUserId, "approve a reservation");
+            Authorization.RequireApproverOrAdmin(service, actorId, "approve a reservation");
 
-            localPluginContext.Trace($"Approving reservation {target.Id} for user {context.InitiatingUserId}");
+            localPluginContext.Trace($"Approving reservation {target.Id} for user {actorId}");
 
             // Retrieve current status — needed to guard against double-approvals
             Entity reservation;
@@ -96,7 +97,7 @@ namespace Enmax.AutoCAD
             {
                 [ColStatus]     = new OptionSetValue(StatusApproved),
                 [ColApprovedOn] = DateTime.UtcNow,
-                [ColApprover]   = new EntityReference("systemuser", context.InitiatingUserId),
+                [ColApprover]   = new EntityReference("systemuser", actorId),
             };
 
             service.Update(update);
@@ -111,14 +112,14 @@ namespace Enmax.AutoCAD
                 ["enmax_acdnsubjecttable"] = EntityName,
                 ["enmax_acdnfromstate"]    = "Pending",
                 ["enmax_acdntostate"]      = "Approved",
-                ["enmax_acdnactedby"]      = new EntityReference("systemuser", context.InitiatingUserId),
+                ["enmax_acdnactedby"]      = new EntityReference("systemuser", actorId),
                 ["enmax_acdnname"]         = $"Approval granted for reservation {target.Id}",
             };
             service.Create(auditEvent);
 
-            // Notify the requester their reservation was approved.
+            // Notify the requester their reservation was approved (including when they self-approve in small teams).
             var owner = reservation.GetAttributeValue<EntityReference>(ColOwner);
-            if (owner != null && owner.Id != context.InitiatingUserId)
+            if (owner != null)
             {
                 string number = reservation.GetAttributeValue<string>(ColNumber);
                 if (string.IsNullOrWhiteSpace(number)) number = target.Id.ToString();

@@ -1,5 +1,4 @@
 using Microsoft.Xrm.Sdk;
-using Microsoft.Xrm.Sdk.Messages;
 using Microsoft.Xrm.Sdk.Query;
 using System;
 using System.ServiceModel;
@@ -10,7 +9,7 @@ namespace Enmax.AutoCAD
     /// Dataverse plug-in for submitting a revision against an open checkout.
     /// Custom API: enmax_acdnSubmitRevision (bound to enmax_autocadcheckout)
     ///
-    /// Reads AppConfig RequireCheckInApproval:
+    /// Reads AppConfig RequireCheckInApproval (defaults to true when the row is absent):
     ///  - false: closes checkout (ClosedApproved), drawing -> Available + bumped revision, sheets -> Available.
     ///  - true : checkout -> AwaitingValidation, drawing -> AwaitingValidation, sheets -> AwaitingValidation.
     /// Drawing update uses RowVersion concurrency; sheets/audit follow the serialized drawing update.
@@ -20,16 +19,15 @@ namespace Enmax.AutoCAD
         private const string CheckoutEntity      = "enmax_autocadcheckout";
         private const string ColCheckoutStatus   = "enmax_acdnstatus";
         private const string ColCheckoutDrawing  = "enmax_acdndrawing";
+        private const string ColCheckoutSheet    = "enmax_acdnsheet";
         private const string ColNewRevision      = "enmax_acdnnewrevision";
         private const string ColSubmissionInfo   = "enmax_acdnsubmissioninfo";
 
         private const string DrawingEntity       = "enmax_autocaddrawing";
-        private const string ColDrawingState     = "enmax_acdnstate";
         private const string ColCurrentRevision  = "enmax_acdncurrentrevision";
         private const string ColDrawingNumber    = "enmax_acdnnumber";
 
-        private const string SheetEntity         = "enmax_autocadsheet";
-        private const string ColSheetDrawing     = "enmax_acdndrawing";
+        private const string SheetEntity         = CheckOutSheetsPlugin.SheetEntity;
         private const string ColSheetState       = "enmax_acdnstate";
 
         private const string AppConfigEntity     = "enmax_autocadappconfig";
@@ -44,11 +42,8 @@ namespace Enmax.AutoCAD
         private const int StatusAwaitingValidation = 2;
         private const int StatusClosedApproved     = 3;
 
-        private const int StateAvailable          = 1;
-        private const int StateCheckedOut         = 2;
-        private const int StateAwaitingValidation = 3;
-
         private const int SheetStateAvailable          = 2;
+        private const int SheetStateCheckedOut         = 3;
         private const int SheetStateAwaitingValidation = 4;
 
         // In-app notification to approvers/admins when a check-in needs validation.
@@ -64,6 +59,7 @@ namespace Enmax.AutoCAD
         {
             var context = localPluginContext.PluginExecutionContext;
             var service = localPluginContext.SystemUserService;
+            var actorId = PluginActor.ResolveForCustomApi(context, service);
 
             var target = context.InputParameters.Contains("Target")
                 ? context.InputParameters["Target"] as EntityReference : null;
@@ -89,7 +85,7 @@ namespace Enmax.AutoCAD
             try
             {
                 checkout = service.Retrieve(CheckoutEntity, target.Id,
-                    new ColumnSet(ColCheckoutStatus, ColCheckoutDrawing, "ownerid"));
+                    new ColumnSet(ColCheckoutStatus, ColCheckoutDrawing, ColCheckoutSheet, "ownerid"));
             }
             catch (FaultException<OrganizationServiceFault> ex)
             {
@@ -98,7 +94,7 @@ namespace Enmax.AutoCAD
 
             Authorization.RequireSelf(
                 checkout.GetAttributeValue<EntityReference>("ownerid")?.Id ?? Guid.Empty,
-                context.InitiatingUserId,
+                actorId,
                 "submit a revision on this check-out");
 
             int currentStatus = checkout.GetAttributeValue<OptionSetValue>(ColCheckoutStatus)?.Value ?? 0;
@@ -106,44 +102,23 @@ namespace Enmax.AutoCAD
                 throw new InvalidPluginExecutionException(
                     $"Checkout {target.Id} cannot accept a revision from status {currentStatus}. Expected {StatusOpen} (Open).");
 
-            var drawingRef = checkout.GetAttributeValue<EntityReference>(ColCheckoutDrawing);
+            var sheetRef = checkout.GetAttributeValue<EntityReference>(ColCheckoutSheet);
+            if (sheetRef == null)
+                throw new InvalidPluginExecutionException($"Checkout {target.Id} has no associated sheet.");
+            var sheet = service.Retrieve(SheetEntity, sheetRef.Id, new ColumnSet(ColSheetState, "enmax_acdndrawing"));
+            var drawingRef = sheet.GetAttributeValue<EntityReference>("enmax_acdndrawing");
             if (drawingRef == null)
-                throw new InvalidPluginExecutionException($"Checkout {target.Id} has no associated drawing.");
+                throw new InvalidPluginExecutionException($"Sheet {sheetRef.Id} has no associated drawing.");
 
-            Entity drawing = service.Retrieve(DrawingEntity, drawingRef.Id, new ColumnSet(ColDrawingState, ColDrawingNumber));
-            int drawingStateNow = drawing.GetAttributeValue<OptionSetValue>(ColDrawingState)?.Value ?? 0;
-            if (drawingStateNow != StateCheckedOut)
+            int sheetStateNow = sheet.GetAttributeValue<OptionSetValue>(ColSheetState)?.Value ?? 0;
+            if (sheetStateNow != SheetStateCheckedOut)
                 throw new InvalidPluginExecutionException(
-                    $"Drawing {drawingRef.Id} must be CheckedOut ({StateCheckedOut}) to submit a revision; was {drawingStateNow}.");
+                    $"Sheet {sheetRef.Id} must be CheckedOut ({SheetStateCheckedOut}) to submit a revision; was {sheetStateNow}.");
 
             bool requireApproval = GetRequireCheckInApproval(service);
 
-            int targetDrawingState = requireApproval ? StateAwaitingValidation : StateAvailable;
             int targetSheetState   = requireApproval ? SheetStateAwaitingValidation : SheetStateAvailable;
             int targetStatus       = requireApproval ? StatusAwaitingValidation : StatusClosedApproved;
-
-            var drawingUpdate = new Entity(DrawingEntity, drawingRef.Id)
-            {
-                RowVersion        = drawing.RowVersion,
-                [ColDrawingState] = new OptionSetValue(targetDrawingState),
-            };
-            if (!requireApproval) drawingUpdate[ColCurrentRevision] = cycleToken;
-
-            try
-            {
-                service.Execute(new UpdateRequest
-                {
-                    Target              = drawingUpdate,
-                    ConcurrencyBehavior = ConcurrencyBehavior.IfRowVersionMatches,
-                });
-            }
-            catch (FaultException<OrganizationServiceFault> ex)
-                when (ex.Detail?.ErrorCode == -2147088254 ||
-                      (ex.Message != null && ex.Message.Contains("ConcurrencyVersionMismatch")))
-            {
-                throw new InvalidPluginExecutionException(
-                    $"Drawing {drawingRef.Id} was concurrently modified (ConcurrencyVersionMismatch). Retry.", ex);
-            }
 
             var checkoutUpdate = new Entity(CheckoutEntity, target.Id)
             {
@@ -154,47 +129,54 @@ namespace Enmax.AutoCAD
             if (!requireApproval)
             {
                 checkoutUpdate["enmax_acdnclosedon"] = DateTime.UtcNow;
-                checkoutUpdate["enmax_acdnclosedby"] = new EntityReference("systemuser", context.InitiatingUserId);
+                checkoutUpdate["enmax_acdnclosedby"] = new EntityReference("systemuser", actorId);
             }
             service.Update(checkoutUpdate);
 
-            var sheetQuery = new QueryExpression(SheetEntity) { ColumnSet = new ColumnSet("enmax_autocadsheetid") };
-            sheetQuery.Criteria.AddCondition(ColSheetDrawing, ConditionOperator.Equal, drawingRef.Id);
-            foreach (var sheet in service.RetrieveMultiple(sheetQuery).Entities)
-                service.Update(new Entity(SheetEntity, sheet.Id) { [ColSheetState] = new OptionSetValue(targetSheetState) });
+            service.Update(new Entity(SheetEntity, sheetRef.Id) { [ColSheetState] = new OptionSetValue(targetSheetState) });
+            if (!requireApproval)
+            {
+                service.Update(new Entity(DrawingEntity, drawingRef.Id)
+                {
+                    [ColCurrentRevision] = cycleToken,
+                });
+            }
+
+            int drawingState = DrawingRollupHelper.RecomputeDrawingRollup(service, drawingRef.Id);
 
             service.Create(new Entity(AuditEntity)
             {
                 ["enmax_acdnevent"]        = new OptionSetValue(AuditEventStateChanged),
                 ["enmax_acdnsource"]       = new OptionSetValue(AuditSourceAction),
-                ["enmax_acdnsubjectid"]    = drawingRef.Id.ToString(),
-                ["enmax_acdnsubjecttable"] = DrawingEntity,
+                ["enmax_acdnsubjectid"]    = sheetRef.Id.ToString(),
+                ["enmax_acdnsubjecttable"] = SheetEntity,
                 ["enmax_acdnfromstate"]    = "CheckedOut",
                 ["enmax_acdntostate"]      = requireApproval ? "AwaitingValidation" : "Available",
-                ["enmax_acdnactedby"]      = new EntityReference("systemuser", context.InitiatingUserId),
-                ["enmax_acdnname"]         = $"Drawing {drawingRef.Id} checked in",
+                ["enmax_acdnactedby"]      = new EntityReference("systemuser", actorId),
+                ["enmax_acdnname"]         = $"Sheet {sheetRef.Id} checked in",
             });
 
             // A check-in always notifies approvers/admins — to validate it (approval on) or to move the
             // files to SharePoint (approval off). Admins must hear about every check-in either way.
-            NotifyApprovers(service, context, drawing, target.Id, requireApproval);
+            var drawing = service.Retrieve(DrawingEntity, drawingRef.Id, new ColumnSet(ColDrawingNumber));
+            NotifyApprovers(service, context, drawing, target.Id, requireApproval, actorId);
 
             context.OutputParameters["NewStatus"]    = targetStatus;
-            context.OutputParameters["DrawingState"] = targetDrawingState;
+            context.OutputParameters["DrawingState"] = drawingState;
         }
 
         // Notify every Approver/Admin (minus the submitter) about a check-in. When approval is required the
         // ask is "validate it"; when not, the ask is "move the files" — but admins are told either way.
         private static void NotifyApprovers(
             IOrganizationService service, IPluginExecutionContext context,
-            Entity drawing, Guid checkoutId, bool requireApproval)
+            Entity drawing, Guid checkoutId, bool requireApproval, Guid actorId)
         {
-            var recipients = NotificationWriter.GetApproverAndAdminUserIds(service, context.InitiatingUserId);
+            var recipients = NotificationWriter.GetApproverAndAdminUserIds(service, actorId);
             if (recipients.Count == 0) return;
 
             string number = drawing.GetAttributeValue<string>(ColDrawingNumber);
             if (string.IsNullOrWhiteSpace(number)) number = drawing.Id.ToString();
-            string actor = NotificationWriter.ResolveActorName(service, context.InitiatingUserId);
+            string actor = NotificationWriter.ResolveActorName(service, actorId);
 
             string title = requireApproval
                 ? $"Check In pending validation: {number}"
@@ -219,9 +201,11 @@ namespace Enmax.AutoCAD
             var q = new QueryExpression(AppConfigEntity) { ColumnSet = new ColumnSet(ColAppConfigValue), TopCount = 1 };
             q.Criteria.AddCondition(ColAppConfigKey, ConditionOperator.Equal, "RequireCheckInApproval");
             var results = service.RetrieveMultiple(q);
-            if (results.Entities.Count == 0) return false;
+            // Default ON when the row is absent: check-ins are a gated approval step (mirrors
+            // RequireCheckOutApproval). An explicit "false" row is required to auto-close check-ins.
+            if (results.Entities.Count == 0) return true;
             bool v;
-            return bool.TryParse(results.Entities[0].GetAttributeValue<string>(ColAppConfigValue), out v) && v;
+            return bool.TryParse(results.Entities[0].GetAttributeValue<string>(ColAppConfigValue), out v) ? v : true;
         }
     }
 }

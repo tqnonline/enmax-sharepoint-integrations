@@ -47,7 +47,8 @@ namespace Enmax.AutoCAD
 
             localPluginContext.Trace($"Entered {PluginClassName}.Execute() " +
                 $"Correlation Id: {localPluginContext.PluginExecutionContext.CorrelationId}, " +
-                $"Initiating User: {localPluginContext.PluginExecutionContext.InitiatingUserId}");
+                $"Initiating User: {localPluginContext.PluginExecutionContext.InitiatingUserId}, " +
+                $"Acting User: {localPluginContext.ActingUserId}");
 
             try
             {
@@ -100,6 +101,11 @@ namespace Enmax.AutoCAD
         /// caller-context service for writes.
         /// </summary>
         IOrganizationService SystemUserService { get; }
+
+        /// <summary>
+        /// The interactive user who performed the action (from ActingUserId or InitiatingUserId).
+        /// </summary>
+        Guid ActingUserId { get; }
 
         /// <summary>
         /// IPluginExecutionContext contains information that describes the run-time environment in which the plug-in executes, information related to the execution pipeline, and entity business information.
@@ -156,6 +162,9 @@ namespace Enmax.AutoCAD
         /// </summary>
         public IOrganizationService SystemUserService { get; }
 
+        /// <inheritdoc />
+        public Guid ActingUserId { get; }
+
         /// <summary>
         /// IPluginExecutionContext contains information that describes the run-time environment in which the plug-in executes, information related to the execution pipeline, and entity business information.
         /// </summary>
@@ -210,6 +219,7 @@ namespace Enmax.AutoCAD
             // null userId => SYSTEM user context (bypasses privilege checks).
             SystemUserService = OrgSvcFactory.CreateOrganizationService(null);
 
+            ActingUserId = PluginActor.Resolve(PluginExecutionContext, SystemUserService);
         }
 
         /// <summary>

@@ -19,7 +19,9 @@ const FULL_ROW: DrawingRow = {
   enmax_acdnrevisiondate: "2026-01-15T00:00:00Z",
   enmax_acdnstate: 2,
   enmax_acdnsheetcount: 3,
+  typeLabel: "Drawing",
   enmax_acdnsplibraryurl: "https://sharepoint.example.com/drawing1",
+  enmax_acdnspdestinationurl: "",
   _enmax_acdnbusiness_value: "biz-001",
   _enmax_acdnasset_value: "ast-001",
   _enmax_acdnunit_value: "unit-001",
@@ -30,6 +32,10 @@ const FULL_ROW: DrawingRow = {
   _enmax_acdnrecordphase_value: "rp-001",
   _enmax_acdnvendor_value: "vnd-001",
   _createdby_value: "usr-001",
+  submittedById: "usr-001",
+  submittedByName: "M365 Developer",
+  approvedById: "",
+  approvedByName: "",
   businessDisplay: "Generation",
   assetDisplay: "Coal Gen",
   unitDisplay: "Unit 0",
@@ -77,7 +83,9 @@ const MINIMAL_DRAWING: DrawingRow = {
   enmax_acdnrevisiondate: "",
   enmax_acdnstate: 1,
   enmax_acdnsheetcount: 0,
+  typeLabel: "Drawing",
   enmax_acdnsplibraryurl: "",
+  enmax_acdnspdestinationurl: "",
   _enmax_acdnbusiness_value: "",
   _enmax_acdnasset_value: "",
   _enmax_acdnunit_value: "",
@@ -88,6 +96,10 @@ const MINIMAL_DRAWING: DrawingRow = {
   _enmax_acdnrecordphase_value: "",
   _enmax_acdnvendor_value: "",
   _createdby_value: "",
+  submittedById: "",
+  submittedByName: "",
+  approvedById: "",
+  approvedByName: "",
   businessDisplay: "",
   assetDisplay: "",
   unitDisplay: "",
@@ -118,4 +130,13 @@ test("DrawingDetailPanel renders sentence-style activity with from→to transiti
   expect(
     screen.getByText(/changed state from Available to Checked Out/),
   ).toBeInTheDocument();
+});
+
+test("DrawingDetailPanel does not show base SharePoint link for Drawing type", async () => {
+  renderWithProviders(
+    <DrawingDetailPanel drawing={MINIMAL_DRAWING} onClose={() => {}} />,
+  );
+
+  expect(screen.queryByText(/Open in SharePoint/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/no linked file found yet/i)).not.toBeInTheDocument();
 });

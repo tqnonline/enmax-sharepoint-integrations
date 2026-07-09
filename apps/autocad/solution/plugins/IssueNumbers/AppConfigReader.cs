@@ -21,5 +21,61 @@ namespace Enmax.AutoCAD
             var r = service.RetrieveMultiple(q);
             return r.Entities.Count > 0 ? r.Entities[0].GetAttributeValue<string>(ColValue) : null;
         }
+
+        /// <summary>
+        /// Reads a boolean AppConfig key. Defaults to <c>true</c> when the row is absent
+        /// or unparsable — checkout/check-in must not silently disable themselves.
+        /// </summary>
+        public static bool GetBoolDefaultTrue(IOrganizationService service, string key)
+        {
+            string raw = GetValue(service, key);
+            if (string.IsNullOrWhiteSpace(raw)) return true;
+            bool v;
+            return !bool.TryParse(raw, out v) || v;
+        }
+
+        /// <summary>
+        /// Resolves per-taxonomy checkout/check-in AppConfig keys (ADR 0001).
+        /// Legacy rows with null reservation type behave as Drawing.
+        /// </summary>
+        public static class TaxonomyCheckoutConfig
+        {
+            private const int ReservationTypeDrawing  = 1;
+            private const int ReservationTypeDocument = 2;
+            private const int DocumentSubtypeStandard = 1;
+            private const int DocumentSubtypeProcedure = 2;
+
+            public static bool IsCheckoutEnabled(
+                IOrganizationService service,
+                int? reservationType,
+                int? documentSubtype)
+                => GetBoolDefaultTrue(service, ResolveCheckoutKey(reservationType, documentSubtype));
+
+            public static bool IsCheckInEnabled(
+                IOrganizationService service,
+                int? reservationType,
+                int? documentSubtype)
+                => GetBoolDefaultTrue(service, ResolveCheckInKey(reservationType, documentSubtype));
+
+            private static string ResolveCheckoutKey(int? reservationType, int? documentSubtype)
+            {
+                if (reservationType == ReservationTypeDocument)
+                {
+                    if (documentSubtype == DocumentSubtypeStandard) return "EnableStandardCheckout";
+                    if (documentSubtype == DocumentSubtypeProcedure) return "EnableProcedureCheckout";
+                }
+                return "EnableDrawingCheckout";
+            }
+
+            private static string ResolveCheckInKey(int? reservationType, int? documentSubtype)
+            {
+                if (reservationType == ReservationTypeDocument)
+                {
+                    if (documentSubtype == DocumentSubtypeStandard) return "EnableStandardCheckIn";
+                    if (documentSubtype == DocumentSubtypeProcedure) return "EnableProcedureCheckIn";
+                }
+                return "EnableDrawingCheckIn";
+            }
+        }
     }
 }

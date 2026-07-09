@@ -3,14 +3,18 @@ import { resolve } from "node:path";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { dataSourcesInfo } from "../../../.power/schemas/appschemas/dataSourcesInfo";
 
-const { executeMock } = vi.hoisted(() => ({ executeMock: vi.fn() }));
-vi.mock("@microsoft/power-apps/data", () => ({
-  getClient: () => ({ executeAsync: executeMock }),
+const { executeMock } = vi.hoisted(() => ({
+  executeMock: vi.fn(),
+}));
+vi.mock("../../lib/executeCustomApi", () => ({
+  executeCustomApi: (...args: unknown[]) => executeMock(...args),
 }));
 
 import { addChildItems } from "../../features/reserve/api/addChildItemsClient";
 
-beforeEach(() => executeMock.mockReset());
+beforeEach(() => {
+  executeMock.mockReset();
+});
 
 describe("addChildItemsClient — dataSourcesInfo guard", () => {
   // Same regression guard as customApiDataSource.test.ts but for the reserve client:
@@ -41,7 +45,7 @@ describe("addChildItemsClient — dataSourcesInfo guard", () => {
 });
 
 describe("addChildItems — request/response shape", () => {
-  it("binds Drawing via @odata.id and returns the mapped result", async () => {
+  it("binds Drawing via @odata.type + pk and returns the mapped result", async () => {
     executeMock.mockResolvedValue({
       success: true,
       data: {
@@ -55,13 +59,15 @@ describe("addChildItems — request/response shape", () => {
     const result = await addChildItems({ drawingId: "abc-123", count: 3 });
 
     const arg = executeMock.mock.calls[0][0];
-    const params = arg.dataverseRequest.parameters;
-    expect(arg.dataverseRequest.action).toBe("customapi");
-    expect(params.operationName).toBe("enmax_acdnAddChildItems");
-    expect(params.tableName).toBe("enmax_acdnaddchilditems");
-    // EntityReference must use @odata.id binding (not @odata.type+pk), same lesson as IssueNumbers.
-    expect(params.body.Drawing).toEqual({ "@odata.id": "enmax_autocaddrawings(abc-123)" });
-    expect(params.body.Count).toBe(3);
+    expect(arg.operationName).toBe("enmax_acdnAddChildItems");
+    expect(arg.tableName).toBe("enmax_acdnaddchilditems");
+    // EntityReference must use @odata.type + pk (the bare @odata.id shape does not
+    // bind through the power-apps client), same shape as IssueNumbers/approve flow.
+    expect(arg.body.Drawing).toEqual({
+      "@odata.type": "Microsoft.Dynamics.CRM.enmax_autocaddrawing",
+      enmax_autocaddrawingid: "abc-123",
+    });
+    expect(arg.body.Count).toBe(3);
 
     expect(result).toEqual({
       childrenCreated: 3,

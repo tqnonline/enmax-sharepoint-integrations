@@ -4,6 +4,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useReservationDrawings } from "../features/checkout/hooks/useReservationDrawings";
 import { DrawingActionsPanel } from "../features/checkout/components/DrawingActionsPanel";
 import type { CheckoutForPanel, DrawingStateValue } from "../features/checkout/api/checkoutClient";
+import { DrawingState } from "../features/checkout/api/checkoutClient";
+import { DrawingSheetList } from "../features/checkout/components/DrawingSheetList";
+import { useAppConfig } from "../config/useAppConfig";
+import {
+  reservationChildNoun,
+  reservationRecordsLabel,
+} from "../features/reserve/terminology";
 import {
   Title2,
   Title3,
@@ -19,8 +26,6 @@ import {
   AccordionItem,
   AccordionHeader,
   AccordionPanel,
-  TabList,
-  Tab,
   Dialog,
   DialogSurface,
   DialogTitle,
@@ -38,20 +43,21 @@ import {
 import {
   ArrowLeft20Regular,
   Warning24Regular,
-  FolderOpen20Regular,
-  ArrowSquareUpRightRegular,
-  Document16Regular,
   ArrowClockwise20Regular,
   ChevronLeft16Regular,
   ChevronRight16Regular,
   DismissCircle20Regular,
 } from "@fluentui/react-icons";
 import { useReservationDetail, type DrawingDetail } from "../features/approvals/hooks/useReservationDetail";
-import { useDrawingSheets } from "../features/approvals/hooks/useDrawingSheets";
+import { NUMBERING_GROUP_LABEL } from "../features/reserve/numberingTerms";
+import { formatNumberRange, formatAppendDisplay } from "../features/approvals/compositionUtils";
 import { useCancelReservation } from "../features/myitems/useMyReservations";
-import { formatNumberRange } from "../features/approvals/compositionUtils";
+import { useRetryIssueNumbers } from "../features/approvals/hooks/useRetryIssueNumbers";
+import { useRetryAppend } from "../features/approvals/hooks/useRetryAppend";
+import { useUserRole } from "../auth/useUserRole";
 import { usePageSize } from "../config/usePageSize";
 import { useCurrentUser } from "../auth/useCurrentUser";
+import { isCheckoutEnabledForTaxonomy } from "../config/checkoutTaxonomyConfig";
 
 type BadgeColor = "success" | "warning" | "informative" | "subtle" | "danger";
 
@@ -265,29 +271,70 @@ const useStyles = makeStyles({
     flex: 1,
   },
   sheetList: {
-    paddingLeft: tokens.spacingHorizontalL,
+    paddingLeft: tokens.spacingHorizontalS,
     paddingBottom: tokens.spacingVerticalS,
   },
-  sheetRow: {
+  sheetSummary: {
     display: "flex",
     alignItems: "center",
+    justifyContent: "space-between",
+    gap: tokens.spacingHorizontalM,
+    flexWrap: "wrap",
+    marginBottom: tokens.spacingVerticalS,
+    paddingBottom: tokens.spacingVerticalS,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  sheetTableHeader: {
+    display: "grid",
+    gridTemplateColumns: "36px minmax(180px, 1.2fr) minmax(120px, 0.8fr) minmax(160px, 1fr) minmax(160px, 1fr) minmax(140px, auto)",
     gap: tokens.spacingHorizontalS,
-    padding: `${tokens.spacingVerticalXS} 0`,
+    alignItems: "center",
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalXS}`,
+    borderBottom: `2px solid ${tokens.colorNeutralStroke1}`,
+    color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  sheetRow: {
+    display: "grid",
+    gridTemplateColumns: "36px minmax(180px, 1.2fr) minmax(120px, 0.8fr) minmax(160px, 1fr) minmax(160px, 1fr) minmax(140px, auto)",
+    gap: tokens.spacingHorizontalS,
+    alignItems: "center",
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalXS}`,
     borderBottomWidth: "1px",
     borderBottomStyle: "solid",
     borderBottomColor: tokens.colorNeutralStroke2,
   },
   sheetNumber: {
-    minWidth: "56px",
-    color: tokens.colorNeutralForeground3,
+    color: tokens.colorNeutralForeground1,
     flexShrink: 0,
-  },
-  filename: {
-    flex: 1,
     fontFamily: tokens.fontFamilyMonospace,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  sheetMeta: {
     fontSize: tokens.fontSizeBase200,
-    overflowWrap: "break-word",
-    wordBreak: "break-all",
+    color: tokens.colorNeutralForeground2,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  sheetMetaMuted: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+  },
+  sheetActions: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: tokens.spacingHorizontalXS,
+    flexWrap: "nowrap",
+  },
+  newBadgeWrap: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: tokens.spacingHorizontalXXS,
   },
   emptyState: {
     padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalL}`,
@@ -314,52 +361,38 @@ const useStyles = makeStyles({
   },
 });
 
-function DrawingSheetList({ drawingId }: { drawingId: string }) {
-  const styles = useStyles();
-  const { data: sheets, isPending } = useDrawingSheets(drawingId, true);
+const DETAIL_TOASTER_ID = "reservation-detail-toaster";
 
-  if (isPending) return <Spinner size="tiny" label="Loading sheets…" style={{ margin: tokens.spacingVerticalS }} />;
-  if (!sheets || sheets.length === 0) {
-    return <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>No sheets found.</Text>;
-  }
-  return (
-    <>
-      {sheets.map(sheet => (
-        <div key={sheet.id} className={styles.sheetRow}>
-          <Document16Regular style={{ color: tokens.colorNeutralForeground3, flexShrink: 0 }} />
-          <Text size={200} className={styles.sheetNumber}>Sheet {sheet.sheetNumber ?? "—"}</Text>
-          <Text size={200} className={styles.filename}>{sheet.filename ?? "—"}</Text>
-          {sheet.sharepointUrl ? (
-            <Tooltip content="Open in SharePoint" relationship="label">
-              <Button
-                as="a"
-                href={sheet.sharepointUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                appearance="subtle"
-                icon={<ArrowSquareUpRightRegular />}
-                size="small"
-                aria-label="Open in SharePoint"
-              />
-            </Tooltip>
-          ) : (
-            <Button appearance="subtle" icon={<ArrowSquareUpRightRegular />} size="small" disabled aria-label="SharePoint URL not yet available" />
-          )}
-        </div>
-      ))}
-    </>
-  );
-}
-
-function DrawingRow({ drawing, isOpen, checkout, missingSheets }: {
+function DrawingRow({
+  drawing,
+  isOpen,
+  checkout,
+  missingSheets,
+  childNoun,
+  reservationType,
+  documentSubtype,
+  checkoutEnabled,
+  appendFirst,
+  appendLast,
+  targetDrawingNumber,
+}: {
   drawing: DrawingDetail;
   isOpen: boolean;
   checkout?: CheckoutForPanel;
   missingSheets?: string;
+  childNoun: string;
+  reservationType?: number;
+  documentSubtype?: number;
+  checkoutEnabled: boolean;
+  appendFirst?: number;
+  appendLast?: number;
+  targetDrawingNumber?: string;
 }) {
   const styles = useStyles();
   const ds = DRAWING_STATE_MAP[drawing.state] ?? DRAWING_STATE_MAP[1];
-  const showActions = checkout !== undefined || drawing.state === 1;
+  const isAppendTarget = targetDrawingNumber != null && drawing.number === targetDrawingNumber;
+  const showCheckInActions = checkout !== undefined
+    || (drawing.state !== DrawingState.Available && drawing.state !== DrawingState.None);
   const drawingForPanel = {
     id: drawing.id,
     state: drawing.state as DrawingStateValue,
@@ -371,25 +404,7 @@ function DrawingRow({ drawing, isOpen, checkout, missingSheets }: {
 
   return (
     <AccordionItem value={drawing.id}>
-      <AccordionHeader
-        button={
-          drawing.spLibraryUrl ? (
-            <Tooltip content="Open SharePoint folder" relationship="label">
-              <Button
-                as="a"
-                href={drawing.spLibraryUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                appearance="subtle"
-                icon={<FolderOpen20Regular />}
-                size="small"
-                onClick={(e) => e.stopPropagation()}
-                aria-label="Open SharePoint folder"
-              />
-            </Tooltip>
-          ) : undefined
-        }
-      >
+      <AccordionHeader>
         <div className={styles.drawingRowContent}>
           <Text className={styles.monospace} weight="semibold">{drawing.number ?? drawing.id}</Text>
           <Badge appearance="tint" color={ds.color} size="small">{ds.label}</Badge>
@@ -397,12 +412,29 @@ function DrawingRow({ drawing, isOpen, checkout, missingSheets }: {
       </AccordionHeader>
       <AccordionPanel>
         <div className={styles.sheetList}>
-          {showActions && isOpen && (
+          {showCheckInActions && isOpen && !checkoutEnabled && (
             <div style={{ marginBottom: tokens.spacingVerticalS, paddingBottom: tokens.spacingVerticalS, borderBottom: `1px solid ${tokens.colorNeutralStroke2}` }}>
               <DrawingActionsPanel drawing={drawingForPanel} openCheckout={checkout} />
             </div>
           )}
-          {isOpen && <DrawingSheetList drawingId={drawing.id} />}
+          {showCheckInActions && isOpen && checkoutEnabled && drawing.state !== DrawingState.Available && (
+            <div style={{ marginBottom: tokens.spacingVerticalS, paddingBottom: tokens.spacingVerticalS, borderBottom: `1px solid ${tokens.colorNeutralStroke2}` }}>
+              <DrawingActionsPanel drawing={drawingForPanel} openCheckout={checkout} />
+            </div>
+          )}
+          {isOpen && (
+            <DrawingSheetList
+              drawingId={drawing.id}
+              baseNumber={drawing.number}
+              reservationType={reservationType}
+              documentSubtype={documentSubtype}
+              checkoutEnabled={checkoutEnabled}
+              childNoun={childNoun}
+              appendFirst={isAppendTarget ? appendFirst : undefined}
+              appendLast={isAppendTarget ? appendLast : undefined}
+              toasterId={DETAIL_TOASTER_ID}
+            />
+          )}
         </div>
       </AccordionPanel>
     </AccordionItem>
@@ -482,11 +514,14 @@ export default function ReservationDetail() {
   const query = useReservationDetail(reservationId);
   const queryClient = useQueryClient();
   const pageSize = usePageSize();
+  const appConfig = useAppConfig();
   const { data: currentUser } = useCurrentUser();
+  const { role } = useUserRole();
+  const retryIssueMutation = useRetryIssueNumbers();
+  const retryAppendMutation = useRetryAppend();
   const expandDrawingId = (location.state as { expandDrawingId?: string } | null)?.expandDrawingId;
   const [openItems, setOpenItems] = useState<string[]>(() => expandDrawingId ? [expandDrawingId] : []);
   const [drawingPage, setDrawingPage] = useState(1);
-  const [drawingTab, setDrawingTab] = useState<"all" | "checked-out">("all");
 
   const drawingsQuery = useReservationDrawings(
     query.data?.status === 2 ? reservationId ?? null : null,
@@ -518,26 +553,101 @@ export default function ReservationDetail() {
 
   const res = query.data;
   const status = STATUS_MAP[res.status] ?? STATUS_MAP[1];
+  const recordsLabel = reservationRecordsLabel(res.reservationType, res.documentSubtype);
+  const recordsLabelLower = recordsLabel.toLowerCase();
+  const childNoun = reservationChildNoun(res.reservationType, res.documentSubtype);
+  const checkoutEnabled = isCheckoutEnabledForTaxonomy(
+    appConfig,
+    res.reservationType,
+    res.documentSubtype,
+  );
   const canCancel = res.status === 1 && !!currentUser?.id && currentUser.id === res.submitterId;
-  const numberRange = formatNumberRange(res.issuedNumbers);
+  const numberRange = res.issuedNumbers
+    ? formatNumberRange(res.issuedNumbers)
+    : (res.appendFirst != null && res.appendLast != null
+      ? formatAppendDisplay(res.targetDrawingNumber, res.appendFirst, res.appendLast)
+      : "");
+  const isAppend = res.sequenceType === 2 && !!res.targetDrawingId;
+  const needsIssuanceRetry = res.status === 2 && !res.issuedNumbers && !isAppend;
+  const needsAppendRetry = res.status === 2 && isAppend && res.appendFirst == null;
+  const canRetryIssuance   = (role === "Approver" || role === "Admin") && needsIssuanceRetry;
+  const canRetryAppend     = (role === "Approver" || role === "Admin") && needsAppendRetry;
   const hasComposition = [res.businessCode, res.assetCode, res.unitCode, res.domainCode, res.systemCode, res.kindCode].some(Boolean);
 
-  const filteredDrawings  = drawingTab === "checked-out"
-    ? res.drawings.filter(d => d.state === 2 || d.state === 3)
-    : res.drawings;
-  const totalDrawingPages = Math.max(1, Math.ceil(filteredDrawings.length / pageSize));
+  const allDrawings = res.drawings;
+  const totalDrawingPages = Math.max(1, Math.ceil(allDrawings.length / pageSize));
   const safeDrawingPage   = Math.min(drawingPage, totalDrawingPages);
-  const pagedDrawings     = filteredDrawings.slice((safeDrawingPage - 1) * pageSize, safeDrawingPage * pageSize);
-  const checkedOutCount   = res.drawings.filter(d => d.state === 2 || d.state === 3).length;
+  const pagedDrawings     = allDrawings.slice((safeDrawingPage - 1) * pageSize, safeDrawingPage * pageSize);
 
   return (
     <div className={styles.page}>
+      <Toaster toasterId={DETAIL_TOASTER_ID} />
       {/* Back */}
       <div className={styles.nav}>
         <Button appearance="subtle" icon={<ArrowLeft20Regular />} onClick={() => navigate(-1)}>
           Back
         </Button>
       </div>
+
+      {needsAppendRetry && (
+        <MessageBar intent="warning" style={{ marginBottom: tokens.spacingVerticalM }}>
+          <MessageBarBody>
+            This add-to-existing reservation was approved but child items were not appended.
+            {canRetryAppend ? (
+              <>
+                {" "}
+                <Button
+                  appearance="primary"
+                  size="small"
+                  icon={retryAppendMutation.isPending ? <Spinner size="tiny" /> : <ArrowClockwise20Regular />}
+                  disabled={retryAppendMutation.isPending}
+                  onClick={() => retryAppendMutation.mutate({ reservationId: res.id })}
+                  style={{ marginLeft: tokens.spacingHorizontalS, verticalAlign: "middle" }}
+                >
+                  Retry append
+                </Button>
+              </>
+            ) : (
+              " Ask an approver to open this reservation and retry the append."
+            )}
+            {retryAppendMutation.isError && (
+              <Text block style={{ marginTop: tokens.spacingVerticalS, color: tokens.colorPaletteRedForeground1 }}>
+                {(retryAppendMutation.error as Error).message}
+              </Text>
+            )}
+          </MessageBarBody>
+        </MessageBar>
+      )}
+
+      {needsIssuanceRetry && (
+        <MessageBar intent="warning" style={{ marginBottom: tokens.spacingVerticalM }}>
+          <MessageBarBody>
+            This reservation was approved but issue numbers were never assigned, so no {recordsLabelLower} were created.
+            {canRetryIssuance ? (
+              <>
+                {" "}
+                <Button
+                  appearance="primary"
+                  size="small"
+                  icon={retryIssueMutation.isPending ? <Spinner size="tiny" /> : <ArrowClockwise20Regular />}
+                  disabled={retryIssueMutation.isPending}
+                  onClick={() => retryIssueMutation.mutate({ reservationId: res.id })}
+                  style={{ marginLeft: tokens.spacingHorizontalS, verticalAlign: "middle" }}
+                >
+                  Retry number issuance
+                </Button>
+              </>
+            ) : (
+              " Ask an approver to open this reservation and retry number issuance."
+            )}
+            {retryIssueMutation.isError && (
+              <Text block style={{ marginTop: tokens.spacingVerticalS, color: tokens.colorPaletteRedForeground1 }}>
+                {(retryIssueMutation.error as Error).message}
+              </Text>
+            )}
+          </MessageBarBody>
+        </MessageBar>
+      )}
 
       {/* Header */}
       <div className={styles.header} style={{ borderLeftColor: status.accentToken }}>
@@ -548,6 +658,10 @@ export default function ReservationDetail() {
             <div className={styles.headerMetaCol}>
               <span className={styles.metaLabel}>Submitted</span>
               <Text size={300}>{relativeTime(res.createdon)}</Text>
+            </div>
+            <div className={styles.headerMetaCol}>
+              <span className={styles.metaLabel}>Type</span>
+              <Text size={300} weight="semibold">{res.typeLabel}</Text>
             </div>
             <div className={styles.headerMetaCol}>
               <span className={styles.metaLabel}>Drawing Count</span>
@@ -636,7 +750,7 @@ export default function ReservationDetail() {
         {/* Composition flat row */}
         {hasComposition && (
           <div className={styles.compSection}>
-            <span className={styles.compSectionLabel}>Drawing/Document Number</span>
+            <span className={styles.compSectionLabel}>{NUMBERING_GROUP_LABEL}</span>
             <div className={styles.compRow}>
               {res.businessCode && (
                 <div className={styles.compCol}>
@@ -690,21 +804,9 @@ export default function ReservationDetail() {
       {/* Drawings */}
       <div className={styles.drawingsSection}>
         <div className={styles.drawingsHeading}>
-          <Title3 as="h2" style={{ margin: 0 }}>Drawings</Title3>
-          <Badge appearance="outline" shape="rounded">{filteredDrawings.length}</Badge>
+          <Title3 as="h2" style={{ margin: 0 }}>{recordsLabel}</Title3>
+          <Badge appearance="outline" shape="rounded">{allDrawings.length}</Badge>
           {query.isFetching && !!query.data && <Spinner size="tiny" />}
-          <TabList
-            selectedValue={drawingTab}
-            onTabSelect={(_, d) => {
-              setDrawingTab(d.value as "all" | "checked-out");
-              setDrawingPage(1);
-              setOpenItems([]);
-            }}
-            size="small"
-          >
-            <Tab value="all">All <Badge appearance="outline" size="small">{res.drawings.length}</Badge></Tab>
-            <Tab value="checked-out">Checked Out <Badge appearance="outline" size="small">{checkedOutCount}</Badge></Tab>
-          </TabList>
           <div className={styles.drawingsHeadingActions}>
             {res.drawings.length > 0 && (
               <>
@@ -733,27 +835,26 @@ export default function ReservationDetail() {
                 onClick={() => {
                   void query.refetch();
                   void queryClient.invalidateQueries({ queryKey: ["drawing-sheets"] });
+                  void queryClient.invalidateQueries({ queryKey: ["sheet-checkouts"] });
                 }}
               />
             </Tooltip>
           </div>
         </div>
 
-        {filteredDrawings.length === 0 && (
+        {allDrawings.length === 0 && (
           <MessageBar intent="info">
             <MessageBarBody>
-              {res.drawings.length === 0
-                ? res.status === 1
-                  ? "Drawings will be created once this reservation is approved."
-                  : res.status === 3
-                  ? "No drawings were created — reservation was declined."
-                  : "No drawings found for this reservation."
-                : "No checked-out drawings for this reservation."}
+              {res.status === 1
+                ? `${recordsLabel} will be created once this reservation is approved.`
+                : res.status === 3
+                  ? `No ${recordsLabelLower} were created — reservation was declined.`
+                  : `No ${recordsLabelLower} found for this reservation.`}
             </MessageBarBody>
           </MessageBar>
         )}
 
-        {filteredDrawings.length > 0 && (
+        {allDrawings.length > 0 && (
           <>
             <Accordion
               multiple
@@ -772,6 +873,13 @@ export default function ReservationDetail() {
                     isOpen={openItems.includes(drawing.id)}
                     checkout={co?.checkout}
                     missingSheets={co?.missingSheets}
+                    childNoun={childNoun}
+                    reservationType={res.reservationType}
+                    documentSubtype={res.documentSubtype}
+                    checkoutEnabled={checkoutEnabled}
+                    appendFirst={res.appendFirst}
+                    appendLast={res.appendLast}
+                    targetDrawingNumber={res.targetDrawingNumber}
                   />
                 );
               })}
@@ -788,7 +896,7 @@ export default function ReservationDetail() {
                 <Text size={200}>
                   Page {safeDrawingPage} of {totalDrawingPages}
                   {" · "}
-                  {(safeDrawingPage - 1) * pageSize + 1}–{Math.min(safeDrawingPage * pageSize, filteredDrawings.length)} of {filteredDrawings.length}
+                  {(safeDrawingPage - 1) * pageSize + 1}–{Math.min(safeDrawingPage * pageSize, allDrawings.length)} of {allDrawings.length}
                 </Text>
                 <Button
                   icon={<ChevronRight16Regular />}

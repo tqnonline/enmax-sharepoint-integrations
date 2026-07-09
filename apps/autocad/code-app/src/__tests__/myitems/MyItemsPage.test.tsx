@@ -2,8 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../helpers/renderWithProviders";
 import { MyItemsPage } from "../../features/myitems/MyItemsPage";
-import type { MyReservation } from "../../features/myitems/useMyReservations";
-import type { MyCheckout } from "../../features/myitems/useMyCheckouts";
+import type { MyRecordRow } from "../../features/myitems/useMyRecords";
 
 vi.mock("../../auth/useCurrentUser", () => ({
   useCurrentUser: () => ({ data: { id: "test-user-001", name: "Test User" }, isPending: false }),
@@ -23,7 +22,6 @@ vi.mock("../../config/useAppConfig", () => ({
   }),
 }));
 
-// Composition column resolves lookup GUIDs to codes via these maps.
 vi.mock("../../features/approvals/hooks/useCompositionLookups", () => ({
   useCompositionLookups: () => ({
     data: {
@@ -37,132 +35,171 @@ vi.mock("../../features/approvals/hooks/useCompositionLookups", () => ({
   }),
 }));
 
-const MOCK_RESERVATION: MyReservation = {
-  id:               "res-001",
-  reservationNumber:"RES-00001",
-  status:           1,
-  statusLabel:      "Pending",
-  drawingCount:     2,
-  issuedNumbers:    "",
-  reason:           "Need numbers for project",
-  createdOn:        "2026-05-01T10:00:00Z",
-  approvedOn:       "",
-  approverDisplay:  "",
-  businessId:       "biz-1",
-  assetId:          "ast-1",
-  unitId:           "unit-1",
-  domainId:         "dom-1",
-  systemId:         "sys-1",
-  kindId:           "kind-1",
+const PENDING_RESERVATION: MyRecordRow = {
+  id: "res-001",
+  number: "RES-00001",
+  title: "Need numbers for project",
+  typeLabel: "Drawing",
+  statusLabel: "Pending",
+  state: 1,
+  createdOn: "2026-05-01T10:00:00Z",
+  approvedOn: "",
+  checkedOutOn: "",
+  checkedInOn: "",
+  revisionDate: "",
+  libraryUrl: "",
+  destinationUrl: "",
+  source: "reservation",
+  reservationNumber: "RES-00001",
+  issuedNumbers: "",
+  businessId: "biz-1",
+  assetId: "ast-1",
+  unitId: "unit-1",
+  domainId: "dom-1",
+  systemId: "sys-1",
+  kindId: "kind-1",
+  businessDisplay: "GG",
+  assetDisplay: "CG",
+  unitDisplay: "00",
+  domainDisplay: "ECS",
+  systemDisplay: "AST",
+  kindDisplay: "DD",
+  submittedById: "",
+  submittedByName: "",
+  approvedById: "",
+  approvedByName: "",
 };
 
-const APPROVED_RESERVATION: MyReservation = {
-  ...MOCK_RESERVATION,
-  id:               "res-003",
-  reservationNumber:"RES-00003",
-  status:           2,
-  statusLabel:      "Approved",
-  issuedNumbers:    "[1,2,3]",
+const APPROVED_COMPOSITION: MyRecordRow = {
+  ...PENDING_RESERVATION,
+  id: "res-003",
+  number: "RES-00003",
+  title: "Approved batch for units 1-3",
+  issuedNumbers: "[1,2,3]",
 };
 
-const DECLINED_RESERVATION: MyReservation = {
-  ...MOCK_RESERVATION,
-  id:               "res-002",
-  reservationNumber:"RES-00002",
-  status:           3,
-  statusLabel:      "Declined",
+const CHECKED_OUT_RECORD: MyRecordRow = {
+  id: "drw-001",
+  drawingId: "drawing-001",
+  number: "GG-CG-00-ECS-AST-DD-0001",
+  baseNumber: "GG-CG-00-ECS-AST-DD-0001",
+  sheetNumber: 1,
+  title: "Schematic A",
+  typeLabel: "Standard Document",
+  statusLabel: "Checked Out",
+  state: 2,
+  createdOn: "",
+  approvedOn: "",
+  submittedById: "",
+  submittedByName: "",
+  approvedById: "",
+  approvedByName: "",
+  checkedOutOn: "",
+  checkedInOn: "",
+  revisionDate: "2026-04-01T00:00:00Z",
+  libraryUrl: "https://sharepoint.example.com/drw1",
+  destinationUrl: "https://sharepoint.example.com/dest1",
+  source: "record",
+  businessDisplay: "GG",
+  assetDisplay: "CG",
+  unitDisplay: "00",
+  domainDisplay: "ECS",
+  systemDisplay: "AST",
+  kindDisplay: "DD",
+  enmax_acdnreservationtype: 2,
+  enmax_acdndocumentsubtype: 1,
 };
 
-const MOCK_CHECKOUT: MyCheckout = {
-  checkoutId:         "co-001",
-  drawingId:          "drw-001",
-  drawingNumber:      "GG-CG-00-ECS-AST-DD-0001",
-  drawingTitle:       "Schematic A",
-  drawingLibraryUrl:  "https://sharepoint.example.com/drw1",
-  checkedOutOn:       "2026-04-01T00:00:00Z",
-  daysOut:            49,
-  reminderStage:      0,
-  reminderStageLabel: "None",
-  status:             1,
-  statusLabel:        "Open",
-};
-
-vi.mock("../../features/myitems/useMyReservations", async () => {
-  const actual = await vi.importActual<typeof import("../../features/myitems/useMyReservations")>(
-    "../../features/myitems/useMyReservations",
+vi.mock("../../features/myitems/useMyRecords", async () => {
+  const actual = await vi.importActual<typeof import("../../features/myitems/useMyRecords")>(
+    "../../features/myitems/useMyRecords",
   );
   return {
     ...actual,
-    fetchMyReservationRows: async (_userId: string, showFinalised: boolean) => ({
-      rows: showFinalised
-        ? [MOCK_RESERVATION, APPROVED_RESERVATION, DECLINED_RESERVATION]
-        : [MOCK_RESERVATION, APPROVED_RESERVATION],
-      totalCount: showFinalised ? 3 : 2,
+    fetchMyRecordCounts: async () => ({
+      reservations: { value: 2, capped: false },
+      available:    { value: 0, capped: false },
+      checkedout:   { value: 1, capped: false },
     }),
-    useMyReservations: (showFinalised?: boolean) => ({
-      data: showFinalised
-        ? [MOCK_RESERVATION, APPROVED_RESERVATION, DECLINED_RESERVATION]
-        : [MOCK_RESERVATION, APPROVED_RESERVATION],
-      isPending: false,
-      isError:   false,
-    }),
+    fetchMyRecordRows: async (
+      _userId: string,
+      _typeFilter: string,
+      stateFilter: string,
+    ) => {
+      if (stateFilter === "reservations") {
+        return { rows: [PENDING_RESERVATION, APPROVED_COMPOSITION], totalCount: 2 };
+      }
+      if (stateFilter === "checkedout") {
+        return { rows: [CHECKED_OUT_RECORD], totalCount: 1 };
+      }
+      return { rows: [], totalCount: 0 };
+    },
   };
 });
 
-vi.mock("../../features/myitems/useMyCheckouts", () => ({
-  useMyCheckouts:      () => ({ data: [MOCK_CHECKOUT], isPending: false, isError: false }),
-  fetchMyCheckoutRows: async () => ({ rows: [MOCK_CHECKOUT], totalCount: 1 }),
-}));
-
 afterEach(() => { vi.clearAllMocks(); });
 
-// Test 16 — My Reservations scoped to current user (fetcher receives userId)
-test("My Reservations tab shows user's own reservations", async () => {
+test("shows primary type tabs Drawings and merged documents tab", () => {
   renderWithProviders(<MyItemsPage />);
-  await waitFor(() => expect(screen.getByText("RES-00001")).toBeInTheDocument());
+  expect(screen.getByRole("tab", { name: "Drawings" })).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: /Standard Documents, Procedures & Forms/i })).toBeInTheDocument();
+  expect(screen.queryByRole("tab", { name: /^Standard Documents$/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole("tab", { name: /^Procedure Forms$/i })).not.toBeInTheDocument();
+});
+
+test("shows top-level Query and Clear filter controls on every state tab", async () => {
+  const user = userEvent.setup();
+  renderWithProviders(<MyItemsPage />);
+  expect(screen.getByRole("button", { name: "Query" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Clear filters" })).toBeInTheDocument();
+  await user.click(screen.getByRole("tab", { name: /Checked Out/i }));
+  expect(screen.getByRole("button", { name: "Query" })).toBeInTheDocument();
+  expect(screen.getByLabelText("From date")).toBeInTheDocument();
+});
+
+test("shows secondary state tabs My Reservations, Available, Checked Out", () => {
+  renderWithProviders(<MyItemsPage />);
+  expect(screen.getByRole("tab", { name: /My Reservations/i })).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: /Available/i })).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: /Checked Out/i })).toBeInTheDocument();
+});
+
+test("My Reservations tab shows Reason column for submitted reservations", async () => {
+  renderWithProviders(<MyItemsPage />);
+  await waitFor(() => expect(screen.getByRole("columnheader", { name: "Reason" })).toBeInTheDocument());
+  expect(screen.getByText("Need numbers for project")).toBeInTheDocument();
+  expect(screen.getByText("GG-CG-00-ECS-AST-DD-????")).toBeInTheDocument();
   expect(screen.getAllByText("Pending").length).toBeGreaterThan(0);
 });
 
-// Test 17 — My Reservations hides Declined by default; toggle reveals it
-test("hides Declined reservations by default; show-finalised toggle reveals them", async () => {
-  const user = userEvent.setup();
-  renderWithProviders(<MyItemsPage />);
-  await waitFor(() => expect(screen.getByText("RES-00001")).toBeInTheDocument());
-  expect(screen.queryByText("RES-00002")).not.toBeInTheDocument();
-
-  const toggle = screen.getByRole("switch", { name: /show finalised/i });
-  await user.click(toggle);
-
-  await waitFor(() => expect(screen.getByText("RES-00002")).toBeInTheDocument());
-});
-
-// Test 18 — My Checked Out Drawings tab renders joined checkout + drawing data
-test("My Checked Out Drawings tab shows drawing data from checkout join", async () => {
-  const user = userEvent.setup();
-  renderWithProviders(<MyItemsPage />);
-  await user.click(screen.getByRole("tab", { name: /my checked out drawings/i }));
-  await waitFor(() => expect(screen.getByText("GG-CG-00-ECS-AST-DD-0001")).toBeInTheDocument());
-  expect(screen.getByText("Schematic A")).toBeInTheDocument();
-  expect(screen.getByText("49")).toBeInTheDocument();
-});
-
-// Test 20 — Reservations tab is labelled "My Document/Drawing Number Reservations" (item 12)
-test("reservations tab is labelled 'My Document/Drawing Number Reservations'", () => {
-  renderWithProviders(<MyItemsPage />);
-  expect(screen.getByRole("tab", { name: "My Document/Drawing Number Reservations" })).toBeInTheDocument();
-});
-
-// Test 20b — Composition renders short codes (not display names) + zero-padded
-// issued-number range; pending rows show ???? until numbers are issued.
 test("composition column shows resolved codes and issued-number range", async () => {
   renderWithProviders(<MyItemsPage />);
   await waitFor(() => expect(screen.getByText("GG-CG-00-ECS-AST-DD-0001–0003")).toBeInTheDocument());
   expect(screen.getByText("GG-CG-00-ECS-AST-DD-????")).toBeInTheDocument();
 });
 
-// Test 21 — Reservations grid has no Actions column
-test("reservations grid has no Actions column header", async () => {
+test("Checked Out tab shows record data", async () => {
+  const user = userEvent.setup();
   renderWithProviders(<MyItemsPage />);
-  await waitFor(() => expect(screen.getByText("RES-00001")).toBeInTheDocument());
+  await user.click(screen.getByRole("tab", { name: /Checked Out/i }));
+  await waitFor(() => expect(screen.getByText("GG-CG-00-ECS-AST-DD-0001")).toBeInTheDocument());
+  expect(screen.getByRole("link", { name: /Open in SharePoint/i })).toBeInTheDocument();
+  expect(screen.getByText("Standard Document")).toBeInTheDocument();
+});
+
+test("grid has no Actions column header", async () => {
+  renderWithProviders(<MyItemsPage />);
+  await waitFor(() => expect(screen.getByText("GG-CG-00-ECS-AST-DD-????")).toBeInTheDocument());
   expect(screen.queryByRole("columnheader", { name: "Actions" })).not.toBeInTheDocument();
+});
+
+test("state tabs show a single count badge per state (no duplicate stat strip)", async () => {
+  renderWithProviders(<MyItemsPage />);
+  // Counts now live only on the tabs: reservations=2, checkedout=1, available=0 (hidden).
+  await waitFor(() => {
+    expect(screen.getByRole("tab", { name: /My Reservations.*2/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Checked Out.*1/i })).toBeInTheDocument();
+  });
+  // Available has 0 → no badge digit on that tab.
+  expect(screen.getByRole("tab", { name: /^Available$/i })).toBeInTheDocument();
 });

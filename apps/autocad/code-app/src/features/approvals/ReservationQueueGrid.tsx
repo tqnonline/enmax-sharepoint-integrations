@@ -5,55 +5,90 @@ import {
   Text,
 } from "@fluentui/react-components";
 import { Warning16Regular } from "@fluentui/react-icons";
-import { EnmaxDataGrid } from "../../components/DataGrid";
+import {
+  EnmaxDataGrid,
+  approvedByColumn,
+  dateTimeColumn,
+  peopleFilterIds,
+  sharePointColumn,
+} from "../../components/DataGrid";
 import type { ColumnDef, GridFetchParams } from "../../components/DataGrid";
 import { clientPage } from "../../components/DataGrid/clientPage";
 import type { PendingReservation } from "./hooks/usePendingReservations";
-import { formatComposition } from "./compositionUtils";
+import { formatReservationDisplay } from "./compositionUtils";
 import { usePageSize } from "../../config/usePageSize";
-
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 60)  return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24)   return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
-}
 
 interface Props {
   reservations: PendingReservation[];
   onSelect: (reservation: PendingReservation) => void;
   onBulkApprove?: (selected: PendingReservation[]) => void;
   emptyMessage?: string;
-  countLabel?: string;
+  allRecordsCount?: number;
 }
 
 const COLUMNS: ColumnDef<PendingReservation>[] = [
   {
-    id: "enmax_acdnreservationnumber", header: "ID",
+    id: "enmax_acdnreservationnumber", header: "Reservation #",
     accessor: r => r.enmax_acdnreservationnumber,
     sortable: true, filterable: true,
   },
+  sharePointColumn<PendingReservation>(() => ""),
   {
-    id: "requester", header: "Requester",
-    accessor: r => r._createdby_value_Formatted,
-    sortable: true, filterable: true,
+    id: "reason", header: "Reason",
+    accessor: r => r.enmax_acdnreason ?? "",
+    filterable: true,
+    filterType: "text",
+    wrap: true,
+    width: 280,
+    cell: r => (
+      <Text title={r.enmax_acdnreason}>
+        {r.enmax_acdnreason?.slice(0, 80)}{(r.enmax_acdnreason?.length ?? 0) > 80 ? "…" : ""}
+      </Text>
+    ),
+  },
+  {
+    id: "submittedBy",
+    header: "Submitted By",
+    accessor: r => r.submittedByName,
+    sortable: true,
+    filterable: true,
+    filterType: "people",
     cell: r => (
       <Persona
-        name={r._createdby_value_Formatted}
+        name={r.submittedByName}
         secondaryText={r.createdByJobTitle || undefined}
         size="small"
       />
     ),
   },
   {
-    id: "composition", header: "Drawing/Document Number",
-    accessor: r => formatComposition(r),
+    id: "typeLabel", header: "Type",
+    accessor: r => r.typeLabel,
+    sortable: true,
+    width: 160,
+    cell: r => <Text>{r.typeLabel}</Text>,
+  },
+  {
+    id: "composition", header: "Issued number",
+    accessor: r => formatReservationDisplay({
+      ...r,
+      enmax_acdnissuednumbers: r.enmax_acdnissuednumbers,
+      appendFirst: r.appendFirst,
+      appendLast: r.appendLast,
+      targetDrawingId: r.targetDrawingId,
+      sequenceType: r.sequenceType,
+    }),
     filterable: true,
     cell: r => (
       <Text style={{ fontFamily: "monospace", whiteSpace: "nowrap" }}>
-        {formatComposition(r)}
+        {formatReservationDisplay({
+          ...r,
+          enmax_acdnissuednumbers: r.enmax_acdnissuednumbers,
+          appendFirst: r.appendFirst,
+          appendLast: r.appendLast,
+          targetDrawingId: r.targetDrawingId,
+          sequenceType: r.sequenceType,
+        })}
       </Text>
     ),
   },
@@ -72,25 +107,16 @@ const COLUMNS: ColumnDef<PendingReservation>[] = [
       : <>No</>,
     visibleByDefault: false,
   },
-  {
-    id: "reason", header: "Reason",
-    accessor: r => r.enmax_acdnreason ?? "",
-    cell: r => (
-      <Text title={r.enmax_acdnreason}>
-        {r.enmax_acdnreason?.slice(0, 80)}{(r.enmax_acdnreason?.length ?? 0) > 80 ? "…" : ""}
-      </Text>
-    ),
-  },
-  {
-    id: "createdon", header: "Submitted",
+  dateTimeColumn<PendingReservation>({
+    id: "createdon",
+    header: "Submitted On",
     accessor: r => r.createdon,
-    sortable: true,
-    width: 120,
-    cell: r => <>{relativeTime(r.createdon)}</>,
-  },
+    width: 160,
+  }),
+  approvedByColumn<PendingReservation>(),
 ];
 
-export function ReservationQueueGrid({ reservations, onSelect, onBulkApprove, emptyMessage }: Props) {
+export function ReservationQueueGrid({ reservations, onSelect, onBulkApprove, emptyMessage, allRecordsCount }: Props) {
   const pageSize = usePageSize();
 
   const fetcher = useCallback(
@@ -98,14 +124,24 @@ export function ReservationQueueGrid({ reservations, onSelect, onBulkApprove, em
       clientPage(reservations, params, {
         searchText: r => [
           r.enmax_acdnreservationnumber ?? "",
-          r._createdby_value_Formatted ?? "",
+          r.submittedByName ?? "",
+          r.approvedByName ?? "",
           r.enmax_acdnreason ?? "",
         ],
-        // Item 13: inline search on Requestor + Drawing/Document Number.
         filterText: {
           enmax_acdnreservationnumber: r => r.enmax_acdnreservationnumber ?? "",
-          requester: r => r._createdby_value_Formatted ?? "",
-          composition: r => formatComposition(r),
+          composition: r => formatReservationDisplay({
+            ...r,
+            enmax_acdnissuednumbers: r.enmax_acdnissuednumbers,
+            appendFirst: r.appendFirst,
+            appendLast: r.appendLast,
+            targetDrawingId: r.targetDrawingId,
+            sequenceType: r.sequenceType,
+          }),
+        },
+        filterIds: {
+          submittedBy: peopleFilterIds.submittedBy,
+          approvedBy: peopleFilterIds.approvedBy,
         },
       }),
     [reservations],
@@ -136,6 +172,7 @@ export function ReservationQueueGrid({ reservations, onSelect, onBulkApprove, em
         defaultSort={{ column: "createdon", direction: "desc" }}
         emptyMessage={emptyMessage ?? "No reservations found."}
         errorMessage="Failed to load reservations."
+        allRecordsCount={allRecordsCount}
       />
     </div>
   );

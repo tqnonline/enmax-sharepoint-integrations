@@ -67,6 +67,7 @@ export function NotificationsPage() {
         <NotificationList
           notifications={notifications}
           loading={feedQ.isPending}
+          error={feedQ.isError}
           onOpen={openItem}
           onMarkRead={markRead.mutate}
         />

@@ -160,6 +160,18 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         [Fact]
+        public void Execute_NewChildren_StartInAvailableState()
+        {
+            var (ctx, pluginCtx, _, _) = BuildContext(count: 1);
+
+            ctx.ExecutePluginWith<AddChildItemsPlugin>(pluginCtx);
+
+            var sheet = ctx.CreateQuery(SheetEntity).Single();
+            sheet.GetAttributeValue<OptionSetValue>("enmax_acdnstate")?.Value.Should().Be(2,
+                because: "new child sheets must be stamped as sheet Available");
+        }
+
+        [Fact]
         public void Execute_AllowsDrawingReservation_GuardDoesNotBlock()
         {
             // Drawing reservation (type=1) — the base-only guard must not trip.

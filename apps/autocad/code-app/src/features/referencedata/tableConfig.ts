@@ -16,8 +16,6 @@ export const REF_TABLES: RefTableConfig[] = [
   { displayName: "Record Type",                  entityName: "enmax_autocadrecordtypes",    entityIdField: "enmax_autocadrecordtypeid"  },
   { displayName: "Record Phase",                 entityName: "enmax_autocadrecordphases",   entityIdField: "enmax_autocadrecordphaseid" },
   { displayName: "Vendor",                       entityName: "enmax_autocadvendors",        entityIdField: "enmax_autocadvendorid"      },
-  { displayName: "Approved BB–AA Combinations",  entityName: "enmax_autocadbusinessassets", entityIdField: "enmax_autocadbusinessassetid", isJunction: true, junctionFields: ["_enmax_acdnbusiness_value", "_enmax_acdnasset_value"] },
-  { displayName: "Asset–Unit",                   entityName: "enmax_autocadassetunits",     entityIdField: "enmax_autocadassetunitid",    isJunction: true, junctionFields: ["_enmax_acdnasset_value", "_enmax_acdnunit_value"] },
   { displayName: "System Scoping Rule",          entityName: "enmax_autocadsystemscopes",   entityIdField: "enmax_autocadsystemscopeid",  isJunction: true, junctionFields: ["_enmax_acdnsystem_value"] },
   { displayName: "Number Sequences",             entityName: "enmax_autocadnumbersequences", entityIdField: "enmax_autocadnumbersequenceid" },
 ];

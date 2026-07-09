@@ -1,24 +1,26 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   Badge,
   Button,
   Field,
-  Input,
   Select,
   Text,
   Title2,
   makeStyles,
   tokens,
 } from "@fluentui/react-components";
-import { ArrowDownloadRegular, FilterDismissRegular, SearchRegular } from "@fluentui/react-icons";
+import { ArrowDownloadRegular } from "@fluentui/react-icons";
 import { Enmax_autocadauditeventsService } from "../../generated";
 import { useUserRole } from "../../auth/useUserRole";
 import { exportToCsv } from "../../components/DataGrid/csvExport";
-import { EnmaxDataGrid } from "../../components/DataGrid";
-import type { ColumnDef, GridFetchParams } from "../../components/DataGrid";
+import { EnmaxDataGrid, GridQueryFilterBar, dateTimeColumn } from "../../components/DataGrid";
+import type { ColumnDef, GridFetchParams, GridQueryFilterDraft } from "../../components/DataGrid";
+import { clientPage } from "../../components/DataGrid/clientPage";
 import { auditEventColor } from "./auditPills";
 import { buildAuditFilter, type AppliedFilters } from "./auditFilter";
 import { logDataverseError } from "../../components/DataGrid/dataverseError";
+import { formatGridDateTime } from "../../lib/formatDateTime";
+import { defaultGridDateRange } from "../../lib/dateRangeDefaults";
 
 const EVENTS: Record<number, string> = {
   0: "None",
@@ -40,8 +42,6 @@ const SOURCES: Record<number, string> = {
   4: "Action",
 };
 
-const DEFAULT_DAYS = 7;
-// Dataverse caps a single page at 5000 rows; the date filter keeps the window small.
 const MAX_AUDIT_ROWS = 5000;
 
 interface AuditRow {
@@ -56,6 +56,7 @@ interface AuditRow {
   reason: string;
   source: number;
   sourceLabel: string;
+  actedById: string;
   actedBy: string;
   actedOnBehalfOf: string;
 }
@@ -70,11 +71,10 @@ type AuditRaw = {
   enmax_acdnfromstate?: string;
   enmax_acdntostate?: string;
   enmax_acdnreason?: string;
+  "_enmax_acdnactedby_value"?: string;
   "_enmax_acdnactedby_value@OData.Community.Display.V1.FormattedValue"?: string;
   "_enmax_acdnactedonbehalfof_value@OData.Community.Display.V1.FormattedValue"?: string;
 };
-
-function toDate(s: string) { return s ? new Date(s).toLocaleDateString() + " " + new Date(s).toLocaleTimeString() : ""; }
 
 function toAuditRow(r: AuditRaw): AuditRow {
   const event  = r.enmax_acdnevent  ?? 0;
@@ -91,13 +91,19 @@ function toAuditRow(r: AuditRaw): AuditRow {
     reason:          r.enmax_acdnreason       ?? "",
     source,
     sourceLabel:     SOURCES[source] ?? String(source),
+    actedById:       r._enmax_acdnactedby_value ?? "",
     actedBy:         r["_enmax_acdnactedby_value@OData.Community.Display.V1.FormattedValue"] ?? "",
     actedOnBehalfOf: r["_enmax_acdnactedonbehalfof_value@OData.Community.Display.V1.FormattedValue"] ?? "",
   };
 }
 
 const AUDIT_COLS: ColumnDef<AuditRow>[] = [
-  { id: "createdOn",       header: "Acted On",      accessor: r => r.createdOn,                          sortable: true, cell: r => <Text size={200}>{toDate(r.createdOn)}</Text>, exportFormatter: v => toDate(String(v)) },
+  dateTimeColumn<AuditRow>({
+    id: "createdOn",
+    header: "Acted On",
+    accessor: r => r.createdOn,
+    cell: r => <Text size={200}>{formatGridDateTime(r.createdOn)}</Text>,
+  }),
   { id: "eventLabel",      header: "Event",          accessor: r => r.eventLabel,                         sortable: true, cell: r => <Badge appearance="filled" color={auditEventColor(r.event)}>{r.eventLabel}</Badge> },
   { id: "subjectTable",    header: "Subject Table",  accessor: r => r.subjectTable,                       sortable: true, cell: r => <Text size={200}>{r.subjectTable}</Text> },
   { id: "subjectId",       header: "Subject ID",     accessor: r => r.subjectId,                          sortable: true, cell: r => <Text size={200}>{r.subjectId}</Text> },
@@ -110,35 +116,63 @@ const AUDIT_COLS: ColumnDef<AuditRow>[] = [
 
 const useStyles = makeStyles({
   root:    { display: "flex", flexDirection: "column", height: "100%", gap: tokens.spacingVerticalM },
-  filters: { display: "flex", flexWrap: "wrap", gap: tokens.spacingHorizontalM, alignItems: "flex-end" },
   spacer:  { flex: 1 },
   grid:    { flex: 1, overflow: "hidden" },
 });
+
+type AuditFilterDraft = GridQueryFilterDraft & {
+  filterEvent: string;
+  filterTable: string;
+  filterSource: string;
+  peopleIds: string[];
+};
+
+function defaultAuditDraft(): AuditFilterDraft {
+  const { from, to } = defaultGridDateRange();
+  return {
+    number: "",
+    from,
+    to,
+    filterEvent: "",
+    filterTable: "",
+    filterSource: "",
+    peopleIds: [],
+  };
+}
+
+function draftToApplied(draft: AuditFilterDraft): AppliedFilters {
+  return {
+    dateFrom: draft.from,
+    dateTo: draft.to,
+    filterEvent: draft.filterEvent,
+    filterTable: draft.filterTable,
+    filterSubjectId: draft.number.trim(),
+    filterSource: draft.filterSource,
+    peopleIds: draft.peopleIds,
+  };
+}
 
 export function AuditPage() {
   const styles = useStyles();
   const { role } = useUserRole();
   const isAdmin = role === "Admin";
 
-  const today = new Date();
-  const defaultFrom = new Date(today.getTime() - DEFAULT_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const defaultTo   = today.toISOString().slice(0, 10);
+  const [filterDraft, setFilterDraft] = useState(defaultAuditDraft);
+  const [applied, setApplied] = useState<AppliedFilters>(() => draftToApplied(defaultAuditDraft()));
 
-  const [dateFrom,        setDateFrom]        = useState(defaultFrom);
-  const [dateTo,          setDateTo]          = useState(defaultTo);
-  const [filterEvent,     setFilterEvent]     = useState("");
-  const [filterTable,     setFilterTable]     = useState("");
-  const [filterSubjectId, setFilterSubjectId] = useState("");
-  const [filterSource,    setFilterSource]    = useState("");
-
-  const [applied, setApplied] = useState<AppliedFilters>({
-    dateFrom:        defaultFrom,
-    dateTo:          defaultTo,
-    filterEvent:     "",
-    filterTable:     "",
-    filterSubjectId: "",
-    filterSource:    "",
-  });
+  const auditQueryKey = useMemo(
+    () => [
+      "audit-events",
+      applied.dateFrom,
+      applied.dateTo,
+      applied.filterEvent,
+      applied.filterTable,
+      applied.filterSubjectId,
+      applied.filterSource,
+      applied.peopleIds.join(","),
+    ],
+    [applied],
+  );
 
   const auditFetcher = useCallback(async (params: GridFetchParams): Promise<{ rows: AuditRow[]; totalCount: number }> => {
     const filter = buildAuditFilter(applied);
@@ -155,9 +189,6 @@ export function AuditPage() {
       ? [`${sortField} ${params.sort!.direction}`]
       : ["createdon desc"];
 
-    // Dataverse rejects $skip ("Skip Clause is not supported in CRM"), so we cannot
-    // page server-side here. Fetch the (date-bounded) window in one request and page
-    // client-side — same approach as Reference Data / My Items.
     const result = await Enmax_autocadauditeventsService.getAll({
       filter,
       select:  [
@@ -173,11 +204,7 @@ export function AuditPage() {
       throw new Error("Audit fetch failed");
     }
     const allRows = (result.data ?? []).map(r => toAuditRow(r as AuditRaw));
-    const totalCount = allRows.length;
-    const start = params.page * params.pageSize;
-    const rows = allRows.slice(start, start + params.pageSize);
-
-    return { rows, totalCount };
+    return clientPage(allRows, params);
   }, [applied]);
 
   async function handleExport() {
@@ -190,21 +217,14 @@ export function AuditPage() {
     );
   }
 
+  function handleQuery() {
+    setApplied(draftToApplied(filterDraft));
+  }
+
   function clearFilters() {
-    setDateFrom(defaultFrom);
-    setDateTo(defaultTo);
-    setFilterEvent("");
-    setFilterTable("");
-    setFilterSubjectId("");
-    setFilterSource("");
-    setApplied({
-      dateFrom:        defaultFrom,
-      dateTo:          defaultTo,
-      filterEvent:     "",
-      filterTable:     "",
-      filterSubjectId: "",
-      filterSource:    "",
-    });
+    const cleared = defaultAuditDraft();
+    setFilterDraft(cleared);
+    setApplied(draftToApplied(cleared));
   }
 
   return (
@@ -217,58 +237,54 @@ export function AuditPage() {
         )}
       </div>
 
-      <div className={styles.filters} role="search" aria-label="Audit filters">
-        <Field label="From date">
-          <Input type="date" value={dateFrom} onChange={(_, d) => setDateFrom(d.value)} aria-label="From date" />
-        </Field>
-        <Field label="To date">
-          <Input type="date" value={dateTo} onChange={(_, d) => setDateTo(d.value)} aria-label="To date" />
-        </Field>
-        <Field label="Event">
-          <Select value={filterEvent} onChange={(_, d) => setFilterEvent(d.value)} aria-label="Filter by event">
-            <option value="">All events</option>
-            {Object.entries(EVENTS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </Select>
-        </Field>
-        <Field label="Subject Table">
-          <Select value={filterTable} onChange={(_, d) => setFilterTable(d.value)} aria-label="Filter by subject table">
-            <option value="">All tables</option>
-            <option value="enmax_autocaddrawing">Drawing</option>
-            <option value="enmax_autocadcheckout">Checkout</option>
-            <option value="enmax_autocadreservation">Reservation</option>
-            <option value="enmax_autocadbusiness">Business</option>
-            <option value="enmax_autocadasset">Asset</option>
-            <option value="enmax_autocadunit">Unit</option>
-            <option value="enmax_autocaddomain">Domain</option>
-            <option value="enmax_autocadsystem">System</option>
-            <option value="enmax_autocadkind">Kind</option>
-            <option value="enmax_autocadrecordtype">Record Type</option>
-            <option value="enmax_autocadrecordphase">Record Phase</option>
-            <option value="enmax_autocadvendor">Vendor</option>
-          </Select>
-        </Field>
-        <Field label="Subject ID">
-          <Input value={filterSubjectId} onChange={(_, d) => setFilterSubjectId(d.value)} placeholder="GUID" aria-label="Filter by subject ID" />
-        </Field>
-        <Field label="Source">
-          <Select value={filterSource} onChange={(_, d) => setFilterSource(d.value)} aria-label="Filter by source">
-            <option value="">All sources</option>
-            {Object.entries(SOURCES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </Select>
-        </Field>
-        <Button
-          appearance="primary"
-          icon={<SearchRegular />}
-          onClick={() => setApplied({ dateFrom, dateTo, filterEvent, filterTable, filterSubjectId, filterSource })}
-        >
-          Query
-        </Button>
-        <Button appearance="subtle" icon={<FilterDismissRegular />} onClick={clearFilters} aria-label="Clear filters">Clear</Button>
-      </div>
+      <GridQueryFilterBar
+        numberLabel="Subject ID"
+        numberPlaceholder="GUID or identifier"
+        draft={{ number: filterDraft.number, from: filterDraft.from, to: filterDraft.to }}
+        onDraftChange={(patch) => setFilterDraft((prev) => ({ ...prev, ...patch }))}
+        onQuery={handleQuery}
+        onClear={clearFilters}
+        personLabel="Acted by"
+        peopleIds={filterDraft.peopleIds}
+        onPeopleChange={(ids) => setFilterDraft((prev) => ({ ...prev, peopleIds: ids }))}
+        extraFields={(
+          <>
+            <Field label="Event">
+              <Select value={filterDraft.filterEvent} onChange={(_, d) => setFilterDraft((prev) => ({ ...prev, filterEvent: d.value }))} aria-label="Filter by event">
+                <option value="">All events</option>
+                {Object.entries(EVENTS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </Select>
+            </Field>
+            <Field label="Subject Table">
+              <Select value={filterDraft.filterTable} onChange={(_, d) => setFilterDraft((prev) => ({ ...prev, filterTable: d.value }))} aria-label="Filter by subject table">
+                <option value="">All tables</option>
+                <option value="enmax_autocaddrawing">Drawing</option>
+                <option value="enmax_autocadcheckout">Checkout</option>
+                <option value="enmax_autocadreservation">Reservation</option>
+                <option value="enmax_autocadbusiness">Business</option>
+                <option value="enmax_autocadasset">Asset</option>
+                <option value="enmax_autocadunit">Unit</option>
+                <option value="enmax_autocaddomain">Domain</option>
+                <option value="enmax_autocadsystem">System</option>
+                <option value="enmax_autocadkind">Kind</option>
+                <option value="enmax_autocadrecordtype">Record Type</option>
+                <option value="enmax_autocadrecordphase">Record Phase</option>
+                <option value="enmax_autocadvendor">Vendor</option>
+              </Select>
+            </Field>
+            <Field label="Source">
+              <Select value={filterDraft.filterSource} onChange={(_, d) => setFilterDraft((prev) => ({ ...prev, filterSource: d.value }))} aria-label="Filter by source">
+                <option value="">All sources</option>
+                {Object.entries(SOURCES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </Select>
+            </Field>
+          </>
+        )}
+      />
 
       <div className={styles.grid}>
         <EnmaxDataGrid
-          queryKey={["audit-events", applied.dateFrom, applied.dateTo, applied.filterEvent, applied.filterTable, applied.filterSubjectId, applied.filterSource]}
+          queryKey={auditQueryKey}
           fetcher={auditFetcher}
           columns={AUDIT_COLS}
           rowKey={r => r.id}

@@ -24,11 +24,13 @@ export interface ColumnDef<T> {
   cell?: (row: T) => ReactNode;
   sortable?: boolean;
   filterable?: boolean;
-  filterType?: "text" | "select" | "date";
+  filterType?: "text" | "select" | "date" | "people";
   filterOptions?: { value: string; label: string }[];
   exportFormatter?: (value: unknown) => string;
   visibleByDefault?: boolean;
   width?: number | "auto";
+  /** When true, cell content may wrap onto multiple lines. Default is single-line with horizontal scroll. */
+  wrap?: boolean;
 }
 
 export interface RowAction<T> {
@@ -54,8 +56,13 @@ export interface EnmaxDataGridProps<T> {
   bulkActions?: BulkAction<T>[];
   /** CSV export toolbar button. Defaults to true (item 11: on every grid, all users). */
   enableExport?: boolean;
-  /** File name for the CSV export. Defaults to "export.csv". */
+  /**
+   * Base name for the download. Accepts a prefix (`my-reservations`) or a legacy
+   * `*.csv` string. The grid stamps a local timestamp onto the file for emailing
+   * (content remains CSV; toolbar label is "Export to Excel").
+   */
   exportFileName?: string;
+  /** @deprecated Columns dropdown removed — all columns render; prop kept for call-site compat. */
   enableColumnVisibility?: boolean;
   defaultSort?: { column: string; direction: "asc" | "desc" };
   initialPageSize?: number;
@@ -70,4 +77,6 @@ export interface EnmaxDataGridProps<T> {
   requireSearch?: boolean;
   /** Prompt shown while requireSearch is active and no query is entered yet. */
   searchPrompt?: string;
+  /** When set with totalCount, footer shows "X of Y records" (filtered vs all). */
+  allRecordsCount?: number;
 }

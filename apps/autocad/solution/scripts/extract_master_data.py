@@ -196,7 +196,7 @@ def _extract(
 
     # Each column in the Excel is an independent value list (not relational).
     # Parent relationships (asset→business, unit→asset) cannot be inferred here.
-    # Junction tables (approved_bb_aa, asset_unit) ship empty; populate manually.
+    # Junction tables (system_scope) ship empty; populate manually if needed.
     buckets: dict[str, list[dict]] = {
         "business": [], "asset": [], "unit": [],
         "domain": [], "system": [], "kind": [],
@@ -309,18 +309,14 @@ def main() -> int:
         key = filename.replace(".yaml", "")
         _write_yaml(SEED_REF_DIR / filename, table, ["code"], None, extracted[key])
 
-    # Junction tables ship empty; parent-child relationships must be populated manually
-    # after Maker UI authoring confirms which BB–AA and Asset–Unit pairs are valid.
+    # Junction table ships empty; populate manually if system scoping rules are needed.
     for filename, table, nk_cols in [
-        ("approved_bb_aa.yaml", "enmax_autocadbusinessasset", ["business_code", "asset_code"]),
-        ("asset_unit.yaml",     "enmax_autocadassetunit",     ["asset_code", "unit_code"]),
         ("system_scope.yaml",   "enmax_autocadsystemscope",   ["system_code", "scope_type", "scope_value"]),
     ]:
         _write_yaml(SEED_REF_DIR / filename, table, nk_cols, None, [])
 
     print("\nExtraction complete.")
-    print("NOTE: approved_bb_aa.yaml, asset_unit.yaml, system_scope.yaml are empty stubs.")
-    print("      Populate them manually after Maker UI authoring.")
+    print("NOTE: system_scope.yaml is an empty stub — populate manually if needed.")
     return 0
 
 

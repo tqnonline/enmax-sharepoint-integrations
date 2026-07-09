@@ -84,7 +84,7 @@ test("CSV export button present for User role (all users can export)", async () 
     <EnmaxDataGrid queryKey={["test-export"]} fetcher={makeFetcher(rows)} columns={COLUMNS} rowKey={r => r.id} enableExport />,
   );
   await waitFor(() => expect(screen.getByText("Row 0")).toBeInTheDocument());
-  expect(screen.getByRole("button", { name: /export csv/i })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /export to excel/i })).toBeInTheDocument();
 });
 
 // Test 5 — CSV export button visible and clickable for Admin
@@ -93,26 +93,26 @@ test("CSV export button present for Admin", async () => {
   renderWithProviders(
     <EnmaxDataGrid queryKey={["test-export-admin"]} fetcher={makeFetcher(rows)} columns={COLUMNS} rowKey={r => r.id} enableExport />,
   );
-  await waitFor(() => screen.getByRole("button", { name: /export csv/i }));
-  expect(screen.getByRole("button", { name: /export csv/i })).toBeInTheDocument();
+  await waitFor(() => screen.getByRole("button", { name: /export to excel/i }));
+  expect(screen.getByRole("button", { name: /export to excel/i })).toBeInTheDocument();
 });
 
 // Test 5b — WS4 item 11: export defaults ON (no enableExport prop) and can be opted out
-test("CSV export defaults on, and is hidden only when enableExport={false}", async () => {
+test("Excel export defaults on, and is hidden only when enableExport={false}", async () => {
   mockRole.value = "User";
   const rows = makeRows(3);
   const { unmount } = renderWithProviders(
     <EnmaxDataGrid queryKey={["test-export-default"]} fetcher={makeFetcher(rows)} columns={COLUMNS} rowKey={r => r.id} />,
   );
   await waitFor(() => expect(screen.getByText("Row 0")).toBeInTheDocument());
-  expect(screen.getByRole("button", { name: /export csv/i })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /export to excel/i })).toBeInTheDocument();
   unmount();
 
   renderWithProviders(
     <EnmaxDataGrid queryKey={["test-export-off"]} fetcher={makeFetcher(rows)} columns={COLUMNS} rowKey={r => r.id} enableExport={false} />,
   );
   await waitFor(() => expect(screen.getByText("Row 0")).toBeInTheDocument());
-  expect(screen.queryByRole("button", { name: /export csv/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /export to excel/i })).not.toBeInTheDocument();
 });
 
 // Test 6 — Quick-search debounces (state reflected in search params)
@@ -148,20 +148,20 @@ test("column filter updates URL search params (f.<col> key)", async () => {
   }, { timeout: 3000 });
 });
 
-// Test 8 — Column visibility menu toggles columns
-test("column visibility menu can hide a column", async () => {
-  const user = userEvent.setup();
+// Test 8 — Columns with visibleByDefault: false are hidden; others remain visible
+test("columns with visibleByDefault false are hidden by default", async () => {
+  const cols: ColumnDef<Row>[] = [
+    ...COLUMNS,
+    { id: "hidden", header: "Hidden", accessor: r => r.name, visibleByDefault: false },
+  ];
   const rows = makeRows(2);
   renderWithProviders(
-    <EnmaxDataGrid queryKey={["test-vis"]} fetcher={makeFetcher(rows)} columns={COLUMNS} rowKey={r => r.id} enableColumnVisibility />,
+    <EnmaxDataGrid queryKey={["test-vis"]} fetcher={makeFetcher(rows)} columns={cols} rowKey={r => r.id} />,
   );
   await waitFor(() => expect(screen.getByText("Row 0")).toBeInTheDocument());
   expect(screen.getByRole("columnheader", { name: "Name" })).toBeInTheDocument();
-
-  await user.click(screen.getByRole("button", { name: /columns/i }));
-  await user.click(screen.getByRole("menuitem", { name: /^Name$/ }));
-
-  await waitFor(() => expect(screen.queryByRole("columnheader", { name: "Name" })).not.toBeInTheDocument());
+  expect(screen.queryByRole("columnheader", { name: "Hidden" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /columns/i })).not.toBeInTheDocument();
 });
 
 // Test 9 — Sort change triggers refetch with updated params

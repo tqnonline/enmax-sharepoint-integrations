@@ -64,10 +64,10 @@ export function MyWorkCards({ checkouts, checkoutsLoading, reservations, reserva
         title="My Document/Drawing Number Reservations"
         count={reservations.length}
         countColor="informative"
-        viewAllTo="/my-items"
+        viewAllTo="/my-items?type=drawings&state=reservations"
         isLoading={reservationsLoading}
         isEmpty={topReservations.length === 0}
-        emptyText="No active reservations. Reserve a Drawing/Document Number to get started."
+        emptyText="No active reservations. Reserve a Drawing Number or Document to get started."
       >
         {topReservations.map((r) => {
           const badge = RES_BADGE[r.status] ?? { label: r.statusLabel, color: "subtle" as BadgeColor };
@@ -86,7 +86,7 @@ export function MyWorkCards({ checkouts, checkoutsLoading, reservations, reserva
         title="My Checked Out Drawings"
         count={checkouts.length}
         countColor="important"
-        viewAllTo="/my-items?tab=checkouts"
+        viewAllTo="/my-items?type=drawings&state=checkedout"
         isLoading={checkoutsLoading}
         isEmpty={topCheckouts.length === 0}
         emptyText="No open Check Outs. Reserve and Check Out a drawing to start working."
@@ -94,8 +94,8 @@ export function MyWorkCards({ checkouts, checkoutsLoading, reservations, reserva
         {topCheckouts.map((c) => {
           const badge = CHK_BADGE[c.status] ?? { label: c.statusLabel, color: "subtle" as BadgeColor };
           return (
-            <div key={c.checkoutId} className={styles.row} onClick={() => navigate("/my-items?tab=checkouts")} role="button" tabIndex={0}
-              onKeyDown={(e) => { if (e.key === "Enter") navigate("/my-items?tab=checkouts"); }}>
+            <div key={c.checkoutId} className={styles.row} onClick={() => navigate("/my-items?type=drawings&state=checkedout")} role="button" tabIndex={0}
+              onKeyDown={(e) => { if (e.key === "Enter") navigate("/my-items?type=drawings&state=checkedout"); }}>
               <Text className={styles.num} title={c.drawingNumber}>{c.drawingNumber || "—"}</Text>
               <Badge className={styles.badge} appearance="tint" color={badge.color} shape="rounded">{badge.label}</Badge>
               {c.checkedOutOn && <Text className={styles.meta}>{relativeTime(c.checkedOutOn)}</Text>}

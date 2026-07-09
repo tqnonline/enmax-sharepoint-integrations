@@ -1,4 +1,4 @@
-"""Generate reference + combination seed YAML from the Generation Drawing
+"""Generate reference seed YAML from the Generation Drawing
 Information Category workbook (LITERAL labels; intentionally overrides PRD §22 —
 see docs/superpowers/specs/2026-06-01-master-reference-data-load-design.md).
 
@@ -100,7 +100,7 @@ def _reference_rows(values: list[tuple[str, str]]) -> list[dict]:
 
 
 def build(workbook: Path) -> dict[str, dict]:
-    """Read the workbook; return {filename: yaml-doc-dict} for all 11 files."""
+    """Read the workbook; return {filename: yaml-doc-dict} for all reference files."""
     import openpyxl
     wb = openpyxl.load_workbook(workbook, read_only=True, data_only=True)
     ws = wb.active  # the workbook has a single sheet
@@ -125,30 +125,6 @@ def build(workbook: Path) -> dict[str, dict]:
             "table": table, "natural_key_columns": ["code"], "rows": _reference_rows(collected[key])
         }
 
-    asset_codes = [r["code"] for r in docs["asset.yaml"]["rows"]]
-    unit_codes = [r["code"] for r in docs["unit.yaml"]["rows"]]
-    business_codes = [r["code"] for r in docs["business.yaml"]["rows"]]
-
-    docs["approved_bb_aa.yaml"] = {
-        "table": "enmax_autocadbusinessasset",
-        "natural_key_columns": ["business_code", "asset_code"],
-        "lookups": {
-            "business": {"table": "enmax_autocadbusiness", "key": "code", "source_column": "business_code"},
-            "asset": {"table": "enmax_autocadasset", "key": "code", "source_column": "asset_code"},
-        },
-        "rows": [{"business_code": b, "asset_code": a, "name": f"{b}-{a}"}
-                 for b in business_codes for a in asset_codes],
-    }
-    docs["asset_unit.yaml"] = {
-        "table": "enmax_autocadassetunit",
-        "natural_key_columns": ["asset_code", "unit_code"],
-        "lookups": {
-            "asset": {"table": "enmax_autocadasset", "key": "code", "source_column": "asset_code"},
-            "unit": {"table": "enmax_autocadunit", "key": "code", "source_column": "unit_code"},
-        },
-        "rows": [{"asset_code": a, "unit_code": u, "name": f"{a}-{u}"}
-                 for a in asset_codes for u in unit_codes],
-    }
     docs["system_scope.yaml"] = {
         "table": "enmax_autocadsystemscope",
         "natural_key_columns": ["system_code", "scope_type", "scope_value"],

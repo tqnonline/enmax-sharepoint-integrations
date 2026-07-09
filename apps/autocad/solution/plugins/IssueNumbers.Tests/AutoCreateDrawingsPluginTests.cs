@@ -33,7 +33,9 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 int[] numbers,
                 int status       = StatusApproved,
                 int sheetsPer    = 2,
-                bool includeCodes = true)
+                bool includeCodes = true,
+                int? reservationType = null,
+                int? documentSubtype = null)
         {
             var ctx           = new XrmFakedContext();
             var reservationId = Guid.NewGuid();
@@ -78,6 +80,11 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 ["enmax_acdnsheetsperdrawing"]= sheetsPer,
                 ["ownerid"]                  = new EntityReference("systemuser", ownerId),
             };
+
+            if (reservationType.HasValue)
+                post["enmax_acdnreservationtype"] = new OptionSetValue(reservationType.Value);
+            if (documentSubtype.HasValue)
+                post["enmax_acdndocumentsubtype"] = new OptionSetValue(documentSubtype.Value);
 
             if (includeCodes)
             {
@@ -211,6 +218,61 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 
             ctx.CreateQuery(SheetEntity).ToList().Should().HaveCount(1,
                 because: "zero sheetsPer must fall back to 1 sheet per drawing");
+        }
+
+        [Fact]
+        public void Execute_Taxonomy_CopiedOntoDrawingAndSheet()
+        {
+            // Document/Procedure (type=2, subtype=2): base + child both self-identifying (ADR 0001).
+            var (ctx, pluginCtx, _) = BuildContext(
+                new[] { 1 }, sheetsPer: 1, reservationType: 2, documentSubtype: 2);
+
+            ctx.ExecutePluginWith<AutoCreateDrawingsPlugin>(pluginCtx);
+
+            var drawing = ctx.CreateQuery(DrawingEntity).Single();
+            drawing.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value
+                .Should().Be(2, because: "the base record must carry its reservation type");
+            drawing.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value
+                .Should().Be(2, because: "the base record must carry its document subtype");
+
+            var sheet = ctx.CreateQuery(SheetEntity).Single();
+            sheet.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value
+                .Should().Be(2, because: "the child form/document must carry its reservation type");
+            sheet.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value
+                .Should().Be(2, because: "the child form/document must carry its document subtype");
+        }
+
+        // ── Guard: append reservation (target drawing set) ───────────────────────
+
+        [Fact]
+        public void Execute_TargetDrawingOnPostImage_SkipsCreation()
+        {
+            var (ctx, pluginCtx, _) = BuildContext(new[] { 1 });
+            var targetId = Guid.NewGuid();
+            pluginCtx.PostEntityImages["postImage"]["enmax_acdntargetdrawing"] =
+                new EntityReference(DrawingEntity, targetId);
+
+            ctx.ExecutePluginWith<AutoCreateDrawingsPlugin>(pluginCtx);
+
+            ctx.CreateQuery(DrawingEntity).ToList().Should().BeEmpty(
+                because: "append reservations with a target drawing must not create new base drawings");
+        }
+
+        [Fact]
+        public void Execute_TargetDrawingOnReservation_SkipsCreation()
+        {
+            var (ctx, pluginCtx, reservationId) = BuildContext(new[] { 1 });
+            var targetId = Guid.NewGuid();
+            var service = ctx.GetFakedOrganizationService();
+            service.Create(new Entity(ReservationEntity, reservationId)
+            {
+                ["enmax_acdntargetdrawing"] = new EntityReference(DrawingEntity, targetId),
+            });
+
+            ctx.ExecutePluginWith<AutoCreateDrawingsPlugin>(pluginCtx);
+
+            ctx.CreateQuery(DrawingEntity).ToList().Should().BeEmpty(
+                because: "when target drawing is only on the reservation record, plugin must still skip");
         }
 
         // ── Guard: status not Approved ───────────────────────────────────────────

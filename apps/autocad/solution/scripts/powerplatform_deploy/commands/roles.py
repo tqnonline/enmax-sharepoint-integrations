@@ -120,6 +120,49 @@ def find_default_team(client: DataverseClient, bu_id: str) -> str | None:
     return items[0]["teamid"] if items else None
 
 
+def find_team_by_name(client: DataverseClient, name: str) -> str | None:
+    """Return teamid for a named team, or None."""
+    data = client._get("teams", {
+        "$filter": f"name eq '{name}'",
+        "$select": "teamid",
+        "$top": "1",
+    })
+    items = data.get("value", [])
+    return items[0]["teamid"] if items else None
+
+
+def get_app_config_value(client: DataverseClient, key: str) -> str | None:
+    """Return the value for an App Configuration key, or None."""
+    data = client._get("enmax_autocadappconfigs", {
+        "$filter": f"enmax_acdnkey eq '{key}'",
+        "$select": "enmax_acdnvalue",
+        "$top": "1",
+    })
+    items = data.get("value", [])
+    if not items:
+        return None
+    return items[0].get("enmax_acdnvalue")
+
+
+def sync_team_app_config(client: DataverseClient, logger: Any) -> None:
+    """Write AdminTeamId / ApproverTeamId from the seeded team name keys."""
+    pairs = [
+        ("AdminTeamId", "AdminTeamName"),
+        ("ApproverTeamId", "ApproverTeamName"),
+    ]
+    for id_key, name_key in pairs:
+        team_name = get_app_config_value(client, name_key)
+        if not team_name:
+            logger.warning("  App config key '%s' missing — cannot resolve %s", name_key, id_key)
+            continue
+        team_id = find_team_by_name(client, team_name)
+        if not team_id:
+            logger.warning("  Team '%s' not found — %s not set", team_name, id_key)
+            continue
+        upsert_app_config(client, id_key, team_id)
+        logger.info("  %s -> %s (team '%s')", id_key, team_id, team_name)
+
+
 def upsert_app_config(client: DataverseClient, key: str, value: str) -> None:
     """Idempotently set an App Configuration key=value (find by key, patch or create)."""
     data = client._get("enmax_autocadappconfigs", {
@@ -370,3 +413,6 @@ def run(environment: str, dry_run: bool, verbose: bool) -> None:
         logger.info("  AppOwnerTeamId -> %s (default team of %s)", team_id, bu_name)
     else:
         logger.warning("  No default team found for BU '%s' — AppOwnerTeamId not set", bu_name)
+
+    logger.info("Syncing Admin/Approver team ids into App Configuration...")
+    sync_team_app_config(client, logger)

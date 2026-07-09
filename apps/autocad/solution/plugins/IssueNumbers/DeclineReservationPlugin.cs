@@ -36,6 +36,7 @@ namespace Enmax.AutoCAD
         {
             var context = localPluginContext.PluginExecutionContext;
             var service = localPluginContext.SystemUserService;
+            var actorId = PluginActor.ResolveForCustomApi(context, service);
 
             if (!context.InputParameters.Contains("Target"))
                 throw new InvalidPluginExecutionException("Missing required input: Target");
@@ -48,7 +49,7 @@ namespace Enmax.AutoCAD
                 throw new InvalidPluginExecutionException(
                     $"Target must be {EntityName}, got {target.LogicalName}");
 
-            Authorization.RequireApproverOrAdmin(service, context.InitiatingUserId, "decline a reservation");
+            Authorization.RequireApproverOrAdmin(service, actorId, "decline a reservation");
 
             string reason = context.InputParameters.Contains("Reason")
                 ? (context.InputParameters["Reason"] as string ?? "")
@@ -97,14 +98,14 @@ namespace Enmax.AutoCAD
                 ["enmax_acdnfromstate"]    = "Pending",
                 ["enmax_acdntostate"]      = "Declined",
                 ["enmax_acdnreason"]       = reason,
-                ["enmax_acdnactedby"]      = new EntityReference("systemuser", context.InitiatingUserId),
+                ["enmax_acdnactedby"]      = new EntityReference("systemuser", actorId),
                 ["enmax_acdnname"]         = $"Approval denied for reservation {target.Id}",
             };
             service.Create(auditEvent);
 
             // Notify the requester their reservation was declined (with the reason).
             var owner = reservation.GetAttributeValue<EntityReference>(ColOwner);
-            if (owner != null && owner.Id != context.InitiatingUserId)
+            if (owner != null && owner.Id != actorId)
             {
                 string number = reservation.GetAttributeValue<string>(ColNumber);
                 if (string.IsNullOrWhiteSpace(number)) number = target.Id.ToString();

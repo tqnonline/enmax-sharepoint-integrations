@@ -12,6 +12,7 @@ import {
 import type { ReserveForm } from "../schema";
 import type { RefItem, ReferenceData } from "../hooks/useReferenceData";
 import { SEQUENCE_TOOLTIP } from "../hooks/usePreviewNumber";
+import { NUMBERING_GROUP_LABEL } from "../numberingTerms";
 
 const useStyles = makeStyles({
   root: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalL },
@@ -153,7 +154,7 @@ export function Step2Composition({ refData, onNext, onBack }: Props) {
     <div className={styles.root}>
       {/* Live number preview at top */}
       <Tooltip content={SEQUENCE_TOOLTIP} relationship="description">
-        <div className={styles.compBar} tabIndex={0} role="img" aria-label="Drawing/Document number preview">
+        <div className={styles.compBar} tabIndex={0} role="img" aria-label={`${NUMBERING_GROUP_LABEL} preview`}>
           {segments.map((seg, i) => (
             <span key={seg.label} style={{ display: "contents" }}>
               <div className={styles.seg}>

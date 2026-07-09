@@ -12,8 +12,12 @@ export interface NotificationItem {
   createdOn: string;
 }
 
-const FIVE_MIN = 5 * 60 * 1000;
+const ONE_MIN = 60 * 1000;
 const FEED_KEY = "notification-feed";
+
+function asRead(value: unknown): boolean {
+  return value === true || value === 1;
+}
 
 // In-app notifications for the current user, newest first (top 50). Flow-free: rows are written by
 // plug-ins (e.g. check-in). Broadcasts are merged in read-time by the panel, not fanned out here.
@@ -31,18 +35,24 @@ export function useNotificationFeed(userId: string | undefined, limit = 50) {
         orderBy: ["createdon desc"],
         top: limit,
       });
+      if (!res.success) {
+        const err = res.error as { message?: string } | undefined;
+        throw new Error(err?.message ?? "Failed to load notifications");
+      }
       return (res.data ?? []).map((r) => ({
         id: r.enmax_autocadinappnotificationid,
         title: r.enmax_acdntitle ?? "",
         body: r.enmax_acdnbody ?? "",
         severity: r.enmax_acdnseverity ?? 1,
-        read: r.enmax_acdnread ?? false,
+        read: asRead(r.enmax_acdnread),
         deepLinkPath: r.enmax_acdndeeplinkpath ?? "",
         createdOn: r.createdon ?? "",
       }));
     },
     refetchOnWindowFocus: true,
-    refetchInterval: FIVE_MIN, // idle-tab safety net (Finding 5.4: focus refetch is the dominant freshness moment)
+    refetchOnMount: "always",
+    staleTime: 30_000,
+    refetchInterval: ONE_MIN,
   });
 }
 

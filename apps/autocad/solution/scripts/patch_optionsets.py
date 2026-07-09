@@ -4,10 +4,12 @@ Uses the Dataverse Web API UpdateOptionValue unbound action so this can be run
 as a lightweight patch without a full solution import.
 
 Reads DATAVERSE_URL, DATAVERSE_CLIENT_ID, DATAVERSE_CLIENT_SECRET, DATAVERSE_TENANT_ID
-from the environment (or .env.local at repo root).
+from the environment (or .env.local at repo root). For user-auth deploys (no SPN),
+pass --auth azcli|device|interactive or set DATAVERSE_ACCESS_TOKEN.
 
 Usage:
     python solution/scripts/patch_optionsets.py [--dry-run]
+    python solution/scripts/patch_optionsets.py --auth azcli
 """
 
 import argparse
@@ -17,13 +19,8 @@ from pathlib import Path
 
 import requests
 
-try:
-    import msal
-except ImportError:
-    print("ERROR: msal not installed. Run: uv pip install msal", file=sys.stderr)
-    sys.exit(1)
-
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(REPO_ROOT / "solution" / "scripts"))
 
 _ENV_ALIASES: dict[str, str] = {
     "ENVIRONMENT_URL": "DATAVERSE_URL",
@@ -138,6 +135,11 @@ def _resolve_env() -> dict[str, str]:
 
 
 def _get_token(cfg: dict[str, str]) -> str:
+    try:
+        import msal
+    except ImportError:
+        print("ERROR: msal not installed. Run: uv pip install msal", file=sys.stderr)
+        sys.exit(1)
     app = msal.ConfidentialClientApplication(
         cfg["client"],
         authority=f"https://login.microsoftonline.com/{cfg['tenant']}",
@@ -202,12 +204,33 @@ def _patch_option(
 def main() -> int:
     parser = argparse.ArgumentParser(description="Patch Dataverse option set labels")
     parser.add_argument("--dry-run", action="store_true", help="Print changes without applying")
+    parser.add_argument(
+        "--auth",
+        choices=["spn", "device", "azcli", "interactive"],
+        default="spn",
+        help="spn (default) or user login (device/azcli/interactive). DATAVERSE_ACCESS_TOKEN env overrides.",
+    )
     args = parser.parse_args()
 
     _load_env_local()
-    cfg = _resolve_env()
 
-    token = _get_token(cfg)
+    if args.auth == "spn" and not os.environ.get("DATAVERSE_ACCESS_TOKEN"):
+        cfg = _resolve_env()
+        url = cfg["url"]
+        token = _get_token(cfg)
+    else:
+        # User-auth path (azcli/device/interactive) or bring-your-own token.
+        for canonical, alias in _ENV_ALIASES.items():
+            if alias not in os.environ and canonical in os.environ:
+                os.environ[alias] = os.environ[canonical]
+        url = os.environ.get("DATAVERSE_URL", "").rstrip("/")
+        if not url:
+            print("ERROR: DATAVERSE_URL not set.", file=sys.stderr)
+            return 1
+        from seed import acquire_token  # noqa: E402
+
+        token = acquire_token(url, args.auth)
+
     session = requests.Session()
     session.headers.update({
         "Authorization": f"Bearer {token}",
@@ -220,13 +243,13 @@ def main() -> int:
     for option_set_name, options in OPTIONSET_PATCHES.items():
         print(f"\nPatching {option_set_name}:")
         for value, label in options:
-            ok = _patch_option(session, cfg["url"], option_set_name, value, label, args.dry_run)
+            ok = _patch_option(session, url, option_set_name, value, label, args.dry_run)
             if not ok:
                 errors += 1
 
     if not args.dry_run:
         print("\nPublishing customizations...")
-        resp = session.post(f"{cfg['url']}/api/data/v9.2/PublishAllXml")
+        resp = session.post(f"{url}/api/data/v9.2/PublishAllXml")
         if resp.status_code in (200, 204):
             print("OK Published.")
         else:

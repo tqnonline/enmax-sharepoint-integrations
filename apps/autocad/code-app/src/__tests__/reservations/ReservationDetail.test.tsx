@@ -15,6 +15,7 @@ const mockDetail = {
     override: false,
     submitterId: "user-1",
     submitterName: "Owner User",
+    typeLabel: "Drawing",
     drawings: [],
   },
   isPending: false,
@@ -55,6 +56,7 @@ function renderDetail() {
 
 beforeEach(() => {
   mockDetail.data.status = 1;
+  mockDetail.data.drawings = [];
   mockUserId.value = "user-1";
 });
 afterEach(() => vi.clearAllMocks());
@@ -85,3 +87,4 @@ test("approved reservation does not show Cancel", () => {
   renderDetail();
   expect(screen.queryByRole("button", { name: /cancel reservation/i })).not.toBeInTheDocument();
 });
+

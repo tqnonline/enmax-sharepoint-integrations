@@ -13,10 +13,10 @@ rows:
     value: "true"
     value_type: Boolean
     description: When true, enmax_acdnReleaseDrawing requires a non-empty Reason (min 10 chars) to release an unused reserved number.
-  - key: MaxDrawingsPerReservation
+  - key: MaxRecordsPerReservation
     value: "10"
     value_type: Integer
-    description: Maximum number of drawings that can be reserved in a single Reservation.
+    description: Maximum number of records (drawings or documents) that can be reserved in a single reservation.
   - key: MaxSheetsPerDrawing
     value: "50"
     value_type: Integer
@@ -30,11 +30,11 @@ rows:
     value_type: String
     description: Comma-separated month thresholds for stale-checkout reminder notifications.
   - key: ApproverTeamName
-    value: team-enmax-autocad-approvers
+    value: ENMAX AutoCAD Approvers
     value_type: String
     description: Dataverse team name holding the Approver role. Must exist before approvals work.
   - key: AdminTeamName
-    value: team-enmax-autocad-admins
+    value: ENMAX AutoCAD Admins
     value_type: String
     description: Dataverse team name holding the Admin role.
   - key: SharePointSiteUrl
@@ -113,6 +113,30 @@ rows:
     value: "10"
     value_type: Integer
     description: Number of rows per page in all Code App grids and lists. Increase for power users, decrease for low-bandwidth environments.
+  - key: EnableDrawingCheckout
+    value: "true"
+    value_type: Boolean
+    description: When true, Check Out is available for Drawing reservations. Set false to hide/disable checkout for drawings only.
+  - key: EnableDrawingCheckIn
+    value: "true"
+    value_type: Boolean
+    description: When true, Check In is available for Drawing reservations. Set false to hide/disable check-in for drawings only.
+  - key: EnableProcedureCheckout
+    value: "true"
+    value_type: Boolean
+    description: When true, Check Out is available for Procedure reservations. Set false to hide/disable checkout for procedures only.
+  - key: EnableProcedureCheckIn
+    value: "true"
+    value_type: Boolean
+    description: When true, Check In is available for Procedure reservations. Set false to hide/disable check-in for procedures only.
+  - key: EnableStandardCheckout
+    value: "true"
+    value_type: Boolean
+    description: When true, Check Out is available for Standard Document reservations. Set false to hide/disable checkout for standard documents only.
+  - key: EnableStandardCheckIn
+    value: "true"
+    value_type: Boolean
+    description: When true, Check In is available for Standard Document reservations. Set false to hide/disable check-in for standard documents only.
   - key: RequireCheckOutApproval
     value: "true"
     value_type: Boolean

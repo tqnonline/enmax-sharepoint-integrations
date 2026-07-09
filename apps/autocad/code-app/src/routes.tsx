@@ -3,6 +3,7 @@ import { AppShell } from "./app/AppShell";
 import { RequireRole } from "./auth/RequireRole";
 import Home from "./pages/Home";
 import Search from "./pages/Search";
+import DocumentDetail from "./pages/DocumentDetail";
 import MyItems from "./pages/MyItems";
 import ReferenceData from "./pages/ReferenceData";
 import Audit from "./pages/Audit";
@@ -34,6 +35,7 @@ export const router = createHashRouter([
         ],
       },
       { path: "search",         element: <Search /> },
+      { path: "search/documents/:documentId", element: <DocumentDetail /> },
       { path: "my-items",            element: <MyItems /> },
       { path: "reservations/:reservationId", element: <ReservationDetail /> },
       { path: "approvals",      element: <RequireRole roles={["Approver", "Admin"]}><ApprovalsPage /></RequireRole> },

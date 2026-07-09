@@ -40,6 +40,7 @@ namespace Enmax.AutoCAD
         {
             var context = localPluginContext.PluginExecutionContext;
             var service = localPluginContext.SystemUserService;
+            var actorId = PluginActor.ResolveForCustomApi(context, service);
 
             var target = context.InputParameters.Contains("Target")
                 ? context.InputParameters["Target"] as EntityReference : null;
@@ -51,7 +52,7 @@ namespace Enmax.AutoCAD
             string reason = context.InputParameters.Contains("Reason")
                 ? context.InputParameters["Reason"] as string ?? string.Empty : string.Empty;
 
-            Authorization.RequireAdmin(service, context.InitiatingUserId, "mark a drawing obsolete");
+            Authorization.RequireAdmin(service, actorId, "mark a drawing obsolete");
 
             var drawing = service.Retrieve(DrawingEntity, target.Id, new ColumnSet(ColDrawingState, ColCurrentRevision, ColOwner, ColNumber));
             int currentState = drawing.GetAttributeValue<OptionSetValue>(ColDrawingState)?.Value ?? 0;
@@ -100,13 +101,13 @@ namespace Enmax.AutoCAD
                 ["enmax_acdnsubjecttable"] = DrawingEntity,
                 ["enmax_acdntostate"]      = "Obsolete",
                 ["enmax_acdnreason"]       = reason,
-                ["enmax_acdnactedby"]      = new EntityReference("systemuser", context.InitiatingUserId),
+                ["enmax_acdnactedby"]      = new EntityReference("systemuser", actorId),
                 ["enmax_acdnname"]         = $"Drawing {target.Id} marked obsolete",
             });
 
             // Notify the drawing owner it was retired.
             var owner = drawing.GetAttributeValue<EntityReference>(ColOwner);
-            if (owner != null && owner.Id != context.InitiatingUserId)
+            if (owner != null && owner.Id != actorId)
             {
                 string number = drawing.GetAttributeValue<string>(ColNumber);
                 if (string.IsNullOrWhiteSpace(number)) number = target.Id.ToString();

@@ -59,6 +59,7 @@ const useStyles = makeStyles({
 interface Props {
   notifications: NotificationItem[];
   loading: boolean;
+  error?: boolean;
   onOpen: (item: NotificationItem) => void;
   onMarkRead: (id: string) => void;
   /** compact = bell popover (truncated body); full = page (wrapped body). */
@@ -66,11 +67,12 @@ interface Props {
 }
 
 /** Grouped notification rows (Today / Earlier this week / Older) shared by the bell panel and the page. */
-export function NotificationList({ notifications, loading, onOpen, onMarkRead, compact = false }: Props) {
+export function NotificationList({ notifications, loading, error, onOpen, onMarkRead, compact = false }: Props) {
   const styles = useStyles();
   const groups = useMemo(() => groupFeed(notifications), [notifications]);
 
   if (loading) return <div className={styles.center}><Spinner size="tiny" label="Loading…" /></div>;
+  if (error) return <Text className={styles.empty}>Could not load notifications. Refresh the page and try again.</Text>;
   if (groups.length === 0) return <Text className={styles.empty}>You're all caught up.</Text>;
 
   return (

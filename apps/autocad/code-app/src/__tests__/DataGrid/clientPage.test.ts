@@ -32,3 +32,18 @@ test("slices to the requested page and reports full total", () => {
   expect(r.totalCount).toBe(3);
   expect(r.rows).toHaveLength(1);
 });
+
+test("filterIds matches exact user id (people filter)", () => {
+  interface PersonRow { name: string; userId: string; }
+  const people: PersonRow[] = [
+    { name: "Alice", userId: "u1" },
+    { name: "Bob", userId: "u2" },
+    { name: "Carol", userId: "u3" },
+  ];
+  const r = clientPage(
+    people,
+    { ...base, filters: { submitter: ["u2"] } },
+    { filterIds: { submitter: p => p.userId } },
+  );
+  expect(r.rows).toEqual([{ name: "Bob", userId: "u2" }]);
+});

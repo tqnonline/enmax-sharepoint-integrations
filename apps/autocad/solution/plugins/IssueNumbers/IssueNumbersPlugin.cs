@@ -52,29 +52,70 @@ namespace Enmax.AutoCAD
         {
             var context = localPluginContext.PluginExecutionContext;
             var service = localPluginContext.SystemUserService;
+            var actorId = PluginActor.ResolveForCustomApi(context, service);
 
             // Authorization gate — caller must be Approver or Admin.
-            Authorization.RequireApproverOrAdmin(service, context.InitiatingUserId, "issue numbers");
+            Authorization.RequireApproverOrAdmin(service, actorId, "issue numbers");
 
-            // Step 2 — Validate required string parameters (presence and non-empty)
-            var requiredParams = new[] { "Business", "Asset", "Unit", "Domain", "System", "Kind" };
-            foreach (var paramName in requiredParams)
+            EntityReference reservationRef = null;
+            if (context.InputParameters.TryGetValue("Reservation", out var resObj) && resObj is EntityReference rr)
+                reservationRef = rr;
+
+            string business, asset, unit, domain, system, kind;
+            int count;
+
+            if (reservationRef != null)
             {
-                if (!context.InputParameters.Contains(paramName))
-                    throw new InvalidPluginExecutionException($"Missing required parameter: {paramName}");
-                if (string.IsNullOrWhiteSpace((string)context.InputParameters[paramName]))
-                    throw new InvalidPluginExecutionException($"Missing required parameter: {paramName}");
+                var res = service.Retrieve(reservationRef.LogicalName, reservationRef.Id, new ColumnSet(
+                    "enmax_acdndrawingcount",
+                    "enmax_acdnbusiness", "enmax_acdnasset", "enmax_acdnunit",
+                    "enmax_acdndomain", "enmax_acdnsystem", "enmax_acdnkind"));
+
+                count = context.InputParameters.Contains("Count")
+                    ? (int)context.InputParameters["Count"]
+                    : res.GetAttributeValue<int>("enmax_acdndrawingcount");
+
+                business = ResolveLookupCode(service, res, "enmax_acdnbusiness", "enmax_autocadbusiness")
+                    ?? GetInputString(context, "Business");
+                asset = ResolveLookupCode(service, res, "enmax_acdnasset", "enmax_autocadasset")
+                    ?? GetInputString(context, "Asset");
+                unit = ResolveLookupCode(service, res, "enmax_acdnunit", "enmax_autocadunit")
+                    ?? GetInputString(context, "Unit");
+                domain = ResolveLookupCode(service, res, "enmax_acdndomain", "enmax_autocaddomain")
+                    ?? GetInputString(context, "Domain");
+                system = ResolveLookupCode(service, res, "enmax_acdnsystem", "enmax_autocadsystem")
+                    ?? GetInputString(context, "System");
+                kind = ResolveLookupCode(service, res, "enmax_acdnkind", "enmax_autocadkind")
+                    ?? GetInputString(context, "Kind");
+            }
+            else
+            {
+                var requiredParams = new[] { "Business", "Asset", "Unit", "Domain", "System", "Kind" };
+                foreach (var paramName in requiredParams)
+                {
+                    if (!context.InputParameters.Contains(paramName))
+                        throw new InvalidPluginExecutionException($"Missing required parameter: {paramName}");
+                    if (string.IsNullOrWhiteSpace((string)context.InputParameters[paramName]))
+                        throw new InvalidPluginExecutionException($"Missing required parameter: {paramName}");
+                }
+
+                business = (string)context.InputParameters["Business"];
+                asset    = (string)context.InputParameters["Asset"];
+                unit     = (string)context.InputParameters["Unit"];
+                domain   = (string)context.InputParameters["Domain"];
+                system   = (string)context.InputParameters["System"];
+                kind     = (string)context.InputParameters["Kind"];
+                count    = (int)context.InputParameters["Count"];
             }
 
-            string business = (string)context.InputParameters["Business"];
-            string asset    = (string)context.InputParameters["Asset"];
-            string unit     = (string)context.InputParameters["Unit"];
-            string domain   = (string)context.InputParameters["Domain"];
-            string system   = (string)context.InputParameters["System"];
-            string kind     = (string)context.InputParameters["Kind"];
+            if (string.IsNullOrWhiteSpace(business)) throw new InvalidPluginExecutionException("Missing required parameter: Business");
+            if (string.IsNullOrWhiteSpace(asset))    throw new InvalidPluginExecutionException("Missing required parameter: Asset");
+            if (string.IsNullOrWhiteSpace(unit))     throw new InvalidPluginExecutionException("Missing required parameter: Unit");
+            if (string.IsNullOrWhiteSpace(domain))   throw new InvalidPluginExecutionException("Missing required parameter: Domain");
+            if (string.IsNullOrWhiteSpace(system))   throw new InvalidPluginExecutionException("Missing required parameter: System");
+            if (string.IsNullOrWhiteSpace(kind))     throw new InvalidPluginExecutionException("Missing required parameter: Kind");
 
             // Step 3 — Validate Count
-            int count = (int)context.InputParameters["Count"];
             if (count < 1 || count > MaxCount)
                 throw new InvalidPluginExecutionException("Count must be between 1 and 1000");
 
@@ -132,9 +173,9 @@ namespace Enmax.AutoCAD
             // When invoked during approval, stamp the issued numbers onto the reservation
             // as SYSTEM so the approver needs no write privilege on it. This Update triggers
             // AutoCreateDrawingsPlugin (the reservation is already Approved by this point).
-            if (context.InputParameters.TryGetValue("Reservation", out var resObj) && resObj is EntityReference resRef)
+            if (reservationRef != null)
             {
-                var resUpdate = new Entity(resRef.LogicalName, resRef.Id)
+                var resUpdate = new Entity(reservationRef.LogicalName, reservationRef.Id)
                 {
                     ["enmax_acdnissuednumbers"] = JsonConvert.SerializeObject(issued),
                 };
@@ -145,6 +186,21 @@ namespace Enmax.AutoCAD
         // -----------------------------------------------------------------------
         // Helpers
         // -----------------------------------------------------------------------
+
+        private static string GetInputString(IPluginExecutionContext context, string name)
+        {
+            if (!context.InputParameters.Contains(name)) return null;
+            return context.InputParameters[name] as string;
+        }
+
+        private static string ResolveLookupCode(
+            IOrganizationService service, Entity parent, string lookupAttribute, string targetEntity)
+        {
+            var er = parent.GetAttributeValue<EntityReference>(lookupAttribute);
+            if (er == null) return null;
+            var record = service.Retrieve(targetEntity, er.Id, new ColumnSet("enmax_acdncode"));
+            return record.GetAttributeValue<string>("enmax_acdncode")?.Trim();
+        }
 
         private static Entity FindRow(IOrganizationService service, string sequenceKey)
         {

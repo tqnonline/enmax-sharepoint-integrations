@@ -43,11 +43,11 @@ test("parses Boolean config values from SDK option set code", async () => {
 
 // Test 2 — SDK coercion: integer code 2 → number
 test("parses Integer config values from SDK option set code", async () => {
-  mockGetAll.mockResolvedValue({ success: true, data: makeRows({ MaxDrawingsPerReservation: 10 }) });
+  mockGetAll.mockResolvedValue({ success: true, data: makeRows({ MaxRecordsPerReservation: 10 }) });
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const { result } = renderHook(() => useAppConfig(), { wrapper: makeWrapper(qc) });
-  await waitFor(() => expect(result.current?.MaxDrawingsPerReservation).toBe(10));
-  expect(typeof result.current?.MaxDrawingsPerReservation).toBe("number");
+  await waitFor(() => expect(result.current?.MaxRecordsPerReservation).toBe(10));
+  expect(typeof result.current?.MaxRecordsPerReservation).toBe("number");
 });
 
 // Test 3 — SDK coercion: Json type (code 4) → native value

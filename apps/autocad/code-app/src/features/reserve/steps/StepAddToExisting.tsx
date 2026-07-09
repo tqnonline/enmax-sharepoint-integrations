@@ -9,53 +9,22 @@ import {
   Text,
   MessageBar,
   MessageBarBody,
-  Badge,
   makeStyles,
-  mergeClasses,
   tokens,
 } from "@fluentui/react-components";
-import { Search20Regular, CheckmarkCircle20Filled } from "@fluentui/react-icons";
+import { Search20Regular } from "@fluentui/react-icons";
 import type { ReserveForm } from "../schema";
 import { reserveTerminology } from "../terminology";
 import { useSearchExistingBases, type ExistingBase } from "../hooks/useSearchExistingBases";
-import { useAddChildItems } from "../hooks/useAddChildItems";
 import { useCreateReservation } from "../hooks/useCreateReservation";
 import { useAppConfig } from "../../../config/useAppConfig";
+import { ExistingBaseGrid } from "./ExistingBaseGrid";
 
 const MAX_CHILD_ITEMS = 999;
 
 const useStyles = makeStyles({
   root: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalL },
-  results: {
-    display: "flex",
-    flexDirection: "column",
-    gap: tokens.spacingVerticalXS,
-    maxHeight: "260px",
-    overflowY: "auto",
-    borderRadius: tokens.borderRadiusMedium,
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    padding: tokens.spacingVerticalXS,
-  },
-  row: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: tokens.spacingHorizontalM,
-    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
-    borderRadius: tokens.borderRadiusMedium,
-    cursor: "pointer",
-    border: `1px solid transparent`,
-    textAlign: "left",
-    backgroundColor: "transparent",
-    ":hover": { backgroundColor: tokens.colorNeutralBackground1Hover },
-  },
-  rowSelected: {
-    backgroundColor: tokens.colorBrandBackground2,
-    border: `1px solid ${tokens.colorBrandStroke1}`,
-  },
-  rowMain: { display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 },
-  number: { fontFamily: "monospace", fontWeight: tokens.fontWeightSemibold },
-  title: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200 },
+  title: { color: tokens.colorNeutralForeground2, fontSize: tokens.fontSizeBase200 },
   empty: { color: tokens.colorNeutralForeground3, padding: tokens.spacingVerticalM },
   panel: {
     display: "flex",
@@ -80,12 +49,13 @@ export function StepAddToExisting({ onBack }: Props) {
   const { watch } = useFormContext<ReserveForm>();
 
   const term = reserveTerminology(watch("reservationType"), watch("documentSubtype"));
+  const reservationType = watch("reservationType");
+  const documentSubtype = watch("documentSubtype");
 
   const [rawQuery, setRawQuery]   = useState("");
   const [query, setQuery]         = useState("");
   const [selected, setSelected]   = useState<ExistingBase | null>(null);
   const [count, setCount]         = useState(1);
-  const [added, setAdded]         = useState<{ base: string; first: number; last: number } | null>(null);
 
   // Debounce the search so we don't query on every keystroke.
   useEffect(() => {
@@ -93,28 +63,25 @@ export function StepAddToExisting({ onBack }: Props) {
     return () => clearTimeout(t);
   }, [rawQuery]);
 
-  const search      = useSearchExistingBases(query);
-  const addChildren = useAddChildItems();
-  const createNext  = useCreateReservation();
+  const search     = useSearchExistingBases(query, reservationType, documentSubtype);
+  const createNext = useCreateReservation();
 
   // Children (Drawing/Procedure) are capped at 999 total; Standard uses the config max.
   const maxCount = term.createsChildren
     ? Math.max(MAX_CHILD_ITEMS - (selected?.childCount ?? 0), 0)
-    : config.MaxDrawingsPerReservation;
+    : config.MaxRecordsPerReservation;
 
   const clampedCount = useMemo(
     () => Math.min(Math.max(count, 1), Math.max(maxCount, 1)),
     [count, maxCount],
   );
 
-  const submitting = addChildren.isPending || createNext.isPending;
-  const submitError = (addChildren.error ?? createNext.error) as Error | null;
+  const submitting = createNext.isPending;
+  const submitError = createNext.error as Error | null;
 
   function selectBase(base: ExistingBase) {
     setSelected(base);
     setCount(1);
-    setAdded(null);
-    addChildren.reset();
     createNext.reset();
   }
 
@@ -122,8 +89,29 @@ export function StepAddToExisting({ onBack }: Props) {
     if (!selected || maxCount < 1) return;
 
     if (term.createsChildren) {
-      const result = await addChildren.mutateAsync({ drawingId: selected.id, count: clampedCount });
-      setAdded({ base: result.baseNumber, first: result.firstChildNumber, last: result.lastChildNumber });
+      // Appending children (Drawing/Procedure) now goes through reservation approval
+      // instead of calling AddChildItems directly. The target base GUID is bound on
+      // the reservation; issuance happens when an approver acts (ADR 0001 #2/#6).
+      const form: ReserveForm & { targetDrawingId: string } = {
+        reservationType: watch("reservationType"),
+        documentSubtype: watch("documentSubtype"),
+        business: selected.business,
+        asset:    selected.asset,
+        unit:     selected.unit,
+        domain:   selected.domain,
+        system:   selected.system,
+        kind:     selected.kind,
+        count:    clampedCount,
+        sheetsPerDrawing: 1,
+        sequenceType: "Existing",
+        reason: `Add ${clampedCount} ${term.childNoun} item(s) to existing ${selected.number}`,
+        targetDrawingId: selected.id,
+      };
+      const created = await createNext.mutateAsync(form);
+      navigate(
+        `/reserve/success?id=${created.id}&ref=${encodeURIComponent(created.number)}` +
+        `&base=${encodeURIComponent(selected.number)}&count=${clampedCount}`,
+      );
       return;
     }
 
@@ -144,7 +132,7 @@ export function StepAddToExisting({ onBack }: Props) {
       reason: `Add standard document(s) to existing coding ${selected.number}`,
     };
     const created = await createNext.mutateAsync(form);
-    navigate(`/reserve/success?id=${created.enmax_acdnreservationid}`);
+    navigate(`/reserve/success?id=${created.id}&ref=${encodeURIComponent(created.number)}`);
   }
 
   const pad3 = (n: number) => String(n).padStart(3, "0");
@@ -170,33 +158,18 @@ export function StepAddToExisting({ onBack }: Props) {
           ) : (search.data?.length ?? 0) === 0 ? (
             <Text className={styles.empty}>No matching numbers found.</Text>
           ) : (
-            <div className={styles.results} role="listbox" aria-label="Matching existing numbers">
-              {search.data!.map((base) => (
-                <button
-                  key={base.id}
-                  type="button"
-                  role="option"
-                  aria-selected={selected?.id === base.id}
-                  className={mergeClasses(styles.row, selected?.id === base.id && styles.rowSelected)}
-                  onClick={() => selectBase(base)}
-                >
-                  <span className={styles.rowMain}>
-                    <span className={styles.number}>{base.number}</span>
-                    {base.title && <span className={styles.title}>{base.title}</span>}
-                  </span>
-                  {term.createsChildren && (
-                    <Badge appearance="tint" color="informative">
-                      {base.childCount} {term.childNoun}{base.childCount === 1 ? "" : "s"}
-                    </Badge>
-                  )}
-                </button>
-              ))}
-            </div>
+            <ExistingBaseGrid
+              bases={search.data!}
+              selectedId={selected?.id ?? null}
+              onSelect={selectBase}
+              createsChildren={term.createsChildren}
+              childNoun={term.childNoun ?? "Document"}
+            />
           )}
         </div>
       )}
 
-      {selected && !added && (
+      {selected && (
         <div className={styles.panel}>
           <Text>
             Selected <Text weight="semibold" style={{ fontFamily: "monospace" }}>{selected.number}</Text>
@@ -240,17 +213,6 @@ export function StepAddToExisting({ onBack }: Props) {
         </div>
       )}
 
-      {added && (
-        <MessageBar intent="success">
-          <MessageBarBody>
-            <CheckmarkCircle20Filled style={{ verticalAlign: "middle", marginRight: 6 }} />
-            Added {added.last - added.first + 1} item(s) to <Text weight="semibold" style={{ fontFamily: "monospace" }}>{added.base}</Text>
-            {": "}{added.base}-{pad3(added.first)}
-            {added.last > added.first ? ` … ${added.base}-${pad3(added.last)}` : ""}
-          </MessageBarBody>
-        </MessageBar>
-      )}
-
       {submitError && (
         <MessageBar intent="error">
           <MessageBarBody>{submitError.message ?? "Something went wrong."}</MessageBarBody>
@@ -259,22 +221,16 @@ export function StepAddToExisting({ onBack }: Props) {
 
       <div className={styles.actions}>
         <Button appearance="secondary" onClick={onBack} disabled={submitting}>Back</Button>
-        {added ? (
-          <Button appearance="primary" onClick={() => { setSelected(null); setAdded(null); setRawQuery(""); }}>
-            Add to another
-          </Button>
-        ) : (
-          <Button
-            appearance="primary"
-            disabled={!selected || submitting || maxCount < 1}
-            icon={submitting ? <Spinner size="tiny" /> : undefined}
-            onClick={() => void handleSubmit()}
-          >
-            {submitting
-              ? "Submitting…"
-              : term.createsChildren ? `Add ${term.childNoun}s` : "Add standard document(s)"}
-          </Button>
-        )}
+        <Button
+          appearance="primary"
+          disabled={!selected || submitting || maxCount < 1}
+          icon={submitting ? <Spinner size="tiny" /> : undefined}
+          onClick={() => void handleSubmit()}
+        >
+          {submitting
+            ? "Submitting…"
+            : term.createsChildren ? `Add ${term.childNoun}s` : "Add standard document(s)"}
+        </Button>
       </div>
     </div>
   );

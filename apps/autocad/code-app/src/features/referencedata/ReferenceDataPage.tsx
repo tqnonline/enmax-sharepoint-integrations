@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import {
   Badge,
   Button,
@@ -19,8 +19,8 @@ import { useRefTableSummary, useNextSortOrder } from "./useNextSortOrder";
 import { useCompositionLookups } from "../approvals/hooks/useCompositionLookups";
 import { RefRowPanel } from "./RefRowPanel";
 import { NumberSequencesGrid } from "./NumberSequencesGrid";
-import { EnmaxDataGrid } from "../../components/DataGrid";
-import type { ColumnDef, RowAction } from "../../components/DataGrid";
+import { EnmaxDataGrid, GridQueryFilterBar } from "../../components/DataGrid";
+import type { ColumnDef, GridFetchParams, RowAction } from "../../components/DataGrid";
 
 const TOASTER_ID = "refdata-toaster";
 
@@ -118,10 +118,27 @@ export function ReferenceDataPage() {
   const nextSort       = useNextSortOrder(config);
   const { data: compMaps } = useCompositionLookups();
 
-  const refFetcher = useMemo(
+  const [filterDraft, setFilterDraft] = useState({ number: "", from: "", to: "" });
+  const [appliedSearch, setAppliedSearch] = useState("");
+
+  const baseFetcher = useMemo(
     () => (isJunction ? makeJunctionFetcher(config, compMaps) : makeRefTableFetcher(config)),
     [config, isJunction, compMaps],
   );
+
+  const refFetcher = useCallback(
+    async (params: GridFetchParams) => baseFetcher({ ...params, search: appliedSearch }),
+    [baseFetcher, appliedSearch],
+  );
+
+  function handleRefQuery() {
+    setAppliedSearch(filterDraft.number.trim());
+  }
+
+  function handleRefClear() {
+    setFilterDraft({ number: "", from: "", to: "" });
+    setAppliedSearch("");
+  }
 
   function openAdd()             { setEditing(null); setPanelOpen(true); }
   function openEdit(row: RefRow) { setEditing(row);  setPanelOpen(true); }
@@ -172,7 +189,11 @@ export function ReferenceDataPage() {
             <button
               key={t.entityName}
               className={`${styles.railItem} ${i === selectedIdx ? styles.railItemActive : ""}`}
-              onClick={() => setSelectedIdx(i)}
+              onClick={() => {
+                setSelectedIdx(i);
+                setFilterDraft({ number: "", from: "", to: "" });
+                setAppliedSearch("");
+              }}
               aria-pressed={i === selectedIdx}
             >
               {t.displayName}
@@ -196,19 +217,30 @@ export function ReferenceDataPage() {
           {isNumberSequences
             ? <NumberSequencesGrid />
             : (
-              <EnmaxDataGrid
-                key={config.entityName}
-                queryKey={["ref-table", config.entityName, isJunction ? (compMaps?.bizMap.size ?? 0) : 0]}
-                fetcher={refFetcher}
-                columns={isJunction ? JUNCTION_COLUMNS : REF_COLUMNS}
-                rowKey={r => r.id}
-                rowActions={isJunction ? undefined : rowActions}
-                enableColumnVisibility
-                defaultSort={{ column: isJunction ? "code" : "sortOrder", direction: "asc" }}
-                quickSearchPlaceholder="Search…"
-                emptyMessage={isJunction ? "No combinations defined." : "No rows. Click Add Row to create one."}
-                errorMessage="Failed to load table."
-              />
+              <>
+                <GridQueryFilterBar
+                  numberLabel="Code or name"
+                  numberPlaceholder="Search code or display name…"
+                  draft={{ number: filterDraft.number, from: filterDraft.from, to: filterDraft.to }}
+                  onDraftChange={(patch) => setFilterDraft((prev) => ({ ...prev, ...patch }))}
+                  onQuery={handleRefQuery}
+                  onClear={handleRefClear}
+                  showDateRange={false}
+                />
+                <EnmaxDataGrid
+                  key={config.entityName}
+                  queryKey={["ref-table", config.entityName, appliedSearch, isJunction ? (compMaps?.bizMap.size ?? 0) : 0]}
+                  fetcher={refFetcher}
+                  columns={isJunction ? JUNCTION_COLUMNS : REF_COLUMNS}
+                  rowKey={r => r.id}
+                  rowActions={isJunction ? undefined : rowActions}
+                  enableColumnVisibility
+                  enableQuickSearch={false}
+                  defaultSort={{ column: isJunction ? "code" : "sortOrder", direction: "asc" }}
+                  emptyMessage={isJunction ? "No combinations defined." : "No rows. Click Add Row to create one."}
+                  errorMessage="Failed to load table."
+                />
+              </>
             )
           }
         </div>

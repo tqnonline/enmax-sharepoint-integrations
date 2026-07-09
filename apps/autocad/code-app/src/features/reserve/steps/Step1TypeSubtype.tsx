@@ -69,7 +69,7 @@ export function Step1TypeSubtype({ onNext }: Props) {
               value={field.value ?? ""}
               onChange={(_, data) => field.onChange(data.value)}
             >
-              <Radio value="Drawing"  label="Drawing — a drawing with one or more Drawing Documents" />
+              <Radio value="Drawing"  label="Drawing — reserves a Drawing Number with one or more Drawing documents (-SSS)" />
               <Radio value="Document" label="Document — a Standard or a Procedure" />
             </RadioGroup>
           </Field>
@@ -86,8 +86,8 @@ export function Step1TypeSubtype({ onNext }: Props) {
                 value={field.value ?? ""}
                 onChange={(_, data) => field.onChange(data.value)}
               >
-                <Radio value="Standard"  label="Standard — a single document (no child forms)" />
-                <Radio value="Procedure" label="Procedure — a procedure with one or more Procedure Form Documents" />
+                <Radio value="Standard"  label="Standard Document — single issued number (BB-AA-UU-DDD-SSS-KK-NNNN)" />
+                <Radio value="Procedure" label="Procedure — Procedure Number range with one or more Procedure forms (-SSS)" />
               </RadioGroup>
             </Field>
           )}

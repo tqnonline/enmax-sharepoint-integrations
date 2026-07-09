@@ -73,7 +73,6 @@ roles:
       enmax_autocadrecordtype:  { read: global }
       enmax_autocadrecordphase: { read: global }
       enmax_autocadvendor:      { read: global }
-      enmax_autocadassetunit:   { read: global }
       enmax_autocadsystemscope: { read: global }
 
   # ---------------------------------------------------------------------------
@@ -119,7 +118,6 @@ roles:
       enmax_autocadrecordtype:  { read: global }
       enmax_autocadrecordphase: { read: global }
       enmax_autocadvendor:      { read: global }
-      enmax_autocadassetunit:   { read: global }
       enmax_autocadsystemscope: { read: global }
 
   # ---------------------------------------------------------------------------
@@ -278,14 +276,6 @@ roles:
         appendto: global
         assign: global
         share: global
-      enmax_autocadassetunit:
-        create: global
-        read: global
-        write: global
-        append: global
-        appendto: global
-        assign: global
-        share: global
       enmax_autocadsystemscope:
         create: global
         read: global
@@ -334,7 +324,6 @@ roles:
       enmax_autocadrecordtype:     { read: global }
       enmax_autocadrecordphase:    { read: global }
       enmax_autocadvendor:         { read: global }
-      enmax_autocadassetunit:      { read: global }
       enmax_autocadsystemscope:    { read: global }
       enmax_autocadbroadcastdismissal: { read: global }
       enmax_autocaduserpreference: { read: global }
@@ -365,8 +354,6 @@ roles:
       enmax_autocadrecordtype:     { read: global }
       enmax_autocadrecordphase:    { read: global }
       enmax_autocadvendor:         { read: global }
-      enmax_autocadbusinessasset:  { read: global }
-      enmax_autocadassetunit:      { read: global }
       enmax_autocadsystemscope:    { read: global }
       enmax_autocadappconfig:      { read: global }
       enmax_autocadnumbersequence: { read: global }
