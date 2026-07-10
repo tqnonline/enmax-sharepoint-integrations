@@ -50,14 +50,14 @@ vi.mock("../../features/referencedata/NumberSequencesGrid", () => ({
 
 afterEach(() => { vi.clearAllMocks(); });
 
-// Test 20 — Left rail shows all 13 reference tables
-test("left rail renders all 13 reference tables", async () => {
+// Test 20 — Left rail shows every configured reference table
+test("left rail renders all 11 configured reference tables", async () => {
   renderWithProviders(<ReferenceDataPage />);
   await waitFor(() => expect(screen.getByRole("navigation", { name: /reference tables/i })).toBeInTheDocument());
   for (const t of REF_TABLES) {
     expect(screen.getByRole("button", { name: t.displayName })).toBeInTheDocument();
   }
-  expect(REF_TABLES).toHaveLength(13);
+  expect(REF_TABLES).toHaveLength(11);
 });
 
 // Test 21 — Add Row form: code uniqueness rejection surfaced

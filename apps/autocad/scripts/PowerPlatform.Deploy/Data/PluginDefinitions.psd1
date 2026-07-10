@@ -141,7 +141,9 @@
             PluginClass = "Enmax.AutoCAD.CheckOutDrawingPlugin"
             BindingType = 1
             BoundEntity = "enmax_autocaddrawing"
-            Params      = @()
+            Params = @(
+                @{ Name="ActingUserId"; Type=10; Optional=$true }
+            )
             Response = @(
                 @{ Name="CheckoutId"; Type=10 }
             )

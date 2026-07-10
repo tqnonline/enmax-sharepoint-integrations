@@ -40,10 +40,11 @@ import { CHECKIN_STATUS_AWAITING } from "./hooks/useCheckins";
 import {
   applyCheckinApprovalFilters,
   applyReservationApprovalFilters,
+  defaultApprovalListFilters,
   type ApprovalListFilters,
 } from "./approvalListFilters";
 import { GridQueryFilterBar } from "../../components/DataGrid";
-import { defaultGridDateRange } from "../../lib/dateRangeDefaults";
+import { normalizeGridDateRange } from "../../lib/gridListFilters";
 
 const TOASTER_ID = "approvals-toaster";
 
@@ -123,7 +124,8 @@ const useStyles = makeStyles({
 export function ApprovalsPage() {
   const styles = useStyles();
   const [searchParams] = useSearchParams();
-  const [activeSection, setActiveSection] = useState<SectionValue>(() => parseSection(searchParams));
+  const initialSection = parseSection(searchParams);
+  const [activeSection, setActiveSection] = useState<SectionValue>(initialSection);
   const [reservationTab, setReservationTab] = useState<ReservationTab>(() => parseReservationTab(searchParams));
   const [documentTab, setDocumentTab] = useState<DocumentTab>(() => parseDocumentTab(searchParams));
   const [selectedReservation, setSelectedReservation] = useState<PendingReservation | null>(null);
@@ -135,19 +137,15 @@ export function ApprovalsPage() {
   const [bulkCheckoutProgress, setBulkCheckoutProgress] = useState<{ current: number; total: number } | null>(null);
   const [bulkCheckoutResult, setBulkCheckoutResult] = useState<BulkActionResult>(null);
 
-  const defaultRange = useMemo(() => defaultGridDateRange(), []);
-  const [filterDraft, setFilterDraft] = useState({
-    number: "",
-    from: defaultRange.from,
-    to: defaultRange.to,
-    peopleIds: [] as string[],
-  });
-  const [appliedFilters, setAppliedFilters] = useState<ApprovalListFilters>(() => ({
-    number: "",
-    from: defaultRange.from,
-    to: defaultRange.to,
-    peopleIds: [],
+  const initialFilters = useMemo(() => defaultApprovalListFilters(initialSection), [initialSection]);
+  const defaultFilters = useMemo(() => defaultApprovalListFilters(), []);
+  const [filterDraft, setFilterDraft] = useState(() => ({
+    number: initialFilters.number,
+    from: initialFilters.from,
+    to: initialFilters.to,
+    peopleIds: [...initialFilters.peopleIds],
   }));
+  const [appliedFilters, setAppliedFilters] = useState<ApprovalListFilters>(() => initialFilters);
 
   const queryClient = useQueryClient();
 
@@ -163,10 +161,14 @@ export function ApprovalsPage() {
   const { dispatchToast } = useToastController(TOASTER_ID);
 
   function handleSectionChange(_: unknown, data: { value: unknown }) {
-    setActiveSection(data.value as SectionValue);
+    const section = data.value as SectionValue;
+    setActiveSection(section);
     setSelectedReservation(null);
-    if (data.value === "documents") setDocumentTab("checkout");
-    if (data.value === "reservations") setReservationTab("pending");
+    const defaults = defaultApprovalListFilters(section);
+    setFilterDraft(defaults);
+    setAppliedFilters(defaults);
+    if (section === "documents") setDocumentTab("checkout");
+    if (section === "reservations") setReservationTab("pending");
   }
 
   function handleReservationTabChange(_: unknown, data: { value: unknown }) {
@@ -205,19 +207,19 @@ export function ApprovalsPage() {
   );
 
   function handleQuery() {
+    const { from, to } = normalizeGridDateRange(filterDraft.from, filterDraft.to);
     setAppliedFilters({
       number: filterDraft.number,
-      from: filterDraft.from,
-      to: filterDraft.to,
+      from,
+      to,
       peopleIds: filterDraft.peopleIds,
     });
+    setFilterDraft((prev) => ({ ...prev, from, to }));
   }
 
   function handleClearFilters() {
-    const { from, to } = defaultGridDateRange();
-    const cleared = { number: "", from, to, peopleIds: [] as string[] };
-    setFilterDraft(cleared);
-    setAppliedFilters(cleared);
+    setFilterDraft(defaultFilters);
+    setAppliedFilters(defaultFilters);
   }
 
   const filterBar = (

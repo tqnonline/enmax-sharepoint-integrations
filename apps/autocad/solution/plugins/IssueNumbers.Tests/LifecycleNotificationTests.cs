@@ -43,7 +43,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var p = ctx.GetDefaultPluginContext();
             p.MessageName      = message;
             p.Stage            = 40;
-            p.InitiatingUserId = actor;
+            PluginTestUsers.SetInteractiveCaller(ctx, p, actor);
             p.InputParameters  = new ParameterCollection();
             p.OutputParameters = new ParameterCollection();
             return p;
@@ -146,12 +146,14 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         private static XrmFakedContext CheckinCtx(Guid checkoutId, Guid drawingId, Guid submitter, int checkoutStatus)
         {
             var ctx = new XrmFakedContext();
+            var sheetId = Guid.NewGuid();
             ctx.Initialize(new[]
             {
                 new Entity(CheckoutEntity, checkoutId)
                 {
                     ["enmax_acdnstatus"]      = new OptionSetValue(checkoutStatus),
                     ["enmax_acdndrawing"]     = new EntityReference(DrawingEntity, drawingId),
+                    ["enmax_acdnsheet"]       = new EntityReference("enmax_autocadsheet", sheetId),
                     ["enmax_acdnnewrevision"] = "B",
                     ["ownerid"]               = new EntityReference("systemuser", submitter),
                 },
@@ -159,6 +161,11 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 {
                     ["enmax_acdnstate"]  = new OptionSetValue(checkoutStatus == 2 ? 3 : 2),
                     ["enmax_acdnnumber"] = "GG-CG-00-0007",
+                },
+                new Entity("enmax_autocadsheet", sheetId)
+                {
+                    ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
+                    ["enmax_acdnstate"]   = new OptionSetValue(checkoutStatus == 2 ? 4 : 3),
                 },
             });
             return ctx;

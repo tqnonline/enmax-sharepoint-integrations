@@ -8,7 +8,7 @@ import type { GridFetchParams } from "../../components/DataGrid";
 import { clientPage } from "../../components/DataGrid/clientPage";
 import { logDataverseError } from "../../components/DataGrid/dataverseError";
 import { isGuid } from "../../lib/guid";
-import { typeFilterClause } from "../reserve/taxonomyFilters";
+import { reservationMatchesTypeFilter } from "../reserve/taxonomyFilters";
 import type { MyRecordTypeFilter } from "../reserve/taxonomyFilters";
 import { documentDisplayNumber, reservationTypeDisplayLabel } from "../reserve/terminology";
 import { taxonomyDisplaysFromRaw } from "../../lib/taxonomyDisplays";
@@ -138,13 +138,43 @@ const SHEET_SELECT = [
 ] as const;
 
 /** Submitter-scoped reservation filter (createdby, not owner — reservations are team-owned). */
-function reservationFilter(userId: string, typeFilter: MyRecordTypeFilter): string {
-  return [`_createdby_value eq '${userId}'`, typeFilterClause(typeFilter)].join(" and ");
+function reservationOwnerFilter(userId: string): string {
+  return `_createdby_value eq '${userId}'`;
+}
+
+type ReservationTaxonomy = {
+  enmax_acdnreservationtype?: number | null;
+  enmax_acdndocumentsubtype?: number | null;
+};
+
+function filterReservationsByType<T extends ReservationTaxonomy>(
+  rows: T[],
+  typeFilter: MyRecordTypeFilter,
+): T[] {
+  return rows.filter((r) =>
+    reservationMatchesTypeFilter(
+      typeFilter,
+      r.enmax_acdnreservationtype,
+      r.enmax_acdndocumentsubtype,
+    ),
+  );
+}
+
+function sheetMatchesTypeFilter(
+  sheet: RawSheet,
+  drawing: DrawingMeta | undefined,
+  typeFilter: MyRecordTypeFilter,
+): boolean {
+  return reservationMatchesTypeFilter(
+    typeFilter,
+    sheet.enmax_acdnreservationtype ?? drawing?.reservationType,
+    sheet.enmax_acdndocumentsubtype ?? drawing?.documentSubtype,
+  );
 }
 
 /**
  * Sheets and drawings inherit the reservation owner (BU team), not the submitter.
- * Scope Available/Checked Out rows to documents under drawings from the user's reservations.
+ * Scope sheet tabs to rows under drawings from the user's reservations.
  */
 function sheetFilterForDrawings(
   drawingIds: string[],
@@ -166,8 +196,8 @@ async function fetchUserScopedDrawingIds(
   typeFilter: MyRecordTypeFilter,
 ): Promise<string[]> {
   const reservations = await Enmax_autocadreservationsService.getAll({
-    filter: reservationFilter(userId, typeFilter),
-    select: ["enmax_autocadreservationid"],
+    filter: reservationOwnerFilter(userId),
+    select: ["enmax_autocadreservationid", "enmax_acdnreservationtype", "enmax_acdndocumentsubtype"],
     top: MY_RECORD_FETCH_CAP,
   });
   if (!reservations.success) {
@@ -175,7 +205,10 @@ async function fetchUserScopedDrawingIds(
     return [];
   }
 
-  const reservationIds = (reservations.data ?? [])
+  const reservationIds = filterReservationsByType(
+    (reservations.data ?? []) as Array<ReservationTaxonomy & { enmax_autocadreservationid?: string }>,
+    typeFilter,
+  )
     .map((r) => r.enmax_autocadreservationid)
     .filter(isGuid);
   if (reservationIds.length === 0) return [];
@@ -507,7 +540,7 @@ async function fetchMyReservations(
   // Submitter scope — reservations are stamped to the BU team owner on create, so
   // _ownerid_value would hide the user's own submissions from this page.
   const result = await Enmax_autocadreservationsService.getAll({
-    filter:  reservationFilter(userId, typeFilter),
+    filter:  reservationOwnerFilter(userId),
     select:  [...RESERVATION_SELECT],
     orderBy: ["createdon desc"],
     top:     MY_RECORD_FETCH_CAP,
@@ -517,7 +550,7 @@ async function fetchMyReservations(
     throw new Error("My reservations fetch failed");
   }
 
-  const raw = (result.data ?? []) as RawReservation[];
+  const raw = filterReservationsByType((result.data ?? []) as RawReservation[], typeFilter);
   const targetDrawingMap = await fetchTargetDrawingNumberMap(
     raw.map((r) => r._enmax_acdntargetdrawing_value ?? "").filter(Boolean),
   );
@@ -676,11 +709,9 @@ async function fetchSheetRecords(
 ): Promise<{ rows: MyRecordRow[]; totalCount: number; skipToken?: string }> {
   const isPending = stateFilter === "pendingapproval";
   const stateValue = isPending ? undefined : SHEET_STATE_FOR_TAB[stateFilter];
-  const defaultSortCol = stateFilter === "checkedout"
+  const defaultSortCol = stateFilter === "checkedout" || isPending
     ? "checkedOutOn"
-    : isPending
-      ? "checkedOutOn"
-      : "revisionDate";
+    : "revisionDate";
   const safeSortCol = params.sort?.column && (
     SHEET_SORT_COLS.has(params.sort.column)
     || params.sort.column === "checkedOutOn"
@@ -697,8 +728,15 @@ async function fetchSheetRecords(
   const drawingMeta = await fetchDrawingMetaMap(
     rawSheets.map((sheet) => sheet._enmax_acdndrawing_value ?? "").filter(Boolean),
   );
-  const checkoutMeta = await fetchCheckoutMetaBySheetIds(rawSheets, stateFilter);
-  let rows = rawSheets.map((sheet) =>
+  const typedSheets = rawSheets.filter((sheet) =>
+    sheetMatchesTypeFilter(
+      sheet,
+      drawingMeta.get(sheet._enmax_acdndrawing_value ?? ""),
+      typeFilter,
+    ),
+  );
+  const checkoutMeta = await fetchCheckoutMetaBySheetIds(typedSheets, stateFilter);
+  let rows = typedSheets.map((sheet) =>
     toSheetRow(
       sheet,
       drawingMeta.get(sheet._enmax_acdndrawing_value ?? ""),

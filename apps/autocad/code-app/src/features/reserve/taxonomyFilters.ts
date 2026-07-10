@@ -47,3 +47,24 @@ export function typeFilterClause(typeFilter: MyRecordTypeFilter): string {
       return `(enmax_acdnreservationtype eq ${RESERVATION_TYPE_VALUE.Drawing} or enmax_acdnreservationtype eq null)`;
   }
 }
+
+/** Client-side taxonomy match — mirrors {@link typeFilterClause} without OData `eq null`. */
+export function reservationMatchesTypeFilter(
+  typeFilter: MyRecordTypeFilter,
+  reservationType?: number | null,
+  documentSubtype?: number | null,
+): boolean {
+  const rt = reservationType ?? null;
+  const ds = documentSubtype ?? null;
+  switch (typeFilter) {
+    case "documents":
+      return rt === RESERVATION_TYPE_VALUE.Document
+        && (ds === DOCUMENT_SUBTYPE_VALUE.Standard || ds === DOCUMENT_SUBTYPE_VALUE.Procedure);
+    case "standard":
+      return rt === RESERVATION_TYPE_VALUE.Document && ds === DOCUMENT_SUBTYPE_VALUE.Standard;
+    case "procedure":
+      return rt === RESERVATION_TYPE_VALUE.Document && ds === DOCUMENT_SUBTYPE_VALUE.Procedure;
+    default:
+      return rt === RESERVATION_TYPE_VALUE.Drawing || rt === null;
+  }
+}

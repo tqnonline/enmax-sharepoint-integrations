@@ -36,6 +36,8 @@ vi.mock("../../features/approvals/hooks/useApproveReservation", () => ({
   }),
 }));
 
+const RECENT_DATE = new Date().toISOString();
+
 const PENDING_ROWS: PendingReservation[] = [
   {
     enmax_acdnreservationid:     "res-001",
@@ -47,7 +49,7 @@ const PENDING_ROWS: PendingReservation[] = [
     enmax_acdnoverride:          false,
     enmax_acdnreason:            "First test reservation",
     enmax_acdnstatus:            1,
-    createdon:                   "2026-05-19T10:00:00Z",
+    createdon:                   RECENT_DATE,
     businessCode: "GG",
     assetCode:    "CG",
     unitCode:     "00",
@@ -65,7 +67,7 @@ const PENDING_ROWS: PendingReservation[] = [
     enmax_acdnoverride:          false,
     enmax_acdnreason:            "Second test reservation",
     enmax_acdnstatus:            1,
-    createdon:                   "2026-05-19T11:00:00Z",
+    createdon:                   RECENT_DATE,
     businessCode: "TX",
     assetCode:    "DC",
     unitCode:     "01",

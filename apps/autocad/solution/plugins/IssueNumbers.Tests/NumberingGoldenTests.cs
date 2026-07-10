@@ -77,7 +77,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnCreateDrawings";
             pluginCtx.Stage            = 40;
-            pluginCtx.InitiatingUserId = ownerId;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, ownerId);
             pluginCtx.InputParameters  = new ParameterCollection
             {
                 ["Target"]        = new EntityReference(ReservationEntity, reservationId),
@@ -107,6 +107,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 
             ctx.Initialize(new[]
             {
+                new Entity(ReservationEntity, reservationId),
                 new Entity("enmax_autocadbusiness", bizId)   { ["enmax_acdncode"] = "GG" },
                 new Entity("enmax_autocadasset",    assetId) { ["enmax_acdncode"] = "CG" },
                 new Entity("enmax_autocadunit",     unitId)  { ["enmax_acdncode"] = "00" },
@@ -121,7 +122,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             pluginCtx.Mode              = 1;
             pluginCtx.PrimaryEntityId   = reservationId;
             pluginCtx.PrimaryEntityName = ReservationEntity;
-            pluginCtx.InitiatingUserId  = ownerId;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, ownerId);
             pluginCtx.InputParameters   = new ParameterCollection();
             pluginCtx.OutputParameters  = new ParameterCollection();
 

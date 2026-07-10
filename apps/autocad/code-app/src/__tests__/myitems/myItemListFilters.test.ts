@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { MyRecordRow } from "../../features/myitems/useMyRecords";
-import { applyMyRecordListFilters } from "../../features/myitems/myItemListFilters";
+import { applyMyRecordListFilters, defaultMyItemsListFilters } from "../../features/myitems/myItemListFilters";
 import { DOCUMENT_SUBTYPE_VALUE } from "../../features/reserve/terminology";
 import { defaultGridDateRange } from "../../lib/dateRangeDefaults";
 
@@ -33,6 +33,20 @@ const baseRow: MyRecordRow = {
 };
 
 describe("applyMyRecordListFilters", () => {
+  it("defaultMyItemsListFilters uses 30-day window on every tab", () => {
+    const now = new Date("2026-07-09T12:00:00.000Z");
+    const expected = defaultGridDateRange(now);
+    for (const state of ["reservations", "available", "pendingapproval", "checkedout"] as const) {
+      expect(defaultMyItemsListFilters(state, now)).toMatchObject({
+        from: expected.from,
+        to: expected.to,
+        number: "",
+        documentSubtype: "all",
+        peopleIds: [],
+      });
+    }
+  });
+
   it("default 30-day range includes rows inside the window", () => {
     const row = { ...baseRow, checkedInOn: "2026-06-15T10:00:00Z" };
     const { from, to } = defaultGridDateRange(new Date("2026-07-09T12:00:00.000Z"));
@@ -56,36 +70,65 @@ describe("applyMyRecordListFilters", () => {
     expect(rows).toHaveLength(1);
   });
 
-  it("filters by document subtype", () => {
-    const rows = applyMyRecordListFilters(
-      [baseRow],
-      { number: "", from: "", to: "", documentSubtype: "procedure", peopleIds: [] },
-      "available",
-      (r) => r.number,
-    );
-    expect(rows).toHaveLength(0);
-  });
-
-  it("includes old available sheets when date range is unset", () => {
-    const oldRow = {
+  it("includes available rows when revision is recent but check-in is older", () => {
+    const row = {
       ...baseRow,
+      checkedInOn: "2025-01-01T10:00:00Z",
+      revisionDate: "2026-06-20T10:00:00Z",
       createdOn: "2025-01-01T10:00:00Z",
-      revisionDate: "2025-06-01T10:00:00Z",
-      checkedInOn: "",
     };
     const rows = applyMyRecordListFilters(
-      [oldRow],
-      { number: "", from: "", to: "", documentSubtype: "all", peopleIds: [] },
+      [row],
+      { number: "", from: "2026-06-10", to: "2026-06-30", documentSubtype: "all", peopleIds: [] },
       "available",
       (r) => r.number,
     );
     expect(rows).toHaveLength(1);
   });
 
+  it("repairs inverted date ranges to the 30-day default window", () => {
+    const row = { ...baseRow, revisionDate: "2026-07-05T10:00:00Z", createdOn: "2026-07-05T10:00:00Z" };
+    const rows = applyMyRecordListFilters(
+      [row],
+      { number: "", from: "2026-08-10", to: "2026-07-10", documentSubtype: "all", peopleIds: [] },
+      "available",
+      (r) => r.number,
+    );
+    expect(rows).toHaveLength(1);
+  });
+
+  it("filters by document subtype", () => {
+    const rows = applyMyRecordListFilters(
+      [baseRow],
+      { number: "", from: "2020-01-01", to: "2030-12-31", documentSubtype: "procedure", peopleIds: [] },
+      "available",
+      (r) => r.number,
+    );
+    expect(rows).toHaveLength(0);
+  });
+
+  it("excludes available sheets outside the default 30-day activity window", () => {
+    const oldRow = {
+      ...baseRow,
+      createdOn: "2025-01-01T10:00:00Z",
+      revisionDate: "2025-06-01T10:00:00Z",
+      checkedInOn: "",
+    };
+    const { from, to } = defaultGridDateRange(new Date("2026-07-09T12:00:00.000Z"));
+    const rows = applyMyRecordListFilters(
+      [oldRow],
+      { number: "", from, to, documentSubtype: "all", peopleIds: [] },
+      "available",
+      (r) => r.number,
+    );
+    expect(rows).toHaveLength(0);
+  });
+
   it("filters by person id on submitter or approver columns", () => {
+    const wide = { number: "", from: "2020-01-01", to: "2030-12-31", documentSubtype: "all" as const, peopleIds: ["user-a"] };
     const rows = applyMyRecordListFilters(
       [{ ...baseRow, submittedById: "user-a", approvedById: "" }],
-      { number: "", from: "", to: "", documentSubtype: "all", peopleIds: ["user-a"] },
+      wide,
       "available",
       (r) => r.number,
     );
@@ -93,7 +136,7 @@ describe("applyMyRecordListFilters", () => {
 
     const none = applyMyRecordListFilters(
       [baseRow],
-      { number: "", from: "", to: "", documentSubtype: "all", peopleIds: ["other-user"] },
+      { ...wide, peopleIds: ["other-user"] },
       "available",
       (r) => r.number,
     );

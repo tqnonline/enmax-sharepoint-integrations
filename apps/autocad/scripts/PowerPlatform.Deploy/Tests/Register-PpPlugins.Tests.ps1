@@ -37,8 +37,8 @@ Describe 'Register-PpPlugins — PluginDefinitions data file' {
         $defs.CustomAPIDefs.Count | Should -Be 15
     }
 
-    It 'PluginDefinitions.psd1 loads with exactly 18 StepDefs' {
-        # WHY: StepDefs encode plugin step registrations: 16 SetAppOwnerPlugin Create steps
+    It 'PluginDefinitions.psd1 loads with exactly 16 StepDefs' {
+        # WHY: StepDefs encode plugin step registrations: 14 SetAppOwnerPlugin Create steps
         # (one per config/reference table — PreValidation ownerid stamping = the BU app-owner
         # team) plus OnReservationCreated and AutoCreateDrawings. A broken parse (e.g. unexpected
         # syntax in the data file) would silently leave steps unregistered, so ownership stamping
@@ -46,7 +46,19 @@ Describe 'Register-PpPlugins — PluginDefinitions data file' {
         $RepoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent | Split-Path -Parent
         $defsPath = Join-Path $RepoRoot 'scripts/PowerPlatform.Deploy/Data/PluginDefinitions.psd1'
         $defs = Import-PowerShellDataFile $defsPath
-        $defs.StepDefs.Count | Should -Be 18
+        $defs.StepDefs.Count | Should -Be 16
+    }
+
+    It 'every interactive Custom API accepts ActingUserId' {
+        # The Code App runs through a platform identity and stamps the signed-in
+        # WhoAmI user on every action. Missing registration drops that identity
+        # before PluginActor can authorize or audit the request.
+        $RepoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent | Split-Path -Parent
+        $defsPath = Join-Path $RepoRoot 'scripts/PowerPlatform.Deploy/Data/PluginDefinitions.psd1'
+        $defs = Import-PowerShellDataFile $defsPath
+        $missingActor = $defs.CustomAPIDefs |
+            Where-Object { -not ($_.Params | Where-Object { $_.Name -eq 'ActingUserId' }) }
+        $missingActor | Should -BeNullOrEmpty
     }
 
     It 'enmax_acdnIssueNumbers has BindingType=0 (Global) and no BoundEntity' {

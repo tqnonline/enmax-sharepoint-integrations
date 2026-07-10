@@ -174,7 +174,7 @@ test("My Reservations tab shows Reason column for submitted reservations", async
 
 test("composition column shows resolved codes and issued-number range", async () => {
   renderWithProviders(<MyItemsPage />);
-  await waitFor(() => expect(screen.getByText("GG-CG-00-ECS-AST-DD-0001–0003")).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText("GG-CG-00-ECS-AST-DD-0001 to 0003")).toBeInTheDocument());
   expect(screen.getByText("GG-CG-00-ECS-AST-DD-????")).toBeInTheDocument();
 });
 

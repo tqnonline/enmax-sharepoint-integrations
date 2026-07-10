@@ -96,6 +96,7 @@ export function SearchPage() {
   const [appliedFilters, setAppliedFilters] = useState<SearchListFilters>(() => initialFilters());
   const [page, setPage] = useState(0);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- router search params are an external state source */
   useEffect(() => {
     const tab = parseTab(searchParams.get("tab"));
     if (tab !== activeTab) setActiveTab(tab);
@@ -110,6 +111,7 @@ export function SearchPage() {
     setAppliedFilters(prefilled);
     setPage(0);
   }, [searchParams, refData]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const queryKey = useMemo(
     () => ["search-documents", activeTab, appliedFilters, page, pageSize],

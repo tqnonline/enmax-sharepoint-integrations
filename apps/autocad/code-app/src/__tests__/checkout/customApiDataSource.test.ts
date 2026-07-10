@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it, expect } from "vitest";
 import { dataSourcesInfo } from "../../../.power/schemas/appschemas/dataSourcesInfo";
@@ -22,6 +22,13 @@ const clientSource = readFileSync(
   resolve(process.cwd(), "src/features/checkout/api/checkoutClient.ts"),
   "utf8",
 );
+const generatedServiceDirectory = resolve(process.cwd(), "src/generated/services");
+const generatedServiceSources = readdirSync(generatedServiceDirectory)
+  .filter((file) => file.endsWith("Service.ts"))
+  .flatMap((file) => {
+    const source = readFileSync(resolve(generatedServiceDirectory, file), "utf8");
+    return [...source.matchAll(/dataSourceName\s*=\s*['"]([^'"]+)['"]/g)].map((match) => match[1]);
+  });
 
 // Each executeAsync call lists operationName immediately before tableName.
 const pairRe = /operationName:\s*"([^"]+)"[\s\S]*?tableName:\s*"([^"]+)"/g;
@@ -30,9 +37,18 @@ const calledOps = [...clientSource.matchAll(pairRe)].map((m) => ({
   tableName: m[2],
 }));
 
-const schema = dataSourcesInfo as Record<string, { apis?: Record<string, unknown> }>;
+interface ApiSchema {
+  parameters?: Array<{ name: string }>;
+}
+
+const schema = dataSourcesInfo as Record<string, { apis?: Record<string, ApiSchema> }>;
 
 describe("checkoutClient Custom API operations are declared in dataSourcesInfo", () => {
+  it("declares every source used by a generated Dataverse service", () => {
+    expect(generatedServiceSources.length).toBeGreaterThan(0);
+    expect(Object.keys(schema)).toEqual(expect.arrayContaining(generatedServiceSources));
+  });
+
   it("discovers the customapi calls in checkoutClient.ts", () => {
     // Sanity: if this drops, the regex (or the file) changed and the guard is silently disarmed.
     expect(calledOps.length).toBeGreaterThanOrEqual(6);
@@ -48,4 +64,30 @@ describe("checkoutClient Custom API operations are declared in dataSourcesInfo",
       ).toBeDefined();
     },
   );
+
+  it("declares ActingUserId on every interactive Custom API", () => {
+    const interactiveApis = Object.values(schema)
+      .flatMap((source) => Object.entries(source.apis ?? {}))
+      .filter(([operationName]) => operationName.startsWith("enmax_"));
+
+    expect(interactiveApis.length).toBeGreaterThan(0);
+    for (const [operationName, api] of interactiveApis) {
+      expect(
+        api.parameters?.map(({ name }) => name),
+        `${operationName} must serialize the signed-in user's ActingUserId`,
+      ).toContain("ActingUserId");
+    }
+  });
+
+  it("declares request fields used by lifecycle clients", () => {
+    expect(
+      schema.enmax_acdnissuenumbers.apis?.enmax_acdnIssueNumbers.parameters?.map(({ name }) => name),
+    ).toContain("Reservation");
+    expect(
+      schema.enmax_acdncheckoutsheets.apis?.enmax_acdnCheckOutSheets.parameters?.map(({ name }) => name),
+    ).toContain("BatchId");
+    expect(
+      schema.enmax_autocadcheckouts.apis?.enmax_acdnForceCheckin.parameters?.map(({ name }) => name),
+    ).toContain("NewRevision");
+  });
 });

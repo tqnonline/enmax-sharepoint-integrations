@@ -6,6 +6,7 @@ using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;
 using Microsoft.Xrm.Sdk.Query;
 using System;
+using System.Linq;
 using System.ServiceModel;
 using Xunit;
 
@@ -25,6 +26,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 
         private const string DrawingEntity   = "enmax_autocaddrawing";
         private const string CheckoutEntity  = "enmax_autocadcheckout";
+        private const string SheetEntity     = "enmax_autocadsheet";
         private const string ColDrawingState = "enmax_acdnstate";
         private const string ColCheckedOutBy = "enmax_acdncheckedoutby";
 
@@ -41,22 +43,36 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         private static readonly Guid ApproverTeamId = Guid.NewGuid();
 
         private static (XrmFakedContext ctx, XrmFakedPluginExecutionContext pluginCtx, Guid drawingId)
-            BuildContext(int drawingState = StateAvailable, bool requireApproval = false)
+            BuildContext(
+                int drawingState = StateAvailable,
+                bool requireApproval = false,
+                string drawingRowVersion = null)
         {
             var ctx       = new XrmFakedContext();
             var drawingId = Guid.NewGuid();
+            var sheetId   = Guid.NewGuid();
             var userId    = Guid.NewGuid();
 
             var drawing = new Entity(DrawingEntity, drawingId)
             {
+                RowVersion = drawingRowVersion,
                 [ColDrawingState] = new OptionSetValue(drawingState),
                 // Owner = acting user so the authorization gate passes.
                 ["ownerid"]       = new EntityReference("systemuser", userId),
             };
+            if (!string.IsNullOrWhiteSpace(drawingRowVersion))
+                drawing["versionnumber"] = long.Parse(drawingRowVersion);
+
+            var sheet = new Entity(SheetEntity, sheetId)
+            {
+                ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
+                ["enmax_acdnstate"]   = new OptionSetValue(drawingState == StateAvailable ? 2 : 3),
+                ["ownerid"]           = new EntityReference("systemuser", userId),
+            };
 
             ctx.Initialize(new Entity[]
             {
-                drawing,
+                drawing, sheet,
                 // AppConfig entries so Authorization helper can resolve teams.
                 new Entity("enmax_autocadappconfig", Guid.NewGuid())
                 {
@@ -80,7 +96,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnCheckOutDrawing";
             pluginCtx.Stage            = 40;
-            pluginCtx.InitiatingUserId = userId;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, userId);
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
             pluginCtx.InputParameters["Target"] = new EntityReference(DrawingEntity, drawingId);
@@ -176,8 +192,8 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             Action act = () => ctx.ExecutePluginWith<CheckOutDrawingPlugin>(pluginCtx);
 
             act.Should().Throw<InvalidPluginExecutionException>()
-               .WithMessage($"*{StateCheckedOut}*",
-                   because: "attempting to check out an already-checked-out drawing must fail with the current state in the message");
+               .WithMessage("*no available sheets*",
+                   because: "a drawing whose files are already checked out has no available file to check out again");
         }
 
         [Fact]
@@ -185,6 +201,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         {
             var ctx       = new XrmFakedContext();
             var pluginCtx = ctx.GetDefaultPluginContext();
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, Guid.NewGuid());
             pluginCtx.MessageName      = "enmax_acdnCheckOutDrawing";
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
@@ -201,6 +218,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         {
             var ctx       = new XrmFakedContext();
             var pluginCtx = ctx.GetDefaultPluginContext();
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, Guid.NewGuid());
             pluginCtx.MessageName      = "enmax_acdnCheckOutDrawing";
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
@@ -216,11 +234,12 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         [Fact]
         public void ConcurrencyVersionMismatch_propagates_to_caller()
         {
-            var (ctx, pluginCtx, _) = BuildContext(StateAvailable);
+            var (ctx, pluginCtx, _) = BuildContext(StateAvailable, drawingRowVersion: "1");
 
             var fault  = new OrganizationServiceFault { ErrorCode = -2147088254, Message = "ConcurrencyVersionMismatch" };
             var orgEx  = new FaultException<OrganizationServiceFault>(fault, fault.Message);
-            ctx.AddFakeMessageExecutor<UpdateRequest>(new AlwaysThrowUpdateExecutor(orgEx));
+            ctx.AddFakeMessageExecutor<UpdateRequest>(
+                new AlwaysThrowUpdateExecutor(orgEx, DrawingEntity));
 
             Action act = () => ctx.ExecutePluginWith<CheckOutDrawingPlugin>(pluginCtx);
 
@@ -232,7 +251,8 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         [Fact]
         public void CheckOut_creates_audit_event()
         {
-            var (ctx, pluginCtx, drawingId) = BuildContext(StateAvailable);
+            var (ctx, pluginCtx, _) = BuildContext(StateAvailable);
+            var sheetId = ctx.CreateQuery(SheetEntity).Single().Id;
 
             ctx.ExecutePluginWith<CheckOutDrawingPlugin>(pluginCtx);
 
@@ -250,8 +270,9 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                  .Should().Be(2, because: "event type 2 = StateChanged");
 
             audit.GetAttributeValue<string>("enmax_acdnsubjectid")
-                 .Should().Be(drawingId.ToString(),
-                     because: "audit subject must reference the drawing that was checked out");
+                 .Should().Be(sheetId.ToString(),
+                     because: "audit subject must reference the exact document file that was checked out");
+            audit.GetAttributeValue<string>("enmax_acdnsubjecttable").Should().Be(SheetEntity);
         }
 
         [Fact]
@@ -286,7 +307,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnCheckOutDrawing";
             pluginCtx.Stage            = 40;
-            pluginCtx.InitiatingUserId = actingUser;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, actingUser);
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
             pluginCtx.InputParameters["Target"] = new EntityReference(DrawingEntity, drawingId);
@@ -339,9 +360,17 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 ["ownerid"]       = new EntityReference("systemuser", userId),
             };
             var sheet1  = new Entity("enmax_autocadsheet", Guid.NewGuid())
-                { ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId), ["enmax_acdnstate"] = new OptionSetValue(2) };
+                {
+                    ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
+                    ["enmax_acdnstate"] = new OptionSetValue(2),
+                    ["ownerid"] = new EntityReference("systemuser", userId),
+                };
             var sheet2  = new Entity("enmax_autocadsheet", Guid.NewGuid())
-                { ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId), ["enmax_acdnstate"] = new OptionSetValue(2) };
+                {
+                    ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
+                    ["enmax_acdnstate"] = new OptionSetValue(2),
+                    ["ownerid"] = new EntityReference("systemuser", userId),
+                };
             ctx.Initialize(new Entity[]
             {
                 drawing, sheet1, sheet2,
@@ -366,7 +395,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnCheckOutDrawing";
             pluginCtx.Stage            = 40;
-            pluginCtx.InitiatingUserId = userId;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, userId);
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
             pluginCtx.InputParameters["Target"] = new EntityReference(DrawingEntity, drawingId);
@@ -413,7 +442,11 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 ["ownerid"]       = new EntityReference("systemuser", userId),
             };
             var sheet = new Entity("enmax_autocadsheet", Guid.NewGuid())
-                { ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId), ["enmax_acdnstate"] = new OptionSetValue(2) };
+                {
+                    ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
+                    ["enmax_acdnstate"] = new OptionSetValue(2),
+                    ["ownerid"] = new EntityReference("systemuser", userId),
+                };
             ctx.Initialize(new Entity[]
             {
                 drawing, sheet,
@@ -424,7 +457,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnCheckOutDrawing";
             pluginCtx.Stage            = 40;
-            pluginCtx.InitiatingUserId = userId;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, userId);
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
             pluginCtx.InputParameters["Target"] = new EntityReference(DrawingEntity, drawingId);
@@ -440,7 +473,8 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         [Fact]
         public void Gated_checkout_writes_a_CheckoutRequested_audit_event()
         {
-            var (ctx, pluginCtx, drawingId) = BuildContext(StateAvailable, requireApproval: true);
+            var (ctx, pluginCtx, _) = BuildContext(StateAvailable, requireApproval: true);
+            var sheetId = ctx.CreateQuery(SheetEntity).Single().Id;
 
             ctx.ExecutePluginWith<CheckOutDrawingPlugin>(pluginCtx);
 
@@ -448,20 +482,23 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 .RetrieveMultiple(new QueryExpression("enmax_autocadauditevent") { ColumnSet = new ColumnSet(true) })
                 .Entities.Should().ContainSingle().Subject;
             audit.GetAttributeValue<string>("enmax_acdntostate").Should().Be("CheckoutRequested",
-                because: "the gated request must be audited as a CheckoutRequested transition on the drawing");
-            audit.GetAttributeValue<string>("enmax_acdnsubjectid").Should().Be(drawingId.ToString());
+                because: "the gated request must be audited as a CheckoutRequested transition on the document file");
+            audit.GetAttributeValue<string>("enmax_acdnsubjectid").Should().Be(sheetId.ToString());
+            audit.GetAttributeValue<string>("enmax_acdnsubjecttable").Should().Be(SheetEntity);
         }
 
         [Fact]
         public void Gated_checkout_rejects_a_second_request_while_one_is_pending()
         {
             var (ctx, pluginCtx, drawingId) = BuildContext(StateAvailable, requireApproval: true);
+            var sheetId = ctx.CreateQuery(SheetEntity).Single().Id;
 
-            // Pre-seed a pending Requested checkout for this drawing.
+            // Pre-seed a pending Requested checkout for this document file.
             ctx.GetFakedOrganizationService().Create(new Entity(CheckoutEntity)
             {
                 ["enmax_acdnstatus"]      = new OptionSetValue(StatusRequested),
                 ["enmax_acdndrawing"]     = new EntityReference(DrawingEntity, drawingId),
+                ["enmax_acdnsheet"]       = new EntityReference(SheetEntity, sheetId),
                 ["enmax_acdnnewrevision"] = string.Empty,
             });
 

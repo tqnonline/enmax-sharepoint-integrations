@@ -1,3 +1,4 @@
+using FakeXrmEasy;
 using FluentAssertions;
 using Microsoft.Xrm.Sdk;
 using System;
@@ -26,9 +27,12 @@ namespace Enmax.AutoCAD.Tests
         {
             var ctx = new XrmFakedContext();
             var acting = Guid.NewGuid();
-            ctx.Create("systemuser", new Entity("systemuser", acting)
+            ctx.Initialize(new[]
             {
-                ["fullname"] = "Test User",
+                new Entity("systemuser", acting)
+                {
+                    ["fullname"] = "Test User",
+                },
             });
 
             var pluginCtx = ctx.GetDefaultPluginContext();

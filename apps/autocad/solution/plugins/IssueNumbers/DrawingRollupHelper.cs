@@ -3,6 +3,7 @@ using Microsoft.Xrm.Sdk.Messages;
 using Microsoft.Xrm.Sdk.Query;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.ServiceModel;
 
@@ -27,48 +28,57 @@ namespace Enmax.AutoCAD
 
         public static int RecomputeDrawingRollup(IOrganizationService service, Guid drawingId)
         {
-            for (var attempt = 0; attempt < 2; attempt++)
+            var drawing = service.Retrieve(
+                DrawingEntity,
+                drawingId,
+                new ColumnSet(ColDrawingState, "versionnumber"));
+            var targetState = ComputeTargetState(service, drawingId);
+            var currentState = drawing.GetAttributeValue<OptionSetValue>(ColDrawingState)?.Value ?? 0;
+            if (currentState == targetState)
             {
-                var drawing = service.Retrieve(DrawingEntity, drawingId, new ColumnSet(ColDrawingState));
-                var targetState = ComputeTargetState(service, drawingId);
-                var currentState = drawing.GetAttributeValue<OptionSetValue>(ColDrawingState)?.Value ?? 0;
-                if (currentState == targetState)
-                {
-                    return targetState;
-                }
-
-                try
-                {
-                    var update = new Entity(DrawingEntity, drawingId)
-                    {
-                        [ColDrawingState] = new OptionSetValue(targetState),
-                    };
-
-                    if (!string.IsNullOrWhiteSpace(drawing.RowVersion))
-                    {
-                        update.RowVersion = drawing.RowVersion;
-                        service.Execute(new UpdateRequest
-                        {
-                            Target = update,
-                            ConcurrencyBehavior = ConcurrencyBehavior.IfRowVersionMatches,
-                        });
-                    }
-                    else
-                    {
-                        service.Update(update);
-                    }
-
-                    return targetState;
-                }
-                catch (FaultException<OrganizationServiceFault> ex)
-                    when (ex.Detail?.ErrorCode == -2147088254 ||
-                          (ex.Message != null && ex.Message.Contains("ConcurrencyVersionMismatch")))
-                {
-                    if (attempt == 1) throw;
-                }
+                return targetState;
             }
 
-            return DrawingStateAvailable;
+            try
+            {
+                var update = new Entity(DrawingEntity, drawingId)
+                {
+                    [ColDrawingState] = new OptionSetValue(targetState),
+                };
+
+                var drawingRowVersion = drawing.RowVersion;
+                if (string.IsNullOrWhiteSpace(drawingRowVersion) &&
+                    drawing.Contains("versionnumber"))
+                {
+                    drawingRowVersion = drawing
+                        .GetAttributeValue<long>("versionnumber")
+                        .ToString(CultureInfo.InvariantCulture);
+                }
+
+                if (!string.IsNullOrWhiteSpace(drawingRowVersion))
+                {
+                    update.RowVersion = drawingRowVersion;
+                    service.Execute(new UpdateRequest
+                    {
+                        Target = update,
+                        ConcurrencyBehavior = ConcurrencyBehavior.IfRowVersionMatches,
+                    });
+                }
+                else
+                {
+                    service.Update(update);
+                }
+
+                return targetState;
+            }
+            catch (FaultException<OrganizationServiceFault> ex)
+                when (ex.Detail?.ErrorCode == -2147088254 ||
+                      (ex.Message != null && ex.Message.Contains("ConcurrencyVersionMismatch")))
+            {
+                throw new InvalidPluginExecutionException(
+                    $"Drawing {drawingId} was concurrently modified (ConcurrencyVersionMismatch). Retry.",
+                    ex);
+            }
         }
 
         private static int ComputeTargetState(IOrganizationService service, Guid drawingId)

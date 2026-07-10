@@ -31,6 +31,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var ctx          = new XrmFakedContext();
             var drawingId    = Guid.NewGuid();
             var checkoutId   = Guid.NewGuid();
+            var sheetId      = Guid.NewGuid();
             var submitter    = Guid.NewGuid();
             var adminUser    = Guid.NewGuid();
             var approverUser = Guid.NewGuid();
@@ -47,10 +48,11 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             {
                 ["enmax_acdnstatus"]  = new OptionSetValue(1), // Open
                 ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
+                ["enmax_acdnsheet"]   = new EntityReference(SheetEntity, sheetId),
                 // Owner = submitter so RequireSelf gate passes for the submitter.
                 ["ownerid"]           = new EntityReference("systemuser", submitter),
             };
-            var sheet = new Entity(SheetEntity, Guid.NewGuid())
+            var sheet = new Entity(SheetEntity, sheetId)
             {
                 ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
                 ["enmax_acdnstate"]   = new OptionSetValue(3),
@@ -75,7 +77,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnSubmitRevision";
             pluginCtx.Stage            = 40;
-            pluginCtx.InitiatingUserId = submitter;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, submitter);
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
             pluginCtx.InputParameters["Target"]         = new EntityReference(CheckoutEntity, checkoutId);

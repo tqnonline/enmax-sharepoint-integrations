@@ -42,6 +42,36 @@ export interface CheckinRow {
   sharePointUrl: string;
 }
 
+/** Checkout fields known to exist in DEV — aligned with My Items CHECKOUT_SELECT. */
+export const CHECKOUT_APPROVAL_SELECT = [
+  "enmax_autocadcheckoutid",
+  "enmax_acdnstatus",
+  "enmax_acdncheckedouton",
+  "enmax_acdnclosedon",
+  "createdon",
+  "modifiedon",
+  "_enmax_acdnsheet_value",
+  "_enmax_acdndrawing_value",
+  "_enmax_acdncheckedoutby_value",
+  "_enmax_acdnclosedby_value",
+  "_ownerid_value",
+  "enmax_acdnsubmissioninfo",
+  "enmax_acdnnewpdfurls",
+] as const;
+
+/** Sheet fields on enmax_autocadsheet only — no checkout-only or drawing-only columns. */
+export const SHEET_APPROVAL_SELECT = [
+  "enmax_autocadsheetid",
+  "_enmax_acdndrawing_value",
+  "enmax_acdnsheetnumber",
+  "enmax_acdnfilename",
+  "enmax_acdnreservationtype",
+  "enmax_acdndocumentsubtype",
+  "enmax_acdnsharepointurl",
+  "enmax_acdnspdestinationurl",
+  "enmax_acdnsharepointitemid",
+] as const;
+
 // Checkout status option set.
 export const CHECKIN_STATUS_AWAITING = 2;
 export const CHECKIN_STATUS_APPROVED = 3;
@@ -54,30 +84,35 @@ const CHECKIN_STATUS_LABELS: Record<number, string> = {
   6: "Requested",
 };
 
+const RESOLVE_CHUNK = 40;
+
 async function resolve<T extends string>(
   ids: string[],
   fetcher: (filter: string) => Promise<Record<string, unknown>[]>,
   keyField: T,
+  area: string,
 ): Promise<Map<string, Record<string, unknown>>> {
   const unique = [...new Set(ids.filter(isGuid))];
   const map = new Map<string, Record<string, unknown>>();
   if (unique.length === 0) return map;
-  const filter = unique.map((id) => `${keyField} eq '${id}'`).join(" or ");
-  for (const row of await fetcher(`(${filter})`)) map.set(row[keyField] as string, row);
+
+  for (let i = 0; i < unique.length; i += RESOLVE_CHUNK) {
+    const chunk = unique.slice(i, i + RESOLVE_CHUNK);
+    const filter = chunk.map((id) => `${keyField} eq '${id}'`).join(" or ");
+    try {
+      for (const row of await fetcher(`(${filter})`)) map.set(row[keyField] as string, row);
+    } catch (error) {
+      logDataverseError(area, error, filter);
+    }
+  }
   return map;
 }
 
 export async function fetchCheckins(): Promise<CheckinRow[]> {
-  // List ALL check-ins (every status), newest activity first. The grid filters
-  // by date / submitter client-side; status is shown as a column.
+  // Pending check-out (6) and check-in validation (2) only — matches Approvals documents tabs.
   const res = await Enmax_autocadcheckoutsService.getAll({
-    select: [
-      "enmax_autocadcheckoutid", "_ownerid_value", "enmax_acdncheckedouton",
-      "enmax_acdnsubmissioninfo", "enmax_acdnnewpdfurls", "_enmax_acdndrawing_value",
-      "enmax_acdnstatus", "createdon", "modifiedon", "_enmax_acdnclosedby_value",
-      "_enmax_acdncheckedoutby_value",
-      "_enmax_acdnsheet_value", "enmax_acdnbatchid",
-    ],
+    filter: "(enmax_acdnstatus eq 6 or enmax_acdnstatus eq 2)",
+    select: [...CHECKOUT_APPROVAL_SELECT],
     orderBy: ["modifiedon desc"],
     top: 5000,
   });
@@ -94,16 +129,21 @@ export async function fetchCheckins(): Promise<CheckinRow[]> {
         filter,
         select: [
           "enmax_autocaddrawingid", "enmax_acdnnumber", "enmax_acdncurrentrevision",
-          "enmax_acdnmissingsheets", "enmax_acdnsplibraryurl",
+          "enmax_acdnmissingsheets", "enmax_acdnsplibraryurl", "enmax_acdnspdestinationurl",
           "enmax_acdnreservationtype", "enmax_acdndocumentsubtype",
           "_enmax_acdnbusiness_value", "_enmax_acdnasset_value", "_enmax_acdnunit_value",
           "_enmax_acdndomain_value", "_enmax_acdnsystem_value", "_enmax_acdnkind_value",
           "_enmax_acdnreservation_value",
         ],
       });
+      if (!dr.success) {
+        logDataverseError("Checkins/Drawings", dr.error, filter);
+        return [];
+      }
       return (dr.data ?? []) as unknown as Record<string, unknown>[];
     },
     "enmax_autocaddrawingid",
+    "Checkins/Drawings",
   );
 
   const reservationMap = await fetchReservationTaxonomyMap(
@@ -115,23 +155,16 @@ export async function fetchCheckins(): Promise<CheckinRow[]> {
     async (filter) => {
       const sr = await Enmax_autocadsheetsService.getAll({
         filter,
-        select: [
-          "enmax_autocadsheetid",
-          "enmax_acdnfilename",
-          "enmax_acdnsheetnumber",
-          "enmax_acdnreservationtype",
-          "enmax_acdndocumentsubtype",
-          "enmax_acdnsharepointurl",
-          "enmax_acdnsharepointitemid",
-          "enmax_acdnbatchid",
-          "_enmax_acdndrawing_value",
-          "_enmax_acdnbusiness_value", "_enmax_acdnasset_value", "_enmax_acdnunit_value",
-          "_enmax_acdndomain_value", "_enmax_acdnsystem_value", "_enmax_acdnkind_value",
-        ],
+        select: [...SHEET_APPROVAL_SELECT],
       });
+      if (!sr.success) {
+        logDataverseError("Checkins/Sheets", sr.error, filter);
+        return [];
+      }
       return (sr.data ?? []) as unknown as Record<string, unknown>[];
     },
     "enmax_autocadsheetid",
+    "Checkins/Sheets",
   );
 
   const userMap = await resolve(
@@ -142,9 +175,14 @@ export async function fetchCheckins(): Promise<CheckinRow[]> {
     ]),
     async (filter) => {
       const ur = await SystemusersService.getAll({ filter, select: ["systemuserid", "fullname"] });
+      if (!ur.success) {
+        logDataverseError("Checkins/Users", ur.error, filter);
+        return [];
+      }
       return (ur.data ?? []) as unknown as Record<string, unknown>[];
     },
     "systemuserid",
+    "Checkins/Users",
   );
 
   return checkouts.map((c) => {
@@ -183,10 +221,7 @@ export async function fetchCheckins(): Promise<CheckinRow[]> {
     const displayNumber = documentDisplayNumber(baseNumber, sheetNum, reservationType, documentSubtype)
       || (s["enmax_acdnfilename"] as string)
       || baseNumber;
-    const batchId =
-      (c["enmax_acdnbatchid"] as string) ??
-      (s["enmax_acdnbatchid"] as string) ??
-      "";
+    const batchId = (c["enmax_acdnbatchid"] as string) ?? "";
 
     return {
       checkoutId: c["enmax_autocadcheckoutid"] as string,
