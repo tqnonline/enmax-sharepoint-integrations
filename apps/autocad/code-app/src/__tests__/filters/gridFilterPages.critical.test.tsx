@@ -84,7 +84,7 @@ describe("My Items grid filters", () => {
   });
   afterEach(() => vi.useRealTimers());
 
-  it("loads with default 30-day range applied to fetches", async () => {
+  it("loads reservations tab with default 30-day range applied to fetches", async () => {
     const { MyItemsPage } = await import("../../features/myitems/MyItemsPage");
     renderWithProviders(<MyItemsPage />);
     expectDefaultDateInputs();
@@ -98,7 +98,24 @@ describe("My Items grid filters", () => {
     });
   });
 
-  it("Clear resets draft and applied filters to default 30-day window", async () => {
+  it("loads available tab with unbounded date range so sheets are not hidden", async () => {
+    const { MyItemsPage } = await import("../../features/myitems/MyItemsPage");
+    renderWithProviders(<MyItemsPage />, { initialPath: "/my-items?type=drawings&state=available" });
+    const from = screen.getByLabelText("From date") as HTMLInputElement;
+    const to = screen.getByLabelText("To date") as HTMLInputElement;
+    expect(from.value).toBe("");
+    expect(to.value).toBe("");
+    await waitFor(() => {
+      expect(capturedMyItemsFilters.last).toMatchObject({
+        from: "",
+        to: "",
+        number: "",
+        peopleIds: [],
+      });
+    });
+  });
+
+  it("Clear resets reservations tab to default 30-day window", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const { MyItemsPage } = await import("../../features/myitems/MyItemsPage");
     renderWithProviders(<MyItemsPage />);

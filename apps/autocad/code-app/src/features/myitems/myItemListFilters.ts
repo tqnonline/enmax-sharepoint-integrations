@@ -1,7 +1,8 @@
-import { DOCUMENT_SUBTYPE_VALUE } from "../reserve/terminology";
-import type { DocumentSubtypeFilter } from "../reserve/taxonomyFilters";
 import type { MyRecordRow, MyRecordStateFilter } from "./useMyRecords";
 import { inIsoDateRange, matchesOptionalPeople, matchesOptionalText } from "../../lib/gridListFilters";
+import { defaultGridDateRange } from "../../lib/dateRangeDefaults";
+import { DOCUMENT_SUBTYPE_VALUE } from "../reserve/terminology";
+import type { DocumentSubtypeFilter } from "../reserve/taxonomyFilters";
 
 export interface MyRecordListFilters {
   number: string;
@@ -10,6 +11,22 @@ export interface MyRecordListFilters {
   documentSubtype: DocumentSubtypeFilter;
   /** When non-empty, row must match at least one person id (submitter or approver column). */
   peopleIds: string[];
+}
+
+/**
+ * My Reservations tab uses the standard 30-day window.
+ * Available / Pending / Checked Out are user-scoped work queues — default unbounded
+ * so issued drawing/procedure sheets are not hidden by stale activity dates in DEV.
+ */
+export function defaultMyItemsListFilters(
+  state: MyRecordStateFilter = "reservations",
+  now = new Date(),
+): MyRecordListFilters {
+  if (state === "reservations") {
+    const { from, to } = defaultGridDateRange(now);
+    return { number: "", from, to, documentSubtype: "all", peopleIds: [] };
+  }
+  return { number: "", from: "", to: "", documentSubtype: "all", peopleIds: [] };
 }
 
 export function rowDateForState(row: MyRecordRow, state: MyRecordStateFilter): string {

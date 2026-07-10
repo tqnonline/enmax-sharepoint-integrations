@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { MyRecordRow } from "../../features/myitems/useMyRecords";
-import { applyMyRecordListFilters } from "../../features/myitems/myItemListFilters";
+import { applyMyRecordListFilters, defaultMyItemsListFilters } from "../../features/myitems/myItemListFilters";
 import { DOCUMENT_SUBTYPE_VALUE } from "../../features/reserve/terminology";
 import { defaultGridDateRange } from "../../lib/dateRangeDefaults";
 
@@ -33,6 +33,15 @@ const baseRow: MyRecordRow = {
 };
 
 describe("applyMyRecordListFilters", () => {
+  it("defaultMyItemsListFilters uses 30-day window only for reservations", () => {
+    const reservations = defaultMyItemsListFilters("reservations", new Date("2026-07-09T12:00:00.000Z"));
+    expect(reservations.from).toBe("2026-06-09");
+    expect(reservations.to).toBe("2026-07-09");
+    const available = defaultMyItemsListFilters("available");
+    expect(available.from).toBe("");
+    expect(available.to).toBe("");
+  });
+
   it("default 30-day range includes rows inside the window", () => {
     const row = { ...baseRow, checkedInOn: "2026-06-15T10:00:00Z" };
     const { from, to } = defaultGridDateRange(new Date("2026-07-09T12:00:00.000Z"));
