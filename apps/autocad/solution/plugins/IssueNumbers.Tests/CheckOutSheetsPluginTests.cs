@@ -43,7 +43,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName = "enmax_acdnCheckOutSheets";
             pluginCtx.Stage = 40;
-            pluginCtx.InitiatingUserId = userId;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, userId);
             pluginCtx.InputParameters = new ParameterCollection
             {
                 ["Sheets"] = new EntityReferenceCollection

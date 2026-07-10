@@ -63,13 +63,15 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 });
             }
 
+            ctx.GetFakedOrganizationService().Create(new Entity(ReservationEntity, reservationId));
+
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName        = "Update";
             pluginCtx.Stage              = 40; // PostOperation
             pluginCtx.Mode               = 1;  // Asynchronous
             pluginCtx.PrimaryEntityId    = reservationId;
             pluginCtx.PrimaryEntityName  = ReservationEntity;
-            pluginCtx.InitiatingUserId   = ownerId;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, ownerId);
             pluginCtx.InputParameters    = new ParameterCollection();
             pluginCtx.OutputParameters   = new ParameterCollection();
 
@@ -264,7 +266,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var (ctx, pluginCtx, reservationId) = BuildContext(new[] { 1 });
             var targetId = Guid.NewGuid();
             var service = ctx.GetFakedOrganizationService();
-            service.Create(new Entity(ReservationEntity, reservationId)
+            service.Update(new Entity(ReservationEntity, reservationId)
             {
                 ["enmax_acdntargetdrawing"] = new EntityReference(DrawingEntity, targetId),
             });

@@ -43,7 +43,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var p = ctx.GetDefaultPluginContext();
             p.MessageName      = message;
             p.Stage            = 40;
-            p.InitiatingUserId = actor;
+            PluginTestUsers.SetInteractiveCaller(ctx, p, actor);
             p.InputParameters  = new ParameterCollection();
             p.OutputParameters = new ParameterCollection();
             return p;

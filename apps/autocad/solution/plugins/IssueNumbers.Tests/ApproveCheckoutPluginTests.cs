@@ -90,7 +90,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnApproveCheckout";
             pluginCtx.Stage            = 40;
-            pluginCtx.InitiatingUserId = actingUser;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, actingUser);
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
             pluginCtx.InputParameters["Target"]   = new EntityReference(CheckoutEntity, checkoutId);
@@ -211,7 +211,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pluginCtx1 = ctx.GetDefaultPluginContext();
             pluginCtx1.MessageName = "enmax_acdnApproveCheckout";
             pluginCtx1.Stage = 40;
-            pluginCtx1.InitiatingUserId = actingUser;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx1, actingUser);
             pluginCtx1.InputParameters = new ParameterCollection
             {
                 ["Target"] = new EntityReference(CheckoutEntity, checkout1Id),
@@ -223,7 +223,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pluginCtx2 = ctx.GetDefaultPluginContext();
             pluginCtx2.MessageName = "enmax_acdnApproveCheckout";
             pluginCtx2.Stage = 40;
-            pluginCtx2.InitiatingUserId = actingUser;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx2, actingUser);
             pluginCtx2.InputParameters = new ParameterCollection
             {
                 ["Target"] = new EntityReference(CheckoutEntity, checkout2Id),
@@ -307,6 +307,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         {
             var ctx       = new XrmFakedContext();
             var pluginCtx = ctx.GetDefaultPluginContext();
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, Guid.NewGuid());
             pluginCtx.MessageName      = "enmax_acdnApproveCheckout";
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();

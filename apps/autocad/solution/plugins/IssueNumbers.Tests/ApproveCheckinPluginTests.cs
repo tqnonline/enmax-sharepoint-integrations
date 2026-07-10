@@ -90,7 +90,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnApproveCheckin";
             pluginCtx.Stage            = 40;
-            pluginCtx.InitiatingUserId = userId;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, userId);
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
             pluginCtx.InputParameters["Target"] = new EntityReference(CheckoutEntity, checkoutId);
@@ -248,6 +248,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         {
             var ctx       = new XrmFakedContext();
             var pluginCtx = ctx.GetDefaultPluginContext();
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, Guid.NewGuid());
             pluginCtx.MessageName      = "enmax_acdnApproveCheckin";
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
@@ -408,7 +409,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnApproveCheckin";
             pluginCtx.Stage            = 40;
-            pluginCtx.InitiatingUserId = plainUser;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, plainUser);
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
             pluginCtx.InputParameters["Target"]   = new EntityReference(CheckoutEntity, checkoutId);

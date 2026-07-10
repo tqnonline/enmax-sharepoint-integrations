@@ -75,7 +75,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnSubmitRevision";
             pluginCtx.Stage            = 40;
-            pluginCtx.InitiatingUserId = submitter;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, submitter);
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
             pluginCtx.InputParameters["Target"]         = new EntityReference(CheckoutEntity, checkoutId);

@@ -73,7 +73,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnCreateDrawings";
             pluginCtx.Stage            = 40;
-            pluginCtx.InitiatingUserId = ownerId;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, ownerId);
             pluginCtx.InputParameters  = new ParameterCollection
             {
                 ["Target"]        = new EntityReference(ReservationEntity, reservationId),
@@ -130,7 +130,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnIssueNumbers";
             pluginCtx.Stage            = 40;
-            pluginCtx.InitiatingUserId = ownerId;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, ownerId);
             pluginCtx.InputParameters  = new ParameterCollection
             {
                 ["Reservation"] = new EntityReference(ReservationEntity, reservationId),
@@ -203,7 +203,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var createCtx = ctx.GetDefaultPluginContext();
             createCtx.MessageName      = "enmax_acdnCreateDrawings";
             createCtx.Stage            = 40;
-            createCtx.InitiatingUserId = ownerId;
+            PluginTestUsers.SetInteractiveCaller(ctx, createCtx, ownerId);
             createCtx.InputParameters  = new ParameterCollection
             {
                 ["Target"]        = new EntityReference(ReservationEntity, reservationId),

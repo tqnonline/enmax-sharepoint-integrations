@@ -80,7 +80,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnCheckOutDrawing";
             pluginCtx.Stage            = 40;
-            pluginCtx.InitiatingUserId = userId;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, userId);
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
             pluginCtx.InputParameters["Target"] = new EntityReference(DrawingEntity, drawingId);
@@ -185,6 +185,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         {
             var ctx       = new XrmFakedContext();
             var pluginCtx = ctx.GetDefaultPluginContext();
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, Guid.NewGuid());
             pluginCtx.MessageName      = "enmax_acdnCheckOutDrawing";
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
@@ -201,6 +202,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         {
             var ctx       = new XrmFakedContext();
             var pluginCtx = ctx.GetDefaultPluginContext();
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, Guid.NewGuid());
             pluginCtx.MessageName      = "enmax_acdnCheckOutDrawing";
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
@@ -286,7 +288,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnCheckOutDrawing";
             pluginCtx.Stage            = 40;
-            pluginCtx.InitiatingUserId = actingUser;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, actingUser);
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
             pluginCtx.InputParameters["Target"] = new EntityReference(DrawingEntity, drawingId);
@@ -366,7 +368,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnCheckOutDrawing";
             pluginCtx.Stage            = 40;
-            pluginCtx.InitiatingUserId = userId;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, userId);
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
             pluginCtx.InputParameters["Target"] = new EntityReference(DrawingEntity, drawingId);
@@ -424,7 +426,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pluginCtx = ctx.GetDefaultPluginContext();
             pluginCtx.MessageName      = "enmax_acdnCheckOutDrawing";
             pluginCtx.Stage            = 40;
-            pluginCtx.InitiatingUserId = userId;
+            PluginTestUsers.SetInteractiveCaller(ctx, pluginCtx, userId);
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
             pluginCtx.InputParameters["Target"] = new EntityReference(DrawingEntity, drawingId);

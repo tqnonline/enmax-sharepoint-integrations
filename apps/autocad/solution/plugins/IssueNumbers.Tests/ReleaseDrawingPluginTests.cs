@@ -68,7 +68,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var pctx = ctx.GetDefaultPluginContext();
             pctx.MessageName      = "enmax_acdnReleaseDrawing";
             pctx.Stage            = 40;
-            pctx.InitiatingUserId = callerId;
+            PluginTestUsers.SetInteractiveCaller(ctx, pctx, callerId);
             pctx.InputParameters  = new ParameterCollection();
             pctx.OutputParameters = new ParameterCollection();
             pctx.InputParameters["Target"] = new EntityReference(DrawingEntity, drawingId);

@@ -54,6 +54,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         /// </summary>
         internal static void SeedAuthForUser(XrmFakedContext fakedContext, Guid userId)
         {
+            PluginTestUsers.SeedInteractiveUser(fakedContext, userId);
             var svc = fakedContext.GetFakedOrganizationService();
 
             var adminConfig = new Entity("enmax_autocadappconfig", Guid.NewGuid());
@@ -91,7 +92,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             pluginCtx.InputParameters  = new ParameterCollection();
             pluginCtx.OutputParameters = new ParameterCollection();
 
-            pluginCtx.InitiatingUserId = AuthorizedUserId;
+            PluginTestUsers.SetInteractiveCaller(fakedContext, pluginCtx, AuthorizedUserId);
 
             pluginCtx.InputParameters["Business"] = business;
             pluginCtx.InputParameters["Asset"]    = asset;
@@ -489,7 +490,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             plugCtx.Stage       = 40;
             plugCtx.InputParameters  = new ParameterCollection();
             plugCtx.OutputParameters = new ParameterCollection();
-            plugCtx.InitiatingUserId = PluginContextFactory.AuthorizedUserId;
+            PluginTestUsers.SetInteractiveCaller(fxCtx, plugCtx, PluginContextFactory.AuthorizedUserId);
             // Intentionally omit "Business"
             plugCtx.InputParameters["Asset"]  = "CG";
             plugCtx.InputParameters["Unit"]   = "00";
@@ -557,7 +558,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             plugCtx.Stage            = 40;
             plugCtx.InputParameters  = new ParameterCollection();
             plugCtx.OutputParameters = new ParameterCollection();
-            plugCtx.InitiatingUserId = unauthorizedId;
+            PluginTestUsers.SetInteractiveCaller(fxCtx, plugCtx, unauthorizedId);
             plugCtx.InputParameters["Business"] = "GG";
             plugCtx.InputParameters["Asset"]    = "CG";
             plugCtx.InputParameters["Unit"]     = "00";
@@ -593,7 +594,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             PluginContextFactory.SeedAuthForUser(fxCtx, testUserId);
             var plugCtx = PluginContextFactory.BuildDefaultContext(fxCtx, count: 1);
             plugCtx.UserId = testUserId;
-            plugCtx.InitiatingUserId = testUserId;
+            PluginTestUsers.SetInteractiveCaller(fxCtx, plugCtx, testUserId);
 
             fxCtx.ExecutePluginWith<IssueNumbersPlugin>(plugCtx);
 
