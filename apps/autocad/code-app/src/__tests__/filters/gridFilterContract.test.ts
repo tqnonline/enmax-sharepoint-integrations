@@ -6,6 +6,8 @@ import {
   isDefaultGridDateRange,
   matchesOptionalPeople,
   matchesOptionalText,
+  normalizeGridDateRange,
+  parseLocalIsoDate,
 } from "../../lib/gridListFilters";
 import { GRID_DEFAULT_FROM_DAYS, defaultGridDateRange, isoDateDaysAgo, isoDateToday } from "../../lib/dateRangeDefaults";
 
@@ -53,8 +55,20 @@ describe("grid filter contract — optional field filters", () => {
 describe("grid filter contract — date range", () => {
   it("inclusive end-of-day on to date", () => {
     const { fromMs, toMs } = dateRangeBounds("2026-06-10", "2026-06-20");
-    expect(fromMs).toBe(new Date("2026-06-10").getTime());
-    expect(toMs).toBe(new Date("2026-06-20").getTime() + 86_400_000);
+    expect(fromMs).toBe(parseLocalIsoDate("2026-06-10"));
+    expect(toMs).toBe(parseLocalIsoDate("2026-06-21") - 1);
+  });
+
+  it("ends at local midnight across daylight-saving transitions", () => {
+    const originalTimeZone = process.env.TZ;
+    process.env.TZ = "America/Edmonton";
+    try {
+      const { toMs } = dateRangeBounds("2026-03-01", "2026-03-08");
+      expect(toMs).toBe(parseLocalIsoDate("2026-03-09") - 1);
+    } finally {
+      if (originalTimeZone === undefined) delete process.env.TZ;
+      else process.env.TZ = originalTimeZone;
+    }
   });
 
   it("empty from/to means unbounded range", () => {
@@ -71,5 +85,14 @@ describe("grid filter contract — date range", () => {
     expect(inIsoDateRange("2026-06-15T10:00:00Z", "2026-06-10", "2026-06-20")).toBe(true);
     expect(inIsoDateRange("2026-06-08T10:00:00Z", "2026-06-10", "2026-06-20")).toBe(false);
     expect(inIsoDateRange("2026-06-21T12:00:00Z", "2026-06-10", "2026-06-20")).toBe(false);
+  });
+
+  it("normalizeGridDateRange resets inverted or invalid ranges to the 30-day default", () => {
+    vi.setSystemTime(FIXED_NOW);
+    const defaults = defaultGridDateRange(FIXED_NOW);
+    expect(normalizeGridDateRange("2026-08-10", "2026-07-10", FIXED_NOW)).toEqual(defaults);
+    expect(normalizeGridDateRange("", "", FIXED_NOW)).toEqual(defaults);
+    expect(normalizeGridDateRange("not-a-date", "2026-07-10", FIXED_NOW)).toEqual(defaults);
+    expect(normalizeGridDateRange("2026-02-31", "2026-07-10", FIXED_NOW)).toEqual(defaults);
   });
 });

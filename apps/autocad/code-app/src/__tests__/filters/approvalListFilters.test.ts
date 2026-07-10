@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   applyCheckinApprovalFilters,
   applyReservationApprovalFilters,
+  defaultApprovalListFilters,
 } from "../../features/approvals/approvalListFilters";
 import type { CheckinRow } from "../../features/approvals/hooks/useCheckins";
 import type { PendingReservation } from "../../features/approvals/hooks/usePendingReservations";
@@ -126,5 +127,13 @@ describe("approval list filters", () => {
     );
     expect(inside).toHaveLength(1);
     expect(outside).toHaveLength(0);
+  });
+
+  it("every section defaults to the 30-day window", () => {
+    for (const section of ["reservations", "documents"] as const) {
+      const filters = defaultApprovalListFilters(section, FIXED_NOW);
+      expect(filters.from).toBe(DEFAULT.from);
+      expect(filters.to).toBe(DEFAULT.to);
+    }
   });
 });

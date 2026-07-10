@@ -27,7 +27,7 @@ describe("sheetFilterForDrawings", () => {
     expect(sheetFilterForDrawings([], 2)).toContain("00000000-0000-0000-0000-000000000000");
   });
 
-  it("omits state when fetching all states (pending approval)", () => {
+  it("omits sheet state when fetching for pending approval (checkout Requested filter)", () => {
     const filter = sheetFilterForDrawings(["drw-1"]);
     expect(filter).toContain("_enmax_acdndrawing_value eq 'drw-1'");
     expect(filter).not.toContain("enmax_acdnstate eq");

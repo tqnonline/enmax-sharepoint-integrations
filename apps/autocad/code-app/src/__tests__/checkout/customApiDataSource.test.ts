@@ -22,6 +22,13 @@ const clientSource = readFileSync(
   resolve(process.cwd(), "src/features/checkout/api/checkoutClient.ts"),
   "utf8",
 );
+const powerConfig = JSON.parse(
+  readFileSync(resolve(process.cwd(), "power.config.json"), "utf8"),
+) as {
+  databaseReferences: {
+    "default.cds": { dataSources: Record<string, unknown> };
+  };
+};
 
 // Each executeAsync call lists operationName immediately before tableName.
 const pairRe = /operationName:\s*"([^"]+)"[\s\S]*?tableName:\s*"([^"]+)"/g;
@@ -30,9 +37,20 @@ const calledOps = [...clientSource.matchAll(pairRe)].map((m) => ({
   tableName: m[2],
 }));
 
-const schema = dataSourcesInfo as Record<string, { apis?: Record<string, unknown> }>;
+interface ApiSchema {
+  parameters?: Array<{ name: string }>;
+}
+
+const schema = dataSourcesInfo as Record<string, { apis?: Record<string, ApiSchema> }>;
 
 describe("checkoutClient Custom API operations are declared in dataSourcesInfo", () => {
+  it("declares every Dataverse source configured by the Code App", () => {
+    const configuredSources = Object.keys(
+      powerConfig.databaseReferences["default.cds"].dataSources,
+    );
+    expect(Object.keys(schema)).toEqual(expect.arrayContaining(configuredSources));
+  });
+
   it("discovers the customapi calls in checkoutClient.ts", () => {
     // Sanity: if this drops, the regex (or the file) changed and the guard is silently disarmed.
     expect(calledOps.length).toBeGreaterThanOrEqual(6);
@@ -48,4 +66,30 @@ describe("checkoutClient Custom API operations are declared in dataSourcesInfo",
       ).toBeDefined();
     },
   );
+
+  it("declares ActingUserId on every interactive Custom API", () => {
+    const interactiveApis = Object.values(schema)
+      .flatMap((source) => Object.entries(source.apis ?? {}))
+      .filter(([operationName]) => operationName.startsWith("enmax_"));
+
+    expect(interactiveApis.length).toBeGreaterThan(0);
+    for (const [operationName, api] of interactiveApis) {
+      expect(
+        api.parameters?.map(({ name }) => name),
+        `${operationName} must serialize the signed-in user's ActingUserId`,
+      ).toContain("ActingUserId");
+    }
+  });
+
+  it("declares request fields used by lifecycle clients", () => {
+    expect(
+      schema.enmax_acdnissuenumbers.apis?.enmax_acdnIssueNumbers.parameters?.map(({ name }) => name),
+    ).toContain("Reservation");
+    expect(
+      schema.enmax_acdncheckoutsheets.apis?.enmax_acdnCheckOutSheets.parameters?.map(({ name }) => name),
+    ).toContain("BatchId");
+    expect(
+      schema.enmax_autocadcheckouts.apis?.enmax_acdnForceCheckin.parameters?.map(({ name }) => name),
+    ).toContain("NewRevision");
+  });
 });

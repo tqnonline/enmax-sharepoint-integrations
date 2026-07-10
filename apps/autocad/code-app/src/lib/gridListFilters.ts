@@ -5,6 +5,48 @@ export interface GridListDateFilters {
   to: string;
 }
 
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** True when `s` is a YYYY-MM-DD string (HTML date input format). */
+export function isIsoDateString(s: string): boolean {
+  const value = s.trim();
+  if (!ISO_DATE_RE.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const parsed = new Date(year, month - 1, day);
+  return parsed.getFullYear() === year
+    && parsed.getMonth() === month - 1
+    && parsed.getDate() === day;
+}
+
+/** Parse YYYY-MM-DD as local calendar midnight (matches HTML date inputs). */
+export function parseLocalIsoDate(iso: string): number {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).getTime();
+}
+
+function endOfLocalIsoDate(iso: string): number {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d + 1).getTime() - 1;
+}
+
+/**
+ * Ensure grid date filters are valid and chronological.
+ * Empty, malformed, or inverted ranges reset to today − 30 days … today.
+ */
+export function normalizeGridDateRange(
+  from: string,
+  to: string,
+  now = new Date(),
+): GridListDateFilters {
+  const defaults = defaultGridDateRange(now);
+  const f = from.trim();
+  const t = to.trim();
+  if (!isIsoDateString(f) || !isIsoDateString(t) || f > t) {
+    return defaults;
+  }
+  return { from: f, to: t };
+}
+
 /** Default inclusive date window (today − 30 days through today). */
 export function defaultGridListDateFilters(now = new Date()): GridListDateFilters {
   return defaultGridDateRange(now);
@@ -17,9 +59,16 @@ export function isDefaultGridDateRange(from: string, to: string, now = new Date(
 
 /** Millisecond bounds for an inclusive calendar-day range (local date inputs). */
 export function dateRangeBounds(from: string, to: string): { fromMs: number; toMs: number } {
+  const f = from.trim();
+  const t = to.trim();
+  // Explicit empty bounds = unbounded (e.g. badge totals without date filter).
+  if (!f && !t) {
+    return { fromMs: Number.NEGATIVE_INFINITY, toMs: Number.POSITIVE_INFINITY };
+  }
+  const normalized = normalizeGridDateRange(f, t);
   return {
-    fromMs: from ? new Date(from).getTime() : Number.NEGATIVE_INFINITY,
-    toMs: to ? new Date(to).getTime() + 86_400_000 : Number.POSITIVE_INFINITY,
+    fromMs: parseLocalIsoDate(normalized.from),
+    toMs: endOfLocalIsoDate(normalized.to),
   };
 }
 

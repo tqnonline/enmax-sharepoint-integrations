@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useIsFetching } from "@tanstack/react-query";
 import {
@@ -43,6 +43,7 @@ import type { ColumnDef, GridFetchParams } from "../../components/DataGrid";
 import type { DrawingRow } from "../search/useSearchDrawings";
 import { documentDisplayNumber } from "../reserve/terminology";
 import { defaultMyItemsListFilters } from "./myItemListFilters";
+import { normalizeGridDateRange } from "../../lib/gridListFilters";
 import {
   effectiveTypeFilter,
   type DocumentSubtypeFilter,
@@ -73,6 +74,7 @@ const DOCUMENT_TYPE_OPTIONS: { value: DocumentSubtypeFilter; label: string }[] =
 const STATUS_COLORS: Record<string, "success" | "warning" | "danger" | "informative" | undefined> = {
   Pending: "warning",
   "Pending Approval": "warning",
+  "Awaiting Validation": "informative",
   Available: "success",
   "Checked Out": "warning",
   Approved: "success",
@@ -106,12 +108,35 @@ function parseStateParam(raw: string | null): MyRecordStateFilter {
   return "reservations";
 }
 
-function initialFilterDraft(state: MyRecordStateFilter): GridQueryFilterDraft & { documentSubtype: DocumentSubtypeFilter; peopleIds: string[] } {
-  return { ...defaultMyItemsListFilters(state), documentSubtype: "all", peopleIds: [] };
+function buildMyItemsFilters(
+  tab: MyRecordTabFilter,
+  state: MyRecordStateFilter,
+  subtype: DocumentSubtypeFilter,
+): MyRecordListFilters {
+  const defaults = defaultMyItemsListFilters(state);
+  const { from, to } = normalizeGridDateRange(
+    defaults.from,
+    defaults.to,
+  );
+  return {
+    number: "",
+    from,
+    to,
+    documentSubtype: tab === "documents" ? subtype : "all",
+    peopleIds: [],
+  };
 }
 
-function resetFiltersForTab(_tab: MyRecordTabFilter, state: MyRecordStateFilter): MyRecordListFilters {
-  return defaultMyItemsListFilters(state);
+function initialFilterDraft(
+  tab: MyRecordTabFilter,
+  state: MyRecordStateFilter,
+  subtype: DocumentSubtypeFilter,
+): GridQueryFilterDraft & { documentSubtype: DocumentSubtypeFilter; peopleIds: string[] } {
+  return buildMyItemsFilters(tab, state, subtype);
+}
+
+function resetFiltersForTab(tab: MyRecordTabFilter, state: MyRecordStateFilter): MyRecordListFilters {
+  return buildMyItemsFilters(tab, state, "all");
 }
 
 function personFilterLabel(state: MyRecordStateFilter): string {
@@ -195,19 +220,35 @@ export function MyItemsPage() {
 
   const activeTab  = parseTabParam(searchParams.get("type"));
   const activeState = parseStateParam(searchParams.get("state"));
+  const activeSubtype = parseSubtypeParam(searchParams.get("subtype"));
   const [panelDrawing, setPanelDrawing] = useState<DrawingRow | null>(null);
 
-  const [filterDraft, setFilterDraft] = useState(() => ({
-    ...initialFilterDraft(parseStateParam(searchParams.get("state"))),
-    documentSubtype: parseSubtypeParam(searchParams.get("subtype")),
-  }));
-  const [appliedFilters, setAppliedFilters] = useState<MyRecordListFilters>(() => ({
-    ...resetFiltersForTab(
+  const routeKey = `${activeTab}:${activeState}:${activeSubtype}`;
+  const prevRouteKey = useRef(routeKey);
+
+  const [filterDraft, setFilterDraft] = useState(() =>
+    initialFilterDraft(
       parseTabParam(searchParams.get("type")),
       parseStateParam(searchParams.get("state")),
+      parseSubtypeParam(searchParams.get("subtype")),
     ),
-    documentSubtype: parseSubtypeParam(searchParams.get("subtype")),
-  }));
+  );
+  const [appliedFilters, setAppliedFilters] = useState<MyRecordListFilters>(() =>
+    buildMyItemsFilters(
+      parseTabParam(searchParams.get("type")),
+      parseStateParam(searchParams.get("state")),
+      parseSubtypeParam(searchParams.get("subtype")),
+    ),
+  );
+
+  // Keep filters in sync when route tab/state changes (sidebar links, browser nav).
+  useEffect(() => {
+    if (prevRouteKey.current === routeKey) return;
+    prevRouteKey.current = routeKey;
+    const reset = buildMyItemsFilters(activeTab, activeState, activeSubtype);
+    setFilterDraft(reset);
+    setAppliedFilters(reset);
+  }, [routeKey, activeTab, activeState, activeSubtype]);
 
   const dataTypeFilter = effectiveTypeFilter(activeTab, appliedFilters.documentSubtype);
 
@@ -267,7 +308,8 @@ export function MyItemsPage() {
   }, [setSearchParams]);
 
   function handleQuery() {
-    if (activeState === "reservations" && (!filterDraft.from || !filterDraft.to)) {
+    const { from, to } = normalizeGridDateRange(filterDraft.from, filterDraft.to);
+    if (!from || !to) {
       dispatchToast(
         <Toast><ToastTitle>From and To dates are required to run a query.</ToastTitle></Toast>,
         { intent: "warning" },
@@ -276,11 +318,12 @@ export function MyItemsPage() {
     }
     const next: MyRecordListFilters = {
       number: filterDraft.number,
-      from: filterDraft.from,
-      to: filterDraft.to,
+      from,
+      to,
       documentSubtype: activeTab === "documents" ? filterDraft.documentSubtype : "all",
       peopleIds: filterDraft.peopleIds,
     };
+    setFilterDraft((prev) => ({ ...prev, from, to }));
     setAppliedFilters(next);
     if (activeTab === "documents" && filterDraft.documentSubtype !== "all") {
       setTabParams(activeTab, activeState, filterDraft.documentSubtype);
@@ -288,7 +331,7 @@ export function MyItemsPage() {
     dispatchToast(
       <Toast>
         <ToastTitle>
-          Query applied — showing records from {filterDraft.from || "any date"} to {filterDraft.to || "any date"}.
+          Query applied — showing records from {from} to {to}.
         </ToastTitle>
       </Toast>,
       { intent: "success" },
@@ -307,11 +350,7 @@ export function MyItemsPage() {
     }
     dispatchToast(
       <Toast>
-        <ToastTitle>
-          {activeState === "reservations"
-            ? "Filters cleared — showing the last 30 days."
-            : "Filters cleared — showing all items."}
-        </ToastTitle>
+        <ToastTitle>Filters cleared — showing the last 30 days.</ToastTitle>
       </Toast>,
       { intent: "info" },
     );
@@ -414,12 +453,18 @@ export function MyItemsPage() {
       ? { column: "checkedOutOn", direction: "desc" as const }
       : { column: "revisionDate", direction: "desc" as const };
 
-  const emptyMessages: Record<MyRecordStateFilter, string> = {
-    reservations:     "No reservations in the selected range.",
-    available:        "No available items.",
-    pendingapproval:  "No items pending approval.",
-    checkedout:       "No checked-out items.",
-  };
+  const emptyMessage = useMemo(() => {
+    const hasReservations = (counts?.reservations?.value ?? 0) > 0;
+    const messages: Record<MyRecordStateFilter, string> = {
+      reservations: "No reservations in the selected date range.",
+      available: hasReservations
+        ? "No available drawing documents from your reservations in this date range. Approved reservations may still be awaiting number issuance — check My Reservations."
+        : "No available drawing documents from your reservations in this date range.",
+      pendingapproval: "No check-out requests pending approval from your reservations in this date range.",
+      checkedout: "No checked-out items from your reservations in this date range.",
+    };
+    return messages[activeState];
+  }, [activeState, counts?.reservations?.value]);
 
   const numberLabel = activeState === "reservations"
     ? "Reservation #"
@@ -518,7 +563,7 @@ export function MyItemsPage() {
           exportFileName={`my-${activeState}`}
           defaultSort={defaultSort}
           enableQuickSearch={false}
-          emptyMessage={emptyMessages[activeState]}
+          emptyMessage={emptyMessage}
           errorMessage="Failed to load items."
           allRecordsCount={allCounts?.[activeState]?.value}
         />

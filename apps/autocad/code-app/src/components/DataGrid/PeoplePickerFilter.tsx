@@ -124,7 +124,6 @@ export function PeoplePickerFilter({
   const showEmpty = trimmed.length >= 2 && !isFetching && available.length === 0;
 
   return (
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
       className={styles.root}
       onClick={stopBubble}

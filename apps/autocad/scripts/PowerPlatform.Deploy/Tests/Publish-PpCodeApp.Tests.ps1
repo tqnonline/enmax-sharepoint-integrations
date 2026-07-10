@@ -197,13 +197,13 @@ Describe 'Publish-PpCodeApp — power.config content (Get-PpCodeAppConfig)' {
         }
     }
 
-    It 'contains exactly 25 dataSources entries' {
+    It 'contains exactly 23 dataSources entries' {
         # WHY: The count encodes the full expected set. If an entry is accidentally removed
         # the binding breaks silently in the deployed app; if one is added without this test
         # being updated the reviewer is prompted to verify the intent.
         InModuleScope PowerPlatform.Deploy -Parameters @{ Cfg = $script:FakeCfg3 } {
             $config = Get-PpCodeAppConfig -Cfg $Cfg
-            $config.databaseReferences.'default.cds'.dataSources.Count | Should -Be 25
+            $config.databaseReferences.'default.cds'.dataSources.Count | Should -Be 23
         }
     }
 

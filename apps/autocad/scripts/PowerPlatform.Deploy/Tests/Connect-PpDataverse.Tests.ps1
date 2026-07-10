@@ -107,12 +107,18 @@ Describe 'Connect-PpDataverse' {
             Mock -ModuleName PowerPlatform.Deploy Invoke-PpPac {
                 param([string[]]$Arguments)
                 if ($Arguments -contains 'list') {
-                    # Auth list does NOT contain the env URL
+                    $script:AuthListCalls++
+                    if ($script:AuthListCalls -gt 1) {
+                        return "  [1] https://dev.crm.dynamics.com  Active"
+                    }
                     return 'No profiles found.'
                 }
                 return ''
             }
             Mock -ModuleName PowerPlatform.Deploy Assert-PpExitCode {}
+        }
+        BeforeEach {
+            $script:AuthListCalls = 0
         }
 
         It 'invokes Invoke-PpPac with auth create arguments' {

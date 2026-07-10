@@ -18,6 +18,7 @@ venv/
 # .NET / plugin
 solution/plugins/**/bin/
 solution/plugins/**/obj/
+testResults.xml
 
 # PAC / Power Platform
 solution/build/

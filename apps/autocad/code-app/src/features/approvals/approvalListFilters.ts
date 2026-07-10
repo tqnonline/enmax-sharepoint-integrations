@@ -1,6 +1,8 @@
 import { formatReservationDisplay } from "./compositionUtils";
 import type { PendingReservation } from "./hooks/usePendingReservations";
 import type { CheckinRow } from "./hooks/useCheckins";
+import { inIsoDateRange, matchesOptionalPeople } from "../../lib/gridListFilters";
+import { defaultGridDateRange } from "../../lib/dateRangeDefaults";
 
 export interface ApprovalListFilters {
   number: string;
@@ -10,7 +12,17 @@ export interface ApprovalListFilters {
   peopleIds: string[];
 }
 
-import { inIsoDateRange, matchesOptionalPeople } from "../../lib/gridListFilters";
+export type ApprovalSection = "reservations" | "documents";
+
+/** All Approvals sections default to the previous 30 days through today. */
+export function defaultApprovalListFilters(
+  section: ApprovalSection = "reservations",
+  now = new Date(),
+): ApprovalListFilters {
+  void section;
+  const { from, to } = defaultGridDateRange(now);
+  return { number: "", from, to, peopleIds: [] };
+}
 
 export function applyReservationApprovalFilters(
   rows: PendingReservation[],

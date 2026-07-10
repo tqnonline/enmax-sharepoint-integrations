@@ -115,7 +115,7 @@ const useStyles = makeStyles({
 export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
   const {
     queryKey, fetcher, columns, rowKey, rowActions, bulkActions,
-    enableExport = true, exportFileName = "export", enableColumnVisibility: _enableColumnVisibility, defaultSort,
+    enableExport = true, exportFileName = "export", defaultSort,
     initialPageSize, quickSearchPlaceholder = "Search…",
     emptyMessage = "No results.", emptySubtitle, emptyAction,
     errorMessage = "Failed to load data.",

@@ -9,7 +9,7 @@ function Publish-PpCodeApp {
         2. Ensures pac CLI is authenticated via Connect-PpDataverse (idempotent).
         3. Writes apps\code-app\power.config.json with the environment-specific
            configuration, including the full databaseReferences dataSources map
-           (25 Dataverse entity sets) required for the app's data bindings.
+           (23 Dataverse entity sets) required for the app's data bindings.
         4. Runs `npm run build` in apps\code-app.
         5. Runs `pac code push` (uses the pac auth profile set up by Connect-PpDataverse).
         6. Prints the play URL so it can be opened immediately.

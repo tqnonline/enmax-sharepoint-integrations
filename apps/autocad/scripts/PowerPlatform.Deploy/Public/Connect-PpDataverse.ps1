@@ -70,6 +70,10 @@ function Connect-PpDataverse {
                 --clientSecret    $cfg.ClientSecret `
                 --tenant          $cfg.TenantId
             Assert-PpExitCode -Operation 'pac auth create'
+
+            # Refresh the list: the pre-create output cannot contain the new
+            # profile index required by `pac auth select`.
+            $authList = Invoke-PpPac auth list
         }
     }
 

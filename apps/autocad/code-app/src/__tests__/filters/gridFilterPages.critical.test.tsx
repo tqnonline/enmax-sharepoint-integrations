@@ -98,21 +98,29 @@ describe("My Items grid filters", () => {
     });
   });
 
-  it("loads available tab with unbounded date range so sheets are not hidden", async () => {
+  it("loads available tab with default 30-day range applied to fetches", async () => {
     const { MyItemsPage } = await import("../../features/myitems/MyItemsPage");
     renderWithProviders(<MyItemsPage />, { initialPath: "/my-items?type=drawings&state=available" });
-    const from = screen.getByLabelText("From date") as HTMLInputElement;
-    const to = screen.getByLabelText("To date") as HTMLInputElement;
-    expect(from.value).toBe("");
-    expect(to.value).toBe("");
+    expectDefaultDateInputs();
     await waitFor(() => {
       expect(capturedMyItemsFilters.last).toMatchObject({
-        from: "",
-        to: "",
+        from: isoDateDaysAgo(30, FIXED_NOW),
+        to: isoDateToday(FIXED_NOW),
         number: "",
         peopleIds: [],
       });
     });
+  });
+
+  it("Clear resets available tab to default 30-day window", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const { MyItemsPage } = await import("../../features/myitems/MyItemsPage");
+    renderWithProviders(<MyItemsPage />, { initialPath: "/my-items?type=drawings&state=available" });
+    const { from } = expectDefaultDateInputs();
+    await user.clear(from);
+    await user.type(from, "2026-01-01");
+    await user.click(screen.getByRole("button", { name: /clear/i }));
+    expectDefaultDateInputs();
   });
 
   it("Clear resets reservations tab to default 30-day window", async () => {
@@ -214,6 +222,12 @@ describe("Approvals grid filters", () => {
   it("reservations section loads with default 30-day date inputs", async () => {
     const { ApprovalsPage } = await import("../../features/approvals/ApprovalsPage");
     renderWithProviders(<ApprovalsPage />);
+    expectDefaultDateInputs();
+  });
+
+  it("documents section loads with default 30-day date inputs", async () => {
+    const { ApprovalsPage } = await import("../../features/approvals/ApprovalsPage");
+    renderWithProviders(<ApprovalsPage />, { initialPath: "/approvals?section=documents" });
     expectDefaultDateInputs();
   });
 });
