@@ -2,6 +2,7 @@ using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;
 using Microsoft.Xrm.Sdk.Query;
 using System;
+using System.Globalization;
 using System.ServiceModel;
 
 namespace Enmax.AutoCAD
@@ -128,10 +129,18 @@ namespace Enmax.AutoCAD
                 var currentDrawing = service.Retrieve(
                     DrawingEntity,
                     drawingRef.Id,
-                    new ColumnSet(ColCurrentRevision));
+                    new ColumnSet(ColCurrentRevision, "versionnumber"));
+                var drawingRowVersion = currentDrawing.RowVersion;
+                if (string.IsNullOrWhiteSpace(drawingRowVersion) &&
+                    currentDrawing.Contains("versionnumber"))
+                {
+                    drawingRowVersion = currentDrawing
+                        .GetAttributeValue<long>("versionnumber")
+                        .ToString(CultureInfo.InvariantCulture);
+                }
                 var drawingUpdate = new Entity(DrawingEntity, drawingRef.Id)
                 {
-                    RowVersion = currentDrawing.RowVersion,
+                    RowVersion = drawingRowVersion,
                     [ColCurrentRevision] = cycleToken,
                 };
 

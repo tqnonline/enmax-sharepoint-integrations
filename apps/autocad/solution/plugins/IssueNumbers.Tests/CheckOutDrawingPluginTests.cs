@@ -60,6 +60,9 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 // Owner = acting user so the authorization gate passes.
                 ["ownerid"]       = new EntityReference("systemuser", userId),
             };
+            if (!string.IsNullOrWhiteSpace(drawingRowVersion))
+                drawing["versionnumber"] = long.Parse(drawingRowVersion);
+
             var sheet = new Entity(SheetEntity, sheetId)
             {
                 ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),

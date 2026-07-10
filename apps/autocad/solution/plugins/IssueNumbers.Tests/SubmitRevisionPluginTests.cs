@@ -53,6 +53,9 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 [ColDrawingState]    = new OptionSetValue(drawingState),
                 [ColCurrentRevision] = "A",
             };
+            if (!string.IsNullOrWhiteSpace(drawingRowVersion))
+                drawing["versionnumber"] = long.Parse(drawingRowVersion);
+
             var checkout = new Entity(CheckoutEntity, checkoutId)
             {
                 [ColCheckoutStatus]  = new OptionSetValue(checkoutStatus),

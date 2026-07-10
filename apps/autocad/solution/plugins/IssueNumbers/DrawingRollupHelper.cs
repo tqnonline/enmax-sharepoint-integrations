@@ -3,6 +3,7 @@ using Microsoft.Xrm.Sdk.Messages;
 using Microsoft.Xrm.Sdk.Query;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.ServiceModel;
 
@@ -27,7 +28,10 @@ namespace Enmax.AutoCAD
 
         public static int RecomputeDrawingRollup(IOrganizationService service, Guid drawingId)
         {
-            var drawing = service.Retrieve(DrawingEntity, drawingId, new ColumnSet(ColDrawingState));
+            var drawing = service.Retrieve(
+                DrawingEntity,
+                drawingId,
+                new ColumnSet(ColDrawingState, "versionnumber"));
             var targetState = ComputeTargetState(service, drawingId);
             var currentState = drawing.GetAttributeValue<OptionSetValue>(ColDrawingState)?.Value ?? 0;
             if (currentState == targetState)
@@ -42,9 +46,18 @@ namespace Enmax.AutoCAD
                     [ColDrawingState] = new OptionSetValue(targetState),
                 };
 
-                if (!string.IsNullOrWhiteSpace(drawing.RowVersion))
+                var drawingRowVersion = drawing.RowVersion;
+                if (string.IsNullOrWhiteSpace(drawingRowVersion) &&
+                    drawing.Contains("versionnumber"))
                 {
-                    update.RowVersion = drawing.RowVersion;
+                    drawingRowVersion = drawing
+                        .GetAttributeValue<long>("versionnumber")
+                        .ToString(CultureInfo.InvariantCulture);
+                }
+
+                if (!string.IsNullOrWhiteSpace(drawingRowVersion))
+                {
+                    update.RowVersion = drawingRowVersion;
                     service.Execute(new UpdateRequest
                     {
                         Target = update,
