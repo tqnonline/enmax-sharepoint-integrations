@@ -145,6 +145,122 @@ Describe 'Register-PpPlugins — PluginDefinitions data file' {
     }
 }
 
+Describe 'Register-PpPlugins — unified lifecycle contract-only definitions' {
+
+    BeforeAll {
+        $RepoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent | Split-Path -Parent
+        $defsPath = Join-Path $RepoRoot 'scripts/PowerPlatform.Deploy/Data/PluginDefinitions.psd1'
+        $defs = Import-PowerShellDataFile $defsPath
+
+        $contractNames = @(
+            'enmax_acdnApproveReservationV2'
+            'enmax_acdnRequestFileCheckOutV2'
+            'enmax_acdnDecideFileCheckOutV2'
+            'enmax_acdnSubmitFileCheckInV2'
+            'enmax_acdnDecideFileCheckInV2'
+            'enmax_acdnForceFileCheckInV2'
+        )
+    }
+
+    It 'freezes lifecycle contract version 2.0 with exactly six API names' {
+        $defs.LifecycleContractVersion | Should -Be '2.0'
+        $defs.LifecycleContractDefs.Count | Should -Be 6
+        Compare-Object $contractNames $defs.LifecycleContractDefs.UniqueName |
+            Should -BeNullOrEmpty
+    }
+
+    It 'keeps every lifecycle contract contract-only, global, and unbound' {
+        foreach ($contract in $defs.LifecycleContractDefs) {
+            $contract.Status | Should -Be 'ContractOnly'
+            $contract.BindingType | Should -Be 0
+            $contract.BoundEntity | Should -BeNullOrEmpty
+        }
+    }
+
+    It 'requires idempotency and actor inputs on every lifecycle contract' {
+        foreach ($contract in $defs.LifecycleContractDefs) {
+            $operationId = $contract.Params | Where-Object Name -eq 'OperationId'
+            $actingUserId = $contract.Params | Where-Object Name -eq 'ActingUserId'
+
+            $operationId.Type | Should -Be 10
+            $operationId.Optional | Should -BeFalse
+            $actingUserId.Type | Should -Be 10
+            $actingUserId.Optional | Should -BeTrue
+        }
+    }
+
+    It 'returns OperationId, Outcome, and ResultJson from every lifecycle contract' {
+        foreach ($contract in $defs.LifecycleContractDefs) {
+            foreach ($responseName in @('OperationId', 'Outcome', 'ResultJson')) {
+                $response = $contract.Response | Where-Object Name -eq $responseName
+                $response.Type | Should -Be 10
+            }
+        }
+    }
+
+    It 'defines the exact reservation identity and row-version contract' {
+        $contract = $defs.LifecycleContractDefs |
+            Where-Object UniqueName -eq 'enmax_acdnApproveReservationV2'
+
+        $actualParams = $contract.Params | ForEach-Object {
+            '{0}:{1}:{2}' -f $_.Name, $_.Type, $_.Optional
+        }
+        $expectedParams = @(
+            'ActingUserId:10:True'
+            'Reservation:5:False'
+            'OperationId:10:False'
+            'ExpectedRowVersion:10:False'
+        )
+        Compare-Object $expectedParams $actualParams | Should -BeNullOrEmpty
+
+        $actualResponses = $contract.Response | ForEach-Object {
+            '{0}:{1}' -f $_.Name, $_.Type
+        }
+        $expectedResponses = @(
+            'OperationId:10'
+            'Outcome:10'
+            'ReservationId:10'
+            'ResultJson:10'
+        )
+        Compare-Object $expectedResponses $actualResponses | Should -BeNullOrEmpty
+    }
+
+    It 'defines the exact checkout batch and row-version JSON contract' {
+        $contract = $defs.LifecycleContractDefs |
+            Where-Object UniqueName -eq 'enmax_acdnRequestFileCheckOutV2'
+
+        $actualParams = $contract.Params | ForEach-Object {
+            '{0}:{1}:{2}' -f $_.Name, $_.Type, $_.Optional
+        }
+        $expectedParams = @(
+            'ActingUserId:10:True'
+            'FileIdsJson:10:False'
+            'OperationId:10:False'
+            'BatchId:10:False'
+            'ExpectedRowVersionsJson:10:False'
+        )
+        Compare-Object $expectedParams $actualParams | Should -BeNullOrEmpty
+
+        $actualResponses = $contract.Response | ForEach-Object {
+            '{0}:{1}' -f $_.Name, $_.Type
+        }
+        $expectedResponses = @(
+            'OperationId:10'
+            'Outcome:10'
+            'BatchId:10'
+            'ResultJson:10'
+        )
+        Compare-Object $expectedResponses $actualResponses | Should -BeNullOrEmpty
+    }
+
+    It 'does not expose contract-only names through active CustomAPIDefs' {
+        $defs.CustomAPIDefs.Count | Should -Be 15
+        $activeContractNames = $defs.CustomAPIDefs.UniqueName |
+            Where-Object { $_ -in $contractNames }
+        $activeContractNames | Should -BeNullOrEmpty
+    }
+}
+
 Describe 'Register-PpPlugins — -WhatIf suppresses all Dataverse writes' {
 
     BeforeAll {
