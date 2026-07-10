@@ -1,4 +1,5 @@
 using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Messages;
 using Microsoft.Xrm.Sdk.Query;
 using System;
 using System.ServiceModel;
@@ -120,6 +121,44 @@ namespace Enmax.AutoCAD
             int targetSheetState   = requireApproval ? SheetStateAwaitingValidation : SheetStateAvailable;
             int targetStatus       = requireApproval ? StatusAwaitingValidation : StatusClosedApproved;
 
+            // Guard the shared drawing marker before any state mutation. Dataverse rolls the
+            // whole synchronous transaction back if a later write fails.
+            if (!requireApproval)
+            {
+                var currentDrawing = service.Retrieve(
+                    DrawingEntity,
+                    drawingRef.Id,
+                    new ColumnSet(ColCurrentRevision));
+                var drawingUpdate = new Entity(DrawingEntity, drawingRef.Id)
+                {
+                    RowVersion = currentDrawing.RowVersion,
+                    [ColCurrentRevision] = cycleToken,
+                };
+
+                try
+                {
+                    if (string.IsNullOrWhiteSpace(drawingUpdate.RowVersion))
+                    {
+                        service.Update(drawingUpdate);
+                    }
+                    else
+                    {
+                        service.Execute(new UpdateRequest
+                        {
+                            Target = drawingUpdate,
+                            ConcurrencyBehavior = ConcurrencyBehavior.IfRowVersionMatches,
+                        });
+                    }
+                }
+                catch (FaultException<OrganizationServiceFault> ex)
+                    when (ex.Detail?.ErrorCode == -2147088254 ||
+                          (ex.Message != null && ex.Message.Contains("ConcurrencyVersionMismatch")))
+                {
+                    throw new InvalidPluginExecutionException(
+                        $"Drawing {drawingRef.Id} was concurrently modified (ConcurrencyVersionMismatch). Retry.", ex);
+                }
+            }
+
             var checkoutUpdate = new Entity(CheckoutEntity, target.Id)
             {
                 [ColCheckoutStatus] = new OptionSetValue(targetStatus),
@@ -134,13 +173,6 @@ namespace Enmax.AutoCAD
             service.Update(checkoutUpdate);
 
             service.Update(new Entity(SheetEntity, sheetRef.Id) { [ColSheetState] = new OptionSetValue(targetSheetState) });
-            if (!requireApproval)
-            {
-                service.Update(new Entity(DrawingEntity, drawingRef.Id)
-                {
-                    [ColCurrentRevision] = cycleToken,
-                });
-            }
 
             int drawingState = DrawingRollupHelper.RecomputeDrawingRollup(service, drawingRef.Id);
 

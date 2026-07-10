@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
 using System;
+using System.Linq;
 using Xunit;
 
 // ReSharper disable InconsistentNaming
@@ -22,8 +23,10 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 
         private const string CheckoutEntity       = "enmax_autocadcheckout";
         private const string DrawingEntity        = "enmax_autocaddrawing";
+        private const string SheetEntity          = "enmax_autocadsheet";
         private const string ColCheckoutStatus    = "enmax_acdnstatus";
         private const string ColCheckoutDrawing   = "enmax_acdndrawing";
+        private const string ColCheckoutSheet     = "enmax_acdnsheet";
         private const string ColNewRevision       = "enmax_acdnnewrevision";
         private const string ColValidationReason  = "enmax_acdnvalidationreason";
         private const string ColDrawingState      = "enmax_acdnstate";
@@ -50,6 +53,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var ctx        = new XrmFakedContext();
             var drawingId  = Guid.NewGuid();
             var checkoutId = Guid.NewGuid();
+            var sheetId    = Guid.NewGuid();
             var userId     = Guid.NewGuid();
 
             var drawing = new Entity(DrawingEntity, drawingId)
@@ -62,7 +66,13 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             {
                 [ColCheckoutStatus]  = new OptionSetValue(checkoutStatus),
                 [ColCheckoutDrawing] = new EntityReference(DrawingEntity, drawingId),
+                [ColCheckoutSheet]   = new EntityReference(SheetEntity, sheetId),
                 [ColNewRevision]     = newRevision,
+            };
+            var sheet = new Entity(SheetEntity, sheetId)
+            {
+                ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
+                ["enmax_acdnstate"]   = new OptionSetValue(4),
             };
 
             // Seed authz: AppConfig + approver membership so the gate passes.
@@ -70,6 +80,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             {
                 (Entity)drawing,
                 checkout,
+                sheet,
                 new Entity("enmax_autocadappconfig", Guid.NewGuid())
                 {
                     ["enmax_acdnkey"]   = "AdminTeamId",
@@ -304,59 +315,71 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         // -----------------------------------------------------------------------
-        // Drawing-centric audit / sheet propagation / idempotency (plan-12)
+        // File-centric audit, state propagation, and idempotency (plan-12)
         // -----------------------------------------------------------------------
 
-        private static (XrmFakedContext ctx, XrmFakedPluginExecutionContext pluginCtx, Guid checkoutId, Guid drawingId)
-            BuildContextWithSheet(int checkoutStatus = StatusAwaitingValidation, string newRevision = "B")
-        {
-            var (ctx, pluginCtx, checkoutId, drawingId) = BuildContext(checkoutStatus, newRevision);
-            var sheet = new Entity("enmax_autocadsheet", Guid.NewGuid())
-            {
-                ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
-                ["enmax_acdnstate"]   = new OptionSetValue(4), // sheet AwaitingValidation
-            };
-            ctx.GetFakedOrganizationService().Create(sheet);
-            return (ctx, pluginCtx, checkoutId, drawingId);
-        }
-
         [Fact]
-        public void Approve_audit_is_keyed_to_the_drawing()
+        public void Approve_audit_is_keyed_to_the_document_file()
         {
-            var (ctx, pluginCtx, _, drawingId) = BuildContext();
+            var (ctx, pluginCtx, _, _) = BuildContext();
+            var sheetId = ctx.CreateQuery(SheetEntity).Single().Id;
             pluginCtx.InputParameters["Decision"] = DecisionApproved;
             ctx.ExecutePluginWith<ApproveCheckinPlugin>(pluginCtx);
             var audit = ctx.GetFakedOrganizationService()
                 .RetrieveMultiple(new QueryExpression("enmax_autocadauditevent") { ColumnSet = new ColumnSet(true) })
                 .Entities[0];
-            audit.GetAttributeValue<string>("enmax_acdnsubjectid").Should().Be(drawingId.ToString(),
-                because: "audit must reference the drawing, not the checkout, so it appears on the drawing timeline");
-            audit.GetAttributeValue<string>("enmax_acdnsubjecttable").Should().Be(DrawingEntity);
+            audit.GetAttributeValue<string>("enmax_acdnsubjectid").Should().Be(sheetId.ToString(),
+                because: "audit must reference the exact document file");
+            audit.GetAttributeValue<string>("enmax_acdnsubjecttable").Should().Be(SheetEntity);
         }
 
         [Fact]
-        public void Approve_moves_sheets_to_Available()
+        public void Approve_moves_associated_document_file_to_Available()
         {
-            var (ctx, pluginCtx, _, drawingId) = BuildContextWithSheet();
+            var (ctx, pluginCtx, _, _) = BuildContext();
             pluginCtx.InputParameters["Decision"] = DecisionApproved;
             ctx.ExecutePluginWith<ApproveCheckinPlugin>(pluginCtx);
-            var sheets = ctx.GetFakedOrganizationService()
-                .RetrieveMultiple(new QueryExpression("enmax_autocadsheet") { ColumnSet = new ColumnSet("enmax_acdnstate") });
-            sheets.Entities.Should().OnlyContain(s => s.GetAttributeValue<OptionSetValue>("enmax_acdnstate").Value == 2,
-                because: "approved revision returns sheets to sheet Available = 2");
+            ctx.CreateQuery(SheetEntity).Single()
+                .GetAttributeValue<OptionSetValue>("enmax_acdnstate").Value.Should().Be(2,
+                    because: "an approved revision returns its document file to Available");
         }
 
         [Fact]
-        public void Decline_moves_sheets_back_to_CheckedOut()
+        public void Approve_does_not_change_unrelated_document_files()
         {
-            var (ctx, pluginCtx, _, _) = BuildContextWithSheet();
+            var (ctx, pluginCtx, checkoutId, drawingId) = BuildContext();
+            var service = ctx.GetFakedOrganizationService();
+            var associatedSheetId = service.Retrieve(
+                    CheckoutEntity,
+                    checkoutId,
+                    new ColumnSet(ColCheckoutSheet))
+                .GetAttributeValue<EntityReference>(ColCheckoutSheet).Id;
+            var unrelatedSheetId = service.Create(new Entity(SheetEntity)
+            {
+                ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
+                ["enmax_acdnstate"]   = new OptionSetValue(4),
+            });
+
+            pluginCtx.InputParameters["Decision"] = DecisionApproved;
+            ctx.ExecutePluginWith<ApproveCheckinPlugin>(pluginCtx);
+
+            service.Retrieve(SheetEntity, associatedSheetId, new ColumnSet("enmax_acdnstate"))
+                .GetAttributeValue<OptionSetValue>("enmax_acdnstate").Value.Should().Be(2);
+            service.Retrieve(SheetEntity, unrelatedSheetId, new ColumnSet("enmax_acdnstate"))
+                .GetAttributeValue<OptionSetValue>("enmax_acdnstate").Value.Should().Be(4,
+                    because: "approval changes only the document file associated with the checkout");
+        }
+
+        [Fact]
+        public void Decline_moves_associated_document_file_back_to_CheckedOut()
+        {
+            var (ctx, pluginCtx, _, _) = BuildContext();
             pluginCtx.InputParameters["Decision"] = DecisionDeclined;
             pluginCtx.InputParameters["Reason"]   = "Missing revision marks on pages 3 and 4.";
             ctx.ExecutePluginWith<ApproveCheckinPlugin>(pluginCtx);
-            var sheets = ctx.GetFakedOrganizationService()
-                .RetrieveMultiple(new QueryExpression("enmax_autocadsheet") { ColumnSet = new ColumnSet("enmax_acdnstate") });
-            sheets.Entities.Should().OnlyContain(s => s.GetAttributeValue<OptionSetValue>("enmax_acdnstate").Value == 3,
-                because: "declined revision reverts sheets to sheet CheckedOut = 3");
+            ctx.CreateQuery(SheetEntity).Single()
+                .GetAttributeValue<OptionSetValue>("enmax_acdnstate").Value.Should().Be(3,
+                    because: "a declined revision returns its document file to CheckedOut");
         }
 
         [Fact]

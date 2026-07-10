@@ -130,16 +130,21 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
     internal sealed class AlwaysThrowUpdateExecutor : IFakeMessageExecutor
     {
         private readonly Exception _exception;
+        private readonly string _entityLogicalName;
         public int CallCount { get; private set; }
 
-        public AlwaysThrowUpdateExecutor(Exception exception)
+        public AlwaysThrowUpdateExecutor(Exception exception, string entityLogicalName = null)
         {
             _exception = exception;
+            _entityLogicalName = entityLogicalName;
         }
 
         public bool CanExecute(OrganizationRequest request)
         {
-            return request is UpdateRequest;
+            var update = request as UpdateRequest;
+            return update != null &&
+                (_entityLogicalName == null ||
+                 string.Equals(update.Target?.LogicalName, _entityLogicalName, StringComparison.OrdinalIgnoreCase));
         }
 
         public OrganizationResponse Execute(OrganizationRequest request, XrmFakedContext ctx)

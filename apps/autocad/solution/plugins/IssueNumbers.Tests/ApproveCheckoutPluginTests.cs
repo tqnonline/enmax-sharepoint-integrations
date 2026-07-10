@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
 using System;
+using System.Linq;
 using Xunit;
 
 // ReSharper disable InconsistentNaming
@@ -137,16 +138,18 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         [Fact]
-        public void Approve_writes_ApprovalGranted_audit_keyed_to_drawing()
+        public void Approve_writes_ApprovalGranted_audit_keyed_to_document_file()
         {
-            var (ctx, pluginCtx, _, drawingId, _) = BuildContext();
+            var (ctx, pluginCtx, _, _, _) = BuildContext();
+            var sheetId = ctx.CreateQuery(SheetEntity).Single().Id;
             ctx.ExecutePluginWith<ApproveCheckoutPlugin>(pluginCtx);
             var audit = ctx.GetFakedOrganizationService()
                 .RetrieveMultiple(new QueryExpression("enmax_autocadauditevent") { ColumnSet = new ColumnSet(true) })
                 .Entities.Should().ContainSingle().Subject;
             audit.GetAttributeValue<OptionSetValue>("enmax_acdnevent").Value.Should().Be(3, because: "event 3 = Approval Granted");
-            audit.GetAttributeValue<string>("enmax_acdnsubjectid").Should().Be(drawingId.ToString(),
-                because: "the audit must appear on the drawing timeline");
+            audit.GetAttributeValue<string>("enmax_acdnsubjectid").Should().Be(sheetId.ToString(),
+                because: "the audit must appear on the exact document file timeline");
+            audit.GetAttributeValue<string>("enmax_acdnsubjecttable").Should().Be(SheetEntity);
         }
 
         [Fact]
