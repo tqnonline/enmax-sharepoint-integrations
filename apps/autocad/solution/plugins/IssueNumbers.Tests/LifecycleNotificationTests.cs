@@ -263,6 +263,45 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             requesterNotif.GetAttributeValue<string>("enmax_acdndeeplinkpath").Should().Be($"/reservations/{resId}");
         }
 
+        [Fact]
+        public void OnReservationCreated_notification_failure_is_soft_failed_and_logged_as_plugin_exception()
+        {
+            // A malformed teammembership row (systemuserid is not a Guid) makes
+            // Entity.GetAttributeValue<Guid>() throw while the plug-in resolves the
+            // approver/admin fan-out. The reservation + its audit event were already
+            // created before that point — the notification failure must not undo them,
+            // and it must be recorded as a Plugin-origin exception instead of vanishing.
+            var ctx = new XrmFakedContext();
+            var resId = Guid.NewGuid(); var requester = Guid.NewGuid();
+            var approverTeam = Guid.NewGuid(); var adminTeam = Guid.NewGuid();
+            ctx.Initialize(new[]
+            {
+                new Entity(ReservationEntity, resId) { ["enmax_acdnreservationid"] = "RES-0100" },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid()) { ["enmax_acdnkey"]="AdminTeamId",    ["enmax_acdnvalue"]=adminTeam.ToString() },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid()) { ["enmax_acdnkey"]="ApproverTeamId", ["enmax_acdnvalue"]=approverTeam.ToString() },
+                new Entity("teammembership", Guid.NewGuid()) { ["teamid"] = approverTeam, ["systemuserid"] = "not-a-guid" },
+                new Entity("systemuser", requester) { ["fullname"] = "Pat Requester" },
+            });
+            var p = Ctx(ctx, "Create", requester);
+            p.PrimaryEntityId = resId;
+
+            Action act = () => ctx.ExecutePluginWith<OnReservationCreatedPlugin>(p);
+
+            act.Should().NotThrow(because: "a notification-path failure must never roll back the reservation create");
+
+            var audit = ctx.CreateQuery("enmax_autocadauditevent").FirstOrDefault() as Entity;
+            audit.Should().NotBeNull("the reservation audit event is core work and must persist even when notifications fail");
+
+            Notifications(ctx).Should().BeEmpty("the fan-out failed before any notification row could be created");
+
+            var exceptionRow = ctx.CreateQuery("enmax_autocadflowexception").FirstOrDefault() as Entity;
+            exceptionRow.Should().NotBeNull("a soft-failed plug-in exception must still be durably logged, not just traced");
+            exceptionRow.GetAttributeValue<OptionSetValue>("enmax_acdnorigin").Value.Should().Be(3, "plug-in failures log with origin = Plugin");
+            exceptionRow.GetAttributeValue<string>("enmax_acdnsubjecttable").Should().Be(ReservationEntity);
+            exceptionRow.GetAttributeValue<string>("enmax_acdnsubjectid").Should().Be(resId.ToString());
+            exceptionRow.GetAttributeValue<string>("enmax_acdnfailedaction").Should().Contain(nameof(OnReservationCreatedPlugin));
+        }
+
         // ── Drawing lifecycle: finalized / obsolete → owner ───────────────────
 
         [Fact]

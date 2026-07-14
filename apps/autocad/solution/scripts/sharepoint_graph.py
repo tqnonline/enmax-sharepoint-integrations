@@ -66,55 +66,134 @@ def _drive_id(hostname: str, site_path: str, drive_name: str, token: str) -> str
     raise RuntimeError(f"Drive '{drive_name}' not found under {site_path}")
 
 
-def upload_pdf(library_url: str, file_name: str, token: str, content: bytes) -> str:
-    """Upload a PDF to a library root folder; returns the file web URL."""
+def upload_file(
+    library_url: str,
+    folder_path: str,
+    file_name: str,
+    token: str,
+    content: bytes,
+    content_type: str = "application/octet-stream",
+) -> str:
+    """Upload a file into a library, creating `folder_path` implicitly if needed.
+
+    Graph's path-addressed PUT .../content endpoint auto-creates missing
+    intermediate folders, so no separate mkdir pass is required.
+    """
     hostname, site_path, drive_name = _library_parts(library_url)
     drive_id = _drive_id(hostname, site_path, drive_name, token)
+    clean_folder = folder_path.strip("/")
+    item_path = f"{clean_folder}/{file_name}" if clean_folder else file_name
     endpoint = (
-        f"{GRAPH_ROOT}/drives/{drive_id}/root:/{file_name}:/content"
+        f"{GRAPH_ROOT}/drives/{drive_id}/root:/{item_path}:/content"
         "?@microsoft.graph.conflictBehavior=replace"
     )
     resp = requests.put(
         endpoint,
         headers={
             "Authorization": f"Bearer {token}",
-            "Content-Type": "application/pdf",
+            "Content-Type": content_type,
         },
         data=content,
         timeout=120,
     )
     if resp.status_code >= 400:
         raise RuntimeError(f"Graph upload failed ({resp.status_code}): {resp.text[:300]}")
-    return resp.json().get("webUrl") or f"{library_url.rstrip('/')}/{file_name}"
+    return resp.json().get("webUrl") or f"{library_url.rstrip('/')}/{item_path}"
 
 
-def list_pdfs(library_url: str, token: str) -> list[dict]:
-    """Return [{fileName, absoluteUrl, serverRelativeUrl}] for PDFs in a library root."""
-    hostname, site_path, drive_name = _library_parts(library_url)
-    drive_id = _drive_id(hostname, site_path, drive_name, token)
-    endpoint = f"{GRAPH_ROOT}/drives/{drive_id}/root/children"
+def upload_pdf(library_url: str, file_name: str, token: str, content: bytes) -> str:
+    """Upload a PDF to a library root folder; returns the file web URL."""
+    return upload_file(library_url, "", file_name, token, content, content_type="application/pdf")
+
+
+# SharePoint "Record Type" choice column internal name is not guessable from the
+# display label alone (spaces are typically encoded as _x0020_ but managed
+# metadata / choice columns vary by list template). Try the common candidates;
+# the first populated one wins. Best-effort per the indexer plan — a miss here
+# just means recordTypeSp stays None and taxonomy falls back to library URL.
+_RECORD_TYPE_FIELD_CANDIDATES = ("RecordType", "Record_x0020_Type", "DocumentType", "Document_x0020_Type")
+
+
+def _iter_children(drive_id: str, token: str, item_id: str | None, *, expand_fields: bool) -> list[dict]:
+    """List all children (paged) of a drive item, or the drive root when item_id is None."""
+    base = f"{GRAPH_ROOT}/drives/{drive_id}"
+    endpoint = f"{base}/root/children" if item_id is None else f"{base}/items/{item_id}/children"
+    if expand_fields:
+        endpoint += "?$expand=listItem($expand=fields)"
     results: list[dict] = []
     while endpoint:
-        resp = requests.get(
-            endpoint,
-            headers={"Authorization": f"Bearer {token}"},
-            timeout=120,
-        )
+        resp = requests.get(endpoint, headers={"Authorization": f"Bearer {token}"}, timeout=120)
         if resp.status_code >= 400:
-            raise RuntimeError(
-                f"Cannot list {library_url} ({resp.status_code}): {resp.text[:300]}"
-            )
+            raise RuntimeError(f"Cannot list children ({resp.status_code}): {resp.text[:300]}")
         body = resp.json()
-        for item in body.get("value", []):
+        results.extend(body.get("value", []))
+        endpoint = body.get("@odata.nextLink")
+    return results
+
+
+def _extract_list_fields(item: dict) -> dict:
+    fields = ((item.get("listItem") or {}).get("fields")) or {}
+    record_type_sp = None
+    for candidate in _RECORD_TYPE_FIELD_CANDIDATES:
+        value = fields.get(candidate)
+        if isinstance(value, str) and value.strip():
+            record_type_sp = value.strip()
+            break
+    return {"contentTypeId": fields.get("ContentTypeId"), "recordTypeSp": record_type_sp}
+
+
+def list_pdfs(
+    library_url: str,
+    token: str,
+    *,
+    recursive: bool = True,
+    content_type_id: str | None = None,
+    include_metadata: bool = True,
+) -> list[dict]:
+    """Return PDF descriptors for a library, recursing into subfolders by default.
+
+    Each result: {fileName, absoluteUrl, serverRelativeUrl, lastModifiedDateTime,
+    recordTypeSp, contentTypeId}.
+
+    Content-type filtering is best-effort: Graph has no server-side content-type
+    filter on drive listings, so this expands `listItem.fields` per item and
+    matches `ContentTypeId` (prefix match, since sub-content-types extend the
+    parent ID) client-side. Items where the field can't be resolved are KEPT
+    rather than dropped, so a metadata gap never silently hides a file.
+    """
+    hostname, site_path, drive_name = _library_parts(library_url)
+    drive_id = _drive_id(hostname, site_path, drive_name, token)
+
+    results: list[dict] = []
+    pending: list[str | None] = [None]  # None = drive root
+    seen_folder_ids: set[str] = set()
+    while pending:
+        folder_id = pending.pop()
+        for item in _iter_children(drive_id, token, folder_id, expand_fields=include_metadata):
+            if "folder" in item:
+                child_id = item.get("id")
+                if recursive and child_id and child_id not in seen_folder_ids:
+                    seen_folder_ids.add(child_id)
+                    pending.append(child_id)
+                continue
+
             name = item.get("name", "")
             if not name.lower().endswith(".pdf"):
                 continue
+
+            meta = _extract_list_fields(item) if include_metadata else {"contentTypeId": None, "recordTypeSp": None}
+            item_ct = meta["contentTypeId"]
+            if content_type_id and item_ct and not str(item_ct).startswith(content_type_id):
+                continue
+
             web_url = item.get("webUrl", "")
             rel = urlparse(web_url).path if web_url else ""
             results.append({
                 "fileName": name,
                 "absoluteUrl": web_url,
                 "serverRelativeUrl": rel,
+                "lastModifiedDateTime": item.get("lastModifiedDateTime"),
+                "recordTypeSp": meta["recordTypeSp"],
+                "contentTypeId": item_ct,
             })
-        endpoint = body.get("@odata.nextLink")
     return results

@@ -14,7 +14,7 @@ import {
   Document24Regular,
 } from "@fluentui/react-icons";
 import type { SearchDocumentRow } from "./useSearchDocuments";
-import { sharePointUrlFrom } from "../../components/DataGrid";
+import { preferSharePointDropOff, sharePointFileUrl } from "../sharepoint/sharepointUrls";
 import { SearchCheckoutAction } from "./SearchCheckoutAction";
 
 const STATE_COLORS: Record<string, "success" | "warning" | "danger" | "informative" | "brand" | undefined> = {
@@ -190,7 +190,10 @@ export function SearchResultsList({
           </div>
         )}
         {rows.map((row) => {
-          const spUrl = sharePointUrlFrom(row.sharePointUrl, row.destinationUrl);
+          const preferDropOff = preferSharePointDropOff(
+            row.isChildDocument ? { sheetState: row.state } : { drawingState: row.state },
+          );
+          const spUrl = sharePointFileUrl(row.sharePointUrl, row.destinationUrl, { preferDropOff });
           const stateColor = STATE_COLORS[row.stateLabel] ?? "informative";
           return (
             <button

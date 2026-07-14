@@ -38,7 +38,7 @@ def run(environment: str, dry_run: bool, verbose: bool, scope: str = "master") -
     repo_root = Path(__file__).resolve().parent.parent.parent.parent.parent
     seed_script = repo_root / "solution" / "scripts" / "seed.py"
 
-    cmd = [sys.executable, str(seed_script), "--scope", scope]
+    cmd = [sys.executable, str(seed_script), "--scope", scope, "--environment", environment]
     if dry_run:
         cmd.append("--dry-run")
 

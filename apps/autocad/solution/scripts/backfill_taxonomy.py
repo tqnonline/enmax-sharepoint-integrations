@@ -36,7 +36,7 @@ def _missing_attribute_hint(resp_text: str) -> str | None:
         "  python solution/scripts/pack.py\n"
         "  python solution/scripts/import.py\n"
         "  python solution/scripts/patch_optionsets.py --auth azcli\n"
-        "Or: IMPORT_SOLUTION=1 ./scripts/deploy-user-dev.sh\n"
+        "Or: pwsh ./scripts/deploy-user-dev.ps1 -Full\n"
     )
 
 

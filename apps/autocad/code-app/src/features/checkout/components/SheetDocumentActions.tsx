@@ -166,6 +166,8 @@ export function SheetDocumentActions({
           drawingId={drawingId}
           drawingNumber={displayNumber}
           site={sharePointSiteForTaxonomy(reservationType)}
+          reservationType={reservationType}
+          documentSubtype={documentSubtype}
           triggerAppearance="secondary"
           triggerIcon={<ArrowUpload24Regular />}
           triggerLabel="Submit Check In"

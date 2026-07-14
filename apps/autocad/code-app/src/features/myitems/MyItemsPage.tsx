@@ -36,9 +36,9 @@ import {
   submittedByColumn,
   approvedByColumn,
   sharePointColumn,
-  sharePointUrlFrom,
   dateTimeColumn,
 } from "../../components/DataGrid";
+import { gridSharePointFileUrl } from "../sharepoint/sharepointUrls";
 import type { ColumnDef, GridFetchParams } from "../../components/DataGrid";
 import type { DrawingRow } from "../search/useSearchDrawings";
 import { documentDisplayNumber } from "../reserve/terminology";
@@ -359,8 +359,13 @@ export function MyItemsPage() {
   }
 
   const columns = useMemo<ColumnDef<MyRecordRow>[]>(() => {
+    // Checked Out tab: bias to the drop-off copy (the revision users are actively
+    // reviewing). Every other tab is destination-first.
     const sharePoint = sharePointColumn<MyRecordRow>(
-      (r) => sharePointUrlFrom(r.libraryUrl, r.destinationUrl),
+      (r) => gridSharePointFileUrl(
+        { dropOffUrl: r.libraryUrl, destinationUrl: r.destinationUrl },
+        { surface: activeState === "checkedout" ? "checkedOutTab" : "default" },
+      ),
     );
 
     const base: ColumnDef<MyRecordRow>[] = [

@@ -80,5 +80,66 @@ namespace Enmax.AutoCAD
                 return "EnableDrawingCheckIn";
             }
         }
+
+        /// <summary>
+        /// Resolves per-taxonomy SharePoint drop-off/destination library URLs.
+        /// Fallback chain: taxonomy-specific key → legacy Drawings/Documents key →
+        /// (drop-off only) CheckInUploadLibraryUrl. Mirrors the TypeScript
+        /// resolveLibraryUrls in apps/code-app/src/features/sharepoint/sharepointUrls.ts.
+        /// </summary>
+        public static class TaxonomyLibraryConfig
+        {
+            private const int ReservationTypeDocument = 2;
+            private const int DocumentSubtypeStandard = 1;
+            private const int DocumentSubtypeProcedure = 2;
+            private const int DocumentSubtypeForm = 3;
+
+            public static string ResolveDropOffKey(int? reservationType, int? documentSubtype)
+            {
+                if (reservationType == ReservationTypeDocument)
+                {
+                    if (documentSubtype == DocumentSubtypeStandard) return "StandardDocumentDropOffLibraryUrl";
+                    if (documentSubtype == DocumentSubtypeProcedure) return "ProcedureDocumentDropOffLibraryUrl";
+                    if (documentSubtype == DocumentSubtypeForm) return "FormDocumentDropOffLibraryUrl";
+                }
+                return "DrawingDropOffLibraryUrl";
+            }
+
+            public static string ResolveDestinationKey(int? reservationType, int? documentSubtype)
+            {
+                if (reservationType == ReservationTypeDocument)
+                {
+                    if (documentSubtype == DocumentSubtypeStandard) return "StandardDocumentDestinationLibraryUrl";
+                    if (documentSubtype == DocumentSubtypeProcedure) return "ProcedureDocumentDestinationLibraryUrl";
+                    if (documentSubtype == DocumentSubtypeForm) return "FormDocumentDestinationLibraryUrl";
+                }
+                return "DrawingDestinationLibraryUrl";
+            }
+
+            private static string LegacyDropOffKey(int? reservationType)
+                => reservationType == ReservationTypeDocument ? "DocumentsDropOffLibraryUrl" : "DrawingsDropOffLibraryUrl";
+
+            private static string LegacyDestinationKey(int? reservationType)
+                => reservationType == ReservationTypeDocument ? "DocumentsDestinationLibraryUrl" : "DrawingsDestinationLibraryUrl";
+
+            public static string GetDropOffUrl(IOrganizationService service, int? reservationType, int? documentSubtype)
+            {
+                string taxonomy = GetValue(service, ResolveDropOffKey(reservationType, documentSubtype));
+                if (!string.IsNullOrWhiteSpace(taxonomy)) return taxonomy;
+
+                string legacy = GetValue(service, LegacyDropOffKey(reservationType));
+                if (!string.IsNullOrWhiteSpace(legacy)) return legacy;
+
+                return GetValue(service, "CheckInUploadLibraryUrl");
+            }
+
+            public static string GetDestinationUrl(IOrganizationService service, int? reservationType, int? documentSubtype)
+            {
+                string taxonomy = GetValue(service, ResolveDestinationKey(reservationType, documentSubtype));
+                if (!string.IsNullOrWhiteSpace(taxonomy)) return taxonomy;
+
+                return GetValue(service, LegacyDestinationKey(reservationType));
+            }
+        }
     }
 }

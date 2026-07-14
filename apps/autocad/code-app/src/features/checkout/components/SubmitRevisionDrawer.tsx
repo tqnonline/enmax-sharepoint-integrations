@@ -80,6 +80,9 @@ interface Props {
   drawingNumber: string;
   /** SharePoint site topology — drawings vs documents drop-off. */
   site?: "drawings" | "documents";
+  /** Per-taxonomy library resolution; takes precedence over `site` when provided. */
+  reservationType?: number | null;
+  documentSubtype?: number | null;
   triggerLabel?: string;
   triggerAppearance?: "primary" | "secondary" | "outline" | "subtle";
   triggerIcon?: ReactElement;
@@ -94,6 +97,8 @@ export function SubmitRevisionDrawer({
   drawingId,
   drawingNumber,
   site = "drawings",
+  reservationType,
+  documentSubtype,
   triggerLabel = "Check In",
   triggerAppearance = "secondary",
   triggerIcon = <ArrowUpload24Regular />,
@@ -166,7 +171,13 @@ export function SubmitRevisionDrawer({
                 />
               </Field>
 
-              <SharePointLibraryEmbed recordNumber={drawingNumber} site={site} enabled />
+              <SharePointLibraryEmbed
+                recordNumber={drawingNumber}
+                site={site}
+                reservationType={reservationType}
+                documentSubtype={documentSubtype}
+                enabled
+              />
 
               <div className={styles.confirmationBox}>
                 <Checkbox

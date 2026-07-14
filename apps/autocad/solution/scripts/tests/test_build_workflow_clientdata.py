@@ -41,7 +41,7 @@ def test_connection_references_map_deployed_logical_names() -> None:
     )
 
 
-def test_reservation_created_workflow_json_uses_teams_conref() -> None:
+def test_reservation_created_workflow_json_has_error_scaffold() -> None:
     workflow_path = (
         Path(__file__).resolve().parent.parent.parent
         / "src"
@@ -51,12 +51,9 @@ def test_reservation_created_workflow_json_uses_teams_conref() -> None:
     )
     assert workflow_path.exists(), "run build_workflow_clientdata.py to generate workflow.json"
     data = json.loads(workflow_path.read_text(encoding="utf-8"))
-    conrefs = data["properties"]["connectionReferences"]
-    assert "shared_teams" in conrefs
-    assert (
-        conrefs["shared_teams"]["connection"]["connectionReferenceLogicalName"]
-        == "enmax_autocadconrefTeams"
-    )
+    actions = data["properties"]["definition"]["actions"]
+    assert "Scope_Try_Main" in actions
+    assert "Scope_Catch_Failure" in actions
 
 
 def test_child_send_system_email_workflow_json_uses_solution_conrefs() -> None:

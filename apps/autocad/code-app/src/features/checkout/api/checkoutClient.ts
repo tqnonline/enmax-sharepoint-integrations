@@ -8,6 +8,9 @@ export const DrawingState = {
   Obsolete: 5,
   Void: 6,
   Finalized: 7,
+  // WS5/SharePoint import: the indexer created this drawing from a SharePoint
+  // upload but it has not yet been approved into Available. Excluded from search.
+  PendingSharePointImport: 8,
 } as const;
 
 export type DrawingStateValue = (typeof DrawingState)[keyof typeof DrawingState];
@@ -22,6 +25,7 @@ export const DRAWING_STATE_LABELS: Record<number, string> = {
   5: "Obsolete",
   6: "Released (Voided)",
   7: "Finalized",
+  8: "Pending SharePoint Import",
 };
 
 export const DRAWING_STATE_BADGE_COLOR: Record<number, BadgeColor> = {
@@ -32,6 +36,7 @@ export const DRAWING_STATE_BADGE_COLOR: Record<number, BadgeColor> = {
   5: "danger",
   6: "danger",
   7: "brand",
+  8: "subtle",
 };
 
 export const TERMINAL_DRAWING_STATES: ReadonlySet<number> = new Set([5, 6, 7]);

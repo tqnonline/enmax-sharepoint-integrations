@@ -44,6 +44,34 @@ namespace Enmax.AutoCAD
         protected override void ExecuteDataversePlugin(ILocalPluginContext localPluginContext)
         {
             var context = localPluginContext.PluginExecutionContext;
+            var tracing = localPluginContext.TracingService;
+
+            // Async soft-fail policy: this step runs asynchronously off the reservation-approval
+            // transaction, which has already committed by the time this executes. Faulting here
+            // would only surface as a silent failed async job — log to enmax_autocadflowexception
+            // and return instead of throwing, so the failure is visible to admins.
+            try
+            {
+                ExecuteAutoCreateDrawings(localPluginContext);
+            }
+            catch (Exception ex)
+            {
+                tracing.Trace($"AutoCreateDrawings: unhandled exception — {ex.Message}");
+                ExceptionEmitter.Log(
+                    localPluginContext.SystemUserService,
+                    tracing,
+                    ex,
+                    failedAction: $"{nameof(AutoCreateDrawingsPlugin)}.{nameof(ExecuteDataversePlugin)}",
+                    subjectTable: context.PrimaryEntityName,
+                    subjectId: context.PrimaryEntityId,
+                    actingUserId: localPluginContext.ActingUserId,
+                    correlationId: context.CorrelationId);
+            }
+        }
+
+        private void ExecuteAutoCreateDrawings(ILocalPluginContext localPluginContext)
+        {
+            var context = localPluginContext.PluginExecutionContext;
             var service = localPluginContext.SystemUserService;
             var actorId = localPluginContext.ActingUserId;
             var tracing = localPluginContext.TracingService;

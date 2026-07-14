@@ -98,21 +98,110 @@ export function sharePointSiteForTaxonomy(
   return reservationType === RESERVATION_TYPE_VALUE.Document ? "documents" : "drawings";
 }
 
+/** Surface a grid renders SharePoint links for — controls drop-off vs destination bias. */
+export type GridSharePointSurface = "default" | "checkedOutTab" | "checkInQueue";
+
+/**
+ * Resolves the link a grid cell should render for a row, based on which surface
+ * (tab/queue) the row is shown on. Checked-out/check-in surfaces bias to the
+ * drop-off copy (the revision the user is actively reviewing); everywhere else
+ * follows the default destination-first behavior.
+ */
+export function gridSharePointFileUrl(
+  urls: SharePointFileUrls,
+  opts?: { surface?: GridSharePointSurface },
+): string {
+  const surface = opts?.surface ?? "default";
+  const preferDropOff = surface === "checkedOutTab" || surface === "checkInQueue";
+  return sharePointFileUrl(urls.dropOffUrl, urls.destinationUrl, { preferDropOff });
+}
+
+export interface TaxonomyLibraryConfig {
+  DrawingDropOffLibraryUrl?: string;
+  DrawingDestinationLibraryUrl?: string;
+  StandardDocumentDropOffLibraryUrl?: string;
+  StandardDocumentDestinationLibraryUrl?: string;
+  ProcedureDocumentDropOffLibraryUrl?: string;
+  ProcedureDocumentDestinationLibraryUrl?: string;
+  FormDocumentDropOffLibraryUrl?: string;
+  FormDocumentDestinationLibraryUrl?: string;
+  DrawingsDropOffLibraryUrl?: string;
+  DrawingsDestinationLibraryUrl?: string;
+  DocumentsDropOffLibraryUrl?: string;
+  DocumentsDestinationLibraryUrl?: string;
+  CheckInUploadLibraryUrl?: string;
+}
+
+/**
+ * Resolve taxonomy library URLs from AppConfig with fallback chain:
+ * taxonomy-specific key → legacy Drawings/Documents key → CheckInUploadLibraryUrl
+ * for drop-off only (destination has no legacy single-library equivalent).
+ */
+export function resolveLibraryUrls(
+  reservationType: number | null | undefined,
+  documentSubtype: number | null | undefined,
+  config: TaxonomyLibraryConfig,
+): { dropOff?: string; destination?: string } {
+  const isDocument = reservationType === RESERVATION_TYPE_VALUE.Document;
+
+  let taxonomyDropOff: string | undefined;
+  let taxonomyDestination: string | undefined;
+  if (isDocument) {
+    if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Standard) {
+      taxonomyDropOff = config.StandardDocumentDropOffLibraryUrl;
+      taxonomyDestination = config.StandardDocumentDestinationLibraryUrl;
+    } else if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure) {
+      taxonomyDropOff = config.ProcedureDocumentDropOffLibraryUrl;
+      taxonomyDestination = config.ProcedureDocumentDestinationLibraryUrl;
+    } else if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Form) {
+      taxonomyDropOff = config.FormDocumentDropOffLibraryUrl;
+      taxonomyDestination = config.FormDocumentDestinationLibraryUrl;
+    }
+  } else {
+    taxonomyDropOff = config.DrawingDropOffLibraryUrl;
+    taxonomyDestination = config.DrawingDestinationLibraryUrl;
+  }
+
+  const legacyDropOff = isDocument
+    ? config.DocumentsDropOffLibraryUrl
+    : config.DrawingsDropOffLibraryUrl;
+  const legacyDestination = isDocument
+    ? config.DocumentsDestinationLibraryUrl
+    : config.DrawingsDestinationLibraryUrl;
+
+  return {
+    dropOff: taxonomyDropOff ?? legacyDropOff ?? config.CheckInUploadLibraryUrl,
+    destination: taxonomyDestination ?? legacyDestination,
+  };
+}
+
 /**
  * WS5: resolves the drop-off library base URL for uploads.
- * Prefers the two-site topology keys; falls back to legacy CheckInUploadLibraryUrl.
+ * Accepts either the legacy two-site topology ("drawings" | "documents") or a
+ * taxonomy pair (reservation type + document subtype) for finer-grained
+ * per-taxonomy library resolution. Falls back to legacy CheckInUploadLibraryUrl.
  */
-export function useDropOffLibraryUrl(site: "drawings" | "documents" = "drawings"): string | undefined {
-  const {
-    DrawingsDropOffLibraryUrl,
-    DocumentsDropOffLibraryUrl,
-    CheckInUploadLibraryUrl,
-  } = useAppConfig();
+export function useDropOffLibraryUrl(
+  siteOrTaxonomy?:
+    | "drawings"
+    | "documents"
+    | { reservationType?: number | null; documentSubtype?: number | null },
+): string | undefined {
+  const config = useAppConfig();
 
+  if (typeof siteOrTaxonomy === "object" && siteOrTaxonomy !== null) {
+    return resolveLibraryUrls(
+      siteOrTaxonomy.reservationType,
+      siteOrTaxonomy.documentSubtype,
+      config,
+    ).dropOff;
+  }
+
+  const site = siteOrTaxonomy ?? "drawings";
   const primary =
-    site === "documents" ? DocumentsDropOffLibraryUrl : DrawingsDropOffLibraryUrl;
+    site === "documents" ? config.DocumentsDropOffLibraryUrl : config.DrawingsDropOffLibraryUrl;
 
-  return primary ?? CheckInUploadLibraryUrl;
+  return primary ?? config.CheckInUploadLibraryUrl;
 }
 
 /** SharePoint "All Items" view — users upload via native UI (new-tab first). */

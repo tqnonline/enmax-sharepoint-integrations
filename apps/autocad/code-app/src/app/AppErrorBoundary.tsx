@@ -8,6 +8,7 @@ import {
   makeStyles,
   tokens,
 } from "@fluentui/react-components";
+import { logException, EXCEPTION_SEVERITY } from "../telemetry/exceptionLogger";
 
 const useStyles = makeStyles({
   root: {
@@ -75,6 +76,12 @@ export class AppErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundar
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("[AppErrorBoundary]", error, info);
+    void logException({
+      area: "AppShell",
+      error,
+      context: info.componentStack ?? undefined,
+      severity: EXCEPTION_SEVERITY.Critical,
+    });
   }
 
   render() {

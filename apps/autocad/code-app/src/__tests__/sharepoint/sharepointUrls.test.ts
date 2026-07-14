@@ -7,8 +7,10 @@ import { CheckoutStatus, DrawingState } from "../../features/checkout/api/checko
 import { SHEET_STATE_AWAITING_VALIDATION } from "../../features/approvals/hooks/useDrawingSheets";
 import {
   expectedPdfFileName,
+  gridSharePointFileUrl,
   preferSharePointDropOff,
   recordCarriesSharePointPdf,
+  resolveLibraryUrls,
   resolveSharePointFileUrls,
   sharePointFileUrl,
   sharePointSiteForTaxonomy,
@@ -84,5 +86,94 @@ describe("sharepointUrls", () => {
       drawingDropOffUrl: "https://sp.example/base.pdf",
     });
     expect(sharePointFileUrl(urls.dropOffUrl, urls.destinationUrl)).toBe("");
+  });
+
+  describe("gridSharePointFileUrl", () => {
+    const urls = { dropOffUrl: "https://drop", destinationUrl: "https://dest" };
+
+    it("defaults to destination-first", () => {
+      expect(gridSharePointFileUrl(urls)).toBe("https://dest");
+      expect(gridSharePointFileUrl(urls, { surface: "default" })).toBe("https://dest");
+    });
+
+    it("prefers drop-off on the checked-out tab and check-in queue surfaces", () => {
+      expect(gridSharePointFileUrl(urls, { surface: "checkedOutTab" })).toBe("https://drop");
+      expect(gridSharePointFileUrl(urls, { surface: "checkInQueue" })).toBe("https://drop");
+    });
+
+    it("falls back to the other link when the preferred one is empty", () => {
+      expect(gridSharePointFileUrl({ dropOffUrl: "", destinationUrl: "https://dest" }, { surface: "checkedOutTab" }))
+        .toBe("https://dest");
+      expect(gridSharePointFileUrl({ dropOffUrl: "https://drop", destinationUrl: "" })).toBe("https://drop");
+    });
+  });
+
+  describe("resolveLibraryUrls", () => {
+    const config = {
+      DrawingDropOffLibraryUrl: "https://sp.example/drawing-dropoff",
+      DrawingDestinationLibraryUrl: "https://sp.example/drawing-dest",
+      StandardDocumentDropOffLibraryUrl: "https://sp.example/standard-dropoff",
+      StandardDocumentDestinationLibraryUrl: "https://sp.example/standard-dest",
+      ProcedureDocumentDropOffLibraryUrl: "https://sp.example/procedure-dropoff",
+      ProcedureDocumentDestinationLibraryUrl: "https://sp.example/procedure-dest",
+      FormDocumentDropOffLibraryUrl: "https://sp.example/form-dropoff",
+      FormDocumentDestinationLibraryUrl: "https://sp.example/form-dest",
+      DrawingsDropOffLibraryUrl: "https://sp.example/legacy-drawings-dropoff",
+      DrawingsDestinationLibraryUrl: "https://sp.example/legacy-drawings-dest",
+      DocumentsDropOffLibraryUrl: "https://sp.example/legacy-documents-dropoff",
+      DocumentsDestinationLibraryUrl: "https://sp.example/legacy-documents-dest",
+      CheckInUploadLibraryUrl: "https://sp.example/checkin-upload",
+    };
+
+    it("resolves taxonomy-specific keys per reservation type / document subtype", () => {
+      expect(resolveLibraryUrls(RESERVATION_TYPE_VALUE.Drawing, undefined, config)).toEqual({
+        dropOff: config.DrawingDropOffLibraryUrl,
+        destination: config.DrawingDestinationLibraryUrl,
+      });
+      expect(resolveLibraryUrls(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Standard, config)).toEqual({
+        dropOff: config.StandardDocumentDropOffLibraryUrl,
+        destination: config.StandardDocumentDestinationLibraryUrl,
+      });
+      expect(resolveLibraryUrls(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Procedure, config)).toEqual({
+        dropOff: config.ProcedureDocumentDropOffLibraryUrl,
+        destination: config.ProcedureDocumentDestinationLibraryUrl,
+      });
+      expect(resolveLibraryUrls(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Form, config)).toEqual({
+        dropOff: config.FormDocumentDropOffLibraryUrl,
+        destination: config.FormDocumentDestinationLibraryUrl,
+      });
+    });
+
+    it("falls back to legacy Drawings/Documents keys when taxonomy keys are absent", () => {
+      const legacyOnly = {
+        DrawingsDropOffLibraryUrl: config.DrawingsDropOffLibraryUrl,
+        DrawingsDestinationLibraryUrl: config.DrawingsDestinationLibraryUrl,
+        DocumentsDropOffLibraryUrl: config.DocumentsDropOffLibraryUrl,
+        DocumentsDestinationLibraryUrl: config.DocumentsDestinationLibraryUrl,
+      };
+      expect(resolveLibraryUrls(RESERVATION_TYPE_VALUE.Drawing, undefined, legacyOnly)).toEqual({
+        dropOff: legacyOnly.DrawingsDropOffLibraryUrl,
+        destination: legacyOnly.DrawingsDestinationLibraryUrl,
+      });
+      expect(resolveLibraryUrls(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Standard, legacyOnly)).toEqual({
+        dropOff: legacyOnly.DocumentsDropOffLibraryUrl,
+        destination: legacyOnly.DocumentsDestinationLibraryUrl,
+      });
+    });
+
+    it("falls back to CheckInUploadLibraryUrl for drop-off when no taxonomy or legacy key is set", () => {
+      const checkInOnly = { CheckInUploadLibraryUrl: config.CheckInUploadLibraryUrl };
+      expect(resolveLibraryUrls(RESERVATION_TYPE_VALUE.Drawing, undefined, checkInOnly)).toEqual({
+        dropOff: config.CheckInUploadLibraryUrl,
+        destination: undefined,
+      });
+    });
+
+    it("returns undefined for both links when no config key is set", () => {
+      expect(resolveLibraryUrls(RESERVATION_TYPE_VALUE.Drawing, undefined, {})).toEqual({
+        dropOff: undefined,
+        destination: undefined,
+      });
+    });
   });
 });

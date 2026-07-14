@@ -47,155 +47,287 @@
     }
   },
   "actions": {
-    "Get_Shared_Mailbox": {
-      "type": "OpenApiConnection",
+    "Initialize_CorrelationId": {
+      "type": "InitializeVariable",
       "runAfter": {},
       "inputs": {
-        "host": {
-          "connectionName": "shared_commondataserviceforapps",
-          "operationId": "ListRecords",
-          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
-        },
-        "parameters": {
-          "entityName": "enmax_autocadappconfigs",
-          "$filter": "enmax_acdnkey eq 'SharedMailboxAddress'",
-          "$top": 1
-        }
+        "variables": [
+          {
+            "name": "CorrelationId",
+            "type": "string",
+            "value": "@{coalesce(triggerBody()?['CorrelationId'], guid())}"
+          }
+        ]
       }
     },
-    "Choose_Template": {
-      "type": "Switch",
+    "Initialize_FlowDisplayName": {
+      "type": "InitializeVariable",
       "runAfter": {
-        "Get_Shared_Mailbox": [
+        "Initialize_CorrelationId": [
           "Succeeded"
         ]
       },
-      "expression": "@triggerBody()?['Decision']",
-      "cases": {
-        "Approved": {
-          "case": "Approved",
-          "actions": {
-            "Get_Approved_Template": {
-              "type": "OpenApiConnection",
-              "inputs": {
-                "host": {
-                  "connectionName": "shared_commondataserviceforapps",
-                  "operationId": "ListRecords",
-                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
-                },
-                "parameters": {
-                  "entityName": "webresourceset",
-                  "$filter": "name eq 'enmax_approval_approved'",
-                  "$top": 1
-                }
-              }
+      "inputs": {
+        "variables": [
+          {
+            "name": "FlowDisplayName",
+            "type": "string",
+            "value": "Enmax AutoCAD | Internal | Send Reservation Approval Result Email"
+          }
+        ]
+      }
+    },
+    "Initialize_FlowRunUrlTemplate": {
+      "type": "InitializeVariable",
+      "runAfter": {
+        "Initialize_FlowDisplayName": [
+          "Succeeded"
+        ]
+      },
+      "inputs": {
+        "variables": [
+          {
+            "name": "FlowRunUrlTemplate",
+            "type": "string",
+            "value": "https://make.powerautomate.com/environments/{environmentId}/flows/{flowId}/runs/{runId}"
+          }
+        ]
+      }
+    },
+    "Scope_Try_Main": {
+      "type": "Scope",
+      "runAfter": {
+        "Initialize_FlowRunUrlTemplate": [
+          "Succeeded"
+        ]
+      },
+      "actions": {
+        "Get_Shared_Mailbox": {
+          "type": "OpenApiConnection",
+          "runAfter": {},
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "ListRecords",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
             },
-            "Substitute_Approved": {
-              "type": "Compose",
-              "runAfter": {
-                "Get_Approved_Template": [
-                  "Succeeded"
-                ]
-              },
-              "inputs": "@{replace(replace(replace(replace(base64ToString(outputs('Get_Approved_Template')?['body/value'][0]?['content']), '{{ReservationId}}', triggerBody()?['ReservationId']), '{{IssuedNumbersFormatted}}', triggerBody()?['IssuedNumbersFormatted']), '{{SharePointLibraryUrl}}', triggerBody()?['SharePointLibraryUrl']), '{{ApproverDisplayName}}', replace(replace(triggerBody()?['ApproverDisplayName'], '<', '&lt;'), '>', '&gt;'))}"
-            },
-            "Send_Approved_Email": {
-              "type": "OpenApiConnection",
-              "runAfter": {
-                "Substitute_Approved": [
-                  "Succeeded"
-                ]
-              },
-              "inputs": {
-                "host": {
-                  "connectionName": "shared_office365",
-                  "operationId": "SharedMailboxSendEmailV2",
-                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
-                },
-                "parameters": {
-                  "emailMessage/MailboxAddress": "@{outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue']}",
-                  "emailMessage/To": "@{triggerBody()?['RecipientEmail']}",
-                  "emailMessage/Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
-                  "emailMessage/Subject": "Approved: @{triggerBody()?['ReservationId']}: @{triggerBody()?['IssuedNumbersFormatted']}",
-                  "emailMessage/Body": "@{outputs('Substitute_Approved')}",
-                  "emailMessage/Importance": "Normal"
-                }
-              },
-              "retryPolicy": {
-                "type": "fixed",
-                "count": 1,
-                "interval": "PT30S"
-              }
+            "parameters": {
+              "entityName": "enmax_autocadappconfigs",
+              "$filter": "enmax_acdnkey eq 'SharedMailboxAddress'",
+              "$top": 1
             }
           }
         },
-        "Declined": {
-          "case": "Declined",
-          "actions": {
-            "Get_Declined_Template": {
-              "type": "OpenApiConnection",
-              "inputs": {
-                "host": {
-                  "connectionName": "shared_commondataserviceforapps",
-                  "operationId": "ListRecords",
-                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        "Choose_Template": {
+          "type": "Switch",
+          "runAfter": {
+            "Get_Shared_Mailbox": [
+              "Succeeded"
+            ]
+          },
+          "expression": "@triggerBody()?['Decision']",
+          "cases": {
+            "Approved": {
+              "case": "Approved",
+              "actions": {
+                "Get_Approved_Template": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "connectionName": "shared_commondataserviceforapps",
+                      "operationId": "ListRecords",
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                    },
+                    "parameters": {
+                      "entityName": "webresourceset",
+                      "$filter": "name eq 'enmax_approval_approved'",
+                      "$top": 1
+                    }
+                  }
                 },
-                "parameters": {
-                  "entityName": "webresourceset",
-                  "$filter": "name eq 'enmax_approval_declined'",
-                  "$top": 1
+                "Substitute_Approved": {
+                  "type": "Compose",
+                  "runAfter": {
+                    "Get_Approved_Template": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": "@{replace(replace(replace(replace(base64ToString(outputs('Get_Approved_Template')?['body/value'][0]?['content']), '{{ReservationId}}', triggerBody()?['ReservationId']), '{{IssuedNumbersFormatted}}', triggerBody()?['IssuedNumbersFormatted']), '{{SharePointLibraryUrl}}', triggerBody()?['SharePointLibraryUrl']), '{{ApproverDisplayName}}', replace(replace(triggerBody()?['ApproverDisplayName'], '<', '&lt;'), '>', '&gt;'))}"
+                },
+                "Send_Approved_Email": {
+                  "type": "OpenApiConnection",
+                  "runAfter": {
+                    "Substitute_Approved": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "host": {
+                      "connectionName": "shared_office365",
+                      "operationId": "SharedMailboxSendEmailV2",
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+                    },
+                    "parameters": {
+                      "emailMessage/MailboxAddress": "@{outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue']}",
+                      "emailMessage/To": "@{triggerBody()?['RecipientEmail']}",
+                      "emailMessage/Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
+                      "emailMessage/Subject": "Approved: @{triggerBody()?['ReservationId']}: @{triggerBody()?['IssuedNumbersFormatted']}",
+                      "emailMessage/Body": "@{outputs('Substitute_Approved')}",
+                      "emailMessage/Importance": "Normal"
+                    }
+                  },
+                  "retryPolicy": {
+                    "type": "fixed",
+                    "count": 1,
+                    "interval": "PT30S"
+                  }
                 }
               }
             },
-            "Substitute_Declined": {
-              "type": "Compose",
-              "runAfter": {
-                "Get_Declined_Template": [
-                  "Succeeded"
-                ]
-              },
-              "inputs": "@{replace(replace(replace(base64ToString(outputs('Get_Declined_Template')?['body/value'][0]?['content']), '{{ReservationId}}', triggerBody()?['ReservationId']), '{{DeclineReason}}', replace(replace(triggerBody()?['DeclineReason'], '<', '&lt;'), '>', '&gt;')), '{{ApproverDisplayName}}', replace(replace(triggerBody()?['ApproverDisplayName'], '<', '&lt;'), '>', '&gt;'))}"
-            },
-            "Send_Declined_Email": {
-              "type": "OpenApiConnection",
-              "runAfter": {
-                "Substitute_Declined": [
-                  "Succeeded"
-                ]
-              },
-              "inputs": {
-                "host": {
-                  "connectionName": "shared_office365",
-                  "operationId": "SharedMailboxSendEmailV2",
-                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+            "Declined": {
+              "case": "Declined",
+              "actions": {
+                "Get_Declined_Template": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "connectionName": "shared_commondataserviceforapps",
+                      "operationId": "ListRecords",
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                    },
+                    "parameters": {
+                      "entityName": "webresourceset",
+                      "$filter": "name eq 'enmax_approval_declined'",
+                      "$top": 1
+                    }
+                  }
                 },
-                "parameters": {
-                  "emailMessage/MailboxAddress": "@{outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue']}",
-                  "emailMessage/To": "@{triggerBody()?['RecipientEmail']}",
-                  "emailMessage/Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
-                  "emailMessage/Subject": "Declined: @{triggerBody()?['ReservationId']}",
-                  "emailMessage/Body": "@{outputs('Substitute_Declined')}",
-                  "emailMessage/Importance": "Normal"
+                "Substitute_Declined": {
+                  "type": "Compose",
+                  "runAfter": {
+                    "Get_Declined_Template": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": "@{replace(replace(replace(base64ToString(outputs('Get_Declined_Template')?['body/value'][0]?['content']), '{{ReservationId}}', triggerBody()?['ReservationId']), '{{DeclineReason}}', replace(replace(triggerBody()?['DeclineReason'], '<', '&lt;'), '>', '&gt;')), '{{ApproverDisplayName}}', replace(replace(triggerBody()?['ApproverDisplayName'], '<', '&lt;'), '>', '&gt;'))}"
+                },
+                "Send_Declined_Email": {
+                  "type": "OpenApiConnection",
+                  "runAfter": {
+                    "Substitute_Declined": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "host": {
+                      "connectionName": "shared_office365",
+                      "operationId": "SharedMailboxSendEmailV2",
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+                    },
+                    "parameters": {
+                      "emailMessage/MailboxAddress": "@{outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue']}",
+                      "emailMessage/To": "@{triggerBody()?['RecipientEmail']}",
+                      "emailMessage/Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
+                      "emailMessage/Subject": "Declined: @{triggerBody()?['ReservationId']}",
+                      "emailMessage/Body": "@{outputs('Substitute_Declined')}",
+                      "emailMessage/Importance": "Normal"
+                    }
+                  },
+                  "retryPolicy": {
+                    "type": "fixed",
+                    "count": 1,
+                    "interval": "PT30S"
+                  }
                 }
-              },
-              "retryPolicy": {
-                "type": "fixed",
-                "count": 1,
-                "interval": "PT30S"
               }
+            }
+          },
+          "default": {
+            "actions": {}
+          }
+        }
+      }
+    },
+    "Scope_Catch_Failure": {
+      "type": "Scope",
+      "runAfter": {
+        "Scope_Try_Main": [
+          "Failed",
+          "TimedOut"
+        ]
+      },
+      "actions": {
+        "Compose_Error_Context": {
+          "type": "Compose",
+          "runAfter": {},
+          "inputs": {
+            "failedAction": "@{coalesce(first(result('Scope_Try_Main'))?['name'], 'Scope_Try_Main')}",
+            "errorMessage": "@{coalesce(first(result('Scope_Try_Main'))?['error']?['message'], 'Flow failed')}",
+            "errorCode": "@{coalesce(first(result('Scope_Try_Main'))?['error']?['code'], 'FlowFailed')}",
+            "errorDetail": "@{string(result('Scope_Try_Main'))}"
+          }
+        },
+        "Compose_FlowRunUrl": {
+          "type": "Compose",
+          "runAfter": {
+            "Compose_Error_Context": [
+              "Succeeded"
+            ]
+          },
+          "inputs": "@{replace(replace(replace(variables('FlowRunUrlTemplate'), '{environmentId}', coalesce(workflow()?['tags']?['environmentName'], '')), '{flowId}', coalesce(workflow()?['name'], '')), '{runId}', coalesce(workflow()?['run']?['name'], ''))}"
+        },
+        "Invoke_Log_Flow_Exception": {
+          "type": "Workflow",
+          "runAfter": {
+            "Compose_FlowRunUrl": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "host": {
+              "workflowReferenceName": "Child_Log_Flow_Exception"
+            },
+            "body": {
+              "Origin": 1,
+              "FlowDisplayName": "@{variables('FlowDisplayName')}",
+              "FailedAction": "@{outputs('Compose_Error_Context')?['failedAction']}",
+              "ErrorMessage": "@{outputs('Compose_Error_Context')?['errorMessage']}",
+              "ErrorCode": "@{outputs('Compose_Error_Context')?['errorCode']}",
+              "ErrorDetail": "@{outputs('Compose_Error_Context')?['errorDetail']}",
+              "FlowRunId": "@{workflow()?['run']?['name']}",
+              "FlowRunUrl": "@{outputs('Compose_FlowRunUrl')}",
+              "CorrelationId": "@{variables('CorrelationId')}",
+              "SubjectTable": "",
+              "SubjectId": "",
+              "Severity": 2
+            }
+          }
+        },
+        "Terminate_Failed": {
+          "type": "Terminate",
+          "runAfter": {
+            "Invoke_Log_Flow_Exception": [
+              "Succeeded",
+              "Failed",
+              "Skipped",
+              "TimedOut"
+            ]
+          },
+          "inputs": {
+            "runStatus": "Failed",
+            "runError": {
+              "code": "@{outputs('Compose_Error_Context')?['errorCode']}",
+              "message": "@{outputs('Compose_Error_Context')?['errorMessage']}"
             }
           }
         }
-      },
-      "default": {
-        "actions": {}
       }
     },
     "Respond_to_Parent": {
       "type": "Response",
       "kind": "PowerApp",
       "runAfter": {
-        "Choose_Template": [
+        "Scope_Try_Main": [
           "Succeeded",
           "Failed",
           "TimedOut",

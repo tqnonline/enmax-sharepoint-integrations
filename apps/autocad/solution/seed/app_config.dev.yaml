@@ -1,0 +1,28 @@
+# DEV environment overrides for App Configuration (merged onto app_config.yaml).
+table: enmax_autocadappconfig
+natural_key_columns: [key]
+rows:
+  - key: SharePointSiteUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC
+  - key: CheckInUploadLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+  - key: DrawingDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+  - key: DrawingDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+  - key: StandardDocumentDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+  - key: StandardDocumentDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+  - key: ProcedureDocumentDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+  - key: ProcedureDocumentDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+  - key: FormDocumentDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+  - key: FormDocumentDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+  - key: SharePointIndexerLogFolderPath
+    value: Shared Documents/Enmax AutoCAD/Indexer Logs
+  - key: CodeAppBaseUrl
+    value: "{{ CODE_APP_BASE_URL | default('https://apps.powerapps.com/play/e/default') }}"

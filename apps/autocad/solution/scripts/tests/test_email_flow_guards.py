@@ -34,8 +34,10 @@ def test_checkout_updated_escapes_submission_info_in_html() -> None:
 def test_child_send_system_email_fails_closed_without_mailbox_or_to() -> None:
     definition = _load("Child_Send_System_Email")
     actions = definition["actions"]
-    assert "Condition_Mailbox_Configured" in actions
-    else_actions = actions["Condition_Mailbox_Configured"]["else"]["actions"]
+    # Error scaffold nests business actions under Scope_Try_Main.
+    scope = actions.get("Scope_Try_Main", {}).get("actions", actions)
+    assert "Condition_Mailbox_Configured" in scope
+    else_actions = scope["Condition_Mailbox_Configured"]["else"]["actions"]
     assert "Terminate_Missing_Config" in else_actions
     term = else_actions["Terminate_Missing_Config"]["inputs"]
     assert term["runStatus"] == "Failed"

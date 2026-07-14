@@ -18,6 +18,9 @@ foreach ($file in Get-ChildItem -Path "$PSScriptRoot\Public" -Filter '*.ps1' -Re
 Export-ModuleMember -Function @(
     'Connect-PpDataverse'
     'Invoke-PpDeploy'
+    'Invoke-PpDeployFlows'
+    'Invoke-PpVerifyExceptionLogging'
     'Publish-PpCodeApp'
     'Register-PpPlugins'
+    'Test-PpAppConfigCompleteness'
 )

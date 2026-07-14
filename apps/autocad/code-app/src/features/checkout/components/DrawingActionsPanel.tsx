@@ -156,6 +156,8 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
         drawingId={drawing.id}
         drawingNumber={drawing.number ?? ""}
         site={sharePointSiteForTaxonomy(drawing.reservationType)}
+        reservationType={drawing.reservationType}
+        documentSubtype={drawing.documentSubtype}
       />
     );
   }

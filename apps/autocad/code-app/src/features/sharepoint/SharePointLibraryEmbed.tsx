@@ -38,6 +38,9 @@ const useStyles = makeStyles({
 interface Props {
   recordNumber: string;
   site?: "drawings" | "documents";
+  /** Per-taxonomy library resolution; takes precedence over `site` when provided. */
+  reservationType?: number | null;
+  documentSubtype?: number | null;
   enabled?: boolean;
 }
 
@@ -48,10 +51,16 @@ interface Props {
 export function SharePointLibraryEmbed({
   recordNumber,
   site = "drawings",
+  reservationType,
+  documentSubtype,
   enabled = true,
 }: Props) {
   const styles = useStyles();
-  const libraryUrl = useDropOffLibraryUrl(site);
+  const libraryUrl = useDropOffLibraryUrl(
+    reservationType !== undefined || documentSubtype !== undefined
+      ? { reservationType, documentSubtype }
+      : site,
+  );
 
   if (!enabled || !libraryUrl) return null;
 

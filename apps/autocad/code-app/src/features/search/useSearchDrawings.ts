@@ -95,6 +95,7 @@ export const DRAWING_STATE_LABELS: Record<number, string> = {
   5: "Obsolete",
   6: "Void",
   7: "Finalized",
+  8: "Pending SharePoint Import",
 };
 
 const ALLOWED_SORT_COLS = new Set([
@@ -203,6 +204,9 @@ async function buildFilter(params: GridFetchParams): Promise<string> {
     const states = Array.isArray(stateVal) ? stateVal : [stateVal];
     const sub = states.map(s => `enmax_acdnstate eq ${Number(s)}`).join(" or ");
     clauses.push(`(${sub})`);
+  } else {
+    // Pending SharePoint Import (8) is admin-only until Save & Approve.
+    clauses.push("enmax_acdnstate ne 8");
   }
 
   return clauses.join(" and ");

@@ -1,0 +1,14 @@
+# Maker display names for Cloud Flows (folder slug → displayName) — ADMIN solution.
+# UAT test harnesses only. Deployed into enmax_autocadadminsln, never into prod.
+# Deploy: deploy_flows.py --catalog admin reads this file.
+
+flows:
+  UAT_Seed_SharePoint_Test_PDFs:
+    displayName: "Enmax AutoCAD | On Demand | UAT Seed SharePoint Test PDFs"
+    description: UAT harness to seed minimal test PDFs in SharePoint libraries.
+  UAT_Teardown_SharePoint_Test_PDFs:
+    displayName: "Enmax AutoCAD | On Demand | UAT Teardown SharePoint Test PDFs"
+    description: UAT harness to remove seeded test PDFs from SharePoint libraries.
+  UAT_Validate_SharePoint_Index:
+    displayName: "Enmax AutoCAD | On Demand | UAT Validate SharePoint Index"
+    description: UAT harness that validates SharePoint index sweep results.

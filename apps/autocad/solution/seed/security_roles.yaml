@@ -59,6 +59,8 @@ roles:
       enmax_autocadbroadcastdismissal:
         create: basic
         read: basic
+      enmax_autocadflowexception:
+        create: basic
       enmax_autocaduserpreference:
         create: basic
         read: basic
@@ -105,6 +107,8 @@ roles:
       enmax_autocadbroadcastdismissal:
         create: basic
         read: basic
+      enmax_autocadflowexception:
+        create: basic
       enmax_autocaduserpreference:
         create: basic
         read: basic
@@ -193,6 +197,8 @@ roles:
         assign: global
         share: global
       enmax_autocadauditevent:
+        read: global
+      enmax_autocadflowexception:
         read: global
       enmax_autocadbroadcast:
         create: global
@@ -287,6 +293,8 @@ roles:
       enmax_autocadbroadcastdismissal:
         create: basic
         read: global
+      enmax_autocadflowexception:
+        read: global
       enmax_autocaduserpreference:
         create: basic
         read: basic
@@ -326,6 +334,7 @@ roles:
       enmax_autocadvendor:         { read: global }
       enmax_autocadsystemscope:    { read: global }
       enmax_autocadbroadcastdismissal: { read: global }
+      enmax_autocadflowexception: { read: global }
       enmax_autocaduserpreference: { read: global }
 
   # ---------------------------------------------------------------------------

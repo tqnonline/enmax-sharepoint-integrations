@@ -54,29 +54,47 @@ namespace Enmax.AutoCAD
             };
             service.Create(auditEvent);
 
-            // Notify approvers/admins (flow-free) that a reservation is awaiting approval.
-            string number = ResolveNumber(service, reservationId);
-            string actor  = NotificationWriter.ResolveActorName(service, actorId);
-            NotificationWriter.NotifyApproversAndAdmins(service, actorId,
-                title:        $"New reservation pending: {number}",
-                body:         $"{actor} submitted reservation {number} for approval.",
-                severity:     NotifSeverityWarning,
-                sourceEvent:  NotifSourceReservationPending,
-                subjectTable: EntityName,
-                subjectId:    reservationId.ToString(),
-                deepLinkPath: "/approvals");
+            // Notifications are a side effect of the reservation being created, not the core
+            // work itself — a notification failure (e.g. bad team config) must never roll back
+            // the reservation create that already succeeded. Soft-fail: log and continue.
+            try
+            {
+                string number = ResolveNumber(service, reservationId);
+                string actor  = NotificationWriter.ResolveActorName(service, actorId);
+                NotificationWriter.NotifyApproversAndAdmins(service, actorId,
+                    title:        $"New reservation pending: {number}",
+                    body:         $"{actor} submitted reservation {number} for approval.",
+                    severity:     NotifSeverityWarning,
+                    sourceEvent:  NotifSourceReservationPending,
+                    subjectTable: EntityName,
+                    subjectId:    reservationId.ToString(),
+                    deepLinkPath: "/approvals");
 
-            // Confirm submission to the requester (they are excluded from the approver fan-out).
-            NotificationWriter.Create(service, actorId,
-                title:        $"Reservation submitted: {number}",
-                body:         $"Your reservation {number} was submitted and is pending approval.",
-                severity:     NotifSeverityInfo,
-                sourceEvent:  NotifSourceReservationPending,
-                subjectTable: EntityName,
-                subjectId:    reservationId.ToString(),
-                deepLinkPath: $"/reservations/{reservationId}");
+                // Confirm submission to the requester (they are excluded from the approver fan-out).
+                NotificationWriter.Create(service, actorId,
+                    title:        $"Reservation submitted: {number}",
+                    body:         $"Your reservation {number} was submitted and is pending approval.",
+                    severity:     NotifSeverityInfo,
+                    sourceEvent:  NotifSourceReservationPending,
+                    subjectTable: EntityName,
+                    subjectId:    reservationId.ToString(),
+                    deepLinkPath: $"/reservations/{reservationId}");
 
-            localPluginContext.Trace($"Audit + approver notifications written for reservation {reservationId}.");
+                localPluginContext.Trace($"Audit + approver notifications written for reservation {reservationId}.");
+            }
+            catch (Exception ex)
+            {
+                localPluginContext.Trace($"OnReservationCreated: notification side effect failed — {ex.Message}");
+                ExceptionEmitter.Log(
+                    service,
+                    localPluginContext.TracingService,
+                    ex,
+                    failedAction: $"{nameof(OnReservationCreatedPlugin)}.{nameof(ExecuteDataversePlugin)}",
+                    subjectTable: EntityName,
+                    subjectId: reservationId,
+                    actingUserId: actorId,
+                    correlationId: context.CorrelationId);
+            }
         }
 
         private static string ResolveNumber(IOrganizationService service, Guid reservationId)

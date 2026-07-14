@@ -1,9 +1,60 @@
 {
   "schemaVersion": "1.0.0.0",
   "actions": {
+    "Initialize_CorrelationId": {
+      "type": "InitializeVariable",
+      "runAfter": {},
+      "inputs": {
+        "variables": [
+          {
+            "name": "CorrelationId",
+            "type": "string",
+            "value": "@{coalesce(triggerBody()?['CorrelationId'], guid())}"
+          }
+        ]
+      }
+    },
+    "Initialize_FlowDisplayName": {
+      "type": "InitializeVariable",
+      "runAfter": {
+        "Initialize_CorrelationId": [
+          "Succeeded"
+        ]
+      },
+      "inputs": {
+        "variables": [
+          {
+            "name": "FlowDisplayName",
+            "type": "string",
+            "value": "Enmax AutoCAD | On Create of Reservation | Notify Document Control of Pending Approval"
+          }
+        ]
+      }
+    },
+    "Initialize_FlowRunUrlTemplate": {
+      "type": "InitializeVariable",
+      "runAfter": {
+        "Initialize_FlowDisplayName": [
+          "Succeeded"
+        ]
+      },
+      "inputs": {
+        "variables": [
+          {
+            "name": "FlowRunUrlTemplate",
+            "type": "string",
+            "value": "https://make.powerautomate.com/environments/{environmentId}/flows/{flowId}/runs/{runId}"
+          }
+        ]
+      }
+    },
     "Get_App_Config_SharedMailbox": {
       "type": "OpenApiConnection",
-      "runAfter": {},
+      "runAfter": {
+        "Initialize_FlowRunUrlTemplate": [
+          "Succeeded"
+        ]
+      },
       "inputs": {
         "host": {
           "connectionName": "shared_commondataserviceforapps",
@@ -34,210 +85,296 @@
         ]
       }
     },
-    "Get_Business_Row": {
-      "type": "OpenApiConnection",
-      "inputs": {
-        "host": {
-          "connectionName": "shared_commondataserviceforapps",
-          "operationId": "GetItem",
-          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
-        },
-        "parameters": {
-          "entityName": "enmax_autocadbusinesses",
-          "recordId": "@{triggerOutputs()?['body/_enmax_acdnbusiness_value']}"
-        }
-      },
+    "Scope_Try_Main": {
+      "type": "Scope",
       "runAfter": {
         "Initialize_RequesterContext": [
           "Succeeded"
         ]
-      }
-    },
-    "Get_Asset_Row": {
-      "type": "OpenApiConnection",
-      "inputs": {
-        "host": {
-          "connectionName": "shared_commondataserviceforapps",
-          "operationId": "GetItem",
-          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+      },
+      "actions": {
+        "Get_Business_Row": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "GetItem",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "enmax_autocadbusinesses",
+              "recordId": "@{triggerOutputs()?['body/_enmax_acdnbusiness_value']}"
+            }
+          },
+          "runAfter": {
+            "Initialize_RequesterContext": [
+              "Succeeded"
+            ]
+          }
         },
-        "parameters": {
-          "entityName": "enmax_autocadassets",
-          "recordId": "@{triggerOutputs()?['body/_enmax_acdnasset_value']}"
+        "Get_Asset_Row": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "GetItem",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "enmax_autocadassets",
+              "recordId": "@{triggerOutputs()?['body/_enmax_acdnasset_value']}"
+            }
+          },
+          "runAfter": {
+            "Get_Business_Row": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Get_Unit_Row": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "GetItem",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "enmax_autocadunits",
+              "recordId": "@{triggerOutputs()?['body/_enmax_acdnunit_value']}"
+            }
+          },
+          "runAfter": {
+            "Get_Asset_Row": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Get_Domain_Row": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "GetItem",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "enmax_autocaddomains",
+              "recordId": "@{triggerOutputs()?['body/_enmax_acdndomain_value']}"
+            }
+          },
+          "runAfter": {
+            "Get_Unit_Row": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Get_System_Row": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "GetItem",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "enmax_autocadsystems",
+              "recordId": "@{triggerOutputs()?['body/_enmax_acdnsystem_value']}"
+            }
+          },
+          "runAfter": {
+            "Get_Domain_Row": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Get_Kind_Row": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "GetItem",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "enmax_autocadkinds",
+              "recordId": "@{triggerOutputs()?['body/_enmax_acdnkind_value']}"
+            }
+          },
+          "runAfter": {
+            "Get_System_Row": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Compose_Preview": {
+          "type": "Compose",
+          "runAfter": {
+            "Get_Kind_Row": [
+              "Succeeded"
+            ]
+          },
+          "inputs": "@{outputs('Get_Business_Row')?['body/enmax_acdncode']}-@{outputs('Get_Asset_Row')?['body/enmax_acdncode']}-@{outputs('Get_Unit_Row')?['body/enmax_acdncode']}-@{outputs('Get_Domain_Row')?['body/enmax_acdncode']}-@{outputs('Get_System_Row')?['body/enmax_acdncode']}-@{outputs('Get_Kind_Row')?['body/enmax_acdncode']}-????"
+        },
+        "Get_DocControl_Config": {
+          "type": "OpenApiConnection",
+          "runAfter": {
+            "Compose_Preview": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "ListRecords",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "enmax_autocadappconfigs",
+              "$filter": "enmax_acdnkey eq 'DocControlEmailAddress'",
+              "$top": 1
+            }
+          }
+        },
+        "Get_CodeApp_BaseUrl_Config": {
+          "type": "OpenApiConnection",
+          "runAfter": {
+            "Get_DocControl_Config": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "ListRecords",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "enmax_autocadappconfigs",
+              "$filter": "enmax_acdnkey eq 'CodeAppBaseUrl'",
+              "$top": 1
+            }
+          }
+        },
+        "Get_Requester_User": {
+          "type": "OpenApiConnection",
+          "runAfter": {
+            "Get_CodeApp_BaseUrl_Config": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "GetItem",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "systemusers",
+              "recordId": "@{triggerOutputs()?['body/_createdby_value']}"
+            }
+          }
+        },
+        "Send_Approval_Email_To_DocControl": {
+          "type": "Workflow",
+          "runAfter": {
+            "Get_Requester_User": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "host": {
+              "workflowReferenceName": "Child_Send_Approval_Needed_Email"
+            },
+            "body": {
+              "RecipientEmail": "@{outputs('Get_DocControl_Config')?['body/value'][0]?['enmax_acdnvalue']}",
+              "RecipientDisplayName": "Document Control",
+              "ReservationId": "@{triggerOutputs()?['body/enmax_acdnreservationnumber']}",
+              "RequesterDisplayName": "@{variables('RequesterDisplayName')}",
+              "CompositionPreview": "@{outputs('Compose_Preview')}",
+              "Count": "@{triggerOutputs()?['body/enmax_acdndrawingcount']}",
+              "Reason": "@{triggerOutputs()?['body/enmax_acdnreason']}",
+              "OverrideText": "@{if(triggerOutputs()?['body/enmax_acdnoverride'], concat('Yes: ', triggerOutputs()?['body/enmax_acdnoverridereason']), 'No')}",
+              "DeepLink": "@{concat(outputs('Get_CodeApp_BaseUrl_Config')?['body/value'][0]?['enmax_acdnvalue'], '/approvals')}",
+              "Cc": "",
+              "CorrelationId": "@{variables('CorrelationId')}"
+            }
+          }
         }
-      },
-      "runAfter": {
-        "Get_Business_Row": [
-          "Succeeded"
-        ]
       }
     },
-    "Get_Unit_Row": {
-      "type": "OpenApiConnection",
-      "inputs": {
-        "host": {
-          "connectionName": "shared_commondataserviceforapps",
-          "operationId": "GetItem",
-          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+    "Scope_Catch_Failure": {
+      "type": "Scope",
+      "runAfter": {
+        "Scope_Try_Main": [
+          "Failed",
+          "TimedOut"
+        ]
+      },
+      "actions": {
+        "Compose_Error_Context": {
+          "type": "Compose",
+          "runAfter": {},
+          "inputs": {
+            "failedAction": "@{coalesce(first(result('Scope_Try_Main'))?['name'], 'Scope_Try_Main')}",
+            "errorMessage": "@{coalesce(first(result('Scope_Try_Main'))?['error']?['message'], 'Flow failed')}",
+            "errorCode": "@{coalesce(first(result('Scope_Try_Main'))?['error']?['code'], 'FlowFailed')}",
+            "errorDetail": "@{string(result('Scope_Try_Main'))}"
+          }
         },
-        "parameters": {
-          "entityName": "enmax_autocadunits",
-          "recordId": "@{triggerOutputs()?['body/_enmax_acdnunit_value']}"
-        }
-      },
-      "runAfter": {
-        "Get_Asset_Row": [
-          "Succeeded"
-        ]
-      }
-    },
-    "Get_Domain_Row": {
-      "type": "OpenApiConnection",
-      "inputs": {
-        "host": {
-          "connectionName": "shared_commondataserviceforapps",
-          "operationId": "GetItem",
-          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        "Compose_FlowRunUrl": {
+          "type": "Compose",
+          "runAfter": {
+            "Compose_Error_Context": [
+              "Succeeded"
+            ]
+          },
+          "inputs": "@{replace(replace(replace(variables('FlowRunUrlTemplate'), '{environmentId}', coalesce(workflow()?['tags']?['environmentName'], '')), '{flowId}', coalesce(workflow()?['name'], '')), '{runId}', coalesce(workflow()?['run']?['name'], ''))}"
         },
-        "parameters": {
-          "entityName": "enmax_autocaddomains",
-          "recordId": "@{triggerOutputs()?['body/_enmax_acdndomain_value']}"
-        }
-      },
-      "runAfter": {
-        "Get_Unit_Row": [
-          "Succeeded"
-        ]
-      }
-    },
-    "Get_System_Row": {
-      "type": "OpenApiConnection",
-      "inputs": {
-        "host": {
-          "connectionName": "shared_commondataserviceforapps",
-          "operationId": "GetItem",
-          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        "Invoke_Log_Flow_Exception": {
+          "type": "Workflow",
+          "runAfter": {
+            "Compose_FlowRunUrl": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "host": {
+              "workflowReferenceName": "Child_Log_Flow_Exception"
+            },
+            "body": {
+              "Origin": 1,
+              "FlowDisplayName": "@{variables('FlowDisplayName')}",
+              "FailedAction": "@{outputs('Compose_Error_Context')?['failedAction']}",
+              "ErrorMessage": "@{outputs('Compose_Error_Context')?['errorMessage']}",
+              "ErrorCode": "@{outputs('Compose_Error_Context')?['errorCode']}",
+              "ErrorDetail": "@{outputs('Compose_Error_Context')?['errorDetail']}",
+              "FlowRunId": "@{workflow()?['run']?['name']}",
+              "FlowRunUrl": "@{outputs('Compose_FlowRunUrl')}",
+              "CorrelationId": "@{variables('CorrelationId')}",
+              "SubjectTable": "enmax_autocadreservation",
+              "SubjectId": "@{triggerOutputs()?['body/enmax_autocadreservationid']}",
+              "Severity": 2
+            }
+          }
         },
-        "parameters": {
-          "entityName": "enmax_autocadsystems",
-          "recordId": "@{triggerOutputs()?['body/_enmax_acdnsystem_value']}"
-        }
-      },
-      "runAfter": {
-        "Get_Domain_Row": [
-          "Succeeded"
-        ]
-      }
-    },
-    "Get_Kind_Row": {
-      "type": "OpenApiConnection",
-      "inputs": {
-        "host": {
-          "connectionName": "shared_commondataserviceforapps",
-          "operationId": "GetItem",
-          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
-        },
-        "parameters": {
-          "entityName": "enmax_autocadkinds",
-          "recordId": "@{triggerOutputs()?['body/_enmax_acdnkind_value']}"
-        }
-      },
-      "runAfter": {
-        "Get_System_Row": [
-          "Succeeded"
-        ]
-      }
-    },
-    "Compose_Preview": {
-      "type": "Compose",
-      "runAfter": {
-        "Get_Kind_Row": [
-          "Succeeded"
-        ]
-      },
-      "inputs": "@{outputs('Get_Business_Row')?['body/enmax_acdncode']}-@{outputs('Get_Asset_Row')?['body/enmax_acdncode']}-@{outputs('Get_Unit_Row')?['body/enmax_acdncode']}-@{outputs('Get_Domain_Row')?['body/enmax_acdncode']}-@{outputs('Get_System_Row')?['body/enmax_acdncode']}-@{outputs('Get_Kind_Row')?['body/enmax_acdncode']}-????"
-    },
-    "Get_DocControl_Config": {
-      "type": "OpenApiConnection",
-      "runAfter": {
-        "Compose_Preview": [
-          "Succeeded"
-        ]
-      },
-      "inputs": {
-        "host": {
-          "connectionName": "shared_commondataserviceforapps",
-          "operationId": "ListRecords",
-          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
-        },
-        "parameters": {
-          "entityName": "enmax_autocadappconfigs",
-          "$filter": "enmax_acdnkey eq 'DocControlEmailAddress'",
-          "$top": 1
-        }
-      }
-    },
-    "Get_CodeApp_BaseUrl_Config": {
-      "type": "OpenApiConnection",
-      "runAfter": {
-        "Get_DocControl_Config": [
-          "Succeeded"
-        ]
-      },
-      "inputs": {
-        "host": {
-          "connectionName": "shared_commondataserviceforapps",
-          "operationId": "ListRecords",
-          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
-        },
-        "parameters": {
-          "entityName": "enmax_autocadappconfigs",
-          "$filter": "enmax_acdnkey eq 'CodeAppBaseUrl'",
-          "$top": 1
-        }
-      }
-    },
-    "Get_Requester_User": {
-      "type": "OpenApiConnection",
-      "runAfter": {
-        "Get_CodeApp_BaseUrl_Config": [
-          "Succeeded"
-        ]
-      },
-      "inputs": {
-        "host": {
-          "connectionName": "shared_commondataserviceforapps",
-          "operationId": "GetItem",
-          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
-        },
-        "parameters": {
-          "entityName": "systemusers",
-          "recordId": "@{triggerOutputs()?['body/_createdby_value']}"
-        }
-      }
-    },
-    "Send_Approval_Email_To_DocControl": {
-      "type": "Workflow",
-      "runAfter": {
-        "Get_Requester_User": [
-          "Succeeded"
-        ]
-      },
-      "inputs": {
-        "host": {
-          "workflowReferenceName": "Child_Send_Approval_Needed_Email"
-        },
-        "body": {
-          "RecipientEmail": "@{outputs('Get_DocControl_Config')?['body/value'][0]?['enmax_acdnvalue']}",
-          "RecipientDisplayName": "Document Control",
-          "ReservationId": "@{triggerOutputs()?['body/enmax_acdnreservationnumber']}",
-          "RequesterDisplayName": "@{variables('RequesterDisplayName')}",
-          "CompositionPreview": "@{outputs('Compose_Preview')}",
-          "Count": "@{triggerOutputs()?['body/enmax_acdndrawingcount']}",
-          "Reason": "@{triggerOutputs()?['body/enmax_acdnreason']}",
-          "OverrideText": "@{if(triggerOutputs()?['body/enmax_acdnoverride'], concat('Yes: ', triggerOutputs()?['body/enmax_acdnoverridereason']), 'No')}",
-          "DeepLink": "@{concat(outputs('Get_CodeApp_BaseUrl_Config')?['body/value'][0]?['enmax_acdnvalue'], '/approvals')}",
-          "Cc": ""
+        "Terminate_Failed": {
+          "type": "Terminate",
+          "runAfter": {
+            "Invoke_Log_Flow_Exception": [
+              "Succeeded",
+              "Failed",
+              "Skipped",
+              "TimedOut"
+            ]
+          },
+          "inputs": {
+            "runStatus": "Failed",
+            "runError": {
+              "code": "@{outputs('Compose_Error_Context')?['errorCode']}",
+              "message": "@{outputs('Compose_Error_Context')?['errorMessage']}"
+            }
+          }
         }
       }
     }

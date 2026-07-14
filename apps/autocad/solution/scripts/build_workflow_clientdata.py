@@ -119,7 +119,14 @@ def wrap_flow(flow_dir: Path) -> bool:
     if not definition_path.exists():
         return False
 
-    definition = json.loads(definition_path.read_text(encoding="utf-8"))
+    import build_flow_error_handling as bfe  # noqa: WPS433 — script sibling import
+
+    raw = json.loads(definition_path.read_text(encoding="utf-8"))
+    definition = bfe.wrap_definition(
+        raw,
+        folder_slug=flow_dir.name,
+        display_name=bfe.load_flow_catalog().get(flow_dir.name, {}).get("displayName", flow_dir.name),
+    )
     schema_version = definition.get("schemaVersion", "1.0.0.0")
     body = {k: v for k, v in definition.items() if k != "schemaVersion"}
     connectors = _connectors_in_definition(definition)

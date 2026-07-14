@@ -10,6 +10,9 @@ interface Props {
   recordNumber: string;
   /** Drawings site by default; Standards/Procedures use the Documents site. */
   site?: "drawings" | "documents";
+  /** Per-taxonomy library resolution; takes precedence over `site` when provided. */
+  reservationType?: number | null;
+  documentSubtype?: number | null;
   /** When false the upload entry point is hidden (e.g. gated Check Out not yet approved). */
   enabled?: boolean;
 }
@@ -21,9 +24,15 @@ interface Props {
 export function SharePointUploadButton({
   recordNumber,
   site = "drawings",
+  reservationType,
+  documentSubtype,
   enabled = true,
 }: Props) {
-  const libraryUrl = useDropOffLibraryUrl(site);
+  const libraryUrl = useDropOffLibraryUrl(
+    reservationType !== undefined || documentSubtype !== undefined
+      ? { reservationType, documentSubtype }
+      : site,
+  );
 
   if (!enabled || !libraryUrl) return null;
 

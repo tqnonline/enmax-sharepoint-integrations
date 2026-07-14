@@ -25,6 +25,19 @@
 
 .PARAMETER Full
   Run the full chain (pack, import, plugins, seed master, roles, publish, backfill).
+  Also gates the admin-solution (enmax_autocadadminsln) and flow-deploy steps: both
+  only run when -Full is passed, matching the existing pack/import/plugins/seed/roles
+  steps that are skipped otherwise (backend already landed via CI in the common case).
+
+.PARAMETER IncludeAdminSolution
+  When -Full is passed, also pack/import the admin solution (enmax_autocadadminsln —
+  the UAT SharePoint test-harness flows) and deploy its flow catalog. Default: $true
+  (dev is exactly the environment UAT harnesses are meant to run in — ADR 0005).
+  Pass -IncludeAdminSolution:$false to skip it.
+
+.PARAMETER DeployFlows
+  When -Full is passed, also deploy the prod flow catalog (and the admin catalog when
+  -IncludeAdminSolution) via Invoke-PpDeployFlows. Default: $true.
 
 .EXAMPLE
   .\scripts\deploy-user-dev.ps1
@@ -32,6 +45,10 @@
 
 .EXAMPLE
   .\scripts\deploy-user-dev.ps1 -AppId '<guid-from-maker-portal>'
+
+.EXAMPLE
+  .\scripts\deploy-user-dev.ps1 -Full
+  # Full chain including admin solution pack/import + prod and admin flow deploy.
 #>
 
 [CmdletBinding(SupportsShouldProcess)]
@@ -43,11 +60,16 @@ param(
     [switch]$Full,
     [switch]$SkipPublish,
     [switch]$SkipBackfill,
-    [switch]$SkipPlugins
+    [switch]$SkipPlugins,
+    [switch]$IncludeAdminSolution,
+    [switch]$DeployFlows
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+if (-not $PSBoundParameters.ContainsKey('IncludeAdminSolution')) { $IncludeAdminSolution = $true }
+if (-not $PSBoundParameters.ContainsKey('DeployFlows'))          { $DeployFlows = $true }
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 Import-Module "$PSScriptRoot/PowerPlatform.Deploy/PowerPlatform.Deploy.psd1" -Force
@@ -92,6 +114,24 @@ if ($Full) {
     Set-UserDataverseToken
     & python3 "$repoRoot/solution/scripts/provision_roles.py"
     if ($LASTEXITCODE -ne 0) { throw "roles failed" }
+
+    if ($DeployFlows) {
+        Write-Host "`n-- deploy production flows ($UserAuth login may prompt) --"
+        Invoke-PpDeployFlows -Environment dev -Catalog prod -Auth $UserAuth -Activate
+    }
+
+    if ($IncludeAdminSolution) {
+        Write-Host "`n-- pack + import admin solution (pac) --"
+        python3 "$repoRoot/solution/scripts/pack.py" --solution admin
+        if ($LASTEXITCODE -ne 0) { throw "admin pack failed" }
+        python3 "$repoRoot/solution/scripts/import.py" --solution admin
+        if ($LASTEXITCODE -ne 0) { throw "admin import failed" }
+
+        if ($DeployFlows) {
+            Write-Host "`n-- deploy admin (UAT harness) flows ($UserAuth login may prompt) --"
+            Invoke-PpDeployFlows -Environment dev -Catalog admin -Auth $UserAuth -Activate
+        }
+    }
 }
 
 if (-not $AppId) {

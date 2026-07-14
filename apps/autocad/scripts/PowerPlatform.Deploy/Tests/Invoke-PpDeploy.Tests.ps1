@@ -21,6 +21,24 @@ BeforeAll {
         DATAVERSE_CLIENT_SECRET = $env:DATAVERSE_CLIENT_SECRET
         DATAVERSE_TENANT_ID     = $env:DATAVERSE_TENANT_ID
     }
+
+    # All Describe blocks below mock every sub-step Invoke-PpDeploy can call, including
+    # the admin-solution pack/import helpers (module-scoped, not exported — same pattern
+    # as Register-PpPlugins' internal Invoke-PpBuildPlugin). Without these mocks a real
+    # deploy would attempt to run pac/python against live credentials.
+    function Set-PpDeployMocks {
+        Mock -ModuleName PowerPlatform.Deploy Connect-PpDataverse {}
+        Mock -ModuleName PowerPlatform.Deploy Invoke-PpCli {
+            param([string]$Command, [string]$Environment, [switch]$DryRun, [switch]$VerboseCli)
+        }
+        Mock -ModuleName PowerPlatform.Deploy Register-PpPlugins {}
+        Mock -ModuleName PowerPlatform.Deploy Publish-PpCodeApp {}
+        Mock -ModuleName PowerPlatform.Deploy Invoke-PpDeployFlows {
+            param([string]$Environment, [string]$Catalog, [string]$Solution, [switch]$Activate, [switch]$DryRun, [string]$Auth)
+        }
+        Mock -ModuleName PowerPlatform.Deploy Invoke-PpPackAdminSolution { param([switch]$DryRun) }
+        Mock -ModuleName PowerPlatform.Deploy Invoke-PpImportAdminSolution { param([switch]$DryRun) }
+    }
 }
 
 AfterAll {
@@ -48,13 +66,15 @@ Describe 'Invoke-PpDeploy — parameter contract' {
     }
 }
 
-Describe 'Invoke-PpDeploy — 8-step order (sequence collector)' {
+Describe 'Invoke-PpDeploy — 11-step order (sequence collector)' {
     # WHY: The deploy chain is order-dependent. import must precede plugin registration
     # (plugins reference newly-imported entities); seed/roles must follow optionsets
-    # (seeded records reference option-set values); Code App must be published last
-    # (it depends on the registered APIs and seeded config data). A reordered chain
-    # breaks the deployment. This test encodes the required order explicitly so any
-    # future reordering is caught before it reaches an environment.
+    # (seeded records reference option-set values); Code App must be published before
+    # flows are deployed; and the admin solution (pack/import + its UAT harness flows)
+    # must be LAST of all — it exercises production plumbing (Child_Log_Flow_Exception,
+    # App Configuration keys) that must already be fully live (ADR 0005). A reordered
+    # chain breaks the deployment. This test encodes the required order explicitly so
+    # any future reordering is caught before it reaches an environment.
 
     BeforeAll {
         $script:FakeCfg = @{
@@ -64,36 +84,37 @@ Describe 'Invoke-PpDeploy — 8-step order (sequence collector)' {
             TenantId     = 'fake-tenant'
         }
         Mock -ModuleName PowerPlatform.Deploy Get-PpEnvConfig { return $script:FakeCfg }
-        Mock -ModuleName PowerPlatform.Deploy Connect-PpDataverse {}
-        Mock -ModuleName PowerPlatform.Deploy Invoke-PpCli {
-            param([string]$Command, [string]$Environment, [switch]$DryRun, [switch]$VerboseCli)
-        }
-        Mock -ModuleName PowerPlatform.Deploy Register-PpPlugins {}
-        Mock -ModuleName PowerPlatform.Deploy Publish-PpCodeApp {}
+        Set-PpDeployMocks
     }
 
-    It 'executes all 8 steps in the correct order' {
-        # WHY: ORDER IS A CORRECTNESS INVARIANT. If the sequence changes (e.g. roles before
-        # seed, or plugins before import), the deploy produces a partially-broken environment.
-        # Encode the exact required sequence so any swap is immediately visible.
+    It 'executes all 11 steps in the correct order (dev — admin solution + flows included by default)' {
         $calls = [System.Collections.Generic.List[string]]::new()
 
-        Mock -ModuleName PowerPlatform.Deploy Connect-PpDataverse  { $calls.Add('connect') }
+        Mock -ModuleName PowerPlatform.Deploy Connect-PpDataverse { $calls.Add('connect') }
         Mock -ModuleName PowerPlatform.Deploy Invoke-PpCli {
             param([string]$Command, [string]$Environment, [switch]$DryRun, [switch]$VerboseCli)
             $calls.Add($Command)
         }
         Mock -ModuleName PowerPlatform.Deploy Register-PpPlugins   { $calls.Add('plugins') }
         Mock -ModuleName PowerPlatform.Deploy Publish-PpCodeApp     { $calls.Add('publish') }
+        Mock -ModuleName PowerPlatform.Deploy Invoke-PpDeployFlows {
+            param([string]$Environment, [string]$Catalog, [string]$Solution, [switch]$Activate, [switch]$DryRun, [string]$Auth)
+            $calls.Add("flows-$Catalog")
+        }
+        Mock -ModuleName PowerPlatform.Deploy Invoke-PpPackAdminSolution   { $calls.Add('admin-pack') }
+        Mock -ModuleName PowerPlatform.Deploy Invoke-PpImportAdminSolution { $calls.Add('admin-import') }
 
         Invoke-PpDeploy -Environment dev
 
-        $expectedOrder = @('connect', 'pack', 'import', 'plugins', 'optionsets', 'seed', 'roles', 'publish')
+        $expectedOrder = @(
+            'connect', 'pack', 'import', 'plugins', 'optionsets', 'seed', 'roles', 'publish',
+            'flows-prod', 'admin-pack', 'admin-import', 'flows-admin'
+        )
         $calls | Should -Be $expectedOrder
     }
 }
 
-Describe 'Invoke-PpDeploy — step call counts (normal run)' {
+Describe 'Invoke-PpDeploy — step call counts (dev, defaults)' {
     # WHY: Verify each sub-step is invoked the correct number of times. An extra or missing
     # call (e.g., double-import or skipped seed) would corrupt the environment state.
 
@@ -105,12 +126,7 @@ Describe 'Invoke-PpDeploy — step call counts (normal run)' {
             TenantId     = 'fake-tenant'
         }
         Mock -ModuleName PowerPlatform.Deploy Get-PpEnvConfig { return $script:FakeCfg2 }
-        Mock -ModuleName PowerPlatform.Deploy Connect-PpDataverse {}
-        Mock -ModuleName PowerPlatform.Deploy Invoke-PpCli {
-            param([string]$Command, [string]$Environment, [switch]$DryRun, [switch]$VerboseCli)
-        }
-        Mock -ModuleName PowerPlatform.Deploy Register-PpPlugins {}
-        Mock -ModuleName PowerPlatform.Deploy Publish-PpCodeApp {}
+        Set-PpDeployMocks
     }
 
     It 'calls Connect-PpDataverse exactly once' {
@@ -170,6 +186,30 @@ Describe 'Invoke-PpDeploy — step call counts (normal run)' {
         Should -Invoke Invoke-PpCli -ModuleName PowerPlatform.Deploy -Times 5 -Exactly
     }
 
+    It 'calls Invoke-PpDeployFlows with catalog prod exactly once' {
+        Invoke-PpDeploy -Environment dev
+        Should -Invoke Invoke-PpDeployFlows -ModuleName PowerPlatform.Deploy -Times 1 -Exactly -ParameterFilter {
+            $Catalog -eq 'prod'
+        }
+    }
+
+    It 'calls Invoke-PpDeployFlows with catalog admin exactly once (IncludeAdminSolution defaults true for dev)' {
+        Invoke-PpDeploy -Environment dev
+        Should -Invoke Invoke-PpDeployFlows -ModuleName PowerPlatform.Deploy -Times 1 -Exactly -ParameterFilter {
+            $Catalog -eq 'admin'
+        }
+    }
+
+    It 'calls Invoke-PpPackAdminSolution exactly once' {
+        Invoke-PpDeploy -Environment dev
+        Should -Invoke Invoke-PpPackAdminSolution -ModuleName PowerPlatform.Deploy -Times 1 -Exactly
+    }
+
+    It 'calls Invoke-PpImportAdminSolution exactly once' {
+        Invoke-PpDeploy -Environment dev
+        Should -Invoke Invoke-PpImportAdminSolution -ModuleName PowerPlatform.Deploy -Times 1 -Exactly
+    }
+
     It 'passes the correct Environment to Connect-PpDataverse' {
         Invoke-PpDeploy -Environment dev
         Should -Invoke Connect-PpDataverse -ModuleName PowerPlatform.Deploy -ParameterFilter {
@@ -185,11 +225,97 @@ Describe 'Invoke-PpDeploy — step call counts (normal run)' {
     }
 }
 
+Describe 'Invoke-PpDeploy — IncludeAdminSolution environment-scoped default (ADR 0005)' {
+    # WHY: UAT harness flows have no reason to exist in prod. The default must be
+    # computed from Environment, not hard-coded true/false, so a plain
+    # `Invoke-PpDeploy -Environment prod` structurally cannot pack, import, or deploy
+    # flows into enmax_autocadadminsln without an explicit override.
+
+    BeforeAll {
+        $script:FakeCfg3 = @{
+            Url          = 'https://x.crm.dynamics.com'
+            ClientId     = 'fake-client-id'
+            ClientSecret = 'fake-secret'
+            TenantId     = 'fake-tenant'
+        }
+        Mock -ModuleName PowerPlatform.Deploy Get-PpEnvConfig { return $script:FakeCfg3 }
+        Set-PpDeployMocks
+    }
+
+    It 'defaults IncludeAdminSolution to true for dev (admin pack/import + admin flows run)' {
+        Invoke-PpDeploy -Environment dev
+        Should -Invoke Invoke-PpPackAdminSolution -ModuleName PowerPlatform.Deploy -Times 1 -Exactly
+        Should -Invoke Invoke-PpDeployFlows -ModuleName PowerPlatform.Deploy -Times 1 -Exactly -ParameterFilter { $Catalog -eq 'admin' }
+    }
+
+    It 'defaults IncludeAdminSolution to true for uat (admin pack/import + admin flows run)' {
+        Invoke-PpDeploy -Environment uat
+        Should -Invoke Invoke-PpPackAdminSolution -ModuleName PowerPlatform.Deploy -Times 1 -Exactly
+        Should -Invoke Invoke-PpDeployFlows -ModuleName PowerPlatform.Deploy -Times 1 -Exactly -ParameterFilter { $Catalog -eq 'admin' }
+    }
+
+    It 'defaults IncludeAdminSolution to false for prod (admin pack/import + admin flows never run)' {
+        Invoke-PpDeploy -Environment prod
+        Should -Invoke Invoke-PpPackAdminSolution -ModuleName PowerPlatform.Deploy -Times 0 -Exactly
+        Should -Invoke Invoke-PpImportAdminSolution -ModuleName PowerPlatform.Deploy -Times 0 -Exactly
+        Should -Invoke Invoke-PpDeployFlows -ModuleName PowerPlatform.Deploy -Times 0 -Exactly -ParameterFilter { $Catalog -eq 'admin' }
+    }
+
+    It 'still deploys prod flows when targeting prod' {
+        Invoke-PpDeploy -Environment prod
+        Should -Invoke Invoke-PpDeployFlows -ModuleName PowerPlatform.Deploy -Times 1 -Exactly -ParameterFilter { $Catalog -eq 'prod' }
+    }
+
+    It 'honours an explicit -IncludeAdminSolution:$true override on prod' {
+        Invoke-PpDeploy -Environment prod -IncludeAdminSolution
+        Should -Invoke Invoke-PpPackAdminSolution -ModuleName PowerPlatform.Deploy -Times 1 -Exactly
+        Should -Invoke Invoke-PpDeployFlows -ModuleName PowerPlatform.Deploy -Times 1 -Exactly -ParameterFilter { $Catalog -eq 'admin' }
+    }
+
+    It 'honours an explicit -IncludeAdminSolution:$false override on dev' {
+        Invoke-PpDeploy -Environment dev -IncludeAdminSolution:$false
+        Should -Invoke Invoke-PpPackAdminSolution -ModuleName PowerPlatform.Deploy -Times 0 -Exactly
+        Should -Invoke Invoke-PpDeployFlows -ModuleName PowerPlatform.Deploy -Times 0 -Exactly -ParameterFilter { $Catalog -eq 'admin' }
+    }
+}
+
+Describe 'Invoke-PpDeploy — DeployFlows switch' {
+    # WHY: -DeployFlows:$false must skip BOTH the prod and admin flow-deploy steps so a
+    # schema/data-only deploy can opt out of flow activation entirely.
+
+    BeforeAll {
+        $script:FakeCfg4 = @{
+            Url          = 'https://dev.crm.dynamics.com'
+            ClientId     = 'fake-client-id'
+            ClientSecret = 'fake-secret'
+            TenantId     = 'fake-tenant'
+        }
+        Mock -ModuleName PowerPlatform.Deploy Get-PpEnvConfig { return $script:FakeCfg4 }
+        Set-PpDeployMocks
+    }
+
+    It 'defaults DeployFlows to true' {
+        Invoke-PpDeploy -Environment dev
+        Should -Invoke Invoke-PpDeployFlows -ModuleName PowerPlatform.Deploy -Times 2 -Exactly
+    }
+
+    It '-DeployFlows:$false skips both prod and admin flow deploy steps' {
+        Invoke-PpDeploy -Environment dev -DeployFlows:$false
+        Should -Invoke Invoke-PpDeployFlows -ModuleName PowerPlatform.Deploy -Times 0 -Exactly
+    }
+
+    It '-DeployFlows:$false still packs/imports the admin solution shell (IncludeAdminSolution unaffected)' {
+        Invoke-PpDeploy -Environment dev -DeployFlows:$false
+        Should -Invoke Invoke-PpPackAdminSolution -ModuleName PowerPlatform.Deploy -Times 1 -Exactly
+    }
+}
+
 Describe 'Invoke-PpDeploy — -WhatIf causes CLI steps to run with -DryRun' {
     # WHY: Under -WhatIf the deploy chain must be fully non-mutating. The PowerShell
-    # sub-cmdlets (Connect / Register / Publish) honour $WhatIfPreference automatically.
-    # The Python CLI steps must also receive --dry-run so no Dataverse records are written.
-    # Asserting DryRun is set under -WhatIf is the key safety guarantee for this flag.
+    # sub-cmdlets (Connect / Register / Publish / Invoke-PpDeployFlows) honour
+    # $WhatIfPreference automatically. The Python CLI steps must also receive
+    # --dry-run so no Dataverse records are written. Asserting DryRun is set under
+    # -WhatIf is the key safety guarantee for this flag.
 
     BeforeAll {
         $script:FakeCfgWi = @{
@@ -199,12 +325,7 @@ Describe 'Invoke-PpDeploy — -WhatIf causes CLI steps to run with -DryRun' {
             TenantId     = 'fake-tenant'
         }
         Mock -ModuleName PowerPlatform.Deploy Get-PpEnvConfig { return $script:FakeCfgWi }
-        Mock -ModuleName PowerPlatform.Deploy Connect-PpDataverse {}
-        Mock -ModuleName PowerPlatform.Deploy Invoke-PpCli {
-            param([string]$Command, [string]$Environment, [switch]$DryRun, [switch]$VerboseCli)
-        }
-        Mock -ModuleName PowerPlatform.Deploy Register-PpPlugins {}
-        Mock -ModuleName PowerPlatform.Deploy Publish-PpCodeApp {}
+        Set-PpDeployMocks
     }
 
     It 'passes -DryRun to Invoke-PpCli for the pack step under -WhatIf' {
@@ -229,6 +350,19 @@ Describe 'Invoke-PpDeploy — -WhatIf causes CLI steps to run with -DryRun' {
             $DryRun -eq $true
         }
     }
+
+    It 'passes -DryRun to both Invoke-PpDeployFlows calls under -WhatIf' {
+        Invoke-PpDeploy -Environment dev -WhatIf 2>$null
+        Should -Invoke Invoke-PpDeployFlows -ModuleName PowerPlatform.Deploy -Times 2 -ParameterFilter {
+            $DryRun -eq $true
+        }
+    }
+
+    It 'passes -DryRun to the admin pack/import helpers under -WhatIf' {
+        Invoke-PpDeploy -Environment dev -WhatIf 2>$null
+        Should -Invoke Invoke-PpPackAdminSolution -ModuleName PowerPlatform.Deploy -ParameterFilter { $DryRun -eq $true }
+        Should -Invoke Invoke-PpImportAdminSolution -ModuleName PowerPlatform.Deploy -ParameterFilter { $DryRun -eq $true }
+    }
 }
 
 Describe 'Invoke-PpDeploy — -DryRun causes CLI steps to run with -DryRun' {
@@ -243,17 +377,19 @@ Describe 'Invoke-PpDeploy — -DryRun causes CLI steps to run with -DryRun' {
             TenantId     = 'fake-tenant'
         }
         Mock -ModuleName PowerPlatform.Deploy Get-PpEnvConfig { return $script:FakeCfgDr }
-        Mock -ModuleName PowerPlatform.Deploy Connect-PpDataverse {}
-        Mock -ModuleName PowerPlatform.Deploy Invoke-PpCli {
-            param([string]$Command, [string]$Environment, [switch]$DryRun, [switch]$VerboseCli)
-        }
-        Mock -ModuleName PowerPlatform.Deploy Register-PpPlugins {}
-        Mock -ModuleName PowerPlatform.Deploy Publish-PpCodeApp {}
+        Set-PpDeployMocks
     }
 
     It 'passes -DryRun to all 5 Invoke-PpCli calls under -DryRun' {
         Invoke-PpDeploy -Environment dev -DryRun
         Should -Invoke Invoke-PpCli -ModuleName PowerPlatform.Deploy -Times 5 -ParameterFilter {
+            $DryRun -eq $true
+        }
+    }
+
+    It 'passes -DryRun to both Invoke-PpDeployFlows calls under -DryRun' {
+        Invoke-PpDeploy -Environment dev -DryRun
+        Should -Invoke Invoke-PpDeployFlows -ModuleName PowerPlatform.Deploy -Times 2 -ParameterFilter {
             $DryRun -eq $true
         }
     }
@@ -273,9 +409,7 @@ Describe 'Invoke-PpDeploy — DATAVERSE_* env vars exported from cfg' {
             TenantId     = 'uat-tenant'
         }
         Mock -ModuleName PowerPlatform.Deploy Get-PpEnvConfig { return $script:FakeCfgEnv }
-        Mock -ModuleName PowerPlatform.Deploy Connect-PpDataverse {}
-        Mock -ModuleName PowerPlatform.Deploy Register-PpPlugins {}
-        Mock -ModuleName PowerPlatform.Deploy Publish-PpCodeApp {}
+        Set-PpDeployMocks
 
         # Capture all four env vars on the first Invoke-PpCli call (pack step).
         # Mock body runs inside the module scope but $script: vars are shared.
