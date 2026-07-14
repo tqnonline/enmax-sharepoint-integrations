@@ -23,5 +23,10 @@
         <label description="Procedure" languagecode="1033" />
       </labels>
     </option>
+    <option value="3" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Form" languagecode="1033" />
+      </labels>
+    </option>
   </options>
 </optionset>

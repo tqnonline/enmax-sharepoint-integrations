@@ -1,5 +1,5 @@
 import { Title2, Text, tokens, makeStyles } from "@fluentui/react-components";
-import { greeting, firstName } from "./homeUtils";
+import { greeting, displayName as formatDisplayName } from "./homeUtils";
 
 const useStyles = makeStyles({
   hero: {
@@ -28,7 +28,7 @@ export function HomeHero({ fullName, statusLine }: Props) {
   return (
     <div className={styles.hero}>
       <Title2 as="h1">
-        {greeting(hour)}, <span className={styles.name}>{firstName(fullName)}</span>
+        {greeting(hour)}, <span className={styles.name}>{formatDisplayName(fullName)}</span>
       </Title2>
       <Text size={300} className={styles.status}>{statusLine}</Text>
     </div>

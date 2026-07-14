@@ -1,9 +1,15 @@
 import { Link, Text, tokens } from "@fluentui/react-components";
 import type { ColumnDef } from "./types";
 
-/** Prefer drop-off library URL, then destination. */
+/**
+ * Prefer destination library URL, then drop-off — matches `sharePointFileUrl`'s
+ * default (destination-first) behavior. Re-exported here so grid column
+ * definitions don't need to import from the `sharepoint` feature directly;
+ * see `sharePointFileUrl` in `features/sharepoint/sharepointUrls.ts` for the
+ * surface-aware (checked-out/check-in) variant.
+ */
 export function sharePointUrlFrom(libraryUrl?: string, destinationUrl?: string): string {
-  return libraryUrl?.trim() || destinationUrl?.trim() || "";
+  return destinationUrl?.trim() || libraryUrl?.trim() || "";
 }
 
 /**

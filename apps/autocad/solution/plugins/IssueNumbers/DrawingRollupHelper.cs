@@ -28,6 +28,31 @@ namespace Enmax.AutoCAD
 
         public static int RecomputeDrawingRollup(IOrganizationService service, Guid drawingId)
         {
+            // One recompute-and-retry absorbs a single concurrent sheet transition on the
+            // same drawing; a second mismatch surfaces so the caller can retry the API.
+            try
+            {
+                return TryRecomputeDrawingRollup(service, drawingId);
+            }
+            catch (FaultException<OrganizationServiceFault> ex)
+                when (IsConcurrencyMismatch(ex))
+            {
+                try
+                {
+                    return TryRecomputeDrawingRollup(service, drawingId);
+                }
+                catch (FaultException<OrganizationServiceFault> retryEx)
+                    when (IsConcurrencyMismatch(retryEx))
+                {
+                    throw new InvalidPluginExecutionException(
+                        $"Drawing {drawingId} was concurrently modified (ConcurrencyVersionMismatch). Retry.",
+                        retryEx);
+                }
+            }
+        }
+
+        private static int TryRecomputeDrawingRollup(IOrganizationService service, Guid drawingId)
+        {
             var drawing = service.Retrieve(
                 DrawingEntity,
                 drawingId,
@@ -39,46 +64,41 @@ namespace Enmax.AutoCAD
                 return targetState;
             }
 
-            try
+            var update = new Entity(DrawingEntity, drawingId)
             {
-                var update = new Entity(DrawingEntity, drawingId)
-                {
-                    [ColDrawingState] = new OptionSetValue(targetState),
-                };
+                [ColDrawingState] = new OptionSetValue(targetState),
+            };
 
-                var drawingRowVersion = drawing.RowVersion;
-                if (string.IsNullOrWhiteSpace(drawingRowVersion) &&
-                    drawing.Contains("versionnumber"))
-                {
-                    drawingRowVersion = drawing
-                        .GetAttributeValue<long>("versionnumber")
-                        .ToString(CultureInfo.InvariantCulture);
-                }
-
-                if (!string.IsNullOrWhiteSpace(drawingRowVersion))
-                {
-                    update.RowVersion = drawingRowVersion;
-                    service.Execute(new UpdateRequest
-                    {
-                        Target = update,
-                        ConcurrencyBehavior = ConcurrencyBehavior.IfRowVersionMatches,
-                    });
-                }
-                else
-                {
-                    service.Update(update);
-                }
-
-                return targetState;
-            }
-            catch (FaultException<OrganizationServiceFault> ex)
-                when (ex.Detail?.ErrorCode == -2147088254 ||
-                      (ex.Message != null && ex.Message.Contains("ConcurrencyVersionMismatch")))
+            var drawingRowVersion = drawing.RowVersion;
+            if (string.IsNullOrWhiteSpace(drawingRowVersion) &&
+                drawing.Contains("versionnumber"))
             {
-                throw new InvalidPluginExecutionException(
-                    $"Drawing {drawingId} was concurrently modified (ConcurrencyVersionMismatch). Retry.",
-                    ex);
+                drawingRowVersion = drawing
+                    .GetAttributeValue<long>("versionnumber")
+                    .ToString(CultureInfo.InvariantCulture);
             }
+
+            if (!string.IsNullOrWhiteSpace(drawingRowVersion))
+            {
+                update.RowVersion = drawingRowVersion;
+                service.Execute(new UpdateRequest
+                {
+                    Target = update,
+                    ConcurrencyBehavior = ConcurrencyBehavior.IfRowVersionMatches,
+                });
+            }
+            else
+            {
+                service.Update(update);
+            }
+
+            return targetState;
+        }
+
+        private static bool IsConcurrencyMismatch(FaultException<OrganizationServiceFault> ex)
+        {
+            return ex.Detail?.ErrorCode == -2147088254 ||
+                   (ex.Message != null && ex.Message.Contains("ConcurrencyVersionMismatch"));
         }
 
         private static int ComputeTargetState(IOrganizationService service, Guid drawingId)

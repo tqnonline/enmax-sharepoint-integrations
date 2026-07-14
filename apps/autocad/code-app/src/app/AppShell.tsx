@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import { makeStyles, tokens } from "@fluentui/react-components";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
@@ -47,12 +48,53 @@ const useStyles = makeStyles({
     minHeight: 0,
     padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalXL}`,
   },
+  contentFullBleed: {
+    flex: 1,
+    overflow: "auto",
+    minHeight: 0,
+    paddingTop: tokens.spacingVerticalM,
+    paddingBottom: tokens.spacingVerticalM,
+    paddingLeft: `max(clamp(${tokens.spacingHorizontalM}, 2vw, ${tokens.spacingHorizontalXXL}), env(safe-area-inset-left, 0px))`,
+    paddingRight: `max(clamp(${tokens.spacingHorizontalM}, 2vw, ${tokens.spacingHorizontalXXL}), env(safe-area-inset-right, 0px))`,
+    WebkitOverflowScrolling: "touch",
+  },
   contentInner: {
     width: "100%",
     maxWidth: "1600px",
     margin: "0 auto",
   },
+  contentInnerFullBleed: {
+    width: "100%",
+    maxWidth: "none",
+    margin: 0,
+  },
+  contentSearch: {
+    flex: 1,
+    overflow: "hidden",
+    minHeight: 0,
+    display: "flex",
+    flexDirection: "column",
+    padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalL}`,
+  },
+  contentInnerSearch: {
+    width: "100%",
+    maxWidth: "none",
+    margin: 0,
+    flex: 1,
+    minHeight: 0,
+    display: "flex",
+    flexDirection: "column",
+  },
 });
+
+function isFullBleedRoute(pathname: string): boolean {
+  return pathname.includes("/search/documents/")
+    || pathname.includes("/reservations/");
+}
+
+function isSearchListRoute(pathname: string): boolean {
+  return pathname === "/search" || pathname.endsWith("/search");
+}
 
 interface AppShellProps {
   children: ReactNode;
@@ -60,6 +102,19 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const styles = useStyles();
+  const { pathname } = useLocation();
+  const fullBleed = isFullBleedRoute(pathname);
+  const searchList = isSearchListRoute(pathname);
+  const contentClass = fullBleed
+    ? styles.contentFullBleed
+    : searchList
+      ? styles.contentSearch
+      : styles.content;
+  const innerClass = fullBleed
+    ? styles.contentInnerFullBleed
+    : searchList
+      ? styles.contentInnerSearch
+      : styles.contentInner;
 
   return (
     <div className={styles.root}>
@@ -70,8 +125,11 @@ export function AppShell({ children }: AppShellProps) {
         <Sidebar />
         <main className={styles.main}>
           <CommandBar />
-          <div className={styles.content} id="main-content">
-            <div className={styles.contentInner}>
+          <div
+            className={contentClass}
+            id="main-content"
+          >
+            <div className={innerClass}>
               {children}
             </div>
           </div>

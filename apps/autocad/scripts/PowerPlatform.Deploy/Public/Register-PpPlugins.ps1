@@ -82,43 +82,43 @@ function Register-PpPlugins {
     $clientId     = $env:DATAVERSE_CLIENT_ID
     $clientSecret = $env:DATAVERSE_CLIENT_SECRET
 
-    if (-not ($envUrl -and $tenantId -and $clientId -and $clientSecret)) {
-        if ($UserAuth) {
-            Write-PpLog "UserAuth=$UserAuth — acquiring Dataverse token (no SPN)..." -Level Verbose
-            if (-not $envUrl) {
-                if ($DataverseUrl) {
-                    $envUrl = $DataverseUrl
-                } else {
-                    $org = Get-PpPacOrgWho
-                    $envUrl = $org.Url
-                }
+    if ($UserAuth) {
+        Write-PpLog "UserAuth=$UserAuth — acquiring Dataverse token (no SPN)..." -Level Verbose
+        if (-not $envUrl) {
+            if ($DataverseUrl) {
+                $envUrl = $DataverseUrl
+            } else {
+                $org = Get-PpPacOrgWho
+                $envUrl = $org.Url
             }
-            $envUrl = $envUrl.TrimEnd('/')
-            $tokenScript = Join-Path $repoRoot "solution/scripts/get_dataverse_token.py"
-            if (-not (Test-PpFileExists -Path $tokenScript)) {
-                throw "Register-PpPlugins: get_dataverse_token.py not found at $tokenScript"
-            }
-            $prevUrl = $env:DATAVERSE_URL
-            $env:DATAVERSE_URL = $envUrl
-            try {
+        }
+        $envUrl = $envUrl.TrimEnd('/')
+        $tokenScript = Join-Path $repoRoot "solution/scripts/get_dataverse_token.py"
+        if (-not (Test-PpFileExists -Path $tokenScript)) {
+            throw "Register-PpPlugins: get_dataverse_token.py not found at $tokenScript"
+        }
+        $prevUrl = $env:DATAVERSE_URL
+        $env:DATAVERSE_URL = $envUrl
+        try {
+            if (-not $env:DATAVERSE_ACCESS_TOKEN) {
                 $tokenOut = & python3 $tokenScript --auth $UserAuth --url $envUrl 2>&1
                 if ($LASTEXITCODE -ne 0) { throw ($tokenOut -join "`n") }
                 $env:DATAVERSE_ACCESS_TOKEN = ($tokenOut | Select-Object -Last 1).ToString().Trim()
             }
-            finally {
-                if ($prevUrl) { $env:DATAVERSE_URL = $prevUrl } else { Remove-Item Env:DATAVERSE_URL -ErrorAction SilentlyContinue }
-            }
-            $tenantId = 'user-auth'
-            $clientId = 'user-auth'
-            $clientSecret = 'user-auth'
-        } else {
-            Write-PpLog "DATAVERSE_* env vars not fully set — loading from .env.$Environment" -Level Verbose
-            $cfg = Get-PpEnvConfig -Environment $Environment
-            if (-not $envUrl)       { $envUrl       = $cfg.Url }
-            if (-not $tenantId)     { $tenantId     = $cfg.TenantId }
-            if (-not $clientId)     { $clientId     = $cfg.ClientId }
-            if (-not $clientSecret) { $clientSecret = $cfg.ClientSecret }
         }
+        finally {
+            if ($prevUrl) { $env:DATAVERSE_URL = $prevUrl } else { Remove-Item Env:DATAVERSE_URL -ErrorAction SilentlyContinue }
+        }
+        $tenantId = 'user-auth'
+        $clientId = 'user-auth'
+        $clientSecret = 'user-auth'
+    } elseif (-not ($envUrl -and $tenantId -and $clientId -and $clientSecret)) {
+        Write-PpLog "DATAVERSE_* env vars not fully set — loading from .env.$Environment" -Level Verbose
+        $cfg = Get-PpEnvConfig -Environment $Environment
+        if (-not $envUrl)       { $envUrl       = $cfg.Url }
+        if (-not $tenantId)     { $tenantId     = $cfg.TenantId }
+        if (-not $clientId)     { $clientId     = $cfg.ClientId }
+        if (-not $clientSecret) { $clientSecret = $cfg.ClientSecret }
     }
 
     if (-not ($envUrl -and $tenantId -and $clientId -and $clientSecret)) {

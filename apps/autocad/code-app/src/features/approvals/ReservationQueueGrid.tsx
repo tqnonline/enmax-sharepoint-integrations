@@ -69,7 +69,7 @@ const COLUMNS: ColumnDef<PendingReservation>[] = [
     cell: r => <Text>{r.typeLabel}</Text>,
   },
   {
-    id: "composition", header: "Issued number",
+    id: "composition", header: "Issued Number",
     accessor: r => formatReservationDisplay({
       ...r,
       enmax_acdnissuednumbers: r.enmax_acdnissuednumbers,
@@ -153,7 +153,7 @@ export function ReservationQueueGrid({ reservations, onSelect, onBulkApprove, em
   );
 
   const bulkActions = onBulkApprove
-    ? [{ label: "Approve selected", onClick: onBulkApprove }]
+    ? [{ label: "Approve Selected", onClick: onBulkApprove }]
     : undefined;
 
   return (

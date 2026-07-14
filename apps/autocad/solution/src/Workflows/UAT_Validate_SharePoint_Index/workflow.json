@@ -1,0 +1,299 @@
+{
+  "schemaVersion": "1.0.0.0",
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "enmax_autocadconrefDataverse"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
+      "metadata": {
+        "description": "WS5e UAT harness: validates indexer outcomes against an expected scenario matrix (drop-off only / destination only / both / neither; base vs child; vendor vs project folder). Emits pass/fail report after calling Manual_Refresh_SharePoint_Index / UpsertSharePointLinks."
+      },
+      "triggers": {
+        "Manual_Validate": {
+          "type": "Request",
+          "kind": "Http",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "expectations": {
+                  "type": "string",
+                  "title": "JSON array of {entityName,recordId,recordNumber,expectDropOff,expectDestination} rows"
+                }
+              },
+              "required": [
+                "expectations"
+              ]
+            }
+          }
+        }
+      },
+      "actions": {
+        "Initialize_CorrelationId": {
+          "type": "InitializeVariable",
+          "runAfter": {},
+          "inputs": {
+            "variables": [
+              {
+                "name": "CorrelationId",
+                "type": "string",
+                "value": "@{coalesce(triggerBody()?['CorrelationId'], guid())}"
+              }
+            ]
+          }
+        },
+        "Initialize_FlowDisplayName": {
+          "type": "InitializeVariable",
+          "runAfter": {
+            "Initialize_CorrelationId": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "variables": [
+              {
+                "name": "FlowDisplayName",
+                "type": "string",
+                "value": "UAT_Validate_SharePoint_Index"
+              }
+            ]
+          }
+        },
+        "Initialize_FlowRunUrlTemplate": {
+          "type": "InitializeVariable",
+          "runAfter": {
+            "Initialize_FlowDisplayName": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "variables": [
+              {
+                "name": "FlowRunUrlTemplate",
+                "type": "string",
+                "value": "https://make.powerautomate.com/environments/{environmentId}/flows/{flowId}/runs/{runId}"
+              }
+            ]
+          }
+        },
+        "Initialize_Results": {
+          "type": "InitializeVariable",
+          "runAfter": {
+            "Initialize_FlowRunUrlTemplate": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "variables": [
+              {
+                "name": "PassCount",
+                "type": "integer",
+                "value": 0
+              },
+              {
+                "name": "FailCount",
+                "type": "integer",
+                "value": 0
+              },
+              {
+                "name": "Failures",
+                "type": "array",
+                "value": []
+              }
+            ]
+          }
+        },
+        "Scope_Try_Main": {
+          "type": "Scope",
+          "runAfter": {
+            "Initialize_Results": [
+              "Succeeded"
+            ]
+          },
+          "actions": {
+            "Apply_to_each_Expectation": {
+              "type": "Foreach",
+              "runAfter": {},
+              "foreach": "@json(triggerBody()?['expectations'])",
+              "actions": {
+                "Get_Record": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "connectionName": "shared_commondataserviceforapps",
+                      "operationId": "GetItem",
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                    },
+                    "parameters": {
+                      "entityName": "@{concat(items('Apply_to_each_Expectation')?['entityName'], 's')}",
+                      "recordId": "@{items('Apply_to_each_Expectation')?['recordId']}",
+                      "$select": "enmax_acdnpresentindropoff,enmax_acdnpresentindestination,enmax_acdnsplibraryurl,enmax_acdnsharepointurl,enmax_acdnspdestinationurl"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  }
+                },
+                "Check_Expectations": {
+                  "type": "If",
+                  "runAfter": {
+                    "Get_Record": [
+                      "Succeeded"
+                    ]
+                  },
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@outputs('Get_Record')?['body/enmax_acdnpresentindropoff']",
+                          "@items('Apply_to_each_Expectation')?['expectDropOff']"
+                        ]
+                      },
+                      {
+                        "equals": [
+                          "@outputs('Get_Record')?['body/enmax_acdnpresentindestination']",
+                          "@items('Apply_to_each_Expectation')?['expectDestination']"
+                        ]
+                      }
+                    ]
+                  },
+                  "actions": {
+                    "Increment_Pass": {
+                      "type": "IncrementVariable",
+                      "inputs": {
+                        "name": "PassCount",
+                        "value": 1
+                      }
+                    }
+                  },
+                  "else": {
+                    "actions": {
+                      "Increment_Fail": {
+                        "type": "IncrementVariable",
+                        "inputs": {
+                          "name": "FailCount",
+                          "value": 1
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "Response_Report": {
+              "type": "Response",
+              "runAfter": {
+                "Apply_to_each_Expectation": [
+                  "Succeeded"
+                ]
+              },
+              "kind": "Http",
+              "inputs": {
+                "statusCode": 200,
+                "body": {
+                  "pass": "@variables('PassCount')",
+                  "fail": "@variables('FailCount')",
+                  "overall": "@if(equals(variables('FailCount'), 0), 'PASS', 'FAIL')"
+                }
+              }
+            }
+          }
+        },
+        "Scope_Catch_Failure": {
+          "type": "Scope",
+          "runAfter": {
+            "Scope_Try_Main": [
+              "Failed",
+              "TimedOut"
+            ]
+          },
+          "actions": {
+            "Compose_Error_Context": {
+              "type": "Compose",
+              "runAfter": {},
+              "inputs": {
+                "failedAction": "@{coalesce(first(result('Scope_Try_Main'))?['name'], 'Scope_Try_Main')}",
+                "errorMessage": "@{coalesce(first(result('Scope_Try_Main'))?['error']?['message'], 'Flow failed')}",
+                "errorCode": "@{coalesce(first(result('Scope_Try_Main'))?['error']?['code'], 'FlowFailed')}",
+                "errorDetail": "@{string(result('Scope_Try_Main'))}"
+              }
+            },
+            "Compose_FlowRunUrl": {
+              "type": "Compose",
+              "runAfter": {
+                "Compose_Error_Context": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@{replace(replace(replace(variables('FlowRunUrlTemplate'), '{environmentId}', coalesce(workflow()?['tags']?['environmentName'], '')), '{flowId}', coalesce(workflow()?['name'], '')), '{runId}', coalesce(workflow()?['run']?['name'], ''))}"
+            },
+            "Invoke_Log_Flow_Exception": {
+              "type": "Workflow",
+              "runAfter": {
+                "Compose_FlowRunUrl": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
+                  "workflowReferenceName": "Child_Log_Flow_Exception"
+                },
+                "body": {
+                  "Origin": 1,
+                  "FlowDisplayName": "@{variables('FlowDisplayName')}",
+                  "FailedAction": "@{outputs('Compose_Error_Context')?['failedAction']}",
+                  "ErrorMessage": "@{outputs('Compose_Error_Context')?['errorMessage']}",
+                  "ErrorCode": "@{outputs('Compose_Error_Context')?['errorCode']}",
+                  "ErrorDetail": "@{outputs('Compose_Error_Context')?['errorDetail']}",
+                  "FlowRunId": "@{workflow()?['run']?['name']}",
+                  "FlowRunUrl": "@{outputs('Compose_FlowRunUrl')}",
+                  "CorrelationId": "@{variables('CorrelationId')}",
+                  "SubjectTable": "",
+                  "SubjectId": "",
+                  "Severity": 2
+                }
+              }
+            },
+            "Terminate_Failed": {
+              "type": "Terminate",
+              "runAfter": {
+                "Invoke_Log_Flow_Exception": [
+                  "Succeeded",
+                  "Failed",
+                  "Skipped",
+                  "TimedOut"
+                ]
+              },
+              "inputs": {
+                "runStatus": "Failed",
+                "runError": {
+                  "code": "@{outputs('Compose_Error_Context')?['errorCode']}",
+                  "message": "@{outputs('Compose_Error_Context')?['errorMessage']}"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "templateName": ""
+  }
+}

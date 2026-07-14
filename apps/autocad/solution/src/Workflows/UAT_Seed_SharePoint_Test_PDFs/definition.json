@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0.0",
   "metadata": {
-    "description": "WS5e UAT harness: seeds ~1KB valid PDF placeholders with deterministic filenames across configured drop-off/destination libraries (UAT site). Run manually/on-demand only — not wired into prod CD."
+    "description": "WS5e UAT harness: seeds ~1KB valid PDF placeholders with deterministic filenames across configured drop-off/destination libraries (UAT site). Run manually/on-demand only \u2014 not wired into prod CD."
   },
   "triggers": {
     "Manual_Seed": {
@@ -21,9 +21,60 @@
     }
   },
   "actions": {
-    "Initialize_MinimalPdfBase64": {
+    "Initialize_CorrelationId": {
       "type": "InitializeVariable",
       "runAfter": {},
+      "inputs": {
+        "variables": [
+          {
+            "name": "CorrelationId",
+            "type": "string",
+            "value": "@{coalesce(triggerBody()?['CorrelationId'], guid())}"
+          }
+        ]
+      }
+    },
+    "Initialize_FlowDisplayName": {
+      "type": "InitializeVariable",
+      "runAfter": {
+        "Initialize_CorrelationId": [
+          "Succeeded"
+        ]
+      },
+      "inputs": {
+        "variables": [
+          {
+            "name": "FlowDisplayName",
+            "type": "string",
+            "value": "UAT_Seed_SharePoint_Test_PDFs"
+          }
+        ]
+      }
+    },
+    "Initialize_FlowRunUrlTemplate": {
+      "type": "InitializeVariable",
+      "runAfter": {
+        "Initialize_FlowDisplayName": [
+          "Succeeded"
+        ]
+      },
+      "inputs": {
+        "variables": [
+          {
+            "name": "FlowRunUrlTemplate",
+            "type": "string",
+            "value": "https://make.powerautomate.com/environments/{environmentId}/flows/{flowId}/runs/{runId}"
+          }
+        ]
+      }
+    },
+    "Initialize_MinimalPdfBase64": {
+      "type": "InitializeVariable",
+      "runAfter": {
+        "Initialize_FlowRunUrlTemplate": [
+          "Succeeded"
+        ]
+      },
       "inputs": {
         "variables": [
           {
@@ -34,27 +85,112 @@
         ]
       },
       "metadata": {
-        "description": "Minimal valid PDF (%PDF-1.1 … %%EOF) so SharePoint/Office preview path works in UAT."
+        "description": "Minimal valid PDF (%PDF-1.1 \u2026 %%EOF) so SharePoint/Office preview path works in UAT."
       }
     },
-    "Apply_to_each_Scenario": {
-      "type": "Foreach",
-      "runAfter": { "Initialize_MinimalPdfBase64": ["Succeeded"] },
-      "foreach": "@coalesce(json(triggerBody()?['scenarioMatrix']), json('[]'))",
+    "Scope_Try_Main": {
+      "type": "Scope",
+      "runAfter": {
+        "Initialize_MinimalPdfBase64": [
+          "Succeeded"
+        ]
+      },
       "actions": {
-        "Create_Placeholder_PDF": {
-          "type": "OpenApiConnection",
+        "Apply_to_each_Scenario": {
+          "type": "Foreach",
+          "runAfter": {},
+          "foreach": "@coalesce(json(triggerBody()?['scenarioMatrix']), json('[]'))",
+          "actions": {
+            "Create_Placeholder_PDF": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_sharepointonline",
+                  "operationId": "CreateFile",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+                },
+                "parameters": {
+                  "dataset": "@{items('Apply_to_each_Scenario')?['libraryUrl']}",
+                  "folderPath": "@{coalesce(items('Apply_to_each_Scenario')?['folderPath'], '/')}",
+                  "name": "@{items('Apply_to_each_Scenario')?['fileName']}",
+                  "body": "@base64ToBinary(variables('MinimalPdfBase64'))"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Scope_Catch_Failure": {
+      "type": "Scope",
+      "runAfter": {
+        "Scope_Try_Main": [
+          "Failed",
+          "TimedOut"
+        ]
+      },
+      "actions": {
+        "Compose_Error_Context": {
+          "type": "Compose",
+          "runAfter": {},
+          "inputs": {
+            "failedAction": "@{coalesce(first(result('Scope_Try_Main'))?['name'], 'Scope_Try_Main')}",
+            "errorMessage": "@{coalesce(first(result('Scope_Try_Main'))?['error']?['message'], 'Flow failed')}",
+            "errorCode": "@{coalesce(first(result('Scope_Try_Main'))?['error']?['code'], 'FlowFailed')}",
+            "errorDetail": "@{string(result('Scope_Try_Main'))}"
+          }
+        },
+        "Compose_FlowRunUrl": {
+          "type": "Compose",
+          "runAfter": {
+            "Compose_Error_Context": [
+              "Succeeded"
+            ]
+          },
+          "inputs": "@{replace(replace(replace(variables('FlowRunUrlTemplate'), '{environmentId}', coalesce(workflow()?['tags']?['environmentName'], '')), '{flowId}', coalesce(workflow()?['name'], '')), '{runId}', coalesce(workflow()?['run']?['name'], ''))}"
+        },
+        "Invoke_Log_Flow_Exception": {
+          "type": "Workflow",
+          "runAfter": {
+            "Compose_FlowRunUrl": [
+              "Succeeded"
+            ]
+          },
           "inputs": {
             "host": {
-              "connectionName": "shared_sharepointonline",
-              "operationId": "CreateFile",
-              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+              "workflowReferenceName": "Child_Log_Flow_Exception"
             },
-            "parameters": {
-              "dataset": "@{items('Apply_to_each_Scenario')?['libraryUrl']}",
-              "folderPath": "@{coalesce(items('Apply_to_each_Scenario')?['folderPath'], '/')}",
-              "name": "@{items('Apply_to_each_Scenario')?['fileName']}",
-              "body": "@base64ToBinary(variables('MinimalPdfBase64'))"
+            "body": {
+              "Origin": 1,
+              "FlowDisplayName": "@{variables('FlowDisplayName')}",
+              "FailedAction": "@{outputs('Compose_Error_Context')?['failedAction']}",
+              "ErrorMessage": "@{outputs('Compose_Error_Context')?['errorMessage']}",
+              "ErrorCode": "@{outputs('Compose_Error_Context')?['errorCode']}",
+              "ErrorDetail": "@{outputs('Compose_Error_Context')?['errorDetail']}",
+              "FlowRunId": "@{workflow()?['run']?['name']}",
+              "FlowRunUrl": "@{outputs('Compose_FlowRunUrl')}",
+              "CorrelationId": "@{variables('CorrelationId')}",
+              "SubjectTable": "",
+              "SubjectId": "",
+              "Severity": 2
+            }
+          }
+        },
+        "Terminate_Failed": {
+          "type": "Terminate",
+          "runAfter": {
+            "Invoke_Log_Flow_Exception": [
+              "Succeeded",
+              "Failed",
+              "Skipped",
+              "TimedOut"
+            ]
+          },
+          "inputs": {
+            "runStatus": "Failed",
+            "runError": {
+              "code": "@{outputs('Compose_Error_Context')?['errorCode']}",
+              "message": "@{outputs('Compose_Error_Context')?['errorMessage']}"
             }
           }
         }

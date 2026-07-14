@@ -95,6 +95,7 @@ export const DRAWING_STATE_LABELS: Record<number, string> = {
   5: "Obsolete",
   6: "Void",
   7: "Finalized",
+  8: "Pending SharePoint Import",
 };
 
 const ALLOWED_SORT_COLS = new Set([
@@ -133,12 +134,13 @@ async function buildFilter(params: GridFetchParams): Promise<string> {
 
   const dateFrom = params.filters.dateFrom;
   const dateTo = params.filters.dateTo;
-  // DateTime fields require ISO 8601 literals (unquoted), same as audit/reservation filters.
+  // Issued-date window: use createdon (always set on issue). Revision date is only
+  // populated after check-in, so filtering on it alone hides new drawings/documents.
   if (typeof dateFrom === "string" && ISO_DATE.test(dateFrom)) {
-    clauses.push(`enmax_acdnrevisiondate ge ${dateFrom}T00:00:00Z`);
+    clauses.push(`createdon ge ${dateFrom}T00:00:00Z`);
   }
   if (typeof dateTo === "string" && ISO_DATE.test(dateTo)) {
-    clauses.push(`enmax_acdnrevisiondate le ${dateTo}T23:59:59Z`);
+    clauses.push(`createdon le ${dateTo}T23:59:59Z`);
   }
 
   const subtypeVal = params.filters.documentSubtype;
@@ -202,6 +204,9 @@ async function buildFilter(params: GridFetchParams): Promise<string> {
     const states = Array.isArray(stateVal) ? stateVal : [stateVal];
     const sub = states.map(s => `enmax_acdnstate eq ${Number(s)}`).join(" or ");
     clauses.push(`(${sub})`);
+  } else {
+    // Pending SharePoint Import (8) is admin-only until Save & Approve.
+    clauses.push("enmax_acdnstate ne 8");
   }
 
   return clauses.join(" and ");

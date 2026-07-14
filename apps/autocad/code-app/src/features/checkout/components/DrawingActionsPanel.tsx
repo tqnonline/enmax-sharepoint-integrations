@@ -1,4 +1,5 @@
 import { Badge, Text, tokens, makeStyles } from "@fluentui/react-components";
+import { Clock24Regular, ArrowDownload24Regular } from "@fluentui/react-icons";
 import { useState } from "react";
 import { useUserRole } from "../../../auth/useUserRole";
 import { useCurrentUser } from "../../../auth/useCurrentUser";
@@ -8,6 +9,7 @@ import { DrawingState, DRAWING_STATE_LABELS, DRAWING_STATE_BADGE_COLOR, Checkout
 import type { DrawingForPanel, CheckoutForPanel } from "../api/checkoutClient";
 import { CheckOutButton } from "./CheckOutButton";
 import { SubmitRevisionDrawer } from "./SubmitRevisionDrawer";
+import { sharePointSiteForTaxonomy } from "../../sharepoint/sharepointUrls";
 import { ValidationDrawer } from "./ValidationDrawer";
 import { ForceCheckInDialog } from "./ForceCheckInDialog";
 import { FinalizeDialog } from "./FinalizeDialog";
@@ -95,11 +97,13 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
     const mine = openCheckout.checkedOutBy === currentUser?.id;
     return (
       <div className={styles.readOnly}>
-        <Badge appearance="filled" color="informative" shape="rounded">
-          Check Out requested
+        <Badge appearance="filled" color="warning" shape="rounded" icon={<Clock24Regular />}>
+          Check Out pending approval
         </Badge>
         <Text size={200} className={styles.meta}>
-          {mine ? "Your Check Out is pending approval" : "Pending approver decision"}
+          {mine
+            ? "Your request is awaiting an approver — not checked out yet."
+            : "Pending approver decision"}
         </Text>
       </div>
     );
@@ -115,6 +119,7 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
                 ? (RequireCheckOutApproval ? "Requesting…" : "Checking out…")
                 : (RequireCheckOutApproval ? "Request Check Out" : "Check Out")
             }
+            primaryIcon={<ArrowDownload24Regular />}
             primaryDisabled={checkOut.isPending}
             primaryLoading={checkOut.isPending}
             onPrimary={() => checkOut.mutate(drawing.id)}
@@ -150,6 +155,9 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
         checkoutId={openCheckout.id}
         drawingId={drawing.id}
         drawingNumber={drawing.number ?? ""}
+        site={sharePointSiteForTaxonomy(drawing.reservationType)}
+        reservationType={drawing.reservationType}
+        documentSubtype={drawing.documentSubtype}
       />
     );
   }

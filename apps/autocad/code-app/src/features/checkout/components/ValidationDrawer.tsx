@@ -25,7 +25,7 @@ import {
 import { useApproveCheckin } from "../hooks/useApproveCheckin";
 import { parsePdfUrls } from "../api/checkoutClient";
 import type { CheckoutForPanel, DrawingForPanel } from "../api/checkoutClient";
-import { useAppConfig } from "../../../config/useAppConfig";
+import { useDropOffLibraryUrl } from "../../sharepoint/sharepointUrls";
 
 const useStyles = makeStyles({
   body: {
@@ -88,9 +88,12 @@ interface Props {
 
 export function ValidationDrawer({ checkout, drawing }: Props) {
   const styles = useStyles();
-  // Single SharePoint drop-off library, from App Config — the same URL the user
-  // uploads to in SubmitRevisionDrawer. (Per-asset-unit libraries: future phase.)
-  const { CheckInUploadLibraryUrl } = useAppConfig();
+  // Taxonomy-aware drop-off library, from App Config — the same URL the user
+  // uploads to in SubmitRevisionDrawer.
+  const dropOffLibraryUrl = useDropOffLibraryUrl({
+    reservationType: drawing.reservationType,
+    documentSubtype: drawing.documentSubtype,
+  });
   const [open, setOpen] = useState(false);
   const [showDecline, setShowDecline] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
@@ -195,12 +198,12 @@ export function ValidationDrawer({ checkout, drawing }: Props) {
               </div>
             </div>
 
-            {CheckInUploadLibraryUrl && (
+            {dropOffLibraryUrl && (
               <Button
                 appearance="secondary"
                 icon={<Open24Regular />}
                 as="a"
-                href={CheckInUploadLibraryUrl}
+                href={dropOffLibraryUrl}
                 target="_blank"
                 rel="noopener noreferrer"
               >

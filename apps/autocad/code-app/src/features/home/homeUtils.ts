@@ -7,7 +7,13 @@ export function greeting(hour: number): string {
   return "Good evening";
 }
 
-/** First token of a display name; falls back to "there" so the hero never reads "Good morning, ". */
+/** Full display name for greetings; falls back to "there" when empty. */
+export function displayName(fullName?: string): string {
+  const name = fullName?.trim();
+  return name && name.length > 0 ? name : "there";
+}
+
+/** @deprecated Use displayName for full-name greetings. */
 export function firstName(fullName?: string): string {
   const first = fullName?.trim().split(/\s+/)[0];
   return first && first.length > 0 ? first : "there";

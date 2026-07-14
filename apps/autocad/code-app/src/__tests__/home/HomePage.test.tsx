@@ -37,9 +37,9 @@ afterEach(() => {
   healthRef.value = [];
 });
 
-test("greets the user by first name", () => {
+test("greets the user by full name", () => {
   renderWithProviders(<HomePage />);
-  expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/Rahul/);
+  expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/Rahul Akmol/);
 });
 
 test("a User with nothing open sees 'all caught up' and no admin health card", () => {

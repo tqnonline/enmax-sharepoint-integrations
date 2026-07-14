@@ -10,15 +10,14 @@ test("shows warning when no SharePoint file is linked", () => {
       recordNumber="GG-CG-00-ECS-AST-DD-0001"
     />,
   );
-  expect(screen.getByText(/no linked file found yet/i)).toBeInTheDocument();
+  expect(screen.getByText(/no pdf linked yet/i)).toBeInTheDocument();
   expect(screen.getByText(/GG-CG-00-ECS-AST-DD-0001\.pdf/)).toBeInTheDocument();
-  expect(screen.getByText(/…-NNNN-SSS\.pdf/)).toBeInTheDocument();
-  expect(screen.getByText(/…-NNNN\.pdf/)).toBeInTheDocument();
+  expect(screen.getByText(/must match this document number exactly/i)).toBeInTheDocument();
 });
 
 test("renders nothing when a file is linked", () => {
   renderWithProviders(
     <SharePointLinkStatus presentInDropOff={true} presentInDestination={false} />,
   );
-  expect(screen.queryByText(/no linked file found yet/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/no pdf linked yet/i)).not.toBeInTheDocument();
 });

@@ -57,15 +57,34 @@ namespace Enmax.AutoCAD
             if (string.IsNullOrWhiteSpace(recordNumber))
                 throw new InvalidPluginExecutionException("RecordNumber is required.");
 
-            var foundFilesJson = context.InputParameters.Contains("FoundFiles")
-                ? context.InputParameters["FoundFiles"] as string ?? "[]"
-                : "[]";
+            // Null/absent FoundFiles = scan not supplied (do not clear links).
+            // Explicit "[]" = authoritative empty scan (may clear links).
+            string foundFilesJson = null;
+            if (context.InputParameters.Contains("FoundFiles")
+                && context.InputParameters["FoundFiles"] is string raw
+                && raw != null)
+            {
+                foundFilesJson = raw;
+            }
 
             var entityKind = ResolveEntityKind(target.LogicalName);
             var expectedNumber = ResolveExpectedRecordNumber(service, target, entityKind);
             if (!string.Equals(expectedNumber.Trim(), recordNumber.Trim(), StringComparison.OrdinalIgnoreCase))
                 throw new InvalidPluginExecutionException(
                     $"RecordNumber '{recordNumber}' does not match the target record '{expectedNumber}'.");
+
+            if (foundFilesJson == null)
+            {
+                localPluginContext.Trace(
+                    "UpsertSharePointLinks: FoundFiles omitted — no update (refuses to clear links).");
+                var currentOnly = ReadCurrentState(service, target, entityKind);
+                context.OutputParameters["UpdateNeeded"]         = false;
+                context.OutputParameters["DropOffUrl"]           = currentOnly.DropOffUrl ?? string.Empty;
+                context.OutputParameters["DestinationUrl"]       = currentOnly.DestinationUrl ?? string.Empty;
+                context.OutputParameters["PresentInDropOff"]     = currentOnly.PresentInDropOff;
+                context.OutputParameters["PresentInDestination"] = currentOnly.PresentInDestination;
+                return;
+            }
 
             var foundFiles = ParseFoundFiles(foundFilesJson);
             var match = SharePointLinkMatcher.MatchFiles(recordNumber, foundFiles);

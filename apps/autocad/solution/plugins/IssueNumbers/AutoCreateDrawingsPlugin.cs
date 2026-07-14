@@ -28,11 +28,13 @@ namespace Enmax.AutoCAD
         private const int    AuditSourceAction  = 4;
         private const int    SheetStateAvailable = 2;
 
-        // Type-aware issuance (ADR 0001). Document/Standard is base-only; Drawing,
-        // Document/Procedure, and legacy/null reservations all get child items.
-        private const int    ReservationTypeDocument = 2;
-        private const int    DocumentSubtypeStandard = 1;
-        private const int    MaxChildItems           = 999;
+        // Type-aware issuance (ADR 0001). Document/Standard and Document/Procedure are
+        // base-only; Drawing, Document/Form, and legacy/null reservations get child items.
+        private const int    ReservationTypeDocument   = 2;
+        private const int    DocumentSubtypeStandard   = 1;
+        private const int    DocumentSubtypeProcedure  = 2;
+        private const int    DocumentSubtypeForm       = 3;
+        private const int    MaxChildItems             = 999;
 
         public AutoCreateDrawingsPlugin() : base(typeof(AutoCreateDrawingsPlugin)) { }
 
@@ -40,6 +42,34 @@ namespace Enmax.AutoCAD
             : base(typeof(AutoCreateDrawingsPlugin)) { }
 
         protected override void ExecuteDataversePlugin(ILocalPluginContext localPluginContext)
+        {
+            var context = localPluginContext.PluginExecutionContext;
+            var tracing = localPluginContext.TracingService;
+
+            // Async soft-fail policy: this step runs asynchronously off the reservation-approval
+            // transaction, which has already committed by the time this executes. Faulting here
+            // would only surface as a silent failed async job — log to enmax_autocadflowexception
+            // and return instead of throwing, so the failure is visible to admins.
+            try
+            {
+                ExecuteAutoCreateDrawings(localPluginContext);
+            }
+            catch (Exception ex)
+            {
+                tracing.Trace($"AutoCreateDrawings: unhandled exception — {ex.Message}");
+                ExceptionEmitter.Log(
+                    localPluginContext.SystemUserService,
+                    tracing,
+                    ex,
+                    failedAction: $"{nameof(AutoCreateDrawingsPlugin)}.{nameof(ExecuteDataversePlugin)}",
+                    subjectTable: context.PrimaryEntityName,
+                    subjectId: context.PrimaryEntityId,
+                    actingUserId: localPluginContext.ActingUserId,
+                    correlationId: context.CorrelationId);
+            }
+        }
+
+        private void ExecuteAutoCreateDrawings(ILocalPluginContext localPluginContext)
         {
             var context = localPluginContext.PluginExecutionContext;
             var service = localPluginContext.SystemUserService;
@@ -110,10 +140,10 @@ namespace Enmax.AutoCAD
                 ? post.GetAttributeValue<int>("enmax_acdnsheetsperdrawing") : 0;
             int sheetCount = Math.Min(Math.Max(sheetsPer, 1), MaxChildItems);
 
-            // Type-aware issuance (ADR 0001): Document/Standard is base-only. Type/Subtype
-            // are carried on the post-image (missing -> null -> legacy Drawing behavior).
+            // Type-aware issuance (ADR 0001): Document/Standard and Document/Procedure are
+            // base-only. Type/Subtype on the post-image (missing -> null -> Drawing).
             bool createChildren = CreatesChildItems(post);
-            bool createSingletonStandardSheet = IsStandardDocument(post);
+            bool createSingletonStandardSheet = IsBaseOnlyDocument(post);
             int issuedSheetCount = createChildren ? sheetCount : 1;
 
             int created = 0;
@@ -156,7 +186,18 @@ namespace Enmax.AutoCAD
                         if (owner != null) sheet["ownerid"] = owner;
                         CopyLookup(post, sheet, "enmax_acdnreservationtype");
                         CopyLookup(post, sheet, "enmax_acdndocumentsubtype");
-                        service.Create(sheet);
+                        Guid sheetId = service.Create(sheet);
+
+                        service.Create(new Entity(AuditEntity)
+                        {
+                            ["enmax_acdnevent"]        = new OptionSetValue(AuditEventCreated),
+                            ["enmax_acdnsource"]       = new OptionSetValue(AuditSourceAction),
+                            ["enmax_acdnsubjectid"]    = sheetId.ToString(),
+                            ["enmax_acdnsubjecttable"] = SheetEntity,
+                            ["enmax_acdnactedby"]      = new EntityReference("systemuser", actorId),
+                            ["enmax_acdntostate"]      = "Allocated",
+                            ["enmax_acdnname"]         = $"Sheet {sheetId} allocated",
+                        });
                     }
                 }
 
@@ -167,7 +208,8 @@ namespace Enmax.AutoCAD
                     ["enmax_acdnsubjectid"]    = drawingId.ToString(),
                     ["enmax_acdnsubjecttable"] = DrawingEntity,
                     ["enmax_acdnactedby"]      = new EntityReference("systemuser", actorId),
-                    ["enmax_acdnname"]         = $"Drawing {drawingId} created",
+                    ["enmax_acdntostate"]      = "Allocated",
+                    ["enmax_acdnname"]         = $"Drawing {drawingId} allocated",
                 });
             }
 
@@ -212,22 +254,27 @@ namespace Enmax.AutoCAD
         }
 
         /// <summary>
-        /// Document/Standard reservations are base-only (a single Standard Document, no
-        /// child items). Drawing, Document/Procedure, and legacy/null-type reservations
-        /// all create child items — preserving the pre-taxonomy Drawing behavior.
+        /// Drawing, Document/Form, and legacy/null-type reservations create child items
+        /// (-sss). Document/Standard and Document/Procedure are base-only.
         /// </summary>
         private static bool CreatesChildItems(Entity reservation)
         {
             var type    = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
             var subtype = reservation.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value;
-            return !(type == ReservationTypeDocument && subtype == DocumentSubtypeStandard);
+            if (type != ReservationTypeDocument) return true;
+            return subtype == DocumentSubtypeForm;
         }
 
-        private static bool IsStandardDocument(Entity reservation)
+        /// <summary>
+        /// Standard and Procedure get a singleton sheet carrier (no sheet number) for
+        /// checkout/check-in; Form uses numbered children instead.
+        /// </summary>
+        private static bool IsBaseOnlyDocument(Entity reservation)
         {
             var type = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
             var subtype = reservation.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value;
-            return type == ReservationTypeDocument && subtype == DocumentSubtypeStandard;
+            return type == ReservationTypeDocument
+                && (subtype == DocumentSubtypeStandard || subtype == DocumentSubtypeProcedure);
         }
 
         private static void CopyLookup(Entity source, Entity target, string attribute)

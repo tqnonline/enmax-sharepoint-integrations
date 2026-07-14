@@ -237,7 +237,7 @@
         },
         "enmax_acdnreason": {
           "type": "string",
-          "title": "Reason for Reservation",
+          "title": "Reason For Reservation",
           "x-ms-dataverse-attribute": "enmax_acdnreason",
           "x-ms-dataverse-type": "MemoType",
           "x-ms-schema-name": "enmax_acdnReason",

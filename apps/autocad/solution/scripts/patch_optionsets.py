@@ -102,6 +102,7 @@ OPTIONSET_PATCHES: dict[str, list[tuple[int, str]]] = {
         (0, "None"),
         (1, "Standard"),
         (2, "Procedure"),
+        (3, "Form"),
     ],
 }
 

@@ -210,14 +210,20 @@ export async function fetchCheckins(): Promise<CheckinRow[]> {
       documentSubtype,
       isChildSheet: !(
         reservationType === RESERVATION_TYPE_VALUE.Document
-        && documentSubtype === DOCUMENT_SUBTYPE_VALUE.Standard
+        && (
+          documentSubtype === DOCUMENT_SUBTYPE_VALUE.Standard
+          || documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure
+        )
       ),
       sheetDropOffUrl: s["enmax_acdnsharepointurl"] as string | undefined,
       sheetDestinationUrl: s["enmax_acdnspdestinationurl"] as string | undefined,
       drawingDropOffUrl: d["enmax_acdnsplibraryurl"] as string | undefined,
       drawingDestinationUrl: d["enmax_acdnspdestinationurl"] as string | undefined,
     });
-    const sharePointUrl = sharePointFileUrl(spResolved.dropOffUrl, spResolved.destinationUrl);
+    // Check-in queue rows are awaiting validation — prefer drop-off.
+    const sharePointUrl = sharePointFileUrl(spResolved.dropOffUrl, spResolved.destinationUrl, {
+      preferDropOff: true,
+    });
     const displayNumber = documentDisplayNumber(baseNumber, sheetNum, reservationType, documentSubtype)
       || (s["enmax_acdnfilename"] as string)
       || baseNumber;

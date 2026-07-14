@@ -376,16 +376,17 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var svc    = ctx.GetFakedOrganizationService();
             var audits = svc.RetrieveMultiple(new QueryExpression("enmax_autocadauditevent") { ColumnSet = new ColumnSet(true) });
 
-            audits.Entities.Should().HaveCount(2, because: "one Created audit must be written per drawing");
+            audits.Entities.Should().HaveCount(4, because: "one Allocated audit per drawing and per sheet");
             audits.Entities.Should().OnlyContain(a => a.GetAttributeValue<OptionSetValue>("enmax_acdnevent").Value == 1,
                 because: "event type 1 = Created");
-            audits.Entities.Should().OnlyContain(a => a.GetAttributeValue<string>("enmax_acdnsubjecttable") == "enmax_autocaddrawing",
-                because: "audit subject table must be the drawing");
+            audits.Entities.Should().OnlyContain(a => a.GetAttributeValue<string>("enmax_acdntostate") == "Allocated",
+                because: "issuance is recorded as Allocated in the lifecycle");
 
             var drawings   = svc.RetrieveMultiple(new QueryExpression("enmax_autocaddrawing") { ColumnSet = new ColumnSet("enmax_autocaddrawingid") });
             var drawingIds = new HashSet<string>(drawings.Entities.Select(d => d.Id.ToString()));
-            audits.Entities.Should().OnlyContain(a => drawingIds.Contains(a.GetAttributeValue<string>("enmax_acdnsubjectid")),
-                because: "each audit subjectid must be a real drawing id");
+            audits.Entities.Where(a => a.GetAttributeValue<string>("enmax_acdnsubjecttable") == "enmax_autocaddrawing")
+                .Should().OnlyContain(a => drawingIds.Contains(a.GetAttributeValue<string>("enmax_acdnsubjectid")),
+                because: "each drawing audit subjectid must be a real drawing id");
         }
 
         [Fact]

@@ -73,10 +73,10 @@ afterEach(() => {
 
 test("shows drawing documents tab and composition filters", async () => {
   renderWithProviders(<SearchPage />);
-  expect(screen.getByRole("tab", { name: /Drawings \(Drawing documents\)/i })).toBeInTheDocument();
-  expect(screen.getByRole("tab", { name: /Standard Documents & Procedure forms/i })).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: /Drawings \(Drawing Documents\)/i })).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: /Standard Documents, Procedures & Forms/i })).toBeInTheDocument();
   expect(screen.getByLabelText(/Business/i)).toBeInTheDocument();
-  await waitFor(() => expect(screen.getByText("1 result")).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText("1 matching document")).toBeInTheDocument());
 });
 
 test("query shows individual document results", async () => {
@@ -84,7 +84,7 @@ test("query shows individual document results", async () => {
   renderWithProviders(<SearchPage />);
   await runQuery(user);
   await waitFor(() => expect(screen.getByText("GG-CG-00-ECS-AST-DD-0001-001")).toBeInTheDocument());
-  expect(screen.getByText("1 result")).toBeInTheDocument();
+  expect(screen.getByText("1 matching document")).toBeInTheDocument();
   expect(screen.getByText(/SLD-001\.dwg/i)).toBeInTheDocument();
 });
 
@@ -103,8 +103,27 @@ test("clicking a result navigates to document detail page", async () => {
 test("documents tab shows type filter", async () => {
   const user = userEvent.setup();
   renderWithProviders(<SearchPage />);
-  await user.click(screen.getByRole("tab", { name: /Standard Documents & Procedure forms/i }));
+  await user.click(screen.getByRole("tab", { name: /Standard Documents, Procedures & Forms/i }));
   expect(screen.getByLabelText(/Filter by document type/i)).toBeInTheDocument();
+});
+
+test("shows pagination and matching count when results exceed page size", async () => {
+  const { fetchSearchDocuments } = await import("../../features/search/useSearchDocuments");
+  vi.mocked(fetchSearchDocuments).mockResolvedValueOnce({
+    rows: Array.from({ length: 10 }, (_, i) => ({
+      ...MOCK_DOCUMENT,
+      id: `sheet-${i}`,
+      documentNumber: `GG-CG-00-ECS-AST-DD-0001-${String(i + 1).padStart(3, "0")}`,
+    })),
+    totalCount: 25,
+  });
+
+  renderWithProviders(<SearchPage />);
+  await waitFor(() => expect(screen.getByText("25 matching documents")).toBeInTheDocument());
+  expect(screen.getByText(/Showing 1–10 of 25/i)).toBeInTheDocument();
+  expect(screen.getByText(/Page 1 of 3/i)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Next/i })).toBeEnabled();
+  expect(screen.getByRole("button", { name: /Previous/i })).toBeDisabled();
 });
 
 test("SharePoint link opens in new tab from result card", async () => {

@@ -13,6 +13,7 @@ export interface SheetCheckoutInfo {
   checkoutId: string;
   status: number;
   statusLabel: string;
+  checkedOutBy?: string;
   checkedOutOn?: string;
   checkedOutByName?: string;
   closedOn?: string;
@@ -26,6 +27,7 @@ function rowToInfo(raw: Record<string, unknown>): SheetCheckoutInfo {
     checkoutId: (raw["enmax_autocadcheckoutid"] as string) ?? "",
     status,
     statusLabel: CHECKOUT_STATUS_LABELS[status] ?? "Unknown",
+    checkedOutBy: (raw["_enmax_acdncheckedoutby_value"] as string | undefined) ?? undefined,
     checkedOutOn: (raw["enmax_acdncheckedouton"] as string | undefined) ?? undefined,
     checkedOutByName:
       (raw["_enmax_acdncheckedoutby_value@OData.Community.Display.V1.FormattedValue"] as string | undefined) ?? undefined,

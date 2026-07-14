@@ -36,9 +36,9 @@ import {
   submittedByColumn,
   approvedByColumn,
   sharePointColumn,
-  sharePointUrlFrom,
   dateTimeColumn,
 } from "../../components/DataGrid";
+import { gridSharePointFileUrl } from "../sharepoint/sharepointUrls";
 import type { ColumnDef, GridFetchParams } from "../../components/DataGrid";
 import type { DrawingRow } from "../search/useSearchDrawings";
 import { documentDisplayNumber } from "../reserve/terminology";
@@ -66,9 +66,10 @@ const STATE_TABS: { value: MyRecordStateFilter; label: string; url: string }[] =
 ];
 
 const DOCUMENT_TYPE_OPTIONS: { value: DocumentSubtypeFilter; label: string }[] = [
-  { value: "all",       label: "All types" },
+  { value: "all",       label: "All Types" },
   { value: "standard",  label: "Standard Document" },
-  { value: "procedure", label: "Procedure form" },
+  { value: "procedure", label: "Procedure" },
+  { value: "form",      label: "Form" },
 ];
 
 const STATUS_COLORS: Record<string, "success" | "warning" | "danger" | "informative" | undefined> = {
@@ -222,6 +223,7 @@ export function MyItemsPage() {
   const activeState = parseStateParam(searchParams.get("state"));
   const activeSubtype = parseSubtypeParam(searchParams.get("subtype"));
   const [panelDrawing, setPanelDrawing] = useState<DrawingRow | null>(null);
+  const [panelSheetId, setPanelSheetId] = useState<string | undefined>(undefined);
 
   const routeKey = `${activeTab}:${activeState}:${activeSubtype}`;
   const prevRouteKey = useRef(routeKey);
@@ -311,7 +313,7 @@ export function MyItemsPage() {
     const { from, to } = normalizeGridDateRange(filterDraft.from, filterDraft.to);
     if (!from || !to) {
       dispatchToast(
-        <Toast><ToastTitle>From and To dates are required to run a query.</ToastTitle></Toast>,
+        <Toast><ToastTitle>From And To Dates Are Required To Run A Query.</ToastTitle></Toast>,
         { intent: "warning" },
       );
       return;
@@ -357,14 +359,19 @@ export function MyItemsPage() {
   }
 
   const columns = useMemo<ColumnDef<MyRecordRow>[]>(() => {
+    // Checked Out tab: bias to the drop-off copy (the revision users are actively
+    // reviewing). Every other tab is destination-first.
     const sharePoint = sharePointColumn<MyRecordRow>(
-      (r) => sharePointUrlFrom(r.libraryUrl, r.destinationUrl),
+      (r) => gridSharePointFileUrl(
+        { dropOffUrl: r.libraryUrl, destinationUrl: r.destinationUrl },
+        { surface: activeState === "checkedout" ? "checkedOutTab" : "default" },
+      ),
     );
 
     const base: ColumnDef<MyRecordRow>[] = [
       {
         id: "number",
-        header: activeState === "reservations" ? "Reservation #" : "Issued number",
+        header: activeState === "reservations" ? "Reservation #" : "Issued Number",
         accessor: r => displayNumber(r, compMaps),
         sortable: activeState !== "reservations",
         width: 220,
@@ -468,7 +475,7 @@ export function MyItemsPage() {
 
   const numberLabel = activeState === "reservations"
     ? "Reservation #"
-    : "Issued number";
+    : "Issued Number";
 
   return (
     <div className={styles.root}>
@@ -558,7 +565,10 @@ export function MyItemsPage() {
           rowKey={r => r.id}
           onRowClick={r => {
             if (r.source === "reservation") navigate(`/reservations/${r.id}`);
-            else setPanelDrawing(makeDrawingRow(r));
+            else {
+              setPanelDrawing(makeDrawingRow(r));
+              setPanelSheetId(r.id);
+            }
           }}
           exportFileName={`my-${activeState}`}
           defaultSort={defaultSort}
@@ -569,7 +579,14 @@ export function MyItemsPage() {
         />
       </div>
 
-      <DrawingDetailPanel drawing={panelDrawing} onClose={() => setPanelDrawing(null)} />
+      <DrawingDetailPanel
+        drawing={panelDrawing}
+        selectedSheetId={panelSheetId}
+        onClose={() => {
+          setPanelDrawing(null);
+          setPanelSheetId(undefined);
+        }}
+      />
     </div>
   );
 }

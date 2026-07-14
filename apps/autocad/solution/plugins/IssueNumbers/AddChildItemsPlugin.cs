@@ -36,8 +36,9 @@ namespace Enmax.AutoCAD
         // Child items are hard-capped at 999 (the 3-digit -sss ceiling).
         private const int MaxChildItems = 999;
 
-        private const int ReservationTypeDocument = 2;
-        private const int DocumentSubtypeStandard = 1;
+        private const int ReservationTypeDocument  = 2;
+        private const int DocumentSubtypeStandard  = 1;
+        private const int DocumentSubtypeProcedure = 2;
 
         public AddChildItemsPlugin() : base(typeof(AddChildItemsPlugin)) { }
 
@@ -76,12 +77,14 @@ namespace Enmax.AutoCAD
             Entity drawing = service.Retrieve(DrawingEntity, drawingRef.Id, new ColumnSet(
                 "enmax_acdnnumber",
                 "enmax_acdnreservation",
-                "ownerid"));
+                "ownerid",
+                "enmax_acdnreservationtype",
+                "enmax_acdndocumentsubtype"));
 
             string baseNumber = drawing.GetAttributeValue<string>("enmax_acdnnumber");
             var owner         = drawing.GetAttributeValue<EntityReference>("ownerid");
 
-            // Guard: Standard documents are base-only and cannot take child items.
+            // Guard: Standard and Procedure are base-only and cannot take child items.
             RejectIfBaseOnlyStandard(service, drawing);
 
             // ── Determine the next index from the current max child (-sss) ────────
@@ -132,11 +135,18 @@ namespace Enmax.AutoCAD
         }
 
         /// <summary>
-        /// Document/Standard reservations are base-only (ADR 0001 #1). If the base
-        /// drawing traces to a Standard reservation, reject the append.
+        /// Document/Standard and Document/Procedure are base-only (ADR 0001 #1). Append
+        /// only Drawing and Document/Form bases. Also check denormalized subtype on the
+        /// drawing when the reservation link is missing (legacy rows).
         /// </summary>
         private static void RejectIfBaseOnlyStandard(IOrganizationService service, Entity drawing)
         {
+            var drawingType = drawing.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
+            var drawingSubtype = drawing.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value;
+            if (IsBaseOnlyDocument(drawingType, drawingSubtype))
+                throw new InvalidPluginExecutionException(
+                    "Standard documents and Procedures are base-only and cannot take additional items.");
+
             var reservationRef = drawing.GetAttributeValue<EntityReference>("enmax_acdnreservation");
             if (reservationRef == null) return; // legacy drawing with no reservation link
 
@@ -147,9 +157,13 @@ namespace Enmax.AutoCAD
             var type    = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
             var subtype = reservation.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value;
 
-            if (type == ReservationTypeDocument && subtype == DocumentSubtypeStandard)
+            if (IsBaseOnlyDocument(type, subtype))
                 throw new InvalidPluginExecutionException(
-                    "Standard documents are base-only and cannot take additional items.");
+                    "Standard documents and Procedures are base-only and cannot take additional items.");
         }
+
+        private static bool IsBaseOnlyDocument(int? type, int? subtype)
+            => type == ReservationTypeDocument
+               && (subtype == DocumentSubtypeStandard || subtype == DocumentSubtypeProcedure);
     }
 }

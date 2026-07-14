@@ -83,6 +83,7 @@
       <RootComponent type="1" schemaName="enmax_autocadauditevent" behavior="0" />
       <RootComponent type="1" schemaName="enmax_autocadbroadcast" behavior="0" />
       <RootComponent type="1" schemaName="enmax_autocadbroadcastdismissal" behavior="0" />
+      <RootComponent type="1" schemaName="enmax_autocadflowexception" behavior="0" />
       <RootComponent type="1" schemaName="enmax_autocadbusiness" behavior="0" />
       <RootComponent type="1" schemaName="enmax_autocadcheckout" behavior="0" />
       <RootComponent type="1" schemaName="enmax_autocaddomain" behavior="0" />
@@ -109,6 +110,8 @@
       <RootComponent type="9" schemaName="enmax_acdn_checkoutreminderstage" behavior="0" />
       <RootComponent type="9" schemaName="enmax_acdn_checkoutstatus" behavior="0" />
       <RootComponent type="9" schemaName="enmax_acdn_documentsubtype" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_exceptionorigin" behavior="0" />
+      <RootComponent type="9" schemaName="enmax_acdn_exceptionseverity" behavior="0" />
       <RootComponent type="9" schemaName="enmax_acdn_drawingstate" behavior="0" />
       <RootComponent type="9" schemaName="enmax_acdn_notificationseverity" behavior="0" />
       <RootComponent type="9" schemaName="enmax_acdn_numbersequencestatus" behavior="0" />

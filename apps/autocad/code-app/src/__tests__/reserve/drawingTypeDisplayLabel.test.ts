@@ -67,7 +67,7 @@ describe("typeLabelForDrawingRow", () => {
 });
 
 describe("documentDisplayNumber", () => {
-  it("adds a 3-digit sheet suffix for drawing/procedure taxonomies", () => {
+  it("adds a 3-digit sheet suffix for drawing/form taxonomies", () => {
     expect(
       documentDisplayNumber(
         "GG-CG-00-ECS-AST-DD-0001",
@@ -81,18 +81,26 @@ describe("documentDisplayNumber", () => {
         "GG-CG-00-ECS-AST-DD-0001",
         7,
         RESERVATION_TYPE_VALUE.Document,
-        DOCUMENT_SUBTYPE_VALUE.Procedure,
+        DOCUMENT_SUBTYPE_VALUE.Form,
       ),
     ).toBe("GG-CG-00-ECS-AST-DD-0001-007");
   });
 
-  it("keeps standard document display at the base number", () => {
+  it("keeps standard and procedure display at the base number", () => {
     expect(
       documentDisplayNumber(
         "GG-CG-00-ECS-AST-DD-0001",
         7,
         RESERVATION_TYPE_VALUE.Document,
         DOCUMENT_SUBTYPE_VALUE.Standard,
+      ),
+    ).toBe("GG-CG-00-ECS-AST-DD-0001");
+    expect(
+      documentDisplayNumber(
+        "GG-CG-00-ECS-AST-DD-0001",
+        7,
+        RESERVATION_TYPE_VALUE.Document,
+        DOCUMENT_SUBTYPE_VALUE.Procedure,
       ),
     ).toBe("GG-CG-00-ECS-AST-DD-0001");
   });

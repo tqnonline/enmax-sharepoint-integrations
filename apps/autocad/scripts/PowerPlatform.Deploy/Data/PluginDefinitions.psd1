@@ -459,6 +459,54 @@
                 @{ Name="PresentInDestination";  Type=0 }
             )
         }
+
+        # ── Global: SharePoint import stub (WS5 destination-side orphans) ────
+        # Unbound. The indexer calls this only for a destination PDF with no
+        # matching Dataverse record (never for drop-off unmatched files). Always
+        # ensures the parent enmax_autocaddrawing first (Pending SharePoint
+        # Import = 8, never Available), then for a Drawing/Form filename
+        # carrying a -ddd sheet suffix also find-or-creates the child
+        # enmax_autocadsheet and links the destination URL there. Idempotent on
+        # FileUrl (enmax_acdnspimportsourceurl).
+        @{
+            UniqueName  = "enmax_acdnCreateSharePointImportStub"
+            DisplayName = "Create SharePoint Import Stub"
+            Description = "WS5 indexer: creates (or ensures) a Pending SharePoint Import (8) drawing/document stub for a destination PDF with no matching Dataverse record. Drawing/Form filenames with a -ddd sheet suffix also find-or-create the child sheet and link the destination URL there; Standard/Procedure and non-suffixed numbers link the destination on the parent. Idempotent on FileUrl. Inputs: FileName, FileUrl, Taxonomy (Drawing|Standard|Procedure|Form), MetadataJson (optional), RecordTypeSp (optional). Returns DrawingId, SheetId, RecordNumber, Created."
+            PluginClass = "Enmax.AutoCAD.CreateSharePointImportStubPlugin"
+            BindingType = 0
+            BoundEntity = $null
+            Params = @(
+                @{ Name="ActingUserId";  Type=10; Optional=$true  }
+                @{ Name="FileName";      Type=10; Optional=$false }
+                @{ Name="FileUrl";       Type=10; Optional=$false }
+                @{ Name="Taxonomy";      Type=10; Optional=$false }
+                @{ Name="MetadataJson";  Type=10; Optional=$true  }
+                @{ Name="RecordTypeSp";  Type=10; Optional=$true  }
+            )
+            Response = @(
+                @{ Name="DrawingId";     Type=10 }
+                @{ Name="SheetId";       Type=10 }
+                @{ Name="RecordNumber";  Type=10 }
+                @{ Name="Created";       Type=0  }
+            )
+        }
+
+        # ── Entity-bound: Approve a SharePoint import stub ────────────────────
+        @{
+            UniqueName  = "enmax_acdnApproveSharePointImport"
+            DisplayName = "Approve SharePoint Import"
+            Description = "Approves a Pending SharePoint Import (8) drawing/document stub (Approver/Admin only). Moves it to Available (1) and stamps enmax_acdnspimportapprovedon. Rejects if another non-pending drawing already holds the same number. Target is the drawing."
+            PluginClass = "Enmax.AutoCAD.ApproveSharePointImportPlugin"
+            BindingType = 1
+            BoundEntity = "enmax_autocaddrawing"
+            Params = @(
+                @{ Name="ActingUserId"; Type=10; Optional=$true  }
+            )
+            Response = @(
+                @{ Name="DrawingId"; Type=10 }
+                @{ Name="NewState";  Type=7  }
+            )
+        }
     )
 
     StepDefs = @(

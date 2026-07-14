@@ -21,7 +21,12 @@ Intended interface (NOT YET IMPLEMENTED):
     Required credentials (from load_env):
         DATAVERSE_URL, DATAVERSE_CLIENT_ID, DATAVERSE_CLIENT_SECRET, DATAVERSE_TENANT_ID
     Additional config (to be read from deploy.profile.yaml or App Configuration table):
-        Per-flow connection reference logical names and connection IDs.
+        connection_references in deploy.profile.yaml — logical names already in DEV:
+          enmax_autocadconrefDataverse, enmax_autocadconrefOutlook,
+          enmax_autocadconrefSharePoint, enmax_autocadconrefTeams
+          (see connection_references block).
+        Per-flow workflow.json under solution/src/Workflows/*/ maps connector keys
+        to those logical names via build_workflow_clientdata.py.
 
 Raises NotImplementedError until this command is implemented.
 """

@@ -1,8 +1,7 @@
-import { Link, Text, tokens, makeStyles } from "@fluentui/react-components";
+import { Button, Text, tokens, makeStyles } from "@fluentui/react-components";
 import { OpenRegular } from "@fluentui/react-icons";
 import {
   buildSharePointLibraryBrowseUrl,
-  buildSharePointLibraryEmbedUrl,
   expectedPdfFileName,
   useDropOffLibraryUrl,
 } from "./sharepointUrls";
@@ -11,75 +10,87 @@ const useStyles = makeStyles({
   root: {
     display: "flex",
     flexDirection: "column",
-    gap: tokens.spacingVerticalS,
-  },
-  frameWrap: {
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: tokens.borderRadiusMedium,
-    overflow: "hidden",
-    backgroundColor: tokens.colorNeutralBackground2,
-    minHeight: "320px",
-  },
-  frame: {
-    display: "block",
+    gap: tokens.spacingVerticalM,
     width: "100%",
-    height: "360px",
-    border: "none",
+    padding: `0 ${tokens.spacingHorizontalL}`,
+    boxSizing: "border-box",
+  },
+  callout: {
+    display: "flex",
+    flexDirection: "column",
+    gap: tokens.spacingVerticalS,
+    padding: tokens.spacingHorizontalL,
+    borderRadius: tokens.borderRadiusMedium,
+    border: `2px solid ${tokens.colorBrandStroke1}`,
+    backgroundColor: tokens.colorBrandBackground2,
   },
   hint: {
-    color: tokens.colorNeutralForeground3,
+    color: tokens.colorNeutralForeground1,
   },
-  openLink: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: tokens.spacingHorizontalXXS,
-    fontSize: tokens.fontSizeBase200,
+  fileName: {
+    fontFamily: "monospace",
+  },
+  openButton: {
+    alignSelf: "flex-start",
   },
 });
 
 interface Props {
   recordNumber: string;
   site?: "drawings" | "documents";
+  /** Per-taxonomy library resolution; takes precedence over `site` when provided. */
+  reservationType?: number | null;
+  documentSubtype?: number | null;
   enabled?: boolean;
 }
 
 /**
- * Embeds the SharePoint drop-off library in the Check In modal so users upload
- * without leaving the app. Falls back to an open-in-new-tab link when embed is
- * blocked by tenant policy.
+ * Highly visible link to the SharePoint drop-off library for Check In uploads.
+ * Replaces the former iframe embed (tenant policy often blocked embedding).
  */
 export function SharePointLibraryEmbed({
   recordNumber,
   site = "drawings",
+  reservationType,
+  documentSubtype,
   enabled = true,
 }: Props) {
   const styles = useStyles();
-  const libraryUrl = useDropOffLibraryUrl(site);
+  const libraryUrl = useDropOffLibraryUrl(
+    reservationType !== undefined || documentSubtype !== undefined
+      ? { reservationType, documentSubtype }
+      : site,
+  );
 
   if (!enabled || !libraryUrl) return null;
 
-  const embedUrl = buildSharePointLibraryEmbedUrl(libraryUrl);
   const browseUrl = buildSharePointLibraryBrowseUrl(libraryUrl);
   const fileName = expectedPdfFileName(recordNumber);
 
   return (
     <div className={styles.root}>
-      <Text size={200} className={styles.hint}>
-        Upload{" "}
-        <Text weight="semibold" style={{ fontFamily: "monospace" }}>{fileName}</Text>
-        {" "}to the drop-off library below.
-      </Text>
-      <div className={styles.frameWrap}>
-        <iframe
-          className={styles.frame}
-          src={embedUrl}
-          title={`SharePoint drop-off library for ${recordNumber}`}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"
-        />
+      <div className={styles.callout}>
+        <Text size={300} weight="semibold" className={styles.hint}>
+          Upload your revised PDF to the drop-off library
+        </Text>
+        <Text size={200} className={styles.hint}>
+          Open the library and upload{" "}
+          <Text weight="semibold" className={styles.fileName}>{fileName}</Text>
+          {" "}exactly (filename must match).
+        </Text>
+        <Button
+          as="a"
+          href={browseUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          appearance="primary"
+          size="large"
+          icon={<OpenRegular />}
+          className={styles.openButton}
+        >
+          Open drop-off library
+        </Button>
       </div>
-      <Link href={browseUrl} target="_blank" rel="noopener noreferrer" className={styles.openLink}>
-        Open library in new tab <OpenRegular aria-hidden />
-      </Link>
     </div>
   );
 }

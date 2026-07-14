@@ -244,7 +244,7 @@ export function AuditPage() {
         onDraftChange={(patch) => setFilterDraft((prev) => ({ ...prev, ...patch }))}
         onQuery={handleQuery}
         onClear={clearFilters}
-        personLabel="Acted by"
+        personLabel="Acted By"
         peopleIds={filterDraft.peopleIds}
         onPeopleChange={(ids) => setFilterDraft((prev) => ({ ...prev, peopleIds: ids }))}
         extraFields={(
@@ -292,7 +292,7 @@ export function AuditPage() {
           enableColumnVisibility
           enableQuickSearch={false}
           defaultSort={{ column: "createdOn", direction: "desc" }}
-          emptyMessage="No audit events in selected range."
+          emptyMessage="No Audit Events In Selected Range."
           errorMessage="Failed to load audit events."
         />
       </div>

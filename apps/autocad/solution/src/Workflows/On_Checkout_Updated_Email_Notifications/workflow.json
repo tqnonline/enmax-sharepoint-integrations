@@ -1,0 +1,409 @@
+{
+  "schemaVersion": "1.0.0.0",
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "enmax_autocadconrefDataverse"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
+      "triggers": {
+        "When_Checkout_Updated": {
+          "type": "OpenApiConnectionWebhook",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "SubscribeWebhookTrigger",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "subscriptionRequest/message": 3,
+              "subscriptionRequest/entityname": "enmax_autocadcheckout",
+              "subscriptionRequest/scope": 4,
+              "subscriptionRequest/filterexpression": "(enmax_acdnstatus eq 1 or enmax_acdnstatus eq 2 or enmax_acdnstatus eq 3)"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "metadata": {
+            "description": "Checkout approved (Open), check-in submitted (Awaiting Validation), or auto check-in closed (Closed Approved)."
+          }
+        }
+      },
+      "actions": {
+        "Initialize_CorrelationId": {
+          "type": "InitializeVariable",
+          "runAfter": {},
+          "inputs": {
+            "variables": [
+              {
+                "name": "CorrelationId",
+                "type": "string",
+                "value": "@{coalesce(triggerBody()?['CorrelationId'], guid())}"
+              }
+            ]
+          }
+        },
+        "Initialize_FlowDisplayName": {
+          "type": "InitializeVariable",
+          "runAfter": {
+            "Initialize_CorrelationId": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "variables": [
+              {
+                "name": "FlowDisplayName",
+                "type": "string",
+                "value": "Enmax AutoCAD | On Update of Checkout | Send Lifecycle Emails"
+              }
+            ]
+          }
+        },
+        "Initialize_FlowRunUrlTemplate": {
+          "type": "InitializeVariable",
+          "runAfter": {
+            "Initialize_FlowDisplayName": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "variables": [
+              {
+                "name": "FlowRunUrlTemplate",
+                "type": "string",
+                "value": "https://make.powerautomate.com/environments/{environmentId}/flows/{flowId}/runs/{runId}"
+              }
+            ]
+          }
+        },
+        "Scope_Try_Main": {
+          "type": "Scope",
+          "runAfter": {
+            "Initialize_FlowRunUrlTemplate": [
+              "Succeeded"
+            ]
+          },
+          "actions": {
+            "Get_App_Config": {
+              "type": "OpenApiConnection",
+              "runAfter": {},
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "ListRecords",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "enmax_autocadappconfigs",
+                  "$filter": "enmax_acdnkey eq 'DocControlEmailAddress'",
+                  "$top": 1
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Get_CodeApp_BaseUrl_Config": {
+              "type": "OpenApiConnection",
+              "runAfter": {
+                "Get_App_Config": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "ListRecords",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "enmax_autocadappconfigs",
+                  "$filter": "enmax_acdnkey eq 'CodeAppBaseUrl'",
+                  "$top": 1
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Get_Drawing": {
+              "type": "OpenApiConnection",
+              "runAfter": {
+                "Get_CodeApp_BaseUrl_Config": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "GetItem",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "enmax_autocaddrawings",
+                  "recordId": "@{triggerOutputs()?['body/_enmax_acdndrawing_value']}"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Get_Reservation": {
+              "type": "OpenApiConnection",
+              "runAfter": {
+                "Get_Drawing": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "GetItem",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "enmax_autocadreservations",
+                  "recordId": "@{outputs('Get_Drawing')?['body/_enmax_acdnreservation_value']}"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Get_Reservation_Creator": {
+              "type": "OpenApiConnection",
+              "runAfter": {
+                "Get_Reservation": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "GetItem",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "systemusers",
+                  "recordId": "@{outputs('Get_Reservation')?['body/_createdby_value']}"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Compose_DocControl": {
+              "type": "Compose",
+              "runAfter": {
+                "Get_Reservation_Creator": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@{outputs('Get_App_Config')?['body/value'][0]?['enmax_acdnvalue']}"
+            },
+            "Compose_CodeApp_BaseUrl": {
+              "type": "Compose",
+              "runAfter": {
+                "Get_Reservation_Creator": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@{outputs('Get_CodeApp_BaseUrl_Config')?['body/value'][0]?['enmax_acdnvalue']}"
+            },
+            "Compose_Document_Number": {
+              "type": "Compose",
+              "runAfter": {
+                "Get_Reservation_Creator": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@{coalesce(outputs('Get_Drawing')?['body/enmax_acdnnumber'], triggerOutputs()?['body/enmax_acdnname'])}"
+            },
+            "Route_By_Status": {
+              "type": "Switch",
+              "runAfter": {
+                "Compose_DocControl": [
+                  "Succeeded"
+                ],
+                "Compose_CodeApp_BaseUrl": [
+                  "Succeeded"
+                ],
+                "Compose_Document_Number": [
+                  "Succeeded"
+                ]
+              },
+              "expression": "@triggerOutputs()?['body/enmax_acdnstatus']",
+              "cases": {
+                "Open": {
+                  "case": 1,
+                  "actions": {
+                    "Email_Creator_Checked_Out": {
+                      "type": "Workflow",
+                      "inputs": {
+                        "host": {
+                          "workflowReferenceName": "Child_Send_System_Email"
+                        },
+                        "body": {
+                          "To": "@{outputs('Get_Reservation_Creator')?['body/internalemailaddress']}",
+                          "Cc": "@{outputs('Compose_DocControl')}",
+                          "Subject": "Checked out: @{outputs('Compose_Document_Number')}",
+                          "BodyHtml": "<p>Your reserved document has been checked out.</p><p><strong>Document:</strong> @{outputs('Compose_Document_Number')}</p><p>Upload your revised PDF to the drop-off library, then submit Check In from the Code App.</p><p><a href=\"@{outputs('Compose_CodeApp_BaseUrl')}/my-items\">Open My Items</a></p>"
+                        }
+                      }
+                    }
+                  }
+                },
+                "AwaitingValidation": {
+                  "case": 2,
+                  "actions": {
+                    "Email_DocControl_CheckIn_Approval": {
+                      "type": "Workflow",
+                      "inputs": {
+                        "host": {
+                          "workflowReferenceName": "Child_Send_System_Email"
+                        },
+                        "body": {
+                          "To": "@{outputs('Compose_DocControl')}",
+                          "Cc": "",
+                          "Subject": "Check In validation needed: @{outputs('Compose_Document_Number')}",
+                          "BodyHtml": "<p>A check-in is awaiting validation.</p><p><strong>Document:</strong> @{replace(replace(outputs('Compose_Document_Number'), '<', '&lt;'), '>', '&gt;')}</p><p><strong>Submitted by:</strong> @{replace(replace(triggerOutputs()?['body/_ownerid_value@OData.Community.Display.V1.FormattedValue'], '<', '&lt;'), '>', '&gt;')}</p><p><strong>Submission info:</strong> @{replace(replace(coalesce(triggerOutputs()?['body/enmax_acdnsubmissioninfo'], ''), '<', '&lt;'), '>', '&gt;')}</p><p><a href=\"@{outputs('Compose_CodeApp_BaseUrl')}/approvals?section=documents&amp;tab=checkin\">Open Check In Validation</a></p>"
+                        }
+                      }
+                    },
+                    "Email_Creator_CheckIn_Submitted": {
+                      "type": "Workflow",
+                      "runAfter": {
+                        "Email_DocControl_CheckIn_Approval": [
+                          "Succeeded",
+                          "Failed"
+                        ]
+                      },
+                      "inputs": {
+                        "host": {
+                          "workflowReferenceName": "Child_Send_System_Email"
+                        },
+                        "body": {
+                          "To": "@{outputs('Get_Reservation_Creator')?['body/internalemailaddress']}",
+                          "Cc": "@{outputs('Compose_DocControl')}",
+                          "Subject": "Check In submitted: @{outputs('Compose_Document_Number')}",
+                          "BodyHtml": "<p>Your check-in was submitted and is pending validation.</p><p><strong>Document:</strong> @{outputs('Compose_Document_Number')}</p><p><a href=\"@{outputs('Compose_CodeApp_BaseUrl')}/my-items\">Open My Items</a></p>"
+                        }
+                      }
+                    }
+                  }
+                },
+                "ClosedApproved": {
+                  "case": 3,
+                  "actions": {
+                    "Email_Creator_Checked_In": {
+                      "type": "Workflow",
+                      "inputs": {
+                        "host": {
+                          "workflowReferenceName": "Child_Send_System_Email"
+                        },
+                        "body": {
+                          "To": "@{outputs('Get_Reservation_Creator')?['body/internalemailaddress']}",
+                          "Cc": "@{outputs('Compose_DocControl')}",
+                          "Subject": "Checked in: @{outputs('Compose_Document_Number')}",
+                          "BodyHtml": "<p>Your reserved document has been checked in.</p><p><strong>Document:</strong> @{outputs('Compose_Document_Number')}</p><p><a href=\"@{outputs('Compose_CodeApp_BaseUrl')}/my-items\">Open My Items</a></p>"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "default": {
+                "actions": {}
+              }
+            }
+          }
+        },
+        "Scope_Catch_Failure": {
+          "type": "Scope",
+          "runAfter": {
+            "Scope_Try_Main": [
+              "Failed",
+              "TimedOut"
+            ]
+          },
+          "actions": {
+            "Compose_Error_Context": {
+              "type": "Compose",
+              "runAfter": {},
+              "inputs": {
+                "failedAction": "@{coalesce(first(result('Scope_Try_Main'))?['name'], 'Scope_Try_Main')}",
+                "errorMessage": "@{coalesce(first(result('Scope_Try_Main'))?['error']?['message'], 'Flow failed')}",
+                "errorCode": "@{coalesce(first(result('Scope_Try_Main'))?['error']?['code'], 'FlowFailed')}",
+                "errorDetail": "@{string(result('Scope_Try_Main'))}"
+              }
+            },
+            "Compose_FlowRunUrl": {
+              "type": "Compose",
+              "runAfter": {
+                "Compose_Error_Context": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@{replace(replace(replace(variables('FlowRunUrlTemplate'), '{environmentId}', coalesce(workflow()?['tags']?['environmentName'], '')), '{flowId}', coalesce(workflow()?['name'], '')), '{runId}', coalesce(workflow()?['run']?['name'], ''))}"
+            },
+            "Invoke_Log_Flow_Exception": {
+              "type": "Workflow",
+              "runAfter": {
+                "Compose_FlowRunUrl": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
+                  "workflowReferenceName": "Child_Log_Flow_Exception"
+                },
+                "body": {
+                  "Origin": 1,
+                  "FlowDisplayName": "@{variables('FlowDisplayName')}",
+                  "FailedAction": "@{outputs('Compose_Error_Context')?['failedAction']}",
+                  "ErrorMessage": "@{outputs('Compose_Error_Context')?['errorMessage']}",
+                  "ErrorCode": "@{outputs('Compose_Error_Context')?['errorCode']}",
+                  "ErrorDetail": "@{outputs('Compose_Error_Context')?['errorDetail']}",
+                  "FlowRunId": "@{workflow()?['run']?['name']}",
+                  "FlowRunUrl": "@{outputs('Compose_FlowRunUrl')}",
+                  "CorrelationId": "@{variables('CorrelationId')}",
+                  "SubjectTable": "enmax_autocadcheckout",
+                  "SubjectId": "@{triggerOutputs()?['body/enmax_autocadcheckoutid']}",
+                  "Severity": 2
+                }
+              }
+            },
+            "Terminate_Failed": {
+              "type": "Terminate",
+              "runAfter": {
+                "Invoke_Log_Flow_Exception": [
+                  "Succeeded",
+                  "Failed",
+                  "Skipped",
+                  "TimedOut"
+                ]
+              },
+              "inputs": {
+                "runStatus": "Failed",
+                "runError": {
+                  "code": "@{outputs('Compose_Error_Context')?['errorCode']}",
+                  "message": "@{outputs('Compose_Error_Context')?['errorMessage']}"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "templateName": ""
+  }
+}

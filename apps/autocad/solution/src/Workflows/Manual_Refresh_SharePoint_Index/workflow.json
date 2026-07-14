@@ -1,0 +1,243 @@
+{
+  "schemaVersion": "1.0.0.0",
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "enmax_autocadconrefDataverse"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
+      "metadata": {
+        "description": "WS5: on-demand per-record SharePoint index refresh. Manual trigger accepts entityName, recordId, recordNumber, and FoundFiles JSON; calls enmax_acdnUpsertSharePointLinks."
+      },
+      "triggers": {
+        "Manual": {
+          "type": "Request",
+          "kind": "PowerAppV2",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "entityName": {
+                  "type": "string",
+                  "title": "Entity logical name (enmax_autocaddrawing or enmax_autocadsheet)"
+                },
+                "recordId": {
+                  "type": "string",
+                  "title": "Record GUID"
+                },
+                "recordNumber": {
+                  "type": "string",
+                  "title": "Drawing/Document Number (deterministic filename token)"
+                },
+                "foundFiles": {
+                  "type": "string",
+                  "title": "FoundFiles JSON array (optional; default [])"
+                }
+              },
+              "required": [
+                "entityName",
+                "recordId",
+                "recordNumber"
+              ]
+            }
+          }
+        }
+      },
+      "actions": {
+        "Initialize_CorrelationId": {
+          "type": "InitializeVariable",
+          "runAfter": {},
+          "inputs": {
+            "variables": [
+              {
+                "name": "CorrelationId",
+                "type": "string",
+                "value": "@{coalesce(triggerBody()?['CorrelationId'], guid())}"
+              }
+            ]
+          }
+        },
+        "Initialize_FlowDisplayName": {
+          "type": "InitializeVariable",
+          "runAfter": {
+            "Initialize_CorrelationId": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "variables": [
+              {
+                "name": "FlowDisplayName",
+                "type": "string",
+                "value": "Enmax AutoCAD | On Demand | Refresh & Update SharePoint Links for Drawing-Document Records"
+              }
+            ]
+          }
+        },
+        "Initialize_FlowRunUrlTemplate": {
+          "type": "InitializeVariable",
+          "runAfter": {
+            "Initialize_FlowDisplayName": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "variables": [
+              {
+                "name": "FlowRunUrlTemplate",
+                "type": "string",
+                "value": "https://make.powerautomate.com/environments/{environmentId}/flows/{flowId}/runs/{runId}"
+              }
+            ]
+          }
+        },
+        "Scope_Try_Main": {
+          "type": "Scope",
+          "runAfter": {
+            "Initialize_FlowRunUrlTemplate": [
+              "Succeeded"
+            ]
+          },
+          "actions": {
+            "Upsert_Links": {
+              "type": "OpenApiConnection",
+              "runAfter": {},
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "PerformUnboundAction",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "actionName": "enmax_acdnUpsertSharePointLinks",
+                  "item/Target": {
+                    "@@odata.type": "Microsoft.Dynamics.CRM.@{triggerBody()?['entityName']}",
+                    "@{triggerBody()?['entityName']}id": "@{triggerBody()?['recordId']}"
+                  },
+                  "item/RecordNumber": "@{triggerBody()?['recordNumber']}",
+                  "item/FoundFiles": "@{coalesce(triggerBody()?['foundFiles'], '[]')}"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Response": {
+              "type": "Response",
+              "runAfter": {
+                "Upsert_Links": [
+                  "Succeeded",
+                  "Failed"
+                ]
+              },
+              "kind": "PowerApp",
+              "inputs": {
+                "statusCode": 200,
+                "body": {
+                  "updateNeeded": "@{outputs('Upsert_Links')?['body/UpdateNeeded']}",
+                  "dropOffUrl": "@{outputs('Upsert_Links')?['body/DropOffUrl']}",
+                  "destinationUrl": "@{outputs('Upsert_Links')?['body/DestinationUrl']}",
+                  "presentInDropOff": "@{outputs('Upsert_Links')?['body/PresentInDropOff']}",
+                  "presentInDestination": "@{outputs('Upsert_Links')?['body/PresentInDestination']}"
+                }
+              }
+            }
+          }
+        },
+        "Scope_Catch_Failure": {
+          "type": "Scope",
+          "runAfter": {
+            "Scope_Try_Main": [
+              "Failed",
+              "TimedOut"
+            ]
+          },
+          "actions": {
+            "Compose_Error_Context": {
+              "type": "Compose",
+              "runAfter": {},
+              "inputs": {
+                "failedAction": "@{coalesce(first(result('Scope_Try_Main'))?['name'], 'Scope_Try_Main')}",
+                "errorMessage": "@{coalesce(first(result('Scope_Try_Main'))?['error']?['message'], 'Flow failed')}",
+                "errorCode": "@{coalesce(first(result('Scope_Try_Main'))?['error']?['code'], 'FlowFailed')}",
+                "errorDetail": "@{string(result('Scope_Try_Main'))}"
+              }
+            },
+            "Compose_FlowRunUrl": {
+              "type": "Compose",
+              "runAfter": {
+                "Compose_Error_Context": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@{replace(replace(replace(variables('FlowRunUrlTemplate'), '{environmentId}', coalesce(workflow()?['tags']?['environmentName'], '')), '{flowId}', coalesce(workflow()?['name'], '')), '{runId}', coalesce(workflow()?['run']?['name'], ''))}"
+            },
+            "Invoke_Log_Flow_Exception": {
+              "type": "Workflow",
+              "runAfter": {
+                "Compose_FlowRunUrl": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
+                  "workflowReferenceName": "Child_Log_Flow_Exception"
+                },
+                "body": {
+                  "Origin": 1,
+                  "FlowDisplayName": "@{variables('FlowDisplayName')}",
+                  "FailedAction": "@{outputs('Compose_Error_Context')?['failedAction']}",
+                  "ErrorMessage": "@{outputs('Compose_Error_Context')?['errorMessage']}",
+                  "ErrorCode": "@{outputs('Compose_Error_Context')?['errorCode']}",
+                  "ErrorDetail": "@{outputs('Compose_Error_Context')?['errorDetail']}",
+                  "FlowRunId": "@{workflow()?['run']?['name']}",
+                  "FlowRunUrl": "@{outputs('Compose_FlowRunUrl')}",
+                  "CorrelationId": "@{variables('CorrelationId')}",
+                  "SubjectTable": "",
+                  "SubjectId": "",
+                  "Severity": 2
+                }
+              }
+            },
+            "Terminate_Failed": {
+              "type": "Terminate",
+              "runAfter": {
+                "Invoke_Log_Flow_Exception": [
+                  "Succeeded",
+                  "Failed",
+                  "Skipped",
+                  "TimedOut"
+                ]
+              },
+              "inputs": {
+                "runStatus": "Failed",
+                "runError": {
+                  "code": "@{outputs('Compose_Error_Context')?['errorCode']}",
+                  "message": "@{outputs('Compose_Error_Context')?['errorMessage']}"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "templateName": ""
+  }
+}

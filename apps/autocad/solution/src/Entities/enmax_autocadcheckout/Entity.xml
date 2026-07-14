@@ -1253,7 +1253,7 @@
             <AttributeName>enmax_acdnstatus</AttributeName>
           </EntityKeyAttributes>
           <displaynames>
-            <displayname description="Drawing + NewRevision + Status" languagecode="1033" />
+            <displayname description="Drawing + New Revision + Status" languagecode="1033" />
           </displaynames>
         </EntityKey>
         <EntityKey>

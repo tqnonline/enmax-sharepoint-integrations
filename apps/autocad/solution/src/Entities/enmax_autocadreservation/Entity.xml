@@ -652,7 +652,7 @@
           <Format>text</Format>
           <MaxLength>2000</MaxLength>
           <displaynames>
-            <displayname description="Reason for Reservation" languagecode="1033" />
+            <displayname description="Reason For Reservation" languagecode="1033" />
           </displaynames>
         </attribute>
         <attribute PhysicalName="enmax_acdnReservationId">

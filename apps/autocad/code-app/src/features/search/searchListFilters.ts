@@ -6,9 +6,9 @@ import type { DocumentSubtypeFilter } from "../reserve/taxonomyFilters";
 /** Drawing search type includes drawing rows as well as document subtypes. */
 export type SearchDrawingTypeFilter = DocumentSubtypeFilter | "drawing";
 
-export type SearchTab = "drawings" | "documents";
+export type SearchTab = "drawings" | "documents" | "reservations";
 
-export type DocumentSubtypeSearchFilter = "all" | "standard" | "procedure";
+export type DocumentSubtypeSearchFilter = "all" | "standard" | "procedure" | "form";
 
 export interface CompositionFilterIds {
   businessId: string;
@@ -23,7 +23,7 @@ export interface SearchListFilters {
   number: string;
   from: string;
   to: string;
-  /** Documents tab only — narrows Standard vs Procedure. */
+  /** Documents tab only — narrows Standard / Procedure / Form. */
   documentSubtype: DocumentSubtypeSearchFilter;
   peopleIds: string[];
   composition: CompositionFilterIds;
@@ -44,9 +44,11 @@ export function tabDrawingSubtype(
   tab: SearchTab,
   subtype: DocumentSubtypeSearchFilter,
 ): SearchDrawingTypeFilter | "documents" {
+  if (tab === "reservations") return "drawing";
   if (tab === "drawings") return "drawing";
   if (subtype === "standard") return "standard";
   if (subtype === "procedure") return "procedure";
+  if (subtype === "form") return "form";
   return "documents";
 }
 
@@ -100,5 +102,11 @@ export function drawingSubtypeClause(subtype: SearchDrawingTypeFilter): string |
   if (subtype === "standard") {
     return `enmax_acdndocumentsubtype eq ${DOCUMENT_SUBTYPE_VALUE.Standard}`;
   }
-  return `enmax_acdndocumentsubtype eq ${DOCUMENT_SUBTYPE_VALUE.Procedure}`;
+  if (subtype === "procedure") {
+    return `enmax_acdndocumentsubtype eq ${DOCUMENT_SUBTYPE_VALUE.Procedure}`;
+  }
+  if (subtype === "form") {
+    return `enmax_acdndocumentsubtype eq ${DOCUMENT_SUBTYPE_VALUE.Form}`;
+  }
+  return null;
 }

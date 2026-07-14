@@ -25,16 +25,16 @@ Describe 'Register-PpPlugins — parameter contract' {
 
 Describe 'Register-PpPlugins — PluginDefinitions data file' {
 
-    It 'PluginDefinitions.psd1 loads with exactly 15 CustomAPIDefs' {
+    It 'PluginDefinitions.psd1 loads with exactly 17 CustomAPIDefs' {
         # WHY: The number of Custom API definitions is load-bearing; adding or removing
         # an entry without a matching deployment would leave Dataverse in an inconsistent
         # state. This test guards against a [ordered]->@{} conversion silently breaking
         # the file parse, or a developer accidentally removing an entry.
-        # 15 = 14 prior + enmax_acdnCheckOutSheets (ADR 0002 per-sheet checkout).
+        # 17 = 15 prior + enmax_acdnCreateSharePointImportStub + enmax_acdnApproveSharePointImport.
         $RepoRoot  = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent | Split-Path -Parent
         $defsPath  = Join-Path $RepoRoot 'scripts/PowerPlatform.Deploy/Data/PluginDefinitions.psd1'
         $defs = Import-PowerShellDataFile $defsPath
-        $defs.CustomAPIDefs.Count | Should -Be 15
+        $defs.CustomAPIDefs.Count | Should -Be 17
     }
 
     It 'PluginDefinitions.psd1 loads with exactly 16 StepDefs' {
@@ -254,7 +254,7 @@ Describe 'Register-PpPlugins — unified lifecycle contract-only definitions' {
     }
 
     It 'does not expose contract-only names through active CustomAPIDefs' {
-        $defs.CustomAPIDefs.Count | Should -Be 15
+        $defs.CustomAPIDefs.Count | Should -Be 17
         $activeContractNames = $defs.CustomAPIDefs.UniqueName |
             Where-Object { $_ -in $contractNames }
         $activeContractNames | Should -BeNullOrEmpty

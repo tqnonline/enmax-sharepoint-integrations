@@ -14,6 +14,7 @@ export * as Enmax_autocadbusinessesModel from './models/Enmax_autocadbusinessesM
 export * as Enmax_autocadcheckoutsModel from './models/Enmax_autocadcheckoutsModel';
 export * as Enmax_autocaddomainsModel from './models/Enmax_autocaddomainsModel';
 export * as Enmax_autocaddrawingsModel from './models/Enmax_autocaddrawingsModel';
+export * as Enmax_autocadflowexceptionsModel from './models/Enmax_autocadflowexceptionsModel';
 export * as Enmax_autocadinappnotificationsModel from './models/Enmax_autocadinappnotificationsModel';
 export * as Enmax_autocadkindsModel from './models/Enmax_autocadkindsModel';
 export * as Enmax_autocadnumbersequencesModel from './models/Enmax_autocadnumbersequencesModel';
@@ -40,6 +41,7 @@ export * from './services/Enmax_autocadbusinessesService';
 export * from './services/Enmax_autocadcheckoutsService';
 export * from './services/Enmax_autocaddomainsService';
 export * from './services/Enmax_autocaddrawingsService';
+export * from './services/Enmax_autocadflowexceptionsService';
 export * from './services/Enmax_autocadinappnotificationsService';
 export * from './services/Enmax_autocadkindsService';
 export * from './services/Enmax_autocadnumbersequencesService';

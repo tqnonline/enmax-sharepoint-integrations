@@ -1,13 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Entity xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <Name LocalizedName="Drawing document / Procedure form" OriginalName="Sheet">enmax_autocadsheet</Name>
+  <Name LocalizedName="Drawing Document / Procedure Form" OriginalName="Sheet">enmax_autocadsheet</Name>
   <EntityInfo>
     <entity Name="enmax_autocadsheet">
       <LocalizedNames>
-        <LocalizedName description="Drawing document / Procedure form" languagecode="1033" />
+        <LocalizedName description="Drawing Document / Procedure Form" languagecode="1033" />
       </LocalizedNames>
       <LocalizedCollectionNames>
-        <LocalizedCollectionName description="Drawing documents / Procedure forms" languagecode="1033" />
+        <LocalizedCollectionName description="Drawing Documents / Procedure Forms" languagecode="1033" />
       </LocalizedCollectionNames>
       <attributes>
         <attribute PhysicalName="CreatedBy">
@@ -348,7 +348,7 @@
             <IntroducedVersion>1.0.0.0</IntroducedVersion>
             <IsCustomizable>1</IsCustomizable>
             <displaynames>
-              <displayname description="Present In Drop-off Library" languagecode="1033" />
+              <displayname description="Present In Drop-Off Library" languagecode="1033" />
             </displaynames>
             <options>
               <option value="1" ExternalValue="" IsHidden="0">
@@ -364,7 +364,7 @@
             </options>
           </optionset>
           <displaynames>
-            <displayname description="Present In Drop-off Library" languagecode="1033" />
+            <displayname description="Present In Drop-Off Library" languagecode="1033" />
           </displaynames>
         </attribute>
         <attribute PhysicalName="enmax_acdnPresentInDestination">

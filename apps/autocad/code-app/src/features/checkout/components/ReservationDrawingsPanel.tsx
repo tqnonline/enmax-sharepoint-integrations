@@ -130,7 +130,7 @@ export function ReservationDrawingsPanel({ reservation, onClose }: Props) {
                 size={100}
                 style={{ color: tokens.colorNeutralForeground3, display: "block", marginTop: "2px" }}
               >
-                Checked out on {formatGridDateTime(checkout.checkedOutOn)}
+                Checked Out On {formatGridDateTime(checkout.checkedOutOn)}
               </Text>
             )}
           </div>
@@ -207,7 +207,7 @@ export function ReservationDrawingsPanel({ reservation, onClose }: Props) {
 
             {reservation._createdby_value_Formatted && (
               <Text className={styles.meta}>
-                Submitted by {reservation._createdby_value_Formatted}
+                Submitted By {reservation._createdby_value_Formatted}
               </Text>
             )}
 

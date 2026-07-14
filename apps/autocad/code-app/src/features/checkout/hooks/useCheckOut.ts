@@ -10,9 +10,10 @@ export function useCheckOut() {
       void queryClient.invalidateQueries({ queryKey: ["reservation-detail"] });
       void queryClient.invalidateQueries({ queryKey: ["drawings"] });
       void queryClient.invalidateQueries({ queryKey: ["checkouts"] });
-      // WS3: a gated Check Out creates a Requested checkout; refresh the per-drawing
-      // checkout so the "pending approval" badge appears without a manual reload.
       void queryClient.invalidateQueries({ queryKey: ["drawing-checkout"] });
+      void queryClient.invalidateQueries({ queryKey: ["header-search"] });
+      void queryClient.invalidateQueries({ queryKey: ["search-page"] });
+      void queryClient.invalidateQueries({ queryKey: ["search-documents"] });
     },
   });
 }

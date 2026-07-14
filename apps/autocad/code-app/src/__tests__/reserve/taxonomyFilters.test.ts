@@ -31,6 +31,20 @@ describe("reservationMatchesTypeFilter", () => {
         DOCUMENT_SUBTYPE_VALUE.Procedure,
       ),
     ).toBe(true);
+    expect(
+      reservationMatchesTypeFilter(
+        "form",
+        RESERVATION_TYPE_VALUE.Document,
+        DOCUMENT_SUBTYPE_VALUE.Form,
+      ),
+    ).toBe(true);
+    expect(
+      reservationMatchesTypeFilter(
+        "documents",
+        RESERVATION_TYPE_VALUE.Document,
+        DOCUMENT_SUBTYPE_VALUE.Form,
+      ),
+    ).toBe(true);
   });
 
   it("excludes mismatched taxonomy", () => {
@@ -46,6 +60,13 @@ describe("reservationMatchesTypeFilter", () => {
         "standard",
         RESERVATION_TYPE_VALUE.Document,
         DOCUMENT_SUBTYPE_VALUE.Procedure,
+      ),
+    ).toBe(false);
+    expect(
+      reservationMatchesTypeFilter(
+        "procedure",
+        RESERVATION_TYPE_VALUE.Document,
+        DOCUMENT_SUBTYPE_VALUE.Form,
       ),
     ).toBe(false);
   });

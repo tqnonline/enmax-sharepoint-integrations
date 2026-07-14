@@ -11,7 +11,15 @@
     Description       = 'PowerShell deploy tooling for the Enmax AutoCAD Power Platform solution. Wraps pac CLI auth, env-config loading, and solution deployment steps.'
     PowerShellVersion = '7.0'
 
-    FunctionsToExport = @('Connect-PpDataverse', 'Invoke-PpDeploy', 'Publish-PpCodeApp', 'Register-PpPlugins')
+    FunctionsToExport = @(
+        'Connect-PpDataverse',
+        'Invoke-PpDeploy',
+        'Invoke-PpDeployFlows',
+        'Invoke-PpVerifyExceptionLogging',
+        'Publish-PpCodeApp',
+        'Register-PpPlugins',
+        'Test-PpAppConfigCompleteness'
+    )
     CmdletsToExport   = @()
     VariablesToExport = @()
     AliasesToExport   = @()

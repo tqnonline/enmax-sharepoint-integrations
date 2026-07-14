@@ -7,3 +7,5 @@ values:
     label: Standard
   - value: 2
     label: Procedure
+  - value: 3
+    label: Form

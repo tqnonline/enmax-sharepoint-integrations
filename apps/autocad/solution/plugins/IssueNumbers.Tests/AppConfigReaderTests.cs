@@ -70,6 +70,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         [InlineData(1, null, "EnableDrawingCheckout", "EnableDrawingCheckIn")]
         [InlineData(2, 1, "EnableStandardCheckout", "EnableStandardCheckIn")]
         [InlineData(2, 2, "EnableProcedureCheckout", "EnableProcedureCheckIn")]
+        [InlineData(2, 3, "EnableFormCheckout", "EnableFormCheckIn")]
         public void TaxonomyCheckoutConfig_ResolvesKeysByTaxonomy(
             int reservationType,
             int? documentSubtype,
@@ -98,6 +99,124 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             AppConfigReader.TaxonomyCheckoutConfig
                 .IsCheckInEnabled(svc, reservationType, documentSubtype)
                 .Should().BeFalse();
+        }
+
+        [Theory]
+        [InlineData(1, null, "DrawingDropOffLibraryUrl", "DrawingDestinationLibraryUrl")]
+        [InlineData(2, 1, "StandardDocumentDropOffLibraryUrl", "StandardDocumentDestinationLibraryUrl")]
+        [InlineData(2, 2, "ProcedureDocumentDropOffLibraryUrl", "ProcedureDocumentDestinationLibraryUrl")]
+        [InlineData(2, 3, "FormDocumentDropOffLibraryUrl", "FormDocumentDestinationLibraryUrl")]
+        public void TaxonomyLibraryConfig_ResolveKeys_MatchesTaxonomy(
+            int reservationType,
+            int? documentSubtype,
+            string dropOffKey,
+            string destinationKey)
+        {
+            AppConfigReader.TaxonomyLibraryConfig
+                .ResolveDropOffKey(reservationType, documentSubtype)
+                .Should().Be(dropOffKey);
+            AppConfigReader.TaxonomyLibraryConfig
+                .ResolveDestinationKey(reservationType, documentSubtype)
+                .Should().Be(destinationKey);
+        }
+
+        [Fact]
+        public void TaxonomyLibraryConfig_GetDropOffUrl_PrefersTaxonomyKey()
+        {
+            var ctx = new XrmFakedContext();
+            ctx.Initialize(new[]
+            {
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "DrawingDropOffLibraryUrl",
+                    ["enmax_acdnvalue"] = "https://sp.example/taxonomy-dropoff",
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "DrawingsDropOffLibraryUrl",
+                    ["enmax_acdnvalue"] = "https://sp.example/legacy-dropoff",
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "CheckInUploadLibraryUrl",
+                    ["enmax_acdnvalue"] = "https://sp.example/checkin-upload",
+                },
+            });
+            var svc = ctx.GetFakedOrganizationService();
+
+            AppConfigReader.TaxonomyLibraryConfig
+                .GetDropOffUrl(svc, reservationType: 1, documentSubtype: null)
+                .Should().Be("https://sp.example/taxonomy-dropoff");
+        }
+
+        [Fact]
+        public void TaxonomyLibraryConfig_GetDropOffUrl_FallsBackToLegacyKey_WhenTaxonomyKeyAbsent()
+        {
+            var ctx = new XrmFakedContext();
+            ctx.Initialize(new[]
+            {
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "DocumentsDropOffLibraryUrl",
+                    ["enmax_acdnvalue"] = "https://sp.example/legacy-documents-dropoff",
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "CheckInUploadLibraryUrl",
+                    ["enmax_acdnvalue"] = "https://sp.example/checkin-upload",
+                },
+            });
+            var svc = ctx.GetFakedOrganizationService();
+
+            AppConfigReader.TaxonomyLibraryConfig
+                .GetDropOffUrl(svc, reservationType: 2, documentSubtype: 1)
+                .Should().Be("https://sp.example/legacy-documents-dropoff");
+        }
+
+        [Fact]
+        public void TaxonomyLibraryConfig_GetDropOffUrl_FallsBackToCheckInUploadLibraryUrl_WhenNoOtherKeySet()
+        {
+            var ctx = BuildContext("CheckInUploadLibraryUrl", "https://sp.example/checkin-upload");
+            var svc = ctx.GetFakedOrganizationService();
+
+            AppConfigReader.TaxonomyLibraryConfig
+                .GetDropOffUrl(svc, reservationType: 1, documentSubtype: null)
+                .Should().Be("https://sp.example/checkin-upload");
+        }
+
+        [Fact]
+        public void TaxonomyLibraryConfig_GetDestinationUrl_HasNoCheckInFallback()
+        {
+            var ctx = BuildContext("CheckInUploadLibraryUrl", "https://sp.example/checkin-upload");
+            var svc = ctx.GetFakedOrganizationService();
+
+            AppConfigReader.TaxonomyLibraryConfig
+                .GetDestinationUrl(svc, reservationType: 1, documentSubtype: null)
+                .Should().BeNull();
+        }
+
+        [Fact]
+        public void TaxonomyLibraryConfig_GetDestinationUrl_PrefersTaxonomyKeyOverLegacy()
+        {
+            var ctx = new XrmFakedContext();
+            ctx.Initialize(new[]
+            {
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "FormDocumentDestinationLibraryUrl",
+                    ["enmax_acdnvalue"] = "https://sp.example/taxonomy-dest",
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "DocumentsDestinationLibraryUrl",
+                    ["enmax_acdnvalue"] = "https://sp.example/legacy-dest",
+                },
+            });
+            var svc = ctx.GetFakedOrganizationService();
+
+            AppConfigReader.TaxonomyLibraryConfig
+                .GetDestinationUrl(svc, reservationType: 2, documentSubtype: 3)
+                .Should().Be("https://sp.example/taxonomy-dest");
         }
     }
 }

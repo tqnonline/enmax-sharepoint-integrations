@@ -235,7 +235,7 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
                 <span>{reservation.typeLabel}</span>
               </div>
               <div className={styles.field}>
-                <span className={styles.label}>Issued number</span>
+                <span className={styles.label}>Issued Number</span>
                 <Text
                   style={{ fontFamily: "monospace", overflowWrap: "break-word", wordBreak: "break-all" }}
                 >
@@ -248,11 +248,11 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
               </div>
               {reservation.isAppend && (
                 <div className={styles.field}>
-                  <span className={styles.label}>Add to existing</span>
+                  <span className={styles.label}>Add To Existing</span>
                   <span>
                     Append {reservation.enmax_acdndrawingcount} item(s) to{" "}
                     <Text weight="semibold" style={{ fontFamily: "monospace" }}>
-                      {reservation.targetDrawingNumber ?? "selected base"}
+                      {reservation.targetDrawingNumber ?? "Selected Base"}
                     </Text>
                   </span>
                 </div>
@@ -268,7 +268,7 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
                       disabled={retryIssueMutation.isPending}
                       onClick={() => retryIssueMutation.mutate({ reservationId: reservation.enmax_acdnreservationid })}
                     >
-                      {retryIssueMutation.isPending ? <Spinner size="tiny" /> : "Retry number issuance"}
+                      {retryIssueMutation.isPending ? <Spinner size="tiny" /> : "Retry Number Issuance"}
                     </Button>
                   </span>
                 </div>
@@ -285,7 +285,7 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
                       disabled={retryAppendMutation.isPending}
                       onClick={() => retryAppendMutation.mutate({ reservationId: reservation.enmax_acdnreservationid })}
                     >
-                      {retryAppendMutation.isPending ? <Spinner size="tiny" /> : "Retry append"}
+                      {retryAppendMutation.isPending ? <Spinner size="tiny" /> : "Retry Append"}
                     </Button>
                   </span>
                 </div>
@@ -293,7 +293,7 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
 
               {reservation.appendFirst != null && reservation.appendLast != null && (
                 <div className={styles.field}>
-                  <span className={styles.label}>Appended items</span>
+                  <span className={styles.label}>Appended Items</span>
                   <span style={{ fontFamily: "monospace" }}>
                     {formatAppendDisplay(
                       reservation.targetDrawingNumber,
@@ -306,7 +306,7 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
 
               {reservation.enmax_acdnissuednumbers && (
                 <div className={styles.field}>
-                  <span className={styles.label}>Issued numbers</span>
+                  <span className={styles.label}>Issued Numbers</span>
                   <span style={{ fontFamily: "monospace" }}>
                     {formatNumberRange(reservation.enmax_acdnissuednumbers)}
                   </span>

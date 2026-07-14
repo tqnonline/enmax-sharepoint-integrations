@@ -136,6 +136,10 @@ export function useCancelReservation() {
       qc.invalidateQueries({ queryKey: ["my-reservations"] });
       qc.invalidateQueries({ queryKey: ["reservation-detail"] });
     },
-    onError: (e) => logDataverseError("CancelReservation", e),
+    onError: (e, reservationId) =>
+      logDataverseError("CancelReservation", e, undefined, {
+        subjectTable: "enmax_autocadreservation",
+        subjectId: reservationId,
+      }),
   });
 }

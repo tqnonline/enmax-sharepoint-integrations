@@ -15,3 +15,5 @@ values:
     label: Obsolete
   - value: 6
     label: Void
+  - value: 8
+    label: Pending SharePoint Import

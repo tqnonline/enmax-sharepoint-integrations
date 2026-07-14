@@ -148,11 +148,11 @@ test("bulk approve calls ApproveReservation action once per reservation in order
   await user.click(headerCheckbox);
 
   await waitFor(() =>
-    expect(screen.getByRole("button", { name: /Approve selected \(2\)/i })).toBeInTheDocument(),
+    expect(screen.getByRole("button", { name: /Approve Selected \(2\)/i })).toBeInTheDocument(),
     { timeout: 3000 },
   );
 
-  await user.click(screen.getByRole("button", { name: /Approve selected \(2\)/i }));
+  await user.click(screen.getByRole("button", { name: /Approve Selected \(2\)/i }));
 
   await waitFor(() => expect(screen.getByText(/Approve all \(2\)/i)).toBeInTheDocument(), { timeout: 3000 });
   await user.click(screen.getByText(/Approve all \(2\)/i));
@@ -176,7 +176,7 @@ test("multi-select does NOT show a 'Bulk decline' or 'Decline selected' button â
   await user.click(headerCheckbox);
 
   await waitFor(() =>
-    expect(screen.getByRole("button", { name: /Approve selected/i })).toBeInTheDocument(),
+    expect(screen.getByRole("button", { name: /Approve Selected/i })).toBeInTheDocument(),
   );
 
   expect(screen.queryByRole("button", { name: /Decline selected/i })).not.toBeInTheDocument();

@@ -17,15 +17,31 @@ export const AppConfigSchema = z.object({
   ApproverTeamId:                 guidSchema.optional(),
   UserTeamId:                     guidSchema.optional(),
   SharedMailboxAddress:           z.email(),
+  DocControlEmailAddress:         z.email().optional(),
+  CodeAppBaseUrl:                 z.url().optional(),
   SharePointSiteUrl:              z.url(),
   CheckInUploadLibraryUrl:        z.url().optional(),
-  // WS5 two-site SharePoint topology: four library base URLs (Drawings + Documents,
-  // each drop-off + destination). Optional so environments without them configured
-  // fall back gracefully; the indexer flow and upload surface read these.
+  // Per-taxonomy SharePoint library URLs (drop-off + destination × 4 taxonomies).
+  // Legacy Drawings*/Documents* keys remain optional for migration fallback.
+  DrawingDropOffLibraryUrl:                 z.url().optional(),
+  DrawingDestinationLibraryUrl:             z.url().optional(),
+  StandardDocumentDropOffLibraryUrl:        z.url().optional(),
+  StandardDocumentDestinationLibraryUrl:    z.url().optional(),
+  ProcedureDocumentDropOffLibraryUrl:       z.url().optional(),
+  ProcedureDocumentDestinationLibraryUrl:   z.url().optional(),
+  FormDocumentDropOffLibraryUrl:            z.url().optional(),
+  FormDocumentDestinationLibraryUrl:        z.url().optional(),
   DrawingsDropOffLibraryUrl:      z.url().optional(),
   DrawingsDestinationLibraryUrl:  z.url().optional(),
   DocumentsDropOffLibraryUrl:     z.url().optional(),
   DocumentsDestinationLibraryUrl: z.url().optional(),
+  DrawingDocumentSPContentTypeName: z.string().optional(),
+  DrawingDocumentSPContentTypeId:   z.string().optional(),
+  SharePointIndexerLogFolderPath:   z.string().optional(),
+  SharePointIndexerMaxCsvRows:      z.number().int().min(1).optional(),
+  SharePointIndexerIncrementalHours: z.number().int().min(1).optional(),
+  SharePointRecordTypeMap:          z.string().optional(),
+  AppOwnerTeamId:                   guidSchema.optional(),
   BusinessUnitName:               z.string(),
   BrandPrimary:                   z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   BrandSecondary:                 z.string().regex(/^#[0-9A-Fa-f]{6}$/),
@@ -58,6 +74,8 @@ export const AppConfigSchema = z.object({
   EnableProcedureCheckIn:         z.boolean().default(true),
   EnableStandardCheckout:         z.boolean().default(true),
   EnableStandardCheckIn:          z.boolean().default(true),
+  EnableFormCheckout:             z.boolean().default(true),
+  EnableFormCheckIn:              z.boolean().default(true),
 });
 
 export type AppConfig = z.infer<typeof AppConfigSchema>;

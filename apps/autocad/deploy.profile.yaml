@@ -33,3 +33,11 @@ tables:
   - enmax_autocadinappnotification
   - team
   - systemuser
+
+# Solution connection references (enmax_autocadsln). Flow workflow.json maps
+# connector keys to these logical names; bind connections per environment on import.
+connection_references:
+  enmax_autocadconrefDataverse: shared_commondataserviceforapps
+  enmax_autocadconrefOutlook: shared_office365
+  enmax_autocadconrefSharePoint: shared_sharepointonline
+  enmax_autocadconrefTeams: shared_teams

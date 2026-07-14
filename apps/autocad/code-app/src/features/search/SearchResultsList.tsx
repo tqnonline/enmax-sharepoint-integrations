@@ -14,7 +14,8 @@ import {
   Document24Regular,
 } from "@fluentui/react-icons";
 import type { SearchDocumentRow } from "./useSearchDocuments";
-import { sharePointUrlFrom } from "../../components/DataGrid";
+import { preferSharePointDropOff, sharePointFileUrl } from "../sharepoint/sharepointUrls";
+import { SearchCheckoutAction } from "./SearchCheckoutAction";
 
 const STATE_COLORS: Record<string, "success" | "warning" | "danger" | "informative" | "brand" | undefined> = {
   Available: "success",
@@ -34,15 +35,9 @@ const useStyles = makeStyles({
     flex: 1,
     minHeight: 0,
   },
-  header: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: `${tokens.spacingVerticalXS} 0`,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-  },
   scroll: {
     flex: 1,
+    minHeight: 0,
     overflowY: "auto",
     display: "flex",
     flexDirection: "column",
@@ -108,18 +103,38 @@ const useStyles = makeStyles({
     display: "flex",
     alignItems: "flex-start",
   },
+  footer: {
+    flexShrink: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: tokens.spacingHorizontalM,
+    flexWrap: "wrap",
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  footerMeta: {
+    display: "flex",
+    flexDirection: "column",
+    gap: tokens.spacingVerticalXXS,
+    minWidth: "180px",
+  },
   pager: {
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
-    gap: tokens.spacingHorizontalM,
-    paddingTop: tokens.spacingVerticalS,
-    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+    gap: tokens.spacingHorizontalS,
+    marginLeft: "auto",
   },
   empty: {
     padding: tokens.spacingVerticalXXL,
     textAlign: "center",
     color: tokens.colorNeutralForeground3,
+  },
+  loading: {
+    display: "flex",
+    justifyContent: "center",
+    padding: tokens.spacingVerticalL,
   },
 });
 
@@ -133,6 +148,11 @@ interface Props {
   emptyMessage: string;
   onPageChange: (page: number) => void;
   onRowClick: (row: SearchDocumentRow) => void;
+}
+
+function matchingLabel(totalCount: number): string {
+  if (totalCount === 0) return "No matching documents";
+  return `${totalCount} matching document${totalCount === 1 ? "" : "s"}`;
 }
 
 export function SearchResultsList({
@@ -153,101 +173,105 @@ export function SearchResultsList({
 
   return (
     <div className={styles.root}>
-      <div className={styles.header}>
-        <Text weight="semibold" size={300}>
-          {hasQueried
-            ? (totalCount === 0 ? "No results" : `${totalCount} result${totalCount === 1 ? "" : "s"}`)
-            : "Enter filters and click Query"}
-        </Text>
-        {hasQueried && totalCount > 0 && (
-          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-            Showing {from}–{to}
-          </Text>
+      <div className={styles.scroll}>
+        {!hasQueried && (
+          <div className={styles.empty}>
+            <Text>Search by issued number or numbering group, then click Query to see individual documents.</Text>
+          </div>
         )}
+        {hasQueried && isLoading && rows.length === 0 && (
+          <div className={styles.loading}>
+            <Spinner label="Searching…" />
+          </div>
+        )}
+        {hasQueried && !isLoading && rows.length === 0 && (
+          <div className={styles.empty}>
+            <Text>{emptyMessage}</Text>
+          </div>
+        )}
+        {rows.map((row) => {
+          const preferDropOff = preferSharePointDropOff(
+            row.isChildDocument ? { sheetState: row.state } : { drawingState: row.state },
+          );
+          const spUrl = sharePointFileUrl(row.sharePointUrl, row.destinationUrl, { preferDropOff });
+          const stateColor = STATE_COLORS[row.stateLabel] ?? "informative";
+          return (
+            <button
+              key={row.id}
+              type="button"
+              className={styles.card}
+              onClick={() => onRowClick(row)}
+            >
+              <Document24Regular className={styles.icon} aria-hidden />
+              <div className={styles.body}>
+                <div className={styles.titleRow}>
+                  <Text className={styles.number}>{row.documentNumber}</Text>
+                  <Badge appearance="tint" color="informative" size="small">{row.typeLabel}</Badge>
+                  <Badge appearance="tint" color={stateColor} size="small">{row.stateLabel}</Badge>
+                </div>
+                <Text className={styles.subtitle} title={row.filename || row.title}>
+                  {row.filename || row.title || "—"}
+                </Text>
+                <Text className={styles.meta} title={row.compositionSummary}>
+                  {row.compositionSummary}
+                  {row.currentRevision ? ` · Rev ${row.currentRevision}` : ""}
+                </Text>
+              </div>
+              <div className={styles.actions}>
+                <SearchCheckoutAction row={row} />
+                {spUrl && (
+                  <Link
+                    href={spUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label="Open in SharePoint"
+                  >
+                    <ArrowSquareUpRightRegular />
+                  </Link>
+                )}
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      {isLoading && (
-        <div style={{ display: "flex", justifyContent: "center", padding: tokens.spacingVerticalL }}>
-          <Spinner label="Searching…" />
-        </div>
-      )}
-
-      {!isLoading && (
-        <div className={styles.scroll}>
-          {!hasQueried && (
-            <div className={styles.empty}>
-              <Text>Search by issued number or numbering group, then click Query to see individual documents.</Text>
-            </div>
-          )}
-          {hasQueried && rows.length === 0 && (
-            <div className={styles.empty}>
-              <Text>{emptyMessage}</Text>
-            </div>
-          )}
-          {rows.map((row) => {
-            const spUrl = sharePointUrlFrom(row.sharePointUrl, row.destinationUrl);
-            const stateColor = STATE_COLORS[row.stateLabel] ?? "informative";
-            return (
-              <button
-                key={row.id}
-                type="button"
-                className={styles.card}
-                onClick={() => onRowClick(row)}
+      {hasQueried && (
+        <div className={styles.footer} aria-live="polite">
+          <div className={styles.footerMeta}>
+            <Text weight="semibold" size={300}>
+              {isLoading ? "Searching…" : matchingLabel(totalCount)}
+            </Text>
+            {!isLoading && totalCount > 0 && (
+              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                Showing {from}–{to} of {totalCount}
+              </Text>
+            )}
+          </div>
+          {totalPages > 1 && (
+            <div className={styles.pager}>
+              <Button
+                appearance="secondary"
+                size="small"
+                icon={<ChevronLeftRegular />}
+                disabled={page <= 0 || isLoading}
+                onClick={() => onPageChange(page - 1)}
               >
-                <Document24Regular className={styles.icon} aria-hidden />
-                <div className={styles.body}>
-                  <div className={styles.titleRow}>
-                    <Text className={styles.number}>{row.documentNumber}</Text>
-                    <Badge appearance="tint" color="informative" size="small">{row.typeLabel}</Badge>
-                    <Badge appearance="tint" color={stateColor} size="small">{row.stateLabel}</Badge>
-                  </div>
-                  <Text className={styles.subtitle} title={row.filename || row.title}>
-                    {row.filename || row.title || "—"}
-                  </Text>
-                  <Text className={styles.meta} title={row.compositionSummary}>
-                    {row.compositionSummary}
-                    {row.currentRevision ? ` · Rev ${row.currentRevision}` : ""}
-                  </Text>
-                </div>
-                {spUrl && (
-                  <div className={styles.actions}>
-                    <Link
-                      href={spUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      aria-label="Open in SharePoint"
-                    >
-                      <ArrowSquareUpRightRegular />
-                    </Link>
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {hasQueried && totalCount > pageSize && (
-        <div className={styles.pager}>
-          <Button
-            appearance="subtle"
-            icon={<ChevronLeftRegular />}
-            disabled={page <= 0 || isLoading}
-            onClick={() => onPageChange(page - 1)}
-          >
-            Previous
-          </Button>
-          <Text size={200}>Page {page + 1} of {totalPages}</Text>
-          <Button
-            appearance="subtle"
-            icon={<ChevronRightRegular />}
-            iconPosition="after"
-            disabled={page >= totalPages - 1 || isLoading}
-            onClick={() => onPageChange(page + 1)}
-          >
-            Next
-          </Button>
+                Previous
+              </Button>
+              <Text size={200}>Page {page + 1} of {totalPages}</Text>
+              <Button
+                appearance="secondary"
+                size="small"
+                icon={<ChevronRightRegular />}
+                iconPosition="after"
+                disabled={page >= totalPages - 1 || isLoading}
+                onClick={() => onPageChange(page + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

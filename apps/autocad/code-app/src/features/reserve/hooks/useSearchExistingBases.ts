@@ -28,7 +28,8 @@ export interface ExistingBase {
 }
 
 // Terminal states that should not accept "add to existing" (obsolete/void/superseded).
-const TERMINAL_STATES = [5, 6, 7];
+// Pending SharePoint Import (8) is not yet approved and must not be addable either.
+const TERMINAL_STATES = [5, 6, 7, 8];
 
 /**
  * Searches issued base numbers (enmax_autocaddrawing) by coding/number substring,

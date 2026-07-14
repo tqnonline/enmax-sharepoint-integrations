@@ -10,7 +10,9 @@ type CheckoutConfigKey =
   | "EnableProcedureCheckout"
   | "EnableProcedureCheckIn"
   | "EnableStandardCheckout"
-  | "EnableStandardCheckIn";
+  | "EnableStandardCheckIn"
+  | "EnableFormCheckout"
+  | "EnableFormCheckIn";
 
 function resolveCheckoutKey(
   reservationType?: number | null,
@@ -19,6 +21,7 @@ function resolveCheckoutKey(
   if (reservationType === RESERVATION_TYPE_VALUE.Document) {
     if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Standard) return "EnableStandardCheckout";
     if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure) return "EnableProcedureCheckout";
+    if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Form) return "EnableFormCheckout";
   }
   // Legacy rows with null type behave as Drawing (ADR 0001).
   return "EnableDrawingCheckout";
@@ -31,6 +34,7 @@ function resolveCheckInKey(
   if (reservationType === RESERVATION_TYPE_VALUE.Document) {
     if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Standard) return "EnableStandardCheckIn";
     if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure) return "EnableProcedureCheckIn";
+    if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Form) return "EnableFormCheckIn";
   }
   return "EnableDrawingCheckIn";
 }

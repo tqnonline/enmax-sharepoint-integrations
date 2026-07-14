@@ -100,3 +100,16 @@ attempt to read a Dataverse environment variable from the Code App. Power
 Automate flows may continue to use environment variables; the App Configuration
 table is the Code App side of the same idea.
 
+## Deploy
+Deploy orchestration is **PowerShell 7 (`pwsh`) only** — `scripts/deploy-user-dev.sh`
+was removed (ADR 0005). There is no bash entry point on any platform, including
+macOS/Linux; install `pwsh` and use `scripts/deploy-user-dev.ps1` or the
+`PowerPlatform.Deploy` module (`Invoke-PpDeploy`, `Invoke-PpDeployFlows`, etc.)
+directly. Every deploy script starts with `#Requires -Version 7`.
+
+Production ships two Dataverse solutions: `enmax_autocadsln` (business flows +
+schema) and `enmax_autocadadminsln` (UAT SharePoint test-harness flows only).
+`Invoke-PpDeploy` defaults `-IncludeAdminSolution` to `$true` for dev/uat and
+`$false` for prod, and always deploys the prod solution and its flows before
+ever touching the admin solution. See `docs/adr/0005-admin-solution-uat-flows.md`.
+

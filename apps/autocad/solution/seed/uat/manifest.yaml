@@ -1,0 +1,86 @@
+# UAT acceptance fixtures — ENMAX DEV only.
+# 15 approved anchors + 30 pending approval-queue reservations.
+
+version: 1
+
+owner:
+  email_env: SEED_USER_EMAIL
+  default_email: EEC_PwrPlat_Svc@enmax.com
+
+profiles:
+  drawing:
+    reservation_type: Drawing
+    document_subtype: null
+    sheets_per_drawing: 2
+    sheets_on_anchor: 2
+  standard:
+    reservation_type: Document
+    document_subtype: Standard
+    sheets_per_drawing: 1
+    sheets_on_anchor: 1
+  procedure:
+    reservation_type: Document
+    document_subtype: Procedure
+    sheets_per_drawing: 3
+    sheets_on_anchor: 3
+
+# Five distinct 6-segment codings per taxonomy (anchors + pending reuse segments).
+taxonomy_rows:
+  drawing:
+    - { key: UAT-A-DRW-01, business: DG, asset: ST, unit: "01", domain: ECS, system: ACC, kind: GA }
+    - { key: UAT-A-DRW-02, business: GG, asset: CF, unit: "01", domain: EMP, system: ACS, kind: PD }
+    - { key: UAT-A-DRW-03, business: GW, asset: GN, unit: "01", domain: EMP, system: ABB, kind: PD }
+    - { key: UAT-A-DRW-04, business: WD, asset: KH, unit: "01", domain: EIC, system: ACB, kind: LD }
+    - { key: UAT-A-DRW-05, business: DG, asset: VS, unit: "01", domain: EMP, system: ACS, kind: PD }
+  standard:
+    - { key: UAT-A-STD-01, business: GG, asset: CF, unit: "02", domain: ECS, system: ACC, kind: GA }
+    - { key: UAT-A-STD-02, business: GW, asset: GN, unit: "02", domain: EMP, system: ACS, kind: PD }
+    - { key: UAT-A-STD-03, business: WD, asset: KH, unit: "02", domain: EIC, system: ACB, kind: LD }
+    - { key: UAT-A-STD-04, business: DG, asset: ST, unit: "03", domain: ECS, system: ABF, kind: GA }
+    - { key: UAT-A-STD-05, business: GG, asset: CV, unit: "01", domain: EIC, system: ACB, kind: LP }
+  procedure:
+    - { key: UAT-A-PRF-01, business: GG, asset: CG, unit: "01", domain: ECS, system: AST, kind: DD }
+    - { key: UAT-A-PRF-02, business: GW, asset: GW, unit: "01", domain: EEL, system: ABS, kind: SD }
+    - { key: UAT-A-PRF-03, business: WD, asset: TB, unit: "01", domain: ECS, system: ACC, kind: GA }
+    - { key: UAT-A-PRF-04, business: GG, asset: SH, unit: "01", domain: DOC, system: AAA, kind: RL }
+    - { key: UAT-A-PRF-05, business: DG, asset: ST, unit: "02", domain: EEL, system: ACB, kind: SD }
+
+pending_new:
+  drawing:
+    - { key: UAT-Q-DRW-NEW-01, profile: drawing, business: DG, asset: ST, unit: "04", domain: ECS, system: ACC, kind: GA, count: 2, sheets: 2 }
+    - { key: UAT-Q-DRW-NEW-02, profile: drawing, business: GG, asset: CF, unit: "03", domain: EMP, system: ACS, kind: PD, count: 3, sheets: 2 }
+    - { key: UAT-Q-DRW-NEW-03, profile: drawing, business: GW, asset: GN, unit: "03", domain: EMP, system: ABB, kind: PD, count: 2, sheets: 3 }
+    - { key: UAT-Q-DRW-NEW-04, profile: drawing, business: WD, asset: KH, unit: "03", domain: EIC, system: ACB, kind: LD, count: 4, sheets: 2 }
+    - { key: UAT-Q-DRW-NEW-05, profile: drawing, business: DG, asset: VS, unit: "02", domain: EMP, system: ACS, kind: PD, count: 2, sheets: 2 }
+  standard:
+    - { key: UAT-Q-STD-NEW-01, profile: standard, business: GG, asset: CF, unit: "04", domain: ECS, system: ACC, kind: GA, count: 1, sheets: 1 }
+    - { key: UAT-Q-STD-NEW-02, profile: standard, business: GW, asset: GN, unit: "04", domain: EMP, system: ACS, kind: PD, count: 2, sheets: 1 }
+    - { key: UAT-Q-STD-NEW-03, profile: standard, business: WD, asset: KH, unit: "04", domain: EIC, system: ACB, kind: LD, count: 1, sheets: 1 }
+    - { key: UAT-Q-STD-NEW-04, profile: standard, business: DG, asset: ST, unit: "05", domain: ECS, system: ABF, kind: GA, count: 2, sheets: 1 }
+    - { key: UAT-Q-STD-NEW-05, profile: standard, business: GG, asset: CV, unit: "02", domain: EIC, system: ACB, kind: LP, count: 1, sheets: 1 }
+  procedure:
+    - { key: UAT-Q-PRF-NEW-01, profile: procedure, business: GG, asset: CG, unit: "02", domain: ECS, system: AST, kind: DD, count: 2, sheets: 3 }
+    - { key: UAT-Q-PRF-NEW-02, profile: procedure, business: GW, asset: GW, unit: "02", domain: EEL, system: ABS, kind: SD, count: 3, sheets: 2 }
+    - { key: UAT-Q-PRF-NEW-03, profile: procedure, business: WD, asset: TB, unit: "02", domain: ECS, system: ACC, kind: GA, count: 2, sheets: 3 }
+    - { key: UAT-Q-PRF-NEW-04, profile: procedure, business: GG, asset: SH, unit: "02", domain: DOC, system: AAA, kind: RL, count: 2, sheets: 2 }
+    - { key: UAT-Q-PRF-NEW-05, profile: procedure, business: DG, asset: ST, unit: "06", domain: EEL, system: ACB, kind: SD, count: 3, sheets: 3 }
+
+pending_append:
+  drawing:
+    - { key: UAT-Q-DRW-APP-01, profile: drawing, anchor_key: UAT-A-DRW-01, count: 2, sheets: 2 }
+    - { key: UAT-Q-DRW-APP-02, profile: drawing, anchor_key: UAT-A-DRW-02, count: 3, sheets: 2 }
+    - { key: UAT-Q-DRW-APP-03, profile: drawing, anchor_key: UAT-A-DRW-03, count: 2, sheets: 3 }
+    - { key: UAT-Q-DRW-APP-04, profile: drawing, anchor_key: UAT-A-DRW-04, count: 2, sheets: 2 }
+    - { key: UAT-Q-DRW-APP-05, profile: drawing, anchor_key: UAT-A-DRW-05, count: 4, sheets: 2 }
+  standard:
+    - { key: UAT-Q-STD-APP-01, profile: standard, anchor_key: UAT-A-STD-01, count: 1, sheets: 1 }
+    - { key: UAT-Q-STD-APP-02, profile: standard, anchor_key: UAT-A-STD-02, count: 2, sheets: 1 }
+    - { key: UAT-Q-STD-APP-03, profile: standard, anchor_key: UAT-A-STD-03, count: 1, sheets: 1 }
+    - { key: UAT-Q-STD-APP-04, profile: standard, anchor_key: UAT-A-STD-04, count: 2, sheets: 1 }
+    - { key: UAT-Q-STD-APP-05, profile: standard, anchor_key: UAT-A-STD-05, count: 1, sheets: 1 }
+  procedure:
+    - { key: UAT-Q-PRF-APP-01, profile: procedure, anchor_key: UAT-A-PRF-01, count: 2, sheets: 3 }
+    - { key: UAT-Q-PRF-APP-02, profile: procedure, anchor_key: UAT-A-PRF-02, count: 3, sheets: 2 }
+    - { key: UAT-Q-PRF-APP-03, profile: procedure, anchor_key: UAT-A-PRF-03, count: 2, sheets: 3 }
+    - { key: UAT-Q-PRF-APP-04, profile: procedure, anchor_key: UAT-A-PRF-04, count: 2, sheets: 2 }
+    - { key: UAT-Q-PRF-APP-05, profile: procedure, anchor_key: UAT-A-PRF-05, count: 3, sheets: 3 }

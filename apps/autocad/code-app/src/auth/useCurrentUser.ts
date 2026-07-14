@@ -16,20 +16,23 @@ async function fetchCurrentUser() {
     throw new Error("WhoAmI response missing UserId");
   }
 
+  let displayName = context.user.fullName ?? "";
   let jobTitle: string | undefined;
   try {
     const sys = await SystemusersService.getAll({
-      select: ["systemuserid", "jobtitle"],
+      select: ["systemuserid", "fullname", "jobtitle"],
       filter: `systemuserid eq '${userId}'`,
     });
-    jobTitle = sys.data?.[0]?.jobtitle ?? undefined;
-  } catch { /* non-fatal — header shows without job title */ }
+    const row = sys.data?.[0];
+    if (row?.fullname) displayName = row.fullname;
+    jobTitle = row?.jobtitle ?? undefined;
+  } catch { /* non-fatal — greeting falls back to host context name */ }
 
   return {
     id: userId,
     azureObjectId: context.user.objectId ?? "",
     userPrincipalName: context.user.userPrincipalName ?? "",
-    displayName: context.user.fullName ?? "",
+    displayName,
     jobTitle,
     appId: context.app.appId ?? "",
     environmentId: context.app.environmentId ?? "",

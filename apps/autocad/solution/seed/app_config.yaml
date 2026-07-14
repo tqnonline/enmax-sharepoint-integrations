@@ -2,9 +2,21 @@ table: enmax_autocadappconfig
 natural_key_columns: [key]
 rows:
   - key: SharedMailboxAddress
-    value: "{{ APP_CONFIG_SHARED_MAILBOX | default('noreply-autocad@enmax.com') }}"
+    value: "{{ APP_CONFIG_SHARED_MAILBOX | default('EEC_PwrPlat_Svc@enmax.com') }}"
     value_type: String
-    description: Outbound mailbox for Power Automate flows. Send-As on this mailbox. NO-REPLY — email copy must not invite replies.
+    description: Outbound mailbox for Power Automate flows (DEV/UAT uses EEC_PwrPlat_Svc@enmax.com). Send-As on this mailbox. NO-REPLY — email copy must not invite replies.
+  - key: DocControlEmailAddress
+    value: GWE-DocControl@enmax.com
+    value_type: String
+    description: Document Control mailbox. Approval emails are sent TO this address; creator-facing checkout/check-in emails CC this address.
+  - key: CodeAppBaseUrl
+    value: "{{ CODE_APP_BASE_URL | default('https://apps.powerapps.com/play/e/default') }}"
+    value_type: String
+    description: Base URL of the published Code App (no trailing slash). Used by notification flows for deep links.
+  - key: FlowRunUrlTemplate
+    value: "https://make.powerautomate.com/environments/{environmentId}/flows/{flowId}/runs/{runId}"
+    value_type: String
+    description: Template for deep links to Power Automate run history. Placeholders environmentId, flowId, runId are replaced at runtime.
   - key: SingleAdminMode
     value: "false"
     value_type: Boolean
@@ -38,29 +50,89 @@ rows:
     value_type: String
     description: Dataverse team name holding the Admin role.
   - key: SharePointSiteUrl
-    value: https://enmax.sharepoint.com/sites/GenerationDrawings
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC
     value_type: String
-    description: Root SharePoint site where drawing document libraries are provisioned.
+    description: DEV/UAT SharePoint site (GEN-POC). Production uses separate Drawings and Documents sites.
   - key: CheckInUploadLibraryUrl
-    value: https://enmax.sharepoint.com/sites/GenerationDrawings/Shared%20Documents
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
     value_type: String
-    description: Single SharePoint document library where users upload revised drawing files at check-in. ALL drawings use this one library; admins move files to the right location afterward. Set to the actual library URL.
-  - key: DrawingsDropOffLibraryUrl
-    value: https://enmax.sharepoint.com/sites/GenerationDrawings/DropOff
+    description: Legacy fallback drop-off library URL when taxonomy-specific keys are unset.
+  - key: DrawingDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
     value_type: String
-    description: WS5 - Drawings site drop-off (read/write) library base URL. Users upload working PDFs here while a drawing is checked out. Set to the actual library URL per environment.
-  - key: DrawingsDestinationLibraryUrl
-    value: https://enmax.sharepoint.com/sites/GenerationDrawings/Destination
+    description: Drawing taxonomy drop-off (read/write) library base URL.
+  - key: DrawingDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
     value_type: String
-    description: WS5 - Drawings site destination (read-only) library base URL, organized with 1-level vendor/project folders holding final checked-in PDFs. Set to the actual library URL per environment.
-  - key: DocumentsDropOffLibraryUrl
-    value: https://enmax.sharepoint.com/sites/GenerationDocuments/DropOff
+    description: Drawing taxonomy destination (read-only) library base URL.
+  - key: StandardDocumentDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
     value_type: String
-    description: WS5 - Documents site (Standards + Procedures) drop-off (read/write) library base URL. Set to the actual library URL per environment.
-  - key: DocumentsDestinationLibraryUrl
-    value: https://enmax.sharepoint.com/sites/GenerationDocuments/Destination
+    description: Standard Document taxonomy drop-off library base URL.
+  - key: StandardDocumentDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
     value_type: String
-    description: WS5 - Documents site destination (read-only) library base URL, 1-level vendor/project folders. Set to the actual library URL per environment.
+    description: Standard Document taxonomy destination library base URL.
+  - key: ProcedureDocumentDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+    value_type: String
+    description: Procedure taxonomy drop-off library base URL.
+  - key: ProcedureDocumentDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+    value_type: String
+    description: Procedure taxonomy destination library base URL.
+  - key: FormDocumentDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+    value_type: String
+    description: Form taxonomy drop-off library base URL.
+  - key: FormDocumentDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+    value_type: String
+    description: Form taxonomy destination library base URL.
+  - key: DrawingDocumentSPContentTypeName
+    value: Generation Drawing Information
+    value_type: String
+    description: SharePoint content type display name used by the indexer (shared across environments).
+  - key: DrawingDocumentSPContentTypeId
+    value: "0x010100C5939496BD3E0F4287FA702FBCF7C0BE01"
+    value_type: String
+    description: SharePoint content type ID used to filter indexer scans (shared across environments).
+  - key: SharePointIndexerLogFolderPath
+    value: Shared Documents/Enmax AutoCAD/Indexer Logs
+    value_type: String
+    description: Server-relative folder path for indexer CSV run logs (same site as destination libraries). Override per environment via overlay.
+  - key: SharePointIndexerMaxCsvRows
+    value: "5000"
+    value_type: Integer
+    description: Maximum detail rows written to an indexer CSV before truncation/summary split.
+  - key: SharePointIndexerIncrementalHours
+    value: "1"
+    value_type: Integer
+    description: Lookback window in hours for the incremental SharePoint indexer.
+  - key: SharePointRecordTypeMap
+    value: '{"Drawing Number":"Drawing","Standard Document":"Standard","Procedure":"Procedure","Form":"Form"}'
+    value_type: String
+    description: JSON map of SharePoint Record Type choice labels to Drawing/Standard/Procedure/Form taxonomy.
+  - key: RequireCheckInApproval
+    value: "true"
+    value_type: Boolean
+    description: When true, check-in stays Awaiting Validation until an Approver/Admin validates. Seed false to auto-close.
+  - key: AppOwnerTeamId
+    value: "00000000-0000-0000-0000-000000000000"
+    value_type: String
+    description: Placeholder GUID for the parent-BU app owner team. Filled by roles provisioning after teams exist.
+  - key: AdminTeamId
+    value: "00000000-0000-0000-0000-000000000000"
+    value_type: String
+    description: Placeholder GUID for Admin team. Filled by sync_team_app_config after teams exist.
+  - key: ApproverTeamId
+    value: "00000000-0000-0000-0000-000000000000"
+    value_type: String
+    description: Placeholder GUID for Approver team. Filled by sync_team_app_config after teams exist.
+  - key: UserTeamId
+    value: "00000000-0000-0000-0000-000000000000"
+    value_type: String
+    description: Placeholder GUID for User team. Filled by roles/team sync after teams exist.
   - key: BusinessUnitName
     value: Enmax AutoCAD
     value_type: String
@@ -137,6 +209,14 @@ rows:
     value: "true"
     value_type: Boolean
     description: When true, Check In is available for Standard Document reservations. Set false to hide/disable check-in for standard documents only.
+  - key: EnableFormCheckout
+    value: "true"
+    value_type: Boolean
+    description: When true, Check Out is available for Form reservations. Set false to hide/disable checkout for forms only.
+  - key: EnableFormCheckIn
+    value: "true"
+    value_type: Boolean
+    description: When true, Check In is available for Form reservations. Set false to hide/disable check-in for forms only.
   - key: RequireCheckOutApproval
     value: "true"
     value_type: Boolean

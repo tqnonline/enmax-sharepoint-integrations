@@ -247,6 +247,53 @@ def _load_yaml(path: Path) -> dict:
         return yaml.safe_load(f) or {}
 
 
+def merge_app_config(base: dict, overlay: dict | None) -> dict:
+    """Merge overlay rows onto base by natural key ``key`` (overlay wins for values).
+
+    Preserves base row order; appends keys that exist only in the overlay.
+    """
+    if not overlay:
+        return base
+    base_rows = list(base.get("rows") or [])
+    by_key: dict[str, dict] = {}
+    order: list[str] = []
+    for row in base_rows:
+        if not isinstance(row, dict) or "key" not in row:
+            continue
+        k = str(row["key"])
+        by_key[k] = dict(row)
+        order.append(k)
+    for row in overlay.get("rows") or []:
+        if not isinstance(row, dict) or "key" not in row:
+            continue
+        k = str(row["key"])
+        if k in by_key:
+            merged = dict(by_key[k])
+            for field, val in row.items():
+                if val is not None:
+                    merged[field] = val
+            by_key[k] = merged
+        else:
+            by_key[k] = dict(row)
+            order.append(k)
+    out = dict(base)
+    out["rows"] = [by_key[k] for k in order]
+    return out
+
+
+def load_app_config_seed(environment: str | None = None) -> dict:
+    """Load base app_config.yaml and optionally merge app_config.<env>.yaml."""
+    base = _load_yaml(SEED_DIR / "app_config.yaml")
+    if not environment or environment == "prod":
+        return base
+    overlay_path = SEED_DIR / f"app_config.{environment}.yaml"
+    if not overlay_path.exists():
+        print(f"WARNING: no app config overlay at {overlay_path}; using base only.", file=sys.stderr)
+        return base
+    print(f"Merging app config overlay: {overlay_path.name}")
+    return merge_app_config(base, _load_yaml(overlay_path))
+
+
 def _load_option_sets() -> None:
     os_dir = SEED_DIR / "option_sets"
     if not os_dir.exists():
@@ -708,6 +755,12 @@ def main() -> int:
         default="enmax-autocad-app",
         help="Exact team name to own master/app_config/number_sequence records (parent-BU team).",
     )
+    parser.add_argument(
+        "--environment",
+        choices=["dev", "uat", "prod"],
+        default=None,
+        help="Merge solution/seed/app_config.<environment>.yaml onto base app_config.yaml (prod/none = base only).",
+    )
     args = parser.parse_args()
 
     dataverse_url = _require_env("DATAVERSE_URL") if not args.dry_run else os.environ.get("DATAVERSE_URL", "https://example.crm.dynamics.com")
@@ -752,11 +805,11 @@ def main() -> int:
             data = _load_yaml(f)
             total_errors += _seed_file(data, session, dataverse_url, token, loaded_rows, args.dry_run, args.table)
 
-    # 2. App Configuration (master)
+    # 2. App Configuration (master) — base + optional env overlay
     if "app_config" in sections:
         app_config_f = SEED_DIR / "app_config.yaml"
         if app_config_f.exists():
-            data = _load_yaml(app_config_f)
+            data = load_app_config_seed(args.environment)
             total_errors += _seed_file(data, session, dataverse_url, token, loaded_rows, args.dry_run, args.table)
 
     # 3. Number Sequences (init-once; only via --scope sequences, never master/demo/all —

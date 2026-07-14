@@ -8,19 +8,21 @@ import {
   TabList,
   Text,
   Title2,
+  Toast,
+  ToastTitle,
+  Toaster,
+  useToastController,
   makeStyles,
   tokens,
 } from "@fluentui/react-components";
 import { GridQueryFilterBar } from "../../components/DataGrid";
 import { defaultGridDateRange } from "../../lib/dateRangeDefaults";
-import {
-  NUMBERING_GROUP_LABEL,
-  NUMBERING_GROUP_PATTERN,
-} from "../reserve/numberingTerms";
 import { useReferenceData } from "../reserve/hooks/useReferenceData";
 import { CompositionFilterFields } from "./CompositionFilterFields";
 import { SearchResultsList } from "./SearchResultsList";
+import { SearchReservationResultsList } from "./SearchReservationResultsList";
 import { fetchSearchDocuments, type SearchDocumentRow } from "./useSearchDocuments";
+import { fetchSearchReservations, type ReservationRow } from "./useUnifiedSearch";
 import {
   emptyComposition,
   type DocumentSubtypeSearchFilter,
@@ -35,23 +37,30 @@ import {
 } from "./searchUrlState";
 import { usePageSize } from "../../config/usePageSize";
 
+const SEARCH_TOASTER_ID = "search-page-toaster";
+
 const useStyles = makeStyles({
   root: {
     display: "flex",
     flexDirection: "column",
     height: "100%",
+    minHeight: 0,
     gap: tokens.spacingVerticalM,
     overflow: "hidden",
   },
   intro: {
     color: tokens.colorNeutralForeground3,
     maxWidth: "720px",
+    flexShrink: 0,
   },
   filters: {
     display: "flex",
     flexDirection: "column",
     gap: tokens.spacingVerticalXS,
     flexShrink: 0,
+    maxHeight: "42vh",
+    overflowY: "auto",
+    paddingRight: tokens.spacingHorizontalXS,
   },
   results: {
     flex: 1,
@@ -62,13 +71,16 @@ const useStyles = makeStyles({
 });
 
 const DOCUMENT_TYPE_OPTIONS: { value: DocumentSubtypeSearchFilter; label: string }[] = [
-  { value: "all", label: "All types" },
+  { value: "all", label: "All Types" },
   { value: "standard", label: "Standard Document" },
-  { value: "procedure", label: "Procedure form" },
+  { value: "procedure", label: "Procedure" },
+  { value: "form", label: "Form" },
 ];
 
-function initialFilters(): SearchListFilters {
-  const { from, to } = defaultGridDateRange();
+function initialFilters(tab: SearchTab = "drawings"): SearchListFilters {
+  const { from, to } = tab === "reservations"
+    ? { from: "", to: "" }
+    : defaultGridDateRange();
   return {
     number: "",
     from,
@@ -90,10 +102,11 @@ export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const pageSize = usePageSize();
   const { data: refData } = useReferenceData();
+  const { dispatchToast } = useToastController(SEARCH_TOASTER_ID);
 
   const [activeTab, setActiveTab] = useState<SearchTab>(() => parseTab(searchParams.get("tab")));
-  const [filterDraft, setFilterDraft] = useState(initialFilters);
-  const [appliedFilters, setAppliedFilters] = useState<SearchListFilters>(() => initialFilters());
+  const [filterDraft, setFilterDraft] = useState(() => initialFilters(parseTab(searchParams.get("tab"))));
+  const [appliedFilters, setAppliedFilters] = useState(() => initialFilters(parseTab(searchParams.get("tab"))));
   const [page, setPage] = useState(0);
 
   /* eslint-disable react-hooks/set-state-in-effect -- router search params are an external state source */
@@ -114,14 +127,14 @@ export function SearchPage() {
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const queryKey = useMemo(
-    () => ["search-documents", activeTab, appliedFilters, page, pageSize],
+    () => ["search-page", activeTab, appliedFilters, page, pageSize],
     [activeTab, appliedFilters, page, pageSize],
   );
 
-  const { data, isFetching, isError } = useQuery({
-    queryKey,
-    enabled: true,
-    queryFn: () => fetchSearchDocuments(activeTab, appliedFilters, {
+  const { data: documentData, isFetching: documentsFetching, isError: documentsError } = useQuery({
+    queryKey: [...queryKey, "documents"],
+    enabled: activeTab !== "reservations",
+    queryFn: () => fetchSearchDocuments(activeTab as Exclude<SearchTab, "reservations">, appliedFilters, {
       search: "",
       filters: {},
       sort: { column: "documentNumber", direction: "asc" },
@@ -130,16 +143,45 @@ export function SearchPage() {
     }),
   });
 
+  const { data: reservationData, isFetching: reservationsFetching, isError: reservationsError } = useQuery({
+    queryKey: [...queryKey, "reservations"],
+    enabled: activeTab === "reservations",
+    queryFn: () => fetchSearchReservations({
+      search: appliedFilters.number.trim(),
+      filters: {
+        dateFrom: appliedFilters.from || null,
+        dateTo: appliedFilters.to || null,
+        peopleIds: appliedFilters.peopleIds.length > 0 ? appliedFilters.peopleIds : null,
+      },
+      sort: { column: "number", direction: "desc" },
+      page,
+      pageSize,
+    }),
+  });
+
+  const isFetching = activeTab === "reservations" ? reservationsFetching : documentsFetching;
+  const isError = activeTab === "reservations" ? reservationsError : documentsError;
+
   function handleTabChange(tab: SearchTab) {
     setActiveTab(tab);
-    setSearchParams({ tab });
+    const params: Record<string, string> = { tab };
+    if (searchParams.get("q")) params.q = searchParams.get("q")!;
+    setSearchParams(params);
     setPage(0);
-    setFilterDraft(initialFilters());
-    setAppliedFilters(initialFilters());
+    const cleared = initialFilters(tab);
+    setFilterDraft(cleared);
+    setAppliedFilters(cleared);
   }
 
   function handleQuery() {
-    if (!filterDraft.from || !filterDraft.to) return;
+    const { from, to } = filterDraft;
+    if (activeTab !== "reservations" && (!from || !to)) {
+      dispatchToast(
+        <Toast><ToastTitle>From and To dates are required to run a search.</ToastTitle></Toast>,
+        { intent: "warning" },
+      );
+      return;
+    }
     setAppliedFilters({
       number: filterDraft.number,
       from: filterDraft.from,
@@ -152,34 +194,41 @@ export function SearchPage() {
   }
 
   function handleClear() {
-    const cleared = initialFilters();
+    const cleared = initialFilters(activeTab);
     setFilterDraft(cleared);
     setAppliedFilters(cleared);
     setPage(0);
   }
 
-  const handleRowClick = useCallback((row: SearchDocumentRow) => {
+  const handleDocumentClick = useCallback((row: SearchDocumentRow) => {
     const returnTo = `${location.pathname}${location.search}`;
     navigate(buildDocumentDetailUrl({
       documentId: row.id,
       drawingId: row.drawingId,
-      tab: activeTab,
+      tab: activeTab === "reservations" ? "drawings" : activeTab,
       returnTo,
     }), { state: { returnTo } });
   }, [navigate, activeTab, location.pathname, location.search]);
 
-  const emptyMessage = activeTab === "drawings"
-    ? "No Drawing documents found. Try widening the numbering group filters or the date range."
-    : "No Standard Documents or Procedure forms found. Try adjusting filters.";
+  const handleReservationClick = useCallback((row: ReservationRow) => {
+    navigate(`/reservations/${row.id}`);
+  }, [navigate]);
+
+  const emptyMessage = activeTab === "reservations"
+    ? "No Drawing/Document Reservations found. Try a different reservation ID or reason."
+    : activeTab === "drawings"
+      ? "No Drawing Documents Found. Try Widening The Numbering Group Filters Or The Date Range."
+      : "No Standard Documents, Procedures, Or Forms Found. Try Adjusting Filters.";
 
   return (
     <div className={styles.root}>
+      <Toaster toasterId={SEARCH_TOASTER_ID} />
       <div>
         <Title2 as="h1">Search</Title2>
         <Text className={styles.intro} size={300} block>
-          Find Drawing documents, Standard Documents, and Procedure forms by issued number
-          or {NUMBERING_GROUP_LABEL} ({NUMBERING_GROUP_PATTERN}). Results list each file you
-          can open in SharePoint or view in detail.
+          Find Drawing/Document Reservations, issued drawing documents, standard documents,
+          and procedure forms. Open a document to view detail or request Check Out when it is
+          Available.
         </Text>
       </div>
 
@@ -187,20 +236,29 @@ export function SearchPage() {
         selectedValue={activeTab}
         onTabSelect={(_, d) => handleTabChange(d.value as SearchTab)}
       >
-        <Tab value="drawings">Drawings (Drawing documents)</Tab>
-        <Tab value="documents">Standard Documents &amp; Procedure forms</Tab>
+        <Tab value="drawings">Drawings (Drawing Documents)</Tab>
+        <Tab value="documents">Standard Documents, Procedures &amp; Forms</Tab>
+        <Tab value="reservations">Reservations</Tab>
       </TabList>
 
       <div className={styles.filters}>
         <GridQueryFilterBar
-          numberLabel="Drawing document / Standard Document / Procedure form number"
-          numberPlaceholder="e.g. GG-CG-00-ECS-AST-DD-0001-001"
+          numberLabel={
+            activeTab === "reservations"
+              ? "Reservation ID or reason"
+              : "Drawing Document / Standard Document / Procedure / Form Number"
+          }
+          numberPlaceholder={
+            activeTab === "reservations"
+              ? "e.g. RES-1152 or pump replacement"
+              : "e.g. GG-CG-00-ECS-AST-DD-0001-001"
+          }
           draft={{ number: filterDraft.number, from: filterDraft.from, to: filterDraft.to }}
           onDraftChange={(patch) => setFilterDraft((prev) => ({ ...prev, ...patch }))}
           onQuery={handleQuery}
           onClear={handleClear}
           isQuerying={isFetching}
-          personLabel="Submitted or approved by"
+          personLabel="Submitted Or Approved By"
           peopleIds={filterDraft.peopleIds}
           onPeopleChange={(ids) => setFilterDraft((prev) => ({ ...prev, peopleIds: ids }))}
           extraFields={activeTab === "documents" ? (
@@ -221,14 +279,16 @@ export function SearchPage() {
           ) : undefined}
         />
 
-        <CompositionFilterFields
-          refData={refData}
-          value={filterDraft.composition}
-          onChange={(patch) => setFilterDraft((prev) => ({
-            ...prev,
-            composition: { ...prev.composition, ...patch },
-          }))}
-        />
+        {activeTab !== "reservations" && (
+          <CompositionFilterFields
+            refData={refData}
+            value={filterDraft.composition}
+            onChange={(patch) => setFilterDraft((prev) => ({
+              ...prev,
+              composition: { ...prev.composition, ...patch },
+            }))}
+          />
+        )}
       </div>
 
       <div className={styles.results}>
@@ -237,17 +297,31 @@ export function SearchPage() {
             Search failed. Please try again.
           </Text>
         )}
-        <SearchResultsList
-          rows={data?.rows ?? []}
-          totalCount={data?.totalCount ?? 0}
-          page={page}
-          pageSize={pageSize}
-          isLoading={isFetching}
-          hasQueried={true}
-          emptyMessage={emptyMessage}
-          onPageChange={setPage}
-          onRowClick={handleRowClick}
-        />
+        {activeTab === "reservations" ? (
+          <SearchReservationResultsList
+            rows={reservationData?.rows ?? []}
+            totalCount={reservationData?.totalCount ?? 0}
+            page={page}
+            pageSize={pageSize}
+            isLoading={isFetching}
+            hasQueried={true}
+            emptyMessage={emptyMessage}
+            onPageChange={setPage}
+            onRowClick={handleReservationClick}
+          />
+        ) : (
+          <SearchResultsList
+            rows={documentData?.rows ?? []}
+            totalCount={documentData?.totalCount ?? 0}
+            page={page}
+            pageSize={pageSize}
+            isLoading={isFetching}
+            hasQueried={true}
+            emptyMessage={emptyMessage}
+            onPageChange={setPage}
+            onRowClick={handleDocumentClick}
+          />
+        )}
       </div>
     </div>
   );
