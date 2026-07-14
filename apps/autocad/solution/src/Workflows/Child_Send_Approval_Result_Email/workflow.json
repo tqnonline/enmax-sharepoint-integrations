@@ -24,10 +24,20 @@
     "definition": {
       "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
       "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
       "triggers": {
         "manual": {
           "type": "Request",
-          "kind": "PowerAppV2",
+          "kind": "Button",
           "inputs": {
             "schema": {
               "type": "object",
@@ -84,7 +94,8 @@
               "entityName": "enmax_autocadappconfigs",
               "$filter": "enmax_acdnkey eq 'SharedMailboxAddress'",
               "$top": 1
-            }
+            },
+            "authentication": "@parameters('$authentication')"
           }
         },
         "Choose_Template": {
@@ -104,13 +115,15 @@
                   "inputs": {
                     "host": {
                       "connectionName": "shared_commondataserviceforapps",
-                      "operationId": "GetItem",
+                      "operationId": "ListRecords",
                       "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
                     },
                     "parameters": {
                       "entityName": "webresourceset",
-                      "$filter": "name eq 'enmax_approval_approved'"
-                    }
+                      "$filter": "name eq 'enmax_approval_approved'",
+                      "$top": 1
+                    },
+                    "authentication": "@parameters('$authentication')"
                   }
                 },
                 "Substitute_Approved": {
@@ -120,7 +133,7 @@
                       "Succeeded"
                     ]
                   },
-                  "inputs": "@{replace(replace(replace(replace(base64ToString(outputs('Get_Approved_Template')?['body/content']), '{{ReservationId}}', triggerBody()?['ReservationId']), '{{IssuedNumbersFormatted}}', triggerBody()?['IssuedNumbersFormatted']), '{{SharePointLibraryUrl}}', triggerBody()?['SharePointLibraryUrl']), '{{ApproverDisplayName}}', replace(replace(triggerBody()?['ApproverDisplayName'], '<', '&lt;'), '>', '&gt;'))}"
+                  "inputs": "@{replace(replace(replace(replace(base64ToString(outputs('Get_Approved_Template')?['body/value'][0]?['content']), '{{ReservationId}}', triggerBody()?['ReservationId']), '{{IssuedNumbersFormatted}}', triggerBody()?['IssuedNumbersFormatted']), '{{SharePointLibraryUrl}}', triggerBody()?['SharePointLibraryUrl']), '{{ApproverDisplayName}}', replace(replace(triggerBody()?['ApproverDisplayName'], '<', '&lt;'), '>', '&gt;'))}"
                 },
                 "Send_Approved_Email": {
                   "type": "OpenApiConnection",
@@ -132,18 +145,18 @@
                   "inputs": {
                     "host": {
                       "connectionName": "shared_office365",
-                      "operationId": "SendEmailFromSharedMailbox_V2",
+                      "operationId": "SharedMailboxSendEmailV2",
                       "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
                     },
                     "parameters": {
-                      "MailboxAddress": "@{outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue']}",
-                      "To": "@{triggerBody()?['RecipientEmail']}",
-                      "Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
-                      "Subject": "Approved: @{triggerBody()?['ReservationId']}: @{triggerBody()?['IssuedNumbersFormatted']}",
-                      "Body": "@{outputs('Substitute_Approved')}",
-                      "IsHtml": true,
-                      "Importance": "Normal"
-                    }
+                      "emailMessage/MailboxAddress": "@{outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue']}",
+                      "emailMessage/To": "@{triggerBody()?['RecipientEmail']}",
+                      "emailMessage/Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
+                      "emailMessage/Subject": "Approved: @{triggerBody()?['ReservationId']}: @{triggerBody()?['IssuedNumbersFormatted']}",
+                      "emailMessage/Body": "@{outputs('Substitute_Approved')}",
+                      "emailMessage/Importance": "Normal"
+                    },
+                    "authentication": "@parameters('$authentication')"
                   },
                   "retryPolicy": {
                     "type": "fixed",
@@ -161,13 +174,15 @@
                   "inputs": {
                     "host": {
                       "connectionName": "shared_commondataserviceforapps",
-                      "operationId": "GetItem",
+                      "operationId": "ListRecords",
                       "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
                     },
                     "parameters": {
                       "entityName": "webresourceset",
-                      "$filter": "name eq 'enmax_approval_declined'"
-                    }
+                      "$filter": "name eq 'enmax_approval_declined'",
+                      "$top": 1
+                    },
+                    "authentication": "@parameters('$authentication')"
                   }
                 },
                 "Substitute_Declined": {
@@ -177,7 +192,7 @@
                       "Succeeded"
                     ]
                   },
-                  "inputs": "@{replace(replace(replace(base64ToString(outputs('Get_Declined_Template')?['body/content']), '{{ReservationId}}', triggerBody()?['ReservationId']), '{{DeclineReason}}', replace(replace(triggerBody()?['DeclineReason'], '<', '&lt;'), '>', '&gt;')), '{{ApproverDisplayName}}', replace(replace(triggerBody()?['ApproverDisplayName'], '<', '&lt;'), '>', '&gt;'))}"
+                  "inputs": "@{replace(replace(replace(base64ToString(outputs('Get_Declined_Template')?['body/value'][0]?['content']), '{{ReservationId}}', triggerBody()?['ReservationId']), '{{DeclineReason}}', replace(replace(triggerBody()?['DeclineReason'], '<', '&lt;'), '>', '&gt;')), '{{ApproverDisplayName}}', replace(replace(triggerBody()?['ApproverDisplayName'], '<', '&lt;'), '>', '&gt;'))}"
                 },
                 "Send_Declined_Email": {
                   "type": "OpenApiConnection",
@@ -189,18 +204,18 @@
                   "inputs": {
                     "host": {
                       "connectionName": "shared_office365",
-                      "operationId": "SendEmailFromSharedMailbox_V2",
+                      "operationId": "SharedMailboxSendEmailV2",
                       "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
                     },
                     "parameters": {
-                      "MailboxAddress": "@{outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue']}",
-                      "To": "@{triggerBody()?['RecipientEmail']}",
-                      "Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
-                      "Subject": "Declined: @{triggerBody()?['ReservationId']}",
-                      "Body": "@{outputs('Substitute_Declined')}",
-                      "IsHtml": true,
-                      "Importance": "Normal"
-                    }
+                      "emailMessage/MailboxAddress": "@{outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue']}",
+                      "emailMessage/To": "@{triggerBody()?['RecipientEmail']}",
+                      "emailMessage/Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
+                      "emailMessage/Subject": "Declined: @{triggerBody()?['ReservationId']}",
+                      "emailMessage/Body": "@{outputs('Substitute_Declined')}",
+                      "emailMessage/Importance": "Normal"
+                    },
+                    "authentication": "@parameters('$authentication')"
                   },
                   "retryPolicy": {
                     "type": "fixed",
@@ -213,6 +228,32 @@
           },
           "default": {
             "actions": {}
+          }
+        },
+        "Respond_to_Parent": {
+          "type": "Response",
+          "kind": "PowerApp",
+          "runAfter": {
+            "Choose_Template": [
+              "Succeeded",
+              "Failed",
+              "TimedOut",
+              "Skipped"
+            ]
+          },
+          "inputs": {
+            "statusCode": 200,
+            "body": {
+              "ok": true
+            },
+            "schema": {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "type": "boolean"
+                }
+              }
+            }
           }
         }
       }

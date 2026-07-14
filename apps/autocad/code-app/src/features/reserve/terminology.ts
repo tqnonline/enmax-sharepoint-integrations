@@ -1,12 +1,13 @@
 import type { ReserveForm } from "./schema";
 import {
   individualItemLabel,
+  individualItemLabelPlural,
   taxonomyTypeLabel,
 } from "./numberingTerms";
 
 // Dataverse option values for the WS1a taxonomy columns.
 export const RESERVATION_TYPE_VALUE = { Drawing: 1, Document: 2 } as const;
-export const DOCUMENT_SUBTYPE_VALUE = { Standard: 1, Procedure: 2 } as const;
+export const DOCUMENT_SUBTYPE_VALUE = { Standard: 1, Procedure: 2, Form: 3 } as const;
 
 export interface ReserveTerminology {
   /** Human label for the reservation type, e.g. "Drawing", "Standard Document". */
@@ -15,9 +16,9 @@ export interface ReserveTerminology {
   baseNoun: string;
   /** Plural base noun, e.g. "drawings". */
   baseNounPlural: string;
-  /** Child item noun, or null when the type is base-only (Standard). */
+  /** Child item noun, or null when the type is base-only (Standard / Procedure). */
   childNoun: string | null;
-  /** Whether this type produces child items (-sss). Standard is base-only. */
+  /** Whether this type produces child items (-sss). Standard and Procedure are base-only. */
   createsChildren: boolean;
 }
 
@@ -25,7 +26,8 @@ export interface ReserveTerminology {
  * Type-aware terminology for the reserve wizard (ADR 0001, Heather numbering model).
  * - Drawing     → base Drawing Number + child Drawing documents (-SSS)
  * - Standard    → single Standard Document (no children)
- * - Procedure   → Procedure Number range + child Procedure forms (-SSS)
+ * - Procedure   → single Procedure (no children)
+ * - Form        → Form Number range + child Forms (-SSS)
  */
 export function reserveTerminology(
   reservationType: ReserveForm["reservationType"],
@@ -38,7 +40,9 @@ export function reserveTerminology(
     ? DOCUMENT_SUBTYPE_VALUE.Standard
     : documentSubtype === "Procedure"
       ? DOCUMENT_SUBTYPE_VALUE.Procedure
-      : undefined;
+      : documentSubtype === "Form"
+        ? DOCUMENT_SUBTYPE_VALUE.Form
+        : undefined;
 
   if (reservationType === "Document" && documentSubtype === "Standard") {
     return {
@@ -50,11 +54,20 @@ export function reserveTerminology(
     };
   }
   if (reservationType === "Document" && documentSubtype === "Procedure") {
-    const child = individualItemLabel(type, subtype);
     return {
       typeLabel: taxonomyTypeLabel(type, subtype),
       baseNoun: "procedure",
       baseNounPlural: "procedures",
+      childNoun: null,
+      createsChildren: false,
+    };
+  }
+  if (reservationType === "Document" && documentSubtype === "Form") {
+    const child = individualItemLabel(type, subtype);
+    return {
+      typeLabel: taxonomyTypeLabel(type, subtype),
+      baseNoun: "form",
+      baseNounPlural: "forms",
       childNoun: child,
       createsChildren: true,
     };
@@ -99,7 +112,7 @@ export function reservationTypeDisplayLabel(
 
 /**
  * Plural label for the base-record section on a reservation (the enmax_autocaddrawing
- * rows). Drawing -> "Drawings", Standard -> "Documents", Procedure -> "Procedures".
+ * rows). Drawing -> "Drawings", Standard -> "Documents", Procedure -> "Procedures", Form -> "Forms".
  */
 export function reservationRecordsLabel(
   reservationType?: number | null,
@@ -107,6 +120,7 @@ export function reservationRecordsLabel(
 ): string {
   if (reservationType === RESERVATION_TYPE_VALUE.Document) {
     if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure) return "Procedures";
+    if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Form) return "Forms";
     return "Documents";
   }
   return "Drawings";
@@ -114,7 +128,7 @@ export function reservationRecordsLabel(
 
 /**
  * Singular label for child (enmax_autocadsheet) rows.
- * Drawing → Drawing document; Procedure → Procedure form.
+ * Drawing → Drawing document; Form → Form.
  */
 export function reservationChildNoun(
   reservationType?: number | null,
@@ -123,18 +137,40 @@ export function reservationChildNoun(
   return individualItemLabel(reservationType, documentSubtype);
 }
 
+/** Plural child label for lists and navigation copy, e.g. "Forms". */
+export function reservationChildNounPlural(
+  reservationType?: number | null,
+  documentSubtype?: number | null,
+): string {
+  return individualItemLabelPlural(reservationType, documentSubtype);
+}
+
+export function reservationChildNounPluralLower(
+  reservationType?: number | null,
+  documentSubtype?: number | null,
+): string {
+  return reservationChildNounPlural(reservationType, documentSubtype).toLowerCase();
+}
+
+export function reservationChildNounSingularLower(
+  reservationType?: number | null,
+  documentSubtype?: number | null,
+): string {
+  return reservationChildNoun(reservationType, documentSubtype).toLowerCase();
+}
+
 /**
  * Deterministic display number for a base drawing/document and its child sheet.
- * For child-producing taxonomies (Drawing + Procedure), child items are rendered
+ * For child-producing taxonomies (Drawing + Form), child items are rendered
  * as `<base>-sss` where `sss` is a 3-digit sheet suffix.
  */
-/** Whether the taxonomy shows child rows in document lists (Drawing + Procedure; not Standard). */
+/** Whether the taxonomy shows child rows in document lists (Drawing + Form; not Standard/Procedure). */
 export function reservationHasChildItems(
   reservationType?: number | null,
   documentSubtype?: number | null,
 ): boolean {
   if (reservationType === RESERVATION_TYPE_VALUE.Document) {
-    return documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure;
+    return documentSubtype === DOCUMENT_SUBTYPE_VALUE.Form;
   }
   return true;
 }
@@ -143,16 +179,19 @@ export function reservationHasChildItems(
 export function checkoutBulkLabel(
   reservationType?: number | null,
   documentSubtype?: number | null,
-  childNoun?: string,
+  _childNoun?: string,
   requireApproval = true,
 ): string {
   const verb = requireApproval ? "Request Check Out" : "Check Out";
   if (reservationType === RESERVATION_TYPE_VALUE.Document) {
-    if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Standard) {
+    if (
+      documentSubtype === DOCUMENT_SUBTYPE_VALUE.Standard
+      || documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure
+    ) {
       return requireApproval ? "Request Check Out — All Documents" : "Check Out All Documents";
     }
   }
-  const plural = childNoun ? `${childNoun}s` : "Documents";
+  const plural = reservationChildNounPlural(reservationType, documentSubtype);
   return `${verb} — All ${plural}`;
 }
 
@@ -177,8 +216,11 @@ export function documentDisplayNumber(
   if (sheetNumber == null || Number.isNaN(sheetNumber)) return base;
   if (!base) return String(sheetNumber);
   if (
-    reservationType === RESERVATION_TYPE_VALUE.Document &&
-    documentSubtype === DOCUMENT_SUBTYPE_VALUE.Standard
+    reservationType === RESERVATION_TYPE_VALUE.Document
+    && (
+      documentSubtype === DOCUMENT_SUBTYPE_VALUE.Standard
+      || documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure
+    )
   ) {
     return base;
   }

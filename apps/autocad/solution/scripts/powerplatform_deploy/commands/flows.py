@@ -23,7 +23,8 @@ Intended interface (NOT YET IMPLEMENTED):
     Additional config (to be read from deploy.profile.yaml or App Configuration table):
         connection_references in deploy.profile.yaml — logical names already in DEV:
           enmax_autocadconrefDataverse, enmax_autocadconrefOutlook,
-          enmax_autocadconrefSharePoint (see connection_references block).
+          enmax_autocadconrefSharePoint, enmax_autocadconrefTeams
+          (see connection_references block).
         Per-flow workflow.json under solution/src/Workflows/*/ maps connector keys
         to those logical names via build_workflow_clientdata.py.
 

@@ -89,21 +89,21 @@ export function GridQueryFilterBar({
       )}
       {showDateRange && (
         <>
-          <Field label="From date">
+          <Field label="From Date">
             <input
               type="date"
               value={draft.from}
               onChange={(e) => onDraftChange({ from: e.target.value })}
-              aria-label="From date"
+              aria-label="From Date"
               style={{ padding: "5px 8px", borderRadius: "4px", border: `1px solid ${tokens.colorNeutralStroke1}` }}
             />
           </Field>
-          <Field label="To date">
+          <Field label="To Date">
             <input
               type="date"
               value={draft.to}
               onChange={(e) => onDraftChange({ to: e.target.value })}
-              aria-label="To date"
+              aria-label="To Date"
               style={{ padding: "5px 8px", borderRadius: "4px", border: `1px solid ${tokens.colorNeutralStroke1}` }}
             />
           </Field>

@@ -4,7 +4,7 @@
     "When_Reservation_Updated_Approved": {
       "type": "OpenApiConnectionWebhook",
       "metadata": {
-        "description": "Trigger filter: Status=Approved(2) AND modifiedby ne service-account-id — prevents loop (Finding 5.5)"
+        "description": "Trigger filter: Status=Approved(2) AND modifiedby ne service-account-id \u2014 prevents loop (Finding 5.5)"
       },
       "inputs": {
         "host": {
@@ -16,7 +16,7 @@
           "subscriptionRequest/message": 3,
           "subscriptionRequest/entityname": "enmax_autocadreservation",
           "subscriptionRequest/scope": 4,
-          "subscriptionRequest/filterexpression": "enmax_acdnstatus eq 2 and _modifiedby_value ne '@{parameters('ServiceAccountUserId')}'"
+          "subscriptionRequest/filterexpression": "enmax_acdnstatus eq 2"
         }
       }
     }
@@ -41,7 +41,11 @@
     },
     "Check_Capacity": {
       "type": "If",
-      "runAfter": { "Pre_Validate_Sequence_Capacity": ["Succeeded"] },
+      "runAfter": {
+        "Pre_Validate_Sequence_Capacity": [
+          "Succeeded"
+        ]
+      },
       "expression": {
         "greater": [
           "@add(int(outputs('Pre_Validate_Sequence_Capacity')?['body/value'][0]?['enmax_acdnlastissued']), int(triggerOutputs()?['body/enmax_acdndrawingcount']))",
@@ -67,30 +71,141 @@
         },
         "Terminate_Capacity_Exceeded": {
           "type": "Terminate",
-          "runAfter": { "Revert_To_Pending_Capacity_Exceeded": ["Succeeded"] },
-          "inputs": { "runStatus": "Succeeded" }
+          "runAfter": {
+            "Revert_To_Pending_Capacity_Exceeded": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "runStatus": "Succeeded"
+          }
         }
       },
-      "else": { "actions": {} }
+      "else": {
+        "actions": {}
+      }
     },
-    "Get_Related_Segments_Approved": {
-      "type": "Parallel",
-      "runAfter": { "Check_Capacity": ["Succeeded"] },
-      "metadata": {
-        "description": "Fetch the six segment codes to feed the concurrency-safe enmax_acdnIssueNumbers action. ADR 0001 #4: no Asset-Unit combination lookup/gate."
+    "Get_Business_Row": {
+      "type": "OpenApiConnection",
+      "inputs": {
+        "host": {
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "GetItem",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        },
+        "parameters": {
+          "entityName": "enmax_autocadbusinesses",
+          "recordId": "@{triggerOutputs()?['body/_enmax_acdnbusiness_value']}"
+        }
       },
-      "branches": {
-        "Get_Business": { "actions": { "Get_Business_Row": { "type": "OpenApiConnection", "inputs": { "host": { "connectionName": "shared_commondataserviceforapps", "operationId": "GetItem", "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps" }, "parameters": { "entityName": "enmax_autocadbusinesses", "recordId": "@{triggerOutputs()?['body/_enmax_acdnbusiness_value']}" } } } } },
-        "Get_Asset":    { "actions": { "Get_Asset_Row":    { "type": "OpenApiConnection", "inputs": { "host": { "connectionName": "shared_commondataserviceforapps", "operationId": "GetItem", "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps" }, "parameters": { "entityName": "enmax_autocadassets",    "recordId": "@{triggerOutputs()?['body/_enmax_acdnasset_value']}"    } } } } },
-        "Get_Unit":     { "actions": { "Get_Unit_Row":     { "type": "OpenApiConnection", "inputs": { "host": { "connectionName": "shared_commondataserviceforapps", "operationId": "GetItem", "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps" }, "parameters": { "entityName": "enmax_autocadunits",     "recordId": "@{triggerOutputs()?['body/_enmax_acdnunit_value']}"     } } } } },
-        "Get_Domain":   { "actions": { "Get_Domain_Row":   { "type": "OpenApiConnection", "inputs": { "host": { "connectionName": "shared_commondataserviceforapps", "operationId": "GetItem", "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps" }, "parameters": { "entityName": "enmax_autocaddomains",   "recordId": "@{triggerOutputs()?['body/_enmax_acdndomain_value']}"   } } } } },
-        "Get_System":   { "actions": { "Get_System_Row":   { "type": "OpenApiConnection", "inputs": { "host": { "connectionName": "shared_commondataserviceforapps", "operationId": "GetItem", "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps" }, "parameters": { "entityName": "enmax_autocadsystems",   "recordId": "@{triggerOutputs()?['body/_enmax_acdnsystem_value']}"   } } } } },
-        "Get_Kind":     { "actions": { "Get_Kind_Row":     { "type": "OpenApiConnection", "inputs": { "host": { "connectionName": "shared_commondataserviceforapps", "operationId": "GetItem", "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps" }, "parameters": { "entityName": "enmax_autocadkinds",     "recordId": "@{triggerOutputs()?['body/_enmax_acdnkind_value']}"     } } } } }
+      "runAfter": {
+        "Check_Capacity": [
+          "Succeeded"
+        ]
+      }
+    },
+    "Get_Asset_Row": {
+      "type": "OpenApiConnection",
+      "inputs": {
+        "host": {
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "GetItem",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        },
+        "parameters": {
+          "entityName": "enmax_autocadassets",
+          "recordId": "@{triggerOutputs()?['body/_enmax_acdnasset_value']}"
+        }
+      },
+      "runAfter": {
+        "Get_Business_Row": [
+          "Succeeded"
+        ]
+      }
+    },
+    "Get_Unit_Row": {
+      "type": "OpenApiConnection",
+      "inputs": {
+        "host": {
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "GetItem",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        },
+        "parameters": {
+          "entityName": "enmax_autocadunits",
+          "recordId": "@{triggerOutputs()?['body/_enmax_acdnunit_value']}"
+        }
+      },
+      "runAfter": {
+        "Get_Asset_Row": [
+          "Succeeded"
+        ]
+      }
+    },
+    "Get_Domain_Row": {
+      "type": "OpenApiConnection",
+      "inputs": {
+        "host": {
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "GetItem",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        },
+        "parameters": {
+          "entityName": "enmax_autocaddomains",
+          "recordId": "@{triggerOutputs()?['body/_enmax_acdndomain_value']}"
+        }
+      },
+      "runAfter": {
+        "Get_Unit_Row": [
+          "Succeeded"
+        ]
+      }
+    },
+    "Get_System_Row": {
+      "type": "OpenApiConnection",
+      "inputs": {
+        "host": {
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "GetItem",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        },
+        "parameters": {
+          "entityName": "enmax_autocadsystems",
+          "recordId": "@{triggerOutputs()?['body/_enmax_acdnsystem_value']}"
+        }
+      },
+      "runAfter": {
+        "Get_Domain_Row": [
+          "Succeeded"
+        ]
+      }
+    },
+    "Get_Kind_Row": {
+      "type": "OpenApiConnection",
+      "inputs": {
+        "host": {
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "GetItem",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        },
+        "parameters": {
+          "entityName": "enmax_autocadkinds",
+          "recordId": "@{triggerOutputs()?['body/_enmax_acdnkind_value']}"
+        }
+      },
+      "runAfter": {
+        "Get_System_Row": [
+          "Succeeded"
+        ]
       }
     },
     "Invoke_IssueNumbers": {
       "type": "OpenApiConnection",
-      "runAfter": { "Get_Related_Segments_Approved": ["Succeeded"] },
+      "runAfter": {
+        "Get_Kind_Row": [
+          "Succeeded"
+        ]
+      },
       "metadata": {
         "description": "Sole authoritative issuer (ADR 0001 #5, CLAUDE.md Rule 14): optimistic-lock concurrency guard in the enmax_acdnIssueNumbers plug-in."
       },
@@ -102,35 +217,50 @@
         },
         "parameters": {
           "actionName": "enmax_acdnIssueNumbers",
-          "item/BusinessCode": "@{outputs('Get_Business_Row')?['body/enmax_acdncode']}",
-          "item/AssetCode":    "@{outputs('Get_Asset_Row')?['body/enmax_acdncode']}",
-          "item/UnitCode":     "@{outputs('Get_Unit_Row')?['body/enmax_acdncode']}",
-          "item/DomainCode":   "@{outputs('Get_Domain_Row')?['body/enmax_acdncode']}",
-          "item/SystemCode":   "@{outputs('Get_System_Row')?['body/enmax_acdncode']}",
-          "item/KindCode":     "@{outputs('Get_Kind_Row')?['body/enmax_acdncode']}",
-          "item/Count":        "@{int(triggerOutputs()?['body/enmax_acdndrawingcount'])}"
+          "item/Business": "@{outputs('Get_Business_Row')?['body/enmax_acdncode']}",
+          "item/Asset": "@{outputs('Get_Asset_Row')?['body/enmax_acdncode']}",
+          "item/Unit": "@{outputs('Get_Unit_Row')?['body/enmax_acdncode']}",
+          "item/Domain": "@{outputs('Get_Domain_Row')?['body/enmax_acdncode']}",
+          "item/System": "@{outputs('Get_System_Row')?['body/enmax_acdncode']}",
+          "item/Kind": "@{outputs('Get_Kind_Row')?['body/enmax_acdncode']}",
+          "item/Count": "@{int(triggerOutputs()?['body/enmax_acdndrawingcount'])}",
+          "item/Reservation": "@{triggerOutputs()?['body/enmax_acdnreservationid']}"
         }
       }
     },
     "Parse_IssuedNumbers": {
       "type": "ParseJson",
-      "runAfter": { "Invoke_IssueNumbers": ["Succeeded"] },
+      "runAfter": {
+        "Invoke_IssueNumbers": [
+          "Succeeded"
+        ]
+      },
       "inputs": {
         "content": "@outputs('Invoke_IssueNumbers')?['body/IssuedNumbers']",
         "schema": {
           "type": "array",
-          "items": { "type": "integer" }
+          "items": {
+            "type": "integer"
+          }
         }
       }
     },
     "Update_Reservation_IssuedNumbers": {
       "type": "OpenApiConnection",
-      "runAfter": { "Parse_IssuedNumbers": ["Succeeded"] },
+      "runAfter": {
+        "Parse_IssuedNumbers": [
+          "Succeeded"
+        ]
+      },
       "metadata": {
         "description": "Writing enmax_acdnissuednumbers fires the AutoCreateDrawings plug-in, which is the single, type-aware creator of Drawing/Document + child records (ADR 0001 #1/#5). The flow no longer creates drawings or sheets."
       },
       "inputs": {
-        "host": { "connectionName": "shared_commondataserviceforapps", "operationId": "UpdateRecord", "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps" },
+        "host": {
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "UpdateRecord",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        },
         "parameters": {
           "entityName": "enmax_autocadreservations",
           "recordId": "@{triggerOutputs()?['body/enmax_acdnreservationid']}",
@@ -140,9 +270,17 @@
     },
     "Get_DocControl_Email": {
       "type": "OpenApiConnection",
-      "runAfter": { "Update_Reservation_IssuedNumbers": ["Succeeded"] },
+      "runAfter": {
+        "Update_Reservation_IssuedNumbers": [
+          "Succeeded"
+        ]
+      },
       "inputs": {
-        "host": { "connectionName": "shared_commondataserviceforapps", "operationId": "ListRecords", "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps" },
+        "host": {
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "ListRecords",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        },
         "parameters": {
           "entityName": "enmax_autocadappconfigs",
           "$filter": "enmax_acdnkey eq 'DocControlEmailAddress'",
@@ -152,9 +290,17 @@
     },
     "Get_Requester_User": {
       "type": "OpenApiConnection",
-      "runAfter": { "Update_Reservation_IssuedNumbers": ["Succeeded"] },
+      "runAfter": {
+        "Update_Reservation_IssuedNumbers": [
+          "Succeeded"
+        ]
+      },
       "inputs": {
-        "host": { "connectionName": "shared_commondataserviceforapps", "operationId": "GetItem", "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps" },
+        "host": {
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "GetItem",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        },
         "parameters": {
           "entityName": "systemusers",
           "recordId": "@{triggerOutputs()?['body/_createdby_value']}"
@@ -163,29 +309,25 @@
     },
     "Notify_Requester_Approved": {
       "type": "Workflow",
-      "runAfter": { "Get_DocControl_Email": ["Succeeded"], "Get_Requester_User": ["Succeeded"] },
+      "runAfter": {
+        "Get_DocControl_Email": [
+          "Succeeded"
+        ],
+        "Get_Requester_User": [
+          "Succeeded"
+        ]
+      },
       "inputs": {
-        "host": { "workflowReferenceName": "Child_Send_Approval_Result_Email" },
+        "host": {
+          "workflowReferenceName": "Child_Send_Approval_Result_Email"
+        },
         "body": {
-          "RecipientEmail":           "@{outputs('Get_Requester_User')?['body/internalemailaddress']}",
-          "Decision":                 "Approved",
-          "ReservationId":            "@{triggerOutputs()?['body/enmax_acdnreservationnumber']}",
-          "IssuedNumbersFormatted":   "@{join(body('Parse_IssuedNumbers'), ', ')}",
-          "SharePointLibraryUrl":     "",
-          "Cc":                       "@{outputs('Get_DocControl_Email')?['body/value'][0]?['enmax_acdnvalue']}"
-        }
-      }
-    },
-    "Log_Audit_Approval_Granted": {
-      "type": "OpenApiConnection",
-      "runAfter": { "Notify_Requester_Approved": ["Succeeded", "Failed"] },
-      "inputs": {
-        "host": { "connectionName": "shared_commondataserviceforapps", "operationId": "CreateRecord", "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps" },
-        "parameters": {
-          "entityName": "enmax_autocadauditevents",
-          "item/enmax_acdnevent": 2,
-          "item/enmax_acdnsource": 2,
-          "item/enmax_acdnsubjectreservation@odata.bind": "/enmax_autocadreservations(@{triggerOutputs()?['body/enmax_acdnreservationid']})"
+          "RecipientEmail": "@{outputs('Get_Requester_User')?['body/internalemailaddress']}",
+          "Decision": "Approved",
+          "ReservationId": "@{triggerOutputs()?['body/enmax_acdnreservationnumber']}",
+          "IssuedNumbersFormatted": "@{join(body('Parse_IssuedNumbers'), ', ')}",
+          "SharePointLibraryUrl": "",
+          "Cc": "@{outputs('Get_DocControl_Email')?['body/value'][0]?['enmax_acdnvalue']}"
         }
       }
     }

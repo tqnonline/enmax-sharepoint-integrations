@@ -1,46 +1,62 @@
-import { formatAuditSentence } from "../../features/checkout/hooks/auditSentence";
+import { formatAuditSentence, lifecycleStepLabel } from "../../features/checkout/hooks/auditSentence";
 import {
   DOCUMENT_SUBTYPE_VALUE,
   RESERVATION_TYPE_VALUE,
 } from "../../features/reserve/terminology";
 
-test("state-change reads as a sentence with from→to, date, actor", () => {
-  const s = formatAuditSentence({
+test("check-out request reads as a lifecycle sentence", () => {
+  const ev = {
     id: "1",
     event: 2,
     eventLabel: "State Changed",
     fromState: "Available",
-    toState: "Checked Out",
+    toState: "CheckoutRequested",
     actedBy: "M365 Developer",
     reason: "",
     createdOn: "2026-05-24T11:10:00Z",
-  });
-  expect(s).toMatch(/^M365 Developer changed state from Available to Checked Out on .+\.$/);
+  };
+  expect(lifecycleStepLabel(ev)).toBe("Check-out requested");
+  const s = formatAuditSentence(ev);
+  expect(s).toMatch(/^M365 Developer requested check-out for the drawing document on .+\.$/);
 });
 
-test("event without states omits transition", () => {
-  const s = formatAuditSentence({
+test("check-in completion reads as checked in", () => {
+  const ev = {
     id: "2",
+    event: 3,
+    eventLabel: "Approval Granted",
+    fromState: "AwaitingValidation",
+    toState: "Available",
+    actedBy: "Heather",
+    reason: "",
+    createdOn: "2026-05-24T12:00:00Z",
+  };
+  expect(lifecycleStepLabel(ev)).toBe("Checked in");
+  expect(formatAuditSentence(ev)).toContain("Heather checked in the drawing document on");
+});
+
+test("allocation reads as allocated", () => {
+  const s = formatAuditSentence({
+    id: "3",
     event: 1,
     eventLabel: "Created",
     fromState: "",
-    toState: "",
-    actedBy: "Alice",
+    toState: "Allocated",
+    actedBy: "Bob",
     reason: "",
     createdOn: "2026-05-24T10:00:00Z",
   });
-  expect(s).toContain("Alice created the drawing document on");
-  expect(s).not.toContain("from");
+  expect(s).toContain("Bob allocated the drawing document on");
 });
 
 test("uses procedure form noun for procedure taxonomy", () => {
   const s = formatAuditSentence(
     {
-      id: "3",
+      id: "4",
       event: 1,
       eventLabel: "Created",
       fromState: "",
-      toState: "",
+      toState: "Allocated",
       actedBy: "Bob",
       reason: "",
       createdOn: "2026-05-24T10:00:00Z",
@@ -50,13 +66,13 @@ test("uses procedure form noun for procedure taxonomy", () => {
       documentSubtype: DOCUMENT_SUBTYPE_VALUE.Procedure,
     },
   );
-  expect(s).toContain("Bob created the procedure form on");
+  expect(s).toContain("Bob allocated the procedure on");
 });
 
 test("uses standard document noun for standard taxonomy", () => {
   const s = formatAuditSentence(
     {
-      id: "4",
+      id: "5",
       event: 9,
       eventLabel: "Finalized",
       fromState: "",

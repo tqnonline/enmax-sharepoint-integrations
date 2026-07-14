@@ -41,6 +41,7 @@ SHEET_STATE_AWAITING_VALIDATION = 4
 
 RESERVATION_TYPE_DOCUMENT = 2
 DOCUMENT_SUBTYPE_STANDARD = 1
+DOCUMENT_SUBTYPE_PROCEDURE = 2
 
 CHECKOUT_STATUS_OPEN = 1
 CHECKOUT_STATUS_AWAITING_VALIDATION = 2
@@ -174,7 +175,8 @@ def create_standard_singleton_sheets(
     )
     filt = (
         f"enmax_acdnreservationtype eq {RESERVATION_TYPE_DOCUMENT} and "
-        f"enmax_acdndocumentsubtype eq {DOCUMENT_SUBTYPE_STANDARD}"
+        f"(enmax_acdndocumentsubtype eq {DOCUMENT_SUBTYPE_STANDARD} or "
+        f"enmax_acdndocumentsubtype eq {DOCUMENT_SUBTYPE_PROCEDURE})"
     )
 
     while True:
@@ -184,7 +186,7 @@ def create_standard_singleton_sheets(
 
         resp = session.get(url, headers=_list_headers(token), timeout=120)
         if resp.status_code != 200:
-            print(f"ERROR: list Standard drawings → {resp.status_code}: {resp.text[:400]}", file=sys.stderr)
+            print(f"ERROR: list base-only document drawings → {resp.status_code}: {resp.text[:400]}", file=sys.stderr)
             return created, errors + 1
 
         rows = resp.json().get("value", [])
@@ -203,16 +205,17 @@ def create_standard_singleton_sheets(
 
             number = drawing.get("enmax_acdnnumber", did)
             sheet_state = drawing.get("enmax_acdnstate") or SHEET_STATE_AVAILABLE
+            subtype = drawing.get("enmax_acdndocumentsubtype") or DOCUMENT_SUBTYPE_STANDARD
             body: dict = {
                 "enmax_acdnstate": sheet_state,
                 "enmax_acdndrawing@odata.bind": f"/{DRAWING_ENTITY}({did})",
                 "enmax_acdnreservationtype": RESERVATION_TYPE_DOCUMENT,
-                "enmax_acdndocumentsubtype": DOCUMENT_SUBTYPE_STANDARD,
+                "enmax_acdndocumentsubtype": subtype,
             }
             body.update(_owner_bind(drawing))
 
             if dry_run:
-                print(f"[dry-run] CREATE singleton sheet for Standard drawing {number} ({did})")
+                print(f"[dry-run] CREATE singleton sheet for base-only document {number} ({did})")
                 created += 1
                 continue
 

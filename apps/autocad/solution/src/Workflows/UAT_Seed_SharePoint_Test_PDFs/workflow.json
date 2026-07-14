@@ -15,6 +15,16 @@
     "definition": {
       "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
       "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
       "metadata": {
         "description": "WS5e UAT harness: seeds ~1KB valid PDF placeholders with deterministic filenames across configured drop-off/destination libraries (UAT site). Run manually/on-demand only \u2014 not wired into prod CD."
       },
@@ -74,7 +84,8 @@
                   "folderPath": "@{coalesce(items('Apply_to_each_Scenario')?['folderPath'], '/')}",
                   "name": "@{items('Apply_to_each_Scenario')?['fileName']}",
                   "body": "@base64ToBinary(variables('MinimalPdfBase64'))"
-                }
+                },
+                "authentication": "@parameters('$authentication')"
               }
             }
           }

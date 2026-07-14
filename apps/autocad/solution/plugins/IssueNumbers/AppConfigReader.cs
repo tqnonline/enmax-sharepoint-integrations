@@ -44,6 +44,7 @@ namespace Enmax.AutoCAD
             private const int ReservationTypeDocument = 2;
             private const int DocumentSubtypeStandard = 1;
             private const int DocumentSubtypeProcedure = 2;
+            private const int DocumentSubtypeForm = 3;
 
             public static bool IsCheckoutEnabled(
                 IOrganizationService service,
@@ -63,6 +64,7 @@ namespace Enmax.AutoCAD
                 {
                     if (documentSubtype == DocumentSubtypeStandard) return "EnableStandardCheckout";
                     if (documentSubtype == DocumentSubtypeProcedure) return "EnableProcedureCheckout";
+                    if (documentSubtype == DocumentSubtypeForm) return "EnableFormCheckout";
                 }
                 return "EnableDrawingCheckout";
             }
@@ -73,6 +75,7 @@ namespace Enmax.AutoCAD
                 {
                     if (documentSubtype == DocumentSubtypeStandard) return "EnableStandardCheckIn";
                     if (documentSubtype == DocumentSubtypeProcedure) return "EnableProcedureCheckIn";
+                    if (documentSubtype == DocumentSubtypeForm) return "EnableFormCheckIn";
                 }
                 return "EnableDrawingCheckIn";
             }

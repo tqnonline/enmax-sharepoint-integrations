@@ -134,7 +134,7 @@
                   "To": "@{outputs('Compose_DocControl')}",
                   "Cc": "",
                   "Subject": "Check Out approval needed: @{outputs('Compose_Document_Number')}",
-                  "BodyHtml": "<p>A check-out request is awaiting approval.</p><p><strong>Document:</strong> @{outputs('Compose_Document_Number')}</p><p><strong>Requested by:</strong> @{triggerOutputs()?['body/_enmax_acdncheckedoutby_value@OData.Community.Display.V1.FormattedValue']}</p><p><strong>Reservation creator:</strong> @{outputs('Get_Reservation_Creator')?['body/fullname']} (@{outputs('Get_Reservation_Creator')?['body/internalemailaddress']})</p><p><a href=\"@{outputs('Compose_CodeApp_BaseUrl')}/approvals?section=documents&amp;tab=checkout\">Open Approvals</a></p>"
+                  "BodyHtml": "<p>A check-out request is awaiting approval.</p><p><strong>Document:</strong> @{replace(replace(outputs('Compose_Document_Number'), '<', '&lt;'), '>', '&gt;')}</p><p><strong>Requested by:</strong> @{replace(replace(triggerOutputs()?['body/_enmax_acdncheckedoutby_value@OData.Community.Display.V1.FormattedValue'], '<', '&lt;'), '>', '&gt;')}</p><p><strong>Reservation creator:</strong> @{replace(replace(outputs('Get_Reservation_Creator')?['body/fullname'], '<', '&lt;'), '>', '&gt;')} (@{outputs('Get_Reservation_Creator')?['body/internalemailaddress']})</p><p><a href=\"@{outputs('Compose_CodeApp_BaseUrl')}/approvals?section=documents&amp;tab=checkout\">Open Approvals</a></p>"
                 }
               }
             }

@@ -9,6 +9,10 @@ vi.mock("../../features/checkout/components/DrawingActionsPanel", () => ({
   DrawingActionsPanel: () => <div data-testid="actions-panel" />,
 }));
 
+vi.mock("../../features/checkout/components/SheetDocumentActions", () => ({
+  SheetDocumentActions: () => <div data-testid="sheet-actions" />,
+}));
+
 // ─── mock hooks ─────────────────────────────────────────────────────────────
 
 const FULL_ROW: DrawingRow = {
@@ -52,8 +56,32 @@ vi.mock("../../features/search/useDrawingDetail", () => ({
   useDrawingDetail: () => ({ data: FULL_ROW, isPending: false }),
 }));
 
-vi.mock("../../features/checkout/hooks/useDrawingAuditTrail", () => ({
-  useDrawingAuditTrail: () => ({
+const activitySpy = vi.fn();
+
+vi.mock("../../features/search/DocumentActivityTimeline", () => ({
+  DocumentActivityTimeline: (props: {
+    events: Array<{ actedBy: string; fromState: string; toState: string }>;
+    title?: string;
+  }) => {
+    activitySpy(props);
+    const first = props.events[0];
+    return (
+      <div>
+        <span>{props.title ?? "Activity"}</span>
+        {first ? (
+          <span>
+            {first.actedBy} checked out the drawing document ({first.fromState} → {first.toState})
+          </span>
+        ) : (
+          <span>No activity yet</span>
+        )}
+      </div>
+    );
+  },
+}));
+
+vi.mock("../../features/checkout/hooks/useDocumentActivityTrail", () => ({
+  useDocumentActivityTrail: () => ({
     data: [
       {
         id: "a",
@@ -66,7 +94,16 @@ vi.mock("../../features/checkout/hooks/useDrawingAuditTrail", () => ({
         createdOn: "2026-05-24T11:10:00Z",
       },
     ],
+    isPending: false,
   }),
+}));
+
+vi.mock("../../features/approvals/hooks/useDrawingSheets", () => ({
+  useDrawingSheets: () => ({ data: [], isPending: false }),
+}));
+
+vi.mock("../../features/approvals/hooks/useSheetCheckouts", () => ({
+  useSheetCheckouts: () => ({ data: new Map(), isPending: false }),
 }));
 
 vi.mock("../../features/checkout/hooks/useDrawingCheckout", () => ({
@@ -123,13 +160,19 @@ test("DrawingDetailPanel shows fully-populated fields from useDrawingDetail", as
 });
 
 test("DrawingDetailPanel renders sentence-style activity with from→to transition", async () => {
+  activitySpy.mockClear();
   renderWithProviders(
     <DrawingDetailPanel drawing={MINIMAL_DRAWING} onClose={() => {}} />,
   );
 
   expect(
-    screen.getByText(/changed state from Available to Checked Out/),
+    await screen.findByText(/M365 Developer checked out the drawing document/i),
   ).toBeInTheDocument();
+  expect(activitySpy).toHaveBeenCalled();
+  expect(activitySpy.mock.calls.at(-1)?.[0].events[0]).toMatchObject({
+    fromState: "Available",
+    toState: "Checked Out",
+  });
 });
 
 test("DrawingDetailPanel does not show base SharePoint link for Drawing type", async () => {

@@ -15,6 +15,16 @@
     "definition": {
       "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
       "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
       "metadata": {
         "description": "WS5e UAT harness: deletes seeded ~1KB test PDFs from UAT SharePoint libraries. Run after Validate or to reset the scenario matrix."
       },
@@ -55,7 +65,8 @@
                 "parameters": {
                   "dataset": "@{items('Apply_to_each_File')?['libraryUrl']}",
                   "id": "@{concat(items('Apply_to_each_File')?['folderPath'], '/', items('Apply_to_each_File')?['fileName'])}"
-                }
+                },
+                "authentication": "@parameters('$authentication')"
               }
             }
           }

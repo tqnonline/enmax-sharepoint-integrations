@@ -60,6 +60,8 @@ export const AppConfigSchema = z.object({
   EnableProcedureCheckIn:         z.boolean().default(true),
   EnableStandardCheckout:         z.boolean().default(true),
   EnableStandardCheckIn:          z.boolean().default(true),
+  EnableFormCheckout:             z.boolean().default(true),
+  EnableFormCheckIn:              z.boolean().default(true),
 });
 
 export type AppConfig = z.infer<typeof AppConfigSchema>;

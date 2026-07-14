@@ -23,12 +23,14 @@ namespace Enmax.AutoCAD
         private const int StateAvailable = 1;
         private const int SheetStateAvailable = 2;
 
-        // Type-aware issuance (ADR 0001). Document/Standard is base-only; Drawing,
-        // Document/Procedure, and legacy/null reservations all get child items.
+        // Type-aware issuance (ADR 0001). Document/Standard and Document/Procedure are
+        // base-only; Drawing, Document/Form, and legacy/null reservations get child items.
         // Child items are hard-capped at 999 (the 3-digit -sss ceiling), default 1.
-        private const int ReservationTypeDocument = 2;
-        private const int DocumentSubtypeStandard = 1;
-        private const int MaxChildItems           = 999;
+        private const int ReservationTypeDocument  = 2;
+        private const int DocumentSubtypeStandard  = 1;
+        private const int DocumentSubtypeProcedure = 2;
+        private const int DocumentSubtypeForm      = 3;
+        private const int MaxChildItems            = 999;
 
         public CreateDrawingsPlugin() : base(typeof(CreateDrawingsPlugin)) { }
 
@@ -92,7 +94,7 @@ namespace Enmax.AutoCAD
             var owner = reservation.GetAttributeValue<EntityReference>("ownerid");
 
             bool createChildren = CreatesChildItems(reservation);
-            bool createSingletonStandardSheet = IsStandardDocument(reservation);
+            bool createSingletonStandardSheet = IsBaseOnlyDocument(reservation);
             int sheetsPer = reservation.Contains("enmax_acdnsheetsperdrawing")
                 ? reservation.GetAttributeValue<int>("enmax_acdnsheetsperdrawing")
                 : 0;
@@ -150,22 +152,27 @@ namespace Enmax.AutoCAD
         }
 
         /// <summary>
-        /// Document/Standard reservations are base-only (a single Standard Document, no
-        /// child items). Drawing, Document/Procedure, and legacy/null-type reservations
-        /// all create child items — preserving the pre-taxonomy Drawing behavior.
+        /// Drawing, Document/Form, and legacy/null-type reservations create child items
+        /// (-sss). Document/Standard and Document/Procedure are base-only.
         /// </summary>
         private static bool CreatesChildItems(Entity reservation)
         {
             var type    = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
             var subtype = reservation.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value;
-            return !(type == ReservationTypeDocument && subtype == DocumentSubtypeStandard);
+            if (type != ReservationTypeDocument) return true;
+            return subtype == DocumentSubtypeForm;
         }
 
-        private static bool IsStandardDocument(Entity reservation)
+        /// <summary>
+        /// Standard and Procedure get a singleton sheet carrier (no sheet number) for
+        /// checkout/check-in; Form uses numbered children instead.
+        /// </summary>
+        private static bool IsBaseOnlyDocument(Entity reservation)
         {
             var type = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
             var subtype = reservation.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value;
-            return type == ReservationTypeDocument && subtype == DocumentSubtypeStandard;
+            return type == ReservationTypeDocument
+                && (subtype == DocumentSubtypeStandard || subtype == DocumentSubtypeProcedure);
         }
 
         private static void CopyLookup(Entity source, Entity target, string attribute)

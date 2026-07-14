@@ -433,6 +433,8 @@ function DrawingRow({
               appendFirst={isAppendTarget ? appendFirst : undefined}
               appendLast={isAppendTarget ? appendLast : undefined}
               toasterId={DETAIL_TOASTER_ID}
+              variant="full"
+              showPerRowActivity
             />
           )}
         </div>

@@ -36,7 +36,7 @@ function compositionColumns(): ColumnDef<CheckinRow>[] {
 function documentNumberColumn(): ColumnDef<CheckinRow> {
   return {
     id: "documentDisplayNumber",
-    header: "Issued number",
+    header: "Issued Number",
     accessor: (r) => r.documentDisplayNumber || r.drawingNumber,
     sortable: true,
     filterable: false,

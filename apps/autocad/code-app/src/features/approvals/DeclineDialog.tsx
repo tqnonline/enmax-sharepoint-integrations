@@ -34,7 +34,7 @@ export function DeclineDialog({ open, onClose, onConfirm, isSubmitting }: Props)
         <DialogBody>
           <DialogContent>
             <Field
-              label="Reason for declining"
+              label="Reason For Declining"
               validationMessage={reason && !isValid ? "Reason must be at least 10 characters" : undefined}
               required
             >

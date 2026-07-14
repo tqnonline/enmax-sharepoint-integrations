@@ -29,17 +29,13 @@ export function SharePointLinkStatus({
   return (
     <MessageBar intent="warning">
       <MessageBarBody>
-        <Text weight="semibold" block>No linked file found yet</Text>
+        <Text weight="semibold" block>No PDF linked yet</Text>
         <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
           Upload a PDF named{" "}
           <Text weight="semibold" style={{ fontFamily: "monospace" }}>
             {pdfName}
           </Text>{" "}
-          to the drop-off library. Drawing documents and Procedure forms use
-          {" "}<Text weight="semibold" style={{ fontFamily: "monospace" }}>…-NNNN-SSS.pdf</Text>;
-          Standard Documents use{" "}
-          <Text weight="semibold" style={{ fontFamily: "monospace" }}>…-NNNN.pdf</Text>.
-          Misnamed files are ignored until the indexer runs.
+          to the drop-off SharePoint library. The file name must match this document number exactly.
         </Text>
       </MessageBarBody>
     </MessageBar>

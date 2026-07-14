@@ -1,3 +1,4 @@
+import { type ReactNode, useMemo } from "react";
 import {
   Badge,
   Button,
@@ -8,39 +9,46 @@ import {
   Link,
   Spinner,
   Text,
+  Toaster,
   makeStyles,
   tokens,
 } from "@fluentui/react-components";
 import {
   DismissRegular,
   OpenRegular,
+  Table24Regular,
 } from "@fluentui/react-icons";
+import { useNavigate, useLocation } from "react-router-dom";
+import { SheetDocumentActions } from "../checkout/components/SheetDocumentActions";
 import { DrawingActionsPanel } from "../checkout/components/DrawingActionsPanel";
-import { DrawingSheetList } from "../checkout/components/DrawingSheetList";
-import type { DrawingStateValue } from "../checkout/api/checkoutClient";
-import { useDrawingCheckout } from "../checkout/hooks/useDrawingCheckout";
-import { useDrawingAuditTrail } from "../checkout/hooks/useDrawingAuditTrail";
-import { SharePointLinkStatus } from "../sharepoint/SharePointLinkStatus";
-import { formatAuditSentence } from "../checkout/hooks/auditSentence";
-import { auditEventColor } from "../audit/auditPills";
-import { useDrawingDetail } from "./useDrawingDetail";
-import { DRAWING_STATE_LABELS, type DrawingRow } from "./useSearchDrawings";
 import {
-  DOCUMENT_SUBTYPE_VALUE,
-  RESERVATION_TYPE_VALUE,
+  type DrawingStateValue,
+  DRAWING_STATE_BADGE_COLOR,
+  DRAWING_STATE_LABELS,
+} from "../checkout/api/checkoutClient";
+import {
   documentDisplayNumber,
-  reservationChildNoun,
+  reservationChildNounPluralLower,
+  reservationHasChildItems,
 } from "../reserve/terminology";
 import { useAppConfig } from "../../config/useAppConfig";
 import { isCheckoutEnabledForTaxonomy } from "../../config/checkoutTaxonomyConfig";
 import {
+  preferSharePointDropOff,
   recordCarriesSharePointPdf,
   resolveSharePointFileUrls,
   sharePointFileUrl,
 } from "../sharepoint/sharepointUrls";
-import {
-  Toaster,
-} from "@fluentui/react-components";
+import { buildDrawingFamilyPageUrl } from "./searchUrlState";
+import { DocumentActivityTimeline } from "./DocumentActivityTimeline";
+import { SheetStatusBadge } from "../checkout/components/SheetStatusBadge";
+import { useDrawingDetail } from "./useDrawingDetail";
+import { useDrawingCheckout } from "../checkout/hooks/useDrawingCheckout";
+import { useDocumentActivityTrail } from "../checkout/hooks/useDocumentActivityTrail";
+import { useDrawingSheets } from "../approvals/hooks/useDrawingSheets";
+import { useSheetCheckouts } from "../approvals/hooks/useSheetCheckouts";
+import { SharePointLinkStatus } from "../sharepoint/SharePointLinkStatus";
+import type { DrawingRow } from "./useSearchDrawings";
 
 const DRAWING_PANEL_TOASTER_ID = "drawing-detail-toaster";
 
@@ -62,105 +70,112 @@ const useStyles = makeStyles({
   },
   metaGrid: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`,
+    gridTemplateColumns: "1fr",
+    gap: tokens.spacingVerticalS,
+    "@media (min-width: 480px)": {
+      gridTemplateColumns: "1fr 1fr",
+      gap: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`,
+    },
   },
   divider: {
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
     margin: `${tokens.spacingVerticalS} 0`,
   },
-  timeline: {
+  actions: {
     display: "flex",
     flexDirection: "column",
-    gap: tokens.spacingVerticalXS,
-  },
-  timelineItem: {
-    display: "flex",
-    flexDirection: "column",
-    gap: tokens.spacingVerticalXXS,
-    paddingLeft: tokens.spacingHorizontalS,
-    borderLeft: `2px solid ${tokens.colorNeutralStroke1}`,
-  },
-  timelineMeta: {
-    color: tokens.colorNeutralForeground3,
-    fontSize: tokens.fontSizeBase100,
-  },
-  sheetList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: tokens.spacingVerticalXS,
-  },
-  sheetRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: tokens.spacingHorizontalS,
-    padding: `${tokens.spacingVerticalXXS} 0`,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-  },
-  sheetNumber: {
-    minWidth: "120px",
-    flexShrink: 0,
-  },
-  filename: {
-    flex: 1,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-    color: tokens.colorNeutralForeground2,
+    gap: tokens.spacingVerticalS,
   },
 });
 
 interface DrawingDetailPanelProps {
   drawing: DrawingRow | null;
+  /** When set, flyout shows this child document — not the parent drawing summary. */
+  selectedSheetId?: string;
   onClose: () => void;
 }
 
-export function DrawingDetailPanel({ drawing, onClose }: DrawingDetailPanelProps) {
+export function DrawingDetailPanel({ drawing, selectedSheetId, onClose }: DrawingDetailPanelProps) {
   const styles = useStyles();
+  const navigate = useNavigate();
+  const location = useLocation();
   const appConfig = useAppConfig();
-  const { data: detail, isPending: detailPending } = useDrawingDetail(drawing?.id);
-  const { data: activeCheckout } = useDrawingCheckout(drawing?.id);
-  const { data: auditEvents = [] } = useDrawingAuditTrail(drawing?.id);
+  const parentDrawingId = drawing?.id;
+  const { data: detail, isPending: detailPending } = useDrawingDetail(parentDrawingId);
+  const { data: sheets } = useDrawingSheets(parentDrawingId ?? "", !!parentDrawingId);
+  const { data: checkoutMap } = useSheetCheckouts(parentDrawingId ?? "", !!parentDrawingId);
+  const { data: activeCheckout } = useDrawingCheckout(selectedSheetId ? undefined : parentDrawingId);
+  const sheetIds = useMemo(() => sheets?.map((s) => s.id) ?? [], [sheets]);
+  const { data: auditEvents = [] } = useDocumentActivityTrail(parentDrawingId, {
+    sheetIds,
+    focusedSheetId: selectedSheetId,
+  });
 
   const d = detail ?? drawing;
+  const matchedSheet = selectedSheetId
+    ? sheets?.find((s) => s.id === selectedSheetId)
+    : undefined;
   const showsChildItems = hasChildItems(d);
-  const childNoun = reservationChildNoun(d?.enmax_acdnreservationtype, d?.enmax_acdndocumentsubtype);
+  const childNounPlural = reservationChildNounPluralLower(d?.enmax_acdnreservationtype, d?.enmax_acdndocumentsubtype);
   const checkoutEnabled = isCheckoutEnabledForTaxonomy(
     appConfig,
     d?.enmax_acdnreservationtype,
     d?.enmax_acdndocumentsubtype,
   );
+
+  const displayNumber = documentDisplayNumber(
+    d?.enmax_acdnnumber,
+    matchedSheet?.sheetNumber,
+    d?.enmax_acdnreservationtype,
+    d?.enmax_acdndocumentsubtype,
+  ) || drawing?.enmax_acdnnumber || "Document";
+
   const standardDocument = recordCarriesSharePointPdf(
     d?.enmax_acdnreservationtype,
     d?.enmax_acdndocumentsubtype,
-    { isChildSheet: false },
+    { isChildSheet: !!matchedSheet },
   );
   const spResolved = resolveSharePointFileUrls({
     reservationType: d?.enmax_acdnreservationtype,
     documentSubtype: d?.enmax_acdndocumentsubtype,
-    isChildSheet: false,
+    isChildSheet: !!matchedSheet,
+    sheetDropOffUrl: matchedSheet?.sharepointUrl,
+    sheetDestinationUrl: matchedSheet?.destinationUrl,
     drawingDropOffUrl: d?.enmax_acdnsplibraryurl,
     drawingDestinationUrl: d?.enmax_acdnspdestinationurl,
   });
-  const spFileUrl = sharePointFileUrl(spResolved.dropOffUrl, spResolved.destinationUrl);
+  const sheetCheckout = matchedSheet ? checkoutMap?.get(matchedSheet.id) : undefined;
+  const spFileUrl = sharePointFileUrl(spResolved.dropOffUrl, spResolved.destinationUrl, {
+    preferDropOff: preferSharePointDropOff({
+      sheetState: matchedSheet?.state,
+      checkoutStatus: sheetCheckout?.status,
+      drawingState: d?.enmax_acdnstate ?? drawing?.enmax_acdnstate,
+    }),
+  });
 
-  const drawingForPanel = d
-    ? {
-        id:              d.id,
-        state:           d.enmax_acdnstate as DrawingStateValue,
-        number:          d.enmax_acdnnumber,
-        currentRevision: d.enmax_acdncurrentrevision,
-        spLibraryUrl:    d.enmax_acdnsplibraryurl,
-      }
-    : undefined;
+  const secondaryTitle = matchedSheet?.filename
+    || (d?.enmax_acdntitle && d.enmax_acdntitle !== displayNumber ? d.enmax_acdntitle : "");
+  const showSecondaryTitle = Boolean(secondaryTitle);
+
+  const stateLabel = matchedSheet
+    ? undefined
+    : (DRAWING_STATE_LABELS[d?.enmax_acdnstate ?? drawing?.enmax_acdnstate ?? 0]
+      ?? String(d?.enmax_acdnstate ?? ""));
+
+  function viewAllRelated() {
+    if (!parentDrawingId) return;
+    const returnTo = `${location.pathname}${location.search}`;
+    navigate(buildDrawingFamilyPageUrl({ drawingId: parentDrawingId, returnTo }));
+    onClose();
+  }
 
   return (
     <Drawer
       open={!!drawing}
-      onOpenChange={(_, d) => !d.open && onClose()}
+      onOpenChange={(_, data) => !data.open && onClose()}
       position="end"
-      size="medium"
-      aria-label="Drawing details"
+      size="large"
+      aria-label="Document details"
     >
       <DrawerHeader>
         <DrawerHeaderTitle
@@ -168,12 +183,7 @@ export function DrawingDetailPanel({ drawing, onClose }: DrawingDetailPanelProps
             <Button appearance="subtle" icon={<DismissRegular />} onClick={onClose} aria-label="Close" />
           }
         >
-          {documentDisplayNumber(
-            drawing?.enmax_acdnnumber,
-            undefined,
-            d?.enmax_acdnreservationtype,
-            d?.enmax_acdndocumentsubtype,
-          ) || "Drawing"}
+          {displayNumber}
         </DrawerHeaderTitle>
       </DrawerHeader>
 
@@ -183,7 +193,16 @@ export function DrawingDetailPanel({ drawing, onClose }: DrawingDetailPanelProps
         {drawing && (
           <div className={styles.body}>
             <div className={styles.section}>
-              <Text weight="semibold" size={500}>{d?.enmax_acdntitle}</Text>
+              {showSecondaryTitle && (
+                <Text weight="semibold" size={500}>
+                  {secondaryTitle}
+                </Text>
+              )}
+              {matchedSheet && (
+                <Text size={200} className={styles.label}>
+                  Parent record: {d?.enmax_acdnnumber}
+                </Text>
+              )}
               {standardDocument && spFileUrl && (
                 <Link href={spFileUrl} target="_blank" rel="noopener noreferrer">
                   Open in SharePoint <OpenRegular style={{ verticalAlign: "middle" }} />
@@ -191,17 +210,22 @@ export function DrawingDetailPanel({ drawing, onClose }: DrawingDetailPanelProps
               )}
               {standardDocument && (
                 <SharePointLinkStatus
-                  presentInDropOff={d?.enmax_acdnpresentindropoff}
-                  presentInDestination={d?.enmax_acdnpresentindestination}
-                  recordNumber={documentDisplayNumber(
-                    d?.enmax_acdnnumber,
-                    undefined,
-                    d?.enmax_acdnreservationtype,
-                    d?.enmax_acdndocumentsubtype,
-                  )}
+                  presentInDropOff={matchedSheet?.presentInDropOff ?? d?.enmax_acdnpresentindropoff}
+                  presentInDestination={matchedSheet?.presentInDestination ?? d?.enmax_acdnpresentindestination}
+                  recordNumber={displayNumber}
                 />
               )}
             </div>
+
+            {showsChildItems && parentDrawingId && (
+              <Button
+                appearance="secondary"
+                icon={<Table24Regular />}
+                onClick={viewAllRelated}
+              >
+                View all related {childNounPlural}
+              </Button>
+            )}
 
             <div className={styles.divider} />
 
@@ -209,7 +233,21 @@ export function DrawingDetailPanel({ drawing, onClose }: DrawingDetailPanelProps
 
             <div className={styles.metaGrid}>
               <MetaField label="Type" value={d?.typeLabel ?? drawing.typeLabel} />
-              <MetaField label="State" value={DRAWING_STATE_LABELS[d?.enmax_acdnstate ?? drawing.enmax_acdnstate] ?? String(d?.enmax_acdnstate)} />
+              {matchedSheet ? (
+                <MetaField label="Status">
+                  <SheetStatusBadge sheetState={matchedSheet.state} checkout={sheetCheckout} />
+                </MetaField>
+              ) : (
+                <MetaField label="State">
+                  <Badge
+                    appearance="filled"
+                    color={DRAWING_STATE_BADGE_COLOR[d?.enmax_acdnstate ?? 0] ?? "subtle"}
+                    shape="rounded"
+                  >
+                    {stateLabel}
+                  </Badge>
+                </MetaField>
+              )}
               <MetaField label="Last Check In" value={d?.enmax_acdnrevisiondate ? new Date(d.enmax_acdnrevisiondate).toLocaleDateString() : ""} />
               <MetaField label="Sheets" value={showsChildItems ? String(d?.enmax_acdnsheetcount ?? "—") : "—"} />
               <MetaField label="Business" value={d?.businessDisplay ?? ""} />
@@ -224,76 +262,48 @@ export function DrawingDetailPanel({ drawing, onClose }: DrawingDetailPanelProps
               <MetaField label="Requester" value={d?.requesterDisplay ?? ""} />
             </div>
 
-            {showsChildItems && drawing?.id && (
-              <>
-                <div className={styles.divider} />
-                <div className={styles.section}>
-                  <Text weight="semibold" size={300}>{childNoun}s</Text>
-                  <DrawingSheetList
-                    drawingId={drawing.id}
-                    baseNumber={d?.enmax_acdnnumber}
-                    reservationType={d?.enmax_acdnreservationtype}
-                    documentSubtype={d?.enmax_acdndocumentsubtype}
-                    checkoutEnabled={checkoutEnabled}
-                    childNoun={childNoun}
-                    toasterId={DRAWING_PANEL_TOASTER_ID}
+            <div className={styles.divider} />
+
+            <div className={styles.actions}>
+              {matchedSheet && parentDrawingId ? (
+                <SheetDocumentActions
+                  drawingId={parentDrawingId}
+                  sheetId={matchedSheet.id}
+                  displayNumber={displayNumber}
+                  sheetState={matchedSheet.state}
+                  checkout={sheetCheckout}
+                  checkoutEnabled={checkoutEnabled}
+                  reservationType={d?.enmax_acdnreservationtype}
+                  documentSubtype={d?.enmax_acdndocumentsubtype}
+                  toasterId={DRAWING_PANEL_TOASTER_ID}
+                />
+              ) : (
+                !showsChildItems && drawing && d && (
+                  <DrawingActionsPanel
+                    drawing={{
+                      id: d.id,
+                      state: d.enmax_acdnstate as DrawingStateValue,
+                      number: d.enmax_acdnnumber,
+                      currentRevision: d.enmax_acdncurrentrevision,
+                      spLibraryUrl: d.enmax_acdnsplibraryurl,
+                      reservationType: d.enmax_acdnreservationtype,
+                      documentSubtype: d.enmax_acdndocumentsubtype,
+                    }}
+                    openCheckout={activeCheckout}
                   />
-                </div>
-              </>
-            )}
+                )
+              )}
+            </div>
 
             <div className={styles.divider} />
 
-            {!showsChildItems && (
-              <div className={styles.section}>
-                <Text weight="semibold" size={300}>Actions</Text>
-                {drawingForPanel && (
-                  <DrawingActionsPanel
-                    drawing={drawingForPanel}
-                    openCheckout={activeCheckout}
-                  />
-                )}
-              </div>
-            )}
-
-            {showsChildItems && activeCheckout && (
-              <div className={styles.section}>
-                <Text weight="semibold" size={300}>Check In</Text>
-                {drawingForPanel && (
-                  <DrawingActionsPanel
-                    drawing={drawingForPanel}
-                    openCheckout={activeCheckout}
-                  />
-                )}
-              </div>
-            )}
-
-            {auditEvents.length > 0 && (
-              <>
-                <div className={styles.divider} />
-                <div className={styles.section}>
-                  <Text weight="semibold" size={300}>Activity</Text>
-                  <div className={styles.timeline}>
-                    {auditEvents.map(ev => (
-                      <div key={ev.id} className={styles.timelineItem}>
-                        <Text size={200} weight="semibold">
-                          <Badge appearance="filled" color={auditEventColor(ev.event)} size="small">{ev.eventLabel}</Badge>
-                        </Text>
-                        <Text size={200}>
-                          {formatAuditSentence(ev, {
-                            reservationType: d?.enmax_acdnreservationtype,
-                            documentSubtype: d?.enmax_acdndocumentsubtype,
-                          })}
-                        </Text>
-                        {ev.reason && (
-                          <Text size={200} className={styles.timelineMeta}>{ev.reason}</Text>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
+            <DocumentActivityTimeline
+              events={auditEvents}
+              reservationType={d?.enmax_acdnreservationtype}
+              documentSubtype={d?.enmax_acdndocumentsubtype}
+              title={matchedSheet ? "Document activity" : "Activity"}
+              compact
+            />
           </div>
         )}
       </DrawerBody>
@@ -303,18 +313,23 @@ export function DrawingDetailPanel({ drawing, onClose }: DrawingDetailPanelProps
 
 function hasChildItems(d?: DrawingRow | null): boolean {
   if (!d) return true;
-  if (d.enmax_acdnreservationtype === RESERVATION_TYPE_VALUE.Document) {
-    return d.enmax_acdndocumentsubtype === DOCUMENT_SUBTYPE_VALUE.Procedure;
-  }
-  return true;
+  return reservationHasChildItems(d.enmax_acdnreservationtype, d.enmax_acdndocumentsubtype);
 }
 
-function MetaField({ label, value }: { label: string; value: string }) {
+function MetaField({
+  label,
+  value,
+  children,
+}: {
+  label: string;
+  value?: string;
+  children?: ReactNode;
+}) {
   const styles = useStyles();
   return (
     <div>
       <Text className={styles.label} block>{label}</Text>
-      <Text block>{value || "—"}</Text>
+      {children ?? <Text block>{value || "—"}</Text>}
     </div>
   );
 }

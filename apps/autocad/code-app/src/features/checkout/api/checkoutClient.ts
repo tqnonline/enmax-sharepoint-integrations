@@ -89,6 +89,9 @@ export interface DrawingForPanel {
   missingSheets?: string;
   /** systemuser GUID of the drawing owner (reservation requester). Used to gate self-release. */
   ownerId?: string;
+  /** WS1a taxonomy — selects drawings vs documents SharePoint site on Check In. */
+  reservationType?: number | null;
+  documentSubtype?: number | null;
 }
 
 export interface CheckoutForPanel {

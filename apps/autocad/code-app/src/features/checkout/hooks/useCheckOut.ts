@@ -12,6 +12,7 @@ export function useCheckOut() {
       void queryClient.invalidateQueries({ queryKey: ["checkouts"] });
       void queryClient.invalidateQueries({ queryKey: ["drawing-checkout"] });
       void queryClient.invalidateQueries({ queryKey: ["header-search"] });
+      void queryClient.invalidateQueries({ queryKey: ["search-page"] });
       void queryClient.invalidateQueries({ queryKey: ["search-documents"] });
     },
   });

@@ -15,6 +15,16 @@
     "definition": {
       "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
       "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
       "triggers": {
         "When_Reservation_Updated_Declined": {
           "type": "OpenApiConnectionWebhook",
@@ -31,8 +41,9 @@
               "subscriptionRequest/message": 3,
               "subscriptionRequest/entityname": "enmax_autocadreservation",
               "subscriptionRequest/scope": 4,
-              "subscriptionRequest/filterexpression": "enmax_acdnstatus eq 3 and _modifiedby_value ne '@{parameters('ServiceAccountUserId')}'"
-            }
+              "subscriptionRequest/filterexpression": "enmax_acdnstatus eq 3"
+            },
+            "authentication": "@parameters('$authentication')"
           }
         }
       },
@@ -50,7 +61,8 @@
               "entityName": "enmax_autocadappconfigs",
               "$filter": "enmax_acdnkey eq 'DocControlEmailAddress'",
               "$top": 1
-            }
+            },
+            "authentication": "@parameters('$authentication')"
           }
         },
         "Get_Requester_User": {
@@ -69,7 +81,8 @@
             "parameters": {
               "entityName": "systemusers",
               "recordId": "@{triggerOutputs()?['body/_createdby_value']}"
-            }
+            },
+            "authentication": "@parameters('$authentication')"
           }
         },
         "Send_Declined_Email": {
@@ -90,56 +103,6 @@
               "DeclineReason": "@{triggerOutputs()?['body/enmax_acdndeclinereason']}",
               "ApproverDisplayName": "@{triggerOutputs()?['body/_modifiedby_value@OData.Community.Display.V1.FormattedValue']}",
               "Cc": "@{outputs('Get_DocControl_Email')?['body/value'][0]?['enmax_acdnvalue']}"
-            }
-          }
-        },
-        "Create_InApp_Notification_Declined": {
-          "type": "OpenApiConnection",
-          "runAfter": {
-            "Send_Declined_Email": [
-              "Succeeded",
-              "Failed"
-            ]
-          },
-          "inputs": {
-            "host": {
-              "connectionName": "shared_commondataserviceforapps",
-              "operationId": "CreateRecord",
-              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
-            },
-            "parameters": {
-              "entityName": "enmax_autocadinappnotifications",
-              "item/enmax_acdntitle": "Declined: @{triggerOutputs()?['body/enmax_acdnreservationnumber']}",
-              "item/enmax_acdnbody": "Reason: @{replace(replace(triggerOutputs()?['body/enmax_acdndeclinereason'], '<', '&lt;'), '>', '&gt;')}",
-              "item/enmax_acdnseverity": 4,
-              "item/enmax_acdnsourceevent": 2,
-              "item/enmax_acdnsubjecttable": "enmax_autocadreservation",
-              "item/enmax_acdnsubjectid": "@{triggerOutputs()?['body/enmax_acdnreservationid']}",
-              "item/enmax_acdndeeplinkpath": "my-items/reservations/@{triggerOutputs()?['body/enmax_acdnreservationid']}",
-              "item/enmax_acdnread": false,
-              "item/enmax_acdnrecipient@odata.bind": "/systemusers(@{triggerOutputs()?['body/_createdby_value']})",
-              "item/enmax_acdnsubjectreservation@odata.bind": "/enmax_autocadreservations(@{triggerOutputs()?['body/enmax_acdnreservationid']})"
-            }
-          }
-        },
-        "Log_Audit_Declined": {
-          "type": "OpenApiConnection",
-          "runAfter": {
-            "Create_InApp_Notification_Declined": [
-              "Succeeded"
-            ]
-          },
-          "inputs": {
-            "host": {
-              "connectionName": "shared_commondataserviceforapps",
-              "operationId": "CreateRecord",
-              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
-            },
-            "parameters": {
-              "entityName": "enmax_autocadauditevents",
-              "item/enmax_acdnevent": 3,
-              "item/enmax_acdnsource": 2,
-              "item/enmax_acdnsubjectreservation@odata.bind": "/enmax_autocadreservations(@{triggerOutputs()?['body/enmax_acdnreservationid']})"
             }
           }
         }

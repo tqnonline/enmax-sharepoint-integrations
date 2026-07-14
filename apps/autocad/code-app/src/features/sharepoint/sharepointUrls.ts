@@ -1,27 +1,33 @@
 import { useAppConfig } from "../../config/useAppConfig";
+import {
+  DOCUMENT_SUBTYPE_VALUE,
+  RESERVATION_TYPE_VALUE,
+} from "../reserve/terminology";
+import { CheckoutStatus, DrawingState } from "../checkout/api/checkoutClient";
+import { SHEET_STATE_AWAITING_VALIDATION } from "../approvals/hooks/useDrawingSheets";
 
-const RESERVATION_TYPE_DOCUMENT = 2;
-const DOCUMENT_SUBTYPE_STANDARD = 1;
-
-function isStandardDocument(
+function isBaseOnlyDocument(
   reservationType?: number | null,
   documentSubtype?: number | null,
 ): boolean {
-  return reservationType === RESERVATION_TYPE_DOCUMENT
-    && documentSubtype === DOCUMENT_SUBTYPE_STANDARD;
+  return reservationType === RESERVATION_TYPE_VALUE.Document
+    && (
+      documentSubtype === DOCUMENT_SUBTYPE_VALUE.Standard
+      || documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure
+    );
 }
 
 /**
  * Heather model: indexed SharePoint PDFs exist only on
- * - Standard Document: `BB-AA-UU-DDD-SSS-KK-NNNN.pdf` (base drawing record)
- * - Drawing document / Procedure form: `BB-AA-UU-DDD-SSS-KK-NNNN-SSS.pdf` (child sheet)
+ * - Standard / Procedure: `BB-AA-UU-DDD-SSS-KK-NNNN.pdf` (base drawing record)
+ * - Drawing document / Form: `BB-AA-UU-DDD-SSS-KK-NNNN-SSS.pdf` (child sheet)
  */
 export function recordCarriesSharePointPdf(
   reservationType?: number | null,
   documentSubtype?: number | null,
   opts?: { isChildSheet?: boolean },
 ): boolean {
-  if (isStandardDocument(reservationType, documentSubtype)) return true;
+  if (isBaseOnlyDocument(reservationType, documentSubtype)) return true;
   return !!opts?.isChildSheet;
 }
 
@@ -46,7 +52,7 @@ export function resolveSharePointFileUrls(input: {
     return { dropOffUrl: "", destinationUrl: "" };
   }
 
-  if (isStandardDocument(input.reservationType, input.documentSubtype)) {
+  if (isBaseOnlyDocument(input.reservationType, input.documentSubtype)) {
     return {
       dropOffUrl: input.drawingDropOffUrl?.trim() ?? "",
       destinationUrl: input.drawingDestinationUrl?.trim() ?? "",
@@ -59,9 +65,37 @@ export function resolveSharePointFileUrls(input: {
   };
 }
 
-/** Prefer drop-off file URL, then destination file URL. */
-export function sharePointFileUrl(dropOffUrl?: string, destinationUrl?: string): string {
-  return dropOffUrl?.trim() || destinationUrl?.trim() || "";
+export function preferSharePointDropOff(opts?: {
+  sheetState?: number | null;
+  checkoutStatus?: number | null;
+  drawingState?: number | null;
+}): boolean {
+  if (opts?.checkoutStatus === CheckoutStatus.AwaitingValidation) return true;
+  if (opts?.sheetState === SHEET_STATE_AWAITING_VALIDATION) return true;
+  if (opts?.drawingState === DrawingState.AwaitingValidation) return true;
+  return false;
+}
+
+/**
+ * Prefer destination unless the item is in check-in approval (drop-off).
+ * Fall back to the other link when the preferred one is empty.
+ */
+export function sharePointFileUrl(
+  dropOffUrl?: string,
+  destinationUrl?: string,
+  opts?: { preferDropOff?: boolean },
+): string {
+  const drop = dropOffUrl?.trim() || "";
+  const dest = destinationUrl?.trim() || "";
+  if (opts?.preferDropOff) return drop || dest || "";
+  return dest || drop || "";
+}
+
+/** Drawings site for Drawing reservations; Documents site for Document subtypes. */
+export function sharePointSiteForTaxonomy(
+  reservationType?: number | null,
+): "drawings" | "documents" {
+  return reservationType === RESERVATION_TYPE_VALUE.Document ? "documents" : "drawings";
 }
 
 /**
@@ -88,8 +122,8 @@ export function buildSharePointLibraryBrowseUrl(libraryBaseUrl: string): string 
 }
 
 /**
- * URL for embedding the drop-off library in an iframe (Check In modal).
- * `env=WebViewList` requests the lighter SharePoint chrome suited to embedding.
+ * @deprecated Embed is removed from Check In; browse URL is preferred.
+ * Kept for any residual callers / tests.
  */
 export function buildSharePointLibraryEmbedUrl(libraryBaseUrl: string): string {
   const browse = buildSharePointLibraryBrowseUrl(libraryBaseUrl);

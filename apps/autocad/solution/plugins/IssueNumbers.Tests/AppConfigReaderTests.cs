@@ -70,6 +70,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         [InlineData(1, null, "EnableDrawingCheckout", "EnableDrawingCheckIn")]
         [InlineData(2, 1, "EnableStandardCheckout", "EnableStandardCheckIn")]
         [InlineData(2, 2, "EnableProcedureCheckout", "EnableProcedureCheckIn")]
+        [InlineData(2, 3, "EnableFormCheckout", "EnableFormCheckIn")]
         public void TaxonomyCheckoutConfig_ResolvesKeysByTaxonomy(
             int reservationType,
             int? documentSubtype,

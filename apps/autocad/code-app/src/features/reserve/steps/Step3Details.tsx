@@ -95,7 +95,7 @@ export function Step3Details({ maxCount, maxSheets, onNext, onBack }: Props) {
         control={control}
         render={({ field }) => (
           <Field
-            label="Reason for reservation"
+            label="Reason For Reservation"
             validationMessage={errors.reason?.message}
             required
           >

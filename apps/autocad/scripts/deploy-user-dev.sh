@@ -99,6 +99,9 @@ export ENVIRONMENT_ID="$ENV_ID"
 echo "-- refresh notification data source schema (required for runtime OData) --"
 cd "$REPO_ROOT/apps/code-app"
 npx power-apps refresh-data-source --data-source-name enmax_autocadinappnotifications --non-interactive
+# refresh-data-source regenerates dataSourcesInfo.ts and drops hand-maintained Custom API
+# entries (ApproveReservation, CheckOutDrawing, …). Restore the committed schema.
+git -C "$REPO_ROOT" checkout HEAD -- apps/code-app/.power/schemas/appschemas/dataSourcesInfo.ts
 
 echo ""
 echo "-- build + publish Code App (npx power-apps push) --"

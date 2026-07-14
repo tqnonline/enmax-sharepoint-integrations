@@ -15,6 +15,16 @@
     "definition": {
       "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
       "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
       "triggers": {
         "When_Checkout_Updated": {
           "type": "OpenApiConnectionWebhook",
@@ -28,8 +38,9 @@
               "subscriptionRequest/message": 3,
               "subscriptionRequest/entityname": "enmax_autocadcheckout",
               "subscriptionRequest/scope": 4,
-              "subscriptionRequest/filterexpression": "(enmax_acdnstatus eq 1 or enmax_acdnstatus eq 2 or enmax_acdnstatus eq 3) and _modifiedby_value ne '@{parameters('ServiceAccountUserId')}'"
-            }
+              "subscriptionRequest/filterexpression": "(enmax_acdnstatus eq 1 or enmax_acdnstatus eq 2 or enmax_acdnstatus eq 3)"
+            },
+            "authentication": "@parameters('$authentication')"
           },
           "metadata": {
             "description": "Checkout approved (Open), check-in submitted (Awaiting Validation), or auto check-in closed (Closed Approved)."
@@ -50,7 +61,8 @@
               "entityName": "enmax_autocadappconfigs",
               "$filter": "enmax_acdnkey eq 'DocControlEmailAddress'",
               "$top": 1
-            }
+            },
+            "authentication": "@parameters('$authentication')"
           }
         },
         "Get_CodeApp_BaseUrl_Config": {
@@ -70,7 +82,8 @@
               "entityName": "enmax_autocadappconfigs",
               "$filter": "enmax_acdnkey eq 'CodeAppBaseUrl'",
               "$top": 1
-            }
+            },
+            "authentication": "@parameters('$authentication')"
           }
         },
         "Get_Drawing": {
@@ -89,7 +102,8 @@
             "parameters": {
               "entityName": "enmax_autocaddrawings",
               "recordId": "@{triggerOutputs()?['body/_enmax_acdndrawing_value']}"
-            }
+            },
+            "authentication": "@parameters('$authentication')"
           }
         },
         "Get_Reservation": {
@@ -108,7 +122,8 @@
             "parameters": {
               "entityName": "enmax_autocadreservations",
               "recordId": "@{outputs('Get_Drawing')?['body/_enmax_acdnreservation_value']}"
-            }
+            },
+            "authentication": "@parameters('$authentication')"
           }
         },
         "Get_Reservation_Creator": {
@@ -127,7 +142,8 @@
             "parameters": {
               "entityName": "systemusers",
               "recordId": "@{outputs('Get_Reservation')?['body/_createdby_value']}"
-            }
+            },
+            "authentication": "@parameters('$authentication')"
           }
         },
         "Compose_DocControl": {
@@ -204,7 +220,7 @@
                       "To": "@{outputs('Compose_DocControl')}",
                       "Cc": "",
                       "Subject": "Check In validation needed: @{outputs('Compose_Document_Number')}",
-                      "BodyHtml": "<p>A check-in is awaiting validation.</p><p><strong>Document:</strong> @{outputs('Compose_Document_Number')}</p><p><strong>Submitted by:</strong> @{triggerOutputs()?['body/_ownerid_value@OData.Community.Display.V1.FormattedValue']}</p><p><strong>Submission info:</strong> @{triggerOutputs()?['body/enmax_acdnsubmissioninfo']}</p><p><a href=\"@{outputs('Compose_CodeApp_BaseUrl')}/approvals?section=documents&amp;tab=checkin\">Open Check In Validation</a></p>"
+                      "BodyHtml": "<p>A check-in is awaiting validation.</p><p><strong>Document:</strong> @{replace(replace(outputs('Compose_Document_Number'), '<', '&lt;'), '>', '&gt;')}</p><p><strong>Submitted by:</strong> @{replace(replace(triggerOutputs()?['body/_ownerid_value@OData.Community.Display.V1.FormattedValue'], '<', '&lt;'), '>', '&gt;')}</p><p><strong>Submission info:</strong> @{replace(replace(coalesce(triggerOutputs()?['body/enmax_acdnsubmissioninfo'], ''), '<', '&lt;'), '>', '&gt;')}</p><p><a href=\"@{outputs('Compose_CodeApp_BaseUrl')}/approvals?section=documents&amp;tab=checkin\">Open Check In Validation</a></p>"
                     }
                   }
                 },

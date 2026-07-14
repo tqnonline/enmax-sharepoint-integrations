@@ -224,12 +224,12 @@ export function ApprovalsPage() {
 
   const filterBar = (
     <GridQueryFilterBar
-      numberLabel={isReservationsSection ? "Reservation #" : "Issued number"}
+      numberLabel={isReservationsSection ? "Reservation #" : "Issued Number"}
       draft={{ number: filterDraft.number, from: filterDraft.from, to: filterDraft.to }}
       onDraftChange={(patch) => setFilterDraft((prev) => ({ ...prev, ...patch }))}
       onQuery={handleQuery}
       onClear={handleClearFilters}
-      personLabel={isReservationsSection ? "Submitted or approved by" : "Requested or submitted by"}
+      personLabel={isReservationsSection ? "Submitted Or Approved By" : "Requested Or Submitted By"}
       peopleIds={filterDraft.peopleIds}
       onPeopleChange={(ids) => setFilterDraft((prev) => ({ ...prev, peopleIds: ids }))}
     />

@@ -15,6 +15,16 @@
     "definition": {
       "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
       "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
       "metadata": {
         "description": "WS5: scheduled SharePoint indexer sweep (~15 min). Lists active drawings and sheets, scans configured drop-off/destination libraries via SharePoint connector (list ops, metadata-only), builds FoundFiles JSON per record, and calls enmax_acdnUpsertSharePointLinks for idempotent link metadata upsert."
       },
@@ -42,7 +52,8 @@
               "$select": "enmax_autocaddrawingid,enmax_acdnnumber",
               "$filter": "statecode eq 0",
               "$top": 5000
-            }
+            },
+            "authentication": "@parameters('$authentication')"
           }
         },
         "Apply_to_each_Drawing": {
@@ -65,12 +76,13 @@
                 "parameters": {
                   "actionName": "enmax_acdnUpsertSharePointLinks",
                   "item/Target": {
-                    "@odata.type": "Microsoft.Dynamics.CRM.enmax_autocaddrawing",
+                    "@@odata.type": "Microsoft.Dynamics.CRM.enmax_autocaddrawing",
                     "enmax_autocaddrawingid": "@{items('Apply_to_each_Drawing')?['enmax_autocaddrawingid']}"
                   },
                   "item/RecordNumber": "@{items('Apply_to_each_Drawing')?['enmax_acdnnumber']}",
                   "item/FoundFiles": "[]"
-                }
+                },
+                "authentication": "@parameters('$authentication')"
               },
               "metadata": {
                 "description": "FoundFiles is populated by nested SharePoint list-folder actions (per-library scan) before this call in production wiring; empty array is a safe no-op until libraries are bound."

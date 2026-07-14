@@ -38,7 +38,7 @@ const BASE: ExistingBase = {
   domain: "dom-1", system: "sys-1", kind: "kind-1",
 };
 
-function Harness({ subtype }: { subtype?: "Standard" | "Procedure" }) {
+function Harness({ subtype }: { subtype?: "Standard" | "Procedure" | "Form" }) {
   const methods = useForm<ReserveForm>({
     defaultValues: {
       reservationType: subtype ? "Document" : "Drawing",
@@ -91,6 +91,30 @@ test("Procedure: search is scoped to procedure taxonomy", async () => {
   renderWithProviders(<Harness subtype="Procedure" />, { initialPath: "/reserve" });
   await user.type(screen.getByPlaceholderText(/GG-CG-00/i), "GG");
   expect(searchRef.lastArgs).toMatchObject({ reservationType: "Document", documentSubtype: "Procedure" });
+});
+
+test("Form: creates an append reservation with target base", async () => {
+  searchRef.data = [BASE];
+  createMutate.mockResolvedValue({ id: "RES-3", number: "RES-3" });
+
+  const user = userEvent.setup();
+  renderWithProviders(<Harness subtype="Form" />, { initialPath: "/reserve" });
+
+  await user.type(screen.getByPlaceholderText(/GG-CG-00/i), "GG");
+  expect(searchRef.lastArgs).toMatchObject({ reservationType: "Document", documentSubtype: "Form" });
+  await user.click(await screen.findByText(BASE.number));
+
+  const count = await screen.findByRole("spinbutton");
+  fireEvent.change(count, { target: { value: "2" } });
+
+  await user.click(screen.getByRole("button", { name: /Add Forms/i }));
+
+  await waitFor(() => expect(createMutate).toHaveBeenCalledWith(expect.objectContaining({
+    targetDrawingId: "d1",
+    count: 2,
+    documentSubtype: "Form",
+    sequenceType: "Existing",
+  })));
 });
 
 test("Standard: selecting an existing coding issues the next base via the reservation path", async () => {

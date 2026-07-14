@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 // Taxonomy (ADR 0001 #1): a reservation is a Drawing or a Document; a Document is
-// a Standard (base-only) or a Procedure (base + child forms).
+// a Standard or Procedure (base-only) or a Form (base + child forms).
 // The six segments are independent (ADR 0001 #4): any active value may be chosen
 // for each, with no cascade filtering and no Approved-combination gate.
 export const reserveSchema = z.object({
   reservationType: z.enum(["Drawing", "Document"]),
-  documentSubtype: z.enum(["Standard", "Procedure"]).optional(),
+  documentSubtype: z.enum(["Standard", "Procedure", "Form"]).optional(),
   business:   z.string().min(1, "Business required"),
   asset:      z.string().min(1, "Asset required"),
   unit:       z.string().min(1, "Unit required"),
@@ -19,7 +19,7 @@ export const reserveSchema = z.object({
   reason:     z.string().min(10, "Reason must be at least 10 characters").max(2000),
 }).refine(
   (data) => data.reservationType !== "Document" || !!data.documentSubtype,
-  { message: "Select Standard or Procedure", path: ["documentSubtype"] },
+  { message: "Select Standard, Procedure, or Form", path: ["documentSubtype"] },
 );
 
 export type ReserveForm = z.infer<typeof reserveSchema>;

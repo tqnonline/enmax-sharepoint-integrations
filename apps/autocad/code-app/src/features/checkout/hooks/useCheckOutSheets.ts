@@ -16,6 +16,7 @@ export function useCheckOutSheets() {
       void queryClient.invalidateQueries({ queryKey: ["notification-feed"] });
       void queryClient.invalidateQueries({ queryKey: ["my-records"] });
       void queryClient.invalidateQueries({ queryKey: ["header-search"] });
+      void queryClient.invalidateQueries({ queryKey: ["search-page"] });
       void queryClient.invalidateQueries({ queryKey: ["search-documents"] });
     },
   });

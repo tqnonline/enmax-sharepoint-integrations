@@ -1,6 +1,7 @@
 import { Button, Spinner, Text, tokens, makeStyles } from "@fluentui/react-components";
 import { ArrowDownload24Regular } from "@fluentui/react-icons";
 import { useAppConfig } from "../../config/useAppConfig";
+import { isCheckoutEnabledForTaxonomy } from "../../config/checkoutTaxonomyConfig";
 import { useCheckOut } from "../checkout/hooks/useCheckOut";
 import { useCheckOutSheets } from "../checkout/hooks/useCheckOutSheets";
 import { DrawingState } from "../checkout/api/checkoutClient";
@@ -26,15 +27,21 @@ interface Props {
 
 export function SearchCheckoutAction({ row }: Props) {
   const styles = useStyles();
-  const { RequireCheckOutApproval } = useAppConfig();
+  const appConfig = useAppConfig();
   const checkOut = useCheckOut();
   const checkOutSheets = useCheckOutSheets();
 
-  if (row.state !== DrawingState.Available) return null;
+  const taxonomyEnabled = isCheckoutEnabledForTaxonomy(
+    appConfig,
+    row.enmax_acdnreservationtype,
+    row.enmax_acdndocumentsubtype,
+  );
+
+  if (row.state !== DrawingState.Available || !taxonomyEnabled) return null;
 
   const pending = checkOut.isPending || checkOutSheets.isPending;
   const error = checkOut.error ?? checkOutSheets.error;
-  const label = RequireCheckOutApproval ? "Request Check Out" : "Check Out";
+  const label = appConfig.RequireCheckOutApproval ? "Request Check Out" : "Check Out";
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();

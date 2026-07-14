@@ -145,6 +145,14 @@ rows:
     value: "true"
     value_type: Boolean
     description: When true, Check In is available for Standard Document reservations. Set false to hide/disable check-in for standard documents only.
+  - key: EnableFormCheckout
+    value: "true"
+    value_type: Boolean
+    description: When true, Check Out is available for Form reservations. Set false to hide/disable checkout for forms only.
+  - key: EnableFormCheckIn
+    value: "true"
+    value_type: Boolean
+    description: When true, Check In is available for Form reservations. Set false to hide/disable check-in for forms only.
   - key: RequireCheckOutApproval
     value: "true"
     value_type: Boolean

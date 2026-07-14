@@ -4,6 +4,13 @@
   box-sizing: border-box;
 }
 
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+}
+
 html,
 body {
   margin: 0;
@@ -18,4 +25,11 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+/* Crisp vector icons and UI on Apple Retina and other 2× displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  svg {
+    shape-rendering: geometricPrecision;
+  }
 }

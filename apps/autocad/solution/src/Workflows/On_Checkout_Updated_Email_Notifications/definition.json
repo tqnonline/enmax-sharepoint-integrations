@@ -13,7 +13,7 @@
           "subscriptionRequest/message": 3,
           "subscriptionRequest/entityname": "enmax_autocadcheckout",
           "subscriptionRequest/scope": 4,
-          "subscriptionRequest/filterexpression": "(enmax_acdnstatus eq 1 or enmax_acdnstatus eq 2 or enmax_acdnstatus eq 3) and _modifiedby_value ne '@{parameters('ServiceAccountUserId')}'"
+          "subscriptionRequest/filterexpression": "(enmax_acdnstatus eq 1 or enmax_acdnstatus eq 2 or enmax_acdnstatus eq 3)"
         }
       },
       "metadata": {
@@ -151,7 +151,7 @@
                   "To": "@{outputs('Compose_DocControl')}",
                   "Cc": "",
                   "Subject": "Check In validation needed: @{outputs('Compose_Document_Number')}",
-                  "BodyHtml": "<p>A check-in is awaiting validation.</p><p><strong>Document:</strong> @{outputs('Compose_Document_Number')}</p><p><strong>Submitted by:</strong> @{triggerOutputs()?['body/_ownerid_value@OData.Community.Display.V1.FormattedValue']}</p><p><strong>Submission info:</strong> @{triggerOutputs()?['body/enmax_acdnsubmissioninfo']}</p><p><a href=\"@{outputs('Compose_CodeApp_BaseUrl')}/approvals?section=documents&amp;tab=checkin\">Open Check In Validation</a></p>"
+                  "BodyHtml": "<p>A check-in is awaiting validation.</p><p><strong>Document:</strong> @{replace(replace(outputs('Compose_Document_Number'), '<', '&lt;'), '>', '&gt;')}</p><p><strong>Submitted by:</strong> @{replace(replace(triggerOutputs()?['body/_ownerid_value@OData.Community.Display.V1.FormattedValue'], '<', '&lt;'), '>', '&gt;')}</p><p><strong>Submission info:</strong> @{replace(replace(coalesce(triggerOutputs()?['body/enmax_acdnsubmissioninfo'], ''), '<', '&lt;'), '>', '&gt;')}</p><p><a href=\"@{outputs('Compose_CodeApp_BaseUrl')}/approvals?section=documents&amp;tab=checkin\">Open Check In Validation</a></p>"
                 }
               }
             },

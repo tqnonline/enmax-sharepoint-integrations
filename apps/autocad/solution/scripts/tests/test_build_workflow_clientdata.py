@@ -16,7 +16,12 @@ import build_workflow_clientdata as bw  # noqa: E402
 
 def test_connection_references_map_deployed_logical_names() -> None:
     refs = bw._connection_references(
-        {"shared_commondataserviceforapps", "shared_office365", "shared_sharepointonline"}
+        {
+            "shared_commondataserviceforapps",
+            "shared_office365",
+            "shared_sharepointonline",
+            "shared_teams",
+        }
     )
     assert (
         refs["shared_commondataserviceforapps"]["connection"]["connectionReferenceLogicalName"]
@@ -29,6 +34,28 @@ def test_connection_references_map_deployed_logical_names() -> None:
     assert (
         refs["shared_sharepointonline"]["connection"]["connectionReferenceLogicalName"]
         == "enmax_autocadconrefSharePoint"
+    )
+    assert (
+        refs["shared_teams"]["connection"]["connectionReferenceLogicalName"]
+        == "enmax_autocadconrefTeams"
+    )
+
+
+def test_reservation_created_workflow_json_uses_teams_conref() -> None:
+    workflow_path = (
+        Path(__file__).resolve().parent.parent.parent
+        / "src"
+        / "Workflows"
+        / "On_Reservation_Created_Notify_Admins"
+        / "workflow.json"
+    )
+    assert workflow_path.exists(), "run build_workflow_clientdata.py to generate workflow.json"
+    data = json.loads(workflow_path.read_text(encoding="utf-8"))
+    conrefs = data["properties"]["connectionReferences"]
+    assert "shared_teams" in conrefs
+    assert (
+        conrefs["shared_teams"]["connection"]["connectionReferenceLogicalName"]
+        == "enmax_autocadconrefTeams"
     )
 
 

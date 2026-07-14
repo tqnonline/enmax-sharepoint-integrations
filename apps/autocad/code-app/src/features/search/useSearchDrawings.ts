@@ -133,12 +133,13 @@ async function buildFilter(params: GridFetchParams): Promise<string> {
 
   const dateFrom = params.filters.dateFrom;
   const dateTo = params.filters.dateTo;
-  // DateTime fields require ISO 8601 literals (unquoted), same as audit/reservation filters.
+  // Issued-date window: use createdon (always set on issue). Revision date is only
+  // populated after check-in, so filtering on it alone hides new drawings/documents.
   if (typeof dateFrom === "string" && ISO_DATE.test(dateFrom)) {
-    clauses.push(`enmax_acdnrevisiondate ge ${dateFrom}T00:00:00Z`);
+    clauses.push(`createdon ge ${dateFrom}T00:00:00Z`);
   }
   if (typeof dateTo === "string" && ISO_DATE.test(dateTo)) {
-    clauses.push(`enmax_acdnrevisiondate le ${dateTo}T23:59:59Z`);
+    clauses.push(`createdon le ${dateTo}T23:59:59Z`);
   }
 
   const subtypeVal = params.filters.documentSubtype;

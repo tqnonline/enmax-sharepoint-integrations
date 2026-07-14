@@ -47,7 +47,13 @@ function rowMatchesSubtype(row: MyRecordRow, subtype: DocumentSubtypeFilter): bo
   if (subtype === "standard") {
     return row.enmax_acdndocumentsubtype === DOCUMENT_SUBTYPE_VALUE.Standard;
   }
-  return row.enmax_acdndocumentsubtype === DOCUMENT_SUBTYPE_VALUE.Procedure;
+  if (subtype === "procedure") {
+    return row.enmax_acdndocumentsubtype === DOCUMENT_SUBTYPE_VALUE.Procedure;
+  }
+  if (subtype === "form") {
+    return row.enmax_acdndocumentsubtype === DOCUMENT_SUBTYPE_VALUE.Form;
+  }
+  return false;
 }
 
 function matchesPeople(peopleIds: string[], row: MyRecordRow): boolean {

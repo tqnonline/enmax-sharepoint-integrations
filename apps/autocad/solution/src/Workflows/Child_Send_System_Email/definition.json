@@ -3,17 +3,29 @@
   "triggers": {
     "manual": {
       "type": "Request",
-      "kind": "PowerAppV2",
+      "kind": "Button",
       "inputs": {
         "schema": {
           "type": "object",
           "properties": {
-            "To":       { "type": "string" },
-            "Cc":       { "type": "string" },
-            "Subject":  { "type": "string" },
-            "BodyHtml": { "type": "string" }
+            "To": {
+              "type": "string"
+            },
+            "Cc": {
+              "type": "string"
+            },
+            "Subject": {
+              "type": "string"
+            },
+            "BodyHtml": {
+              "type": "string"
+            }
           },
-          "required": ["To", "Subject", "BodyHtml"]
+          "required": [
+            "To",
+            "Subject",
+            "BodyHtml"
+          ]
         }
       }
     }
@@ -35,26 +47,108 @@
         }
       }
     },
-    "Send_Email": {
-      "type": "OpenApiConnection",
-      "runAfter": { "Get_Shared_Mailbox": ["Succeeded"] },
-      "inputs": {
-        "host": {
-          "connectionName": "shared_office365",
-          "operationId": "SendEmailFromSharedMailbox_V2",
-          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
-        },
-        "parameters": {
-          "MailboxAddress": "@{outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue']}",
-          "To": "@{triggerBody()?['To']}",
-          "Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
-          "Subject": "@{triggerBody()?['Subject']}",
-          "Body": "@{triggerBody()?['BodyHtml']}",
-          "IsHtml": true,
-          "Importance": "Normal"
+    "Compose_Mailbox": {
+      "type": "Compose",
+      "runAfter": {
+        "Get_Shared_Mailbox": [
+          "Succeeded"
+        ]
+      },
+      "inputs": "@{coalesce(outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue'], '')}"
+    },
+    "Condition_Mailbox_Configured": {
+      "type": "If",
+      "runAfter": {
+        "Compose_Mailbox": [
+          "Succeeded"
+        ]
+      },
+      "expression": {
+        "and": [
+          {
+            "not": {
+              "equals": [
+                "@trim(outputs('Compose_Mailbox'))",
+                ""
+              ]
+            }
+          },
+          {
+            "not": {
+              "equals": [
+                "@trim(coalesce(triggerBody()?['To'], ''))",
+                ""
+              ]
+            }
+          }
+        ]
+      },
+      "actions": {
+        "Send_Email": {
+          "type": "OpenApiConnection",
+          "runAfter": {},
+          "inputs": {
+            "host": {
+              "connectionName": "shared_office365",
+              "operationId": "SharedMailboxSendEmailV2",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+            },
+            "parameters": {
+              "emailMessage/MailboxAddress": "@{outputs('Compose_Mailbox')}",
+              "emailMessage/To": "@{triggerBody()?['To']}",
+              "emailMessage/Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
+              "emailMessage/Subject": "@{triggerBody()?['Subject']}",
+              "emailMessage/Body": "@{triggerBody()?['BodyHtml']}",
+              "emailMessage/Importance": "Normal"
+            }
+          },
+          "retryPolicy": {
+            "type": "fixed",
+            "count": 1,
+            "interval": "PT30S"
+          }
         }
       },
-      "retryPolicy": { "type": "fixed", "count": 1, "interval": "PT30S" }
+      "else": {
+        "actions": {
+          "Terminate_Missing_Config": {
+            "type": "Terminate",
+            "inputs": {
+              "runStatus": "Failed",
+              "runError": {
+                "code": "SharedMailboxOrRecipientMissing",
+                "message": "SharedMailboxAddress App Config is empty or To recipient is missing. Set SharedMailboxAddress and ensure the parent flow resolved a recipient."
+              }
+            }
+          }
+        }
+      }
+    },
+    "Respond_to_Parent": {
+      "type": "Response",
+      "kind": "PowerApp",
+      "runAfter": {
+        "Condition_Mailbox_Configured": [
+          "Succeeded",
+          "Failed",
+          "TimedOut",
+          "Skipped"
+        ]
+      },
+      "inputs": {
+        "statusCode": 200,
+        "body": {
+          "ok": true
+        },
+        "schema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
     }
   }
 }

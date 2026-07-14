@@ -56,7 +56,7 @@ afterEach(() => {
 // Default date range = last 30 days (aligned with all other grid pages)
 test(`default from-date is set to ${GRID_DEFAULT_FROM_DAYS} days ago`, () => {
   renderWithProviders(<AuditPage />);
-  const fromInput = screen.getByLabelText("From date") as HTMLInputElement;
+  const fromInput = screen.getByLabelText("From Date") as HTMLInputElement;
   expect(fromInput.value).toBe(isoDateDaysAgo(GRID_DEFAULT_FROM_DAYS, FIXED_NOW));
 });
 
@@ -82,7 +82,7 @@ test("audit table has no edit/delete/action buttons — read-only", async () => 
 test("Clear button resets date range to last 30 days", async () => {
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
   renderWithProviders(<AuditPage />);
-  const fromInput = screen.getByLabelText("From date") as HTMLInputElement;
+  const fromInput = screen.getByLabelText("From Date") as HTMLInputElement;
   await user.clear(fromInput);
   await user.type(fromInput, "2026-01-01");
   expect(fromInput.value).toBe("2026-01-01");
@@ -92,7 +92,7 @@ test("Clear button resets date range to last 30 days", async () => {
 
 test(`default from-date is ${GRID_DEFAULT_FROM_DAYS} days ago`, () => {
   renderWithProviders(<AuditPage />);
-  const from = screen.getByLabelText("From date") as HTMLInputElement;
+  const from = screen.getByLabelText("From Date") as HTMLInputElement;
   expect(from.value).toBe(isoDateDaysAgo(GRID_DEFAULT_FROM_DAYS, FIXED_NOW));
 });
 test("Subject Table filter is a dropdown (select)", () => {
@@ -137,7 +137,7 @@ test("subject id stays quoted, event/source stay unquoted", () => {
 // Default To-date is today, so the preloaded filters show the full 30-day window.
 test("default to-date is today", () => {
   renderWithProviders(<AuditPage />);
-  const toInput = screen.getByLabelText("To date") as HTMLInputElement;
+  const toInput = screen.getByLabelText("To Date") as HTMLInputElement;
   expect(toInput.value).toBe(isoDateToday(FIXED_NOW));
 });
 

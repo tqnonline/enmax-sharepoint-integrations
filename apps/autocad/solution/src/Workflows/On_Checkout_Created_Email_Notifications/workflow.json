@@ -15,6 +15,16 @@
     "definition": {
       "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
       "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
       "triggers": {
         "When_Checkout_Created": {
           "type": "OpenApiConnectionWebhook",
@@ -29,7 +39,8 @@
               "subscriptionRequest/entityname": "enmax_autocadcheckout",
               "subscriptionRequest/scope": 4,
               "subscriptionRequest/filterexpression": "enmax_acdnstatus eq 1 or enmax_acdnstatus eq 6"
-            }
+            },
+            "authentication": "@parameters('$authentication')"
           },
           "metadata": {
             "description": "Immediate checkout (Open) or gated checkout request (Requested)."
@@ -50,7 +61,8 @@
               "entityName": "enmax_autocadappconfigs",
               "$filter": "enmax_acdnkey eq 'DocControlEmailAddress'",
               "$top": 1
-            }
+            },
+            "authentication": "@parameters('$authentication')"
           }
         },
         "Get_CodeApp_BaseUrl_Config": {
@@ -70,7 +82,8 @@
               "entityName": "enmax_autocadappconfigs",
               "$filter": "enmax_acdnkey eq 'CodeAppBaseUrl'",
               "$top": 1
-            }
+            },
+            "authentication": "@parameters('$authentication')"
           }
         },
         "Get_Drawing": {
@@ -89,7 +102,8 @@
             "parameters": {
               "entityName": "enmax_autocaddrawings",
               "recordId": "@{triggerOutputs()?['body/_enmax_acdndrawing_value']}"
-            }
+            },
+            "authentication": "@parameters('$authentication')"
           }
         },
         "Get_Reservation": {
@@ -108,7 +122,8 @@
             "parameters": {
               "entityName": "enmax_autocadreservations",
               "recordId": "@{outputs('Get_Drawing')?['body/_enmax_acdnreservation_value']}"
-            }
+            },
+            "authentication": "@parameters('$authentication')"
           }
         },
         "Get_Reservation_Creator": {
@@ -127,7 +142,8 @@
             "parameters": {
               "entityName": "systemusers",
               "recordId": "@{outputs('Get_Reservation')?['body/_createdby_value']}"
-            }
+            },
+            "authentication": "@parameters('$authentication')"
           }
         },
         "Compose_DocControl": {
@@ -185,7 +201,7 @@
                       "To": "@{outputs('Compose_DocControl')}",
                       "Cc": "",
                       "Subject": "Check Out approval needed: @{outputs('Compose_Document_Number')}",
-                      "BodyHtml": "<p>A check-out request is awaiting approval.</p><p><strong>Document:</strong> @{outputs('Compose_Document_Number')}</p><p><strong>Requested by:</strong> @{triggerOutputs()?['body/_enmax_acdncheckedoutby_value@OData.Community.Display.V1.FormattedValue']}</p><p><strong>Reservation creator:</strong> @{outputs('Get_Reservation_Creator')?['body/fullname']} (@{outputs('Get_Reservation_Creator')?['body/internalemailaddress']})</p><p><a href=\"@{outputs('Compose_CodeApp_BaseUrl')}/approvals?section=documents&amp;tab=checkout\">Open Approvals</a></p>"
+                      "BodyHtml": "<p>A check-out request is awaiting approval.</p><p><strong>Document:</strong> @{replace(replace(outputs('Compose_Document_Number'), '<', '&lt;'), '>', '&gt;')}</p><p><strong>Requested by:</strong> @{replace(replace(triggerOutputs()?['body/_enmax_acdncheckedoutby_value@OData.Community.Display.V1.FormattedValue'], '<', '&lt;'), '>', '&gt;')}</p><p><strong>Reservation creator:</strong> @{replace(replace(outputs('Get_Reservation_Creator')?['body/fullname'], '<', '&lt;'), '>', '&gt;')} (@{outputs('Get_Reservation_Creator')?['body/internalemailaddress']})</p><p><a href=\"@{outputs('Compose_CodeApp_BaseUrl')}/approvals?section=documents&amp;tab=checkout\">Open Approvals</a></p>"
                     }
                   }
                 }

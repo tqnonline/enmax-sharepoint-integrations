@@ -818,7 +818,7 @@
             <IntroducedVersion>1.0.0.0</IntroducedVersion>
             <IsCustomizable>1</IsCustomizable>
             <displaynames>
-              <displayname description="Present In Drop-off Library" languagecode="1033" />
+              <displayname description="Present In Drop-Off Library" languagecode="1033" />
             </displaynames>
             <options>
               <option value="1" ExternalValue="" IsHidden="0">
@@ -834,7 +834,7 @@
             </options>
           </optionset>
           <displaynames>
-            <displayname description="Present In Drop-off Library" languagecode="1033" />
+            <displayname description="Present In Drop-Off Library" languagecode="1033" />
           </displaynames>
         </attribute>
         <attribute PhysicalName="enmax_acdnPresentInDestination">

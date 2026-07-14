@@ -25,15 +25,23 @@ const EVENT_LABELS: Record<number, string> = {
   9: "Finalized",
 };
 
-export function useDrawingAuditTrail(drawingId?: string) {
+export function useDrawingAuditTrail(subjectIds?: string | string[]) {
+  const ids = (Array.isArray(subjectIds) ? subjectIds : subjectIds ? [subjectIds] : [])
+    .filter((id): id is string => !!id);
+  const queryKey = ["drawing-audit", ...ids.sort()];
+
   return useQuery<AuditEvent[]>({
-    queryKey: ["drawing-audit", drawingId],
-    enabled:  !!drawingId,
+    queryKey,
+    enabled:  ids.length > 0,
     staleTime: 60_000,
     throwOnError: false,
     queryFn: async () => {
+      const filter = ids.length === 1
+        ? `enmax_acdnsubjectid eq '${ids[0]!.replace(/'/g, "''")}'`
+        : `(${ids.map((id) => `enmax_acdnsubjectid eq '${id.replace(/'/g, "''")}'`).join(" or ")})`;
+
       const result = await Enmax_autocadauditeventsService.getAll({
-        filter:  `enmax_acdnsubjectid eq '${drawingId}'`,
+        filter,
         select:  [
           "enmax_autocadauditeventid", "createdon",
           "enmax_acdnevent", "enmax_acdnreason",

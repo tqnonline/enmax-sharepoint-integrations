@@ -12,10 +12,10 @@ using Xunit;
 namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 {
     /// <summary>
-    /// Type-aware issuance (ADR 0001): Document/Standard reservations are base-only
-    /// (no child items); Drawing, Document/Procedure, and legacy/null-type reservations
-    /// all create child items. Child count is hard-capped at 999. Complements the
-    /// golden tests, which pin the unchanged Drawing output contract.
+    /// Type-aware issuance (ADR 0001): Document/Standard and Document/Procedure are
+    /// base-only; Drawing, Document/Form, and legacy/null-type reservations create
+    /// child items. Child count is hard-capped at 999. Complements the golden tests,
+    /// which pin the unchanged Drawing output contract.
     /// </summary>
     public class TypeAwareIssuanceTests
     {
@@ -29,6 +29,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         private const int TypeDocument       = 2;
         private const int SubtypeStandard    = 1;
         private const int SubtypeProcedure   = 2;
+        private const int SubtypeForm        = 3;
 
         private static readonly Guid ApproverTeamId = Guid.NewGuid();
         private static readonly Guid AdminTeamId    = Guid.NewGuid();
@@ -106,7 +107,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         [Fact]
-        public void CreateDrawings_ProcedureDocument_CreatesChildItems()
+        public void CreateDrawings_ProcedureDocument_CreatesSingletonSheet()
         {
             var (ctx, pluginCtx) = BuildCreateDrawingsContext(
                 new[] { 7 }, TypeDocument, SubtypeProcedure, sheetsPer: 2);
@@ -114,7 +115,21 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             ctx.ExecutePluginWith<CreateDrawingsPlugin>(pluginCtx);
 
             CountDrawings(ctx).Should().Be(1);
-            CountSheets(ctx).Should().Be(2, because: "Procedure documents get one child (Procedure Form Document) per count");
+            CountSheets(ctx).Should().Be(1, because: "Procedure is base-only like Standard");
+            var sheet = ctx.CreateQuery(SheetEntity).Single();
+            sheet.Contains("enmax_acdnsheetnumber").Should().BeFalse("singleton Procedure sheet stores no numeric suffix");
+        }
+
+        [Fact]
+        public void CreateDrawings_FormDocument_CreatesChildItems()
+        {
+            var (ctx, pluginCtx) = BuildCreateDrawingsContext(
+                new[] { 7 }, TypeDocument, SubtypeForm, sheetsPer: 2);
+
+            ctx.ExecutePluginWith<CreateDrawingsPlugin>(pluginCtx);
+
+            CountDrawings(ctx).Should().Be(1);
+            CountSheets(ctx).Should().Be(2, because: "Form documents get one child Form per count");
         }
 
         [Fact]
@@ -229,10 +244,24 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         [Fact]
-        public void AutoCreate_ProcedureDocument_CreatesChildItems()
+        public void AutoCreate_ProcedureDocument_CreatesSingletonSheet()
         {
             var (ctx, pluginCtx) = BuildAutoCreateContext(
                 new[] { 5 }, TypeDocument, SubtypeProcedure, sheetsPer: 2);
+
+            ctx.ExecutePluginWith<AutoCreateDrawingsPlugin>(pluginCtx);
+
+            CountDrawings(ctx).Should().Be(1);
+            CountSheets(ctx).Should().Be(1, because: "Procedure is base-only like Standard");
+            var sheet = ctx.CreateQuery(SheetEntity).Single();
+            sheet.Contains("enmax_acdnsheetnumber").Should().BeFalse();
+        }
+
+        [Fact]
+        public void AutoCreate_FormDocument_CreatesChildItems()
+        {
+            var (ctx, pluginCtx) = BuildAutoCreateContext(
+                new[] { 5 }, TypeDocument, SubtypeForm, sheetsPer: 2);
 
             ctx.ExecutePluginWith<AutoCreateDrawingsPlugin>(pluginCtx);
 

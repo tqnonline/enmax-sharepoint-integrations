@@ -73,7 +73,8 @@ const useStyles = makeStyles({
 const DOCUMENT_TYPE_OPTIONS: { value: DocumentSubtypeSearchFilter; label: string }[] = [
   { value: "all", label: "All Types" },
   { value: "standard", label: "Standard Document" },
-  { value: "procedure", label: "Procedure Forms" },
+  { value: "procedure", label: "Procedure" },
+  { value: "form", label: "Form" },
 ];
 
 function initialFilters(tab: SearchTab = "drawings"): SearchListFilters {
@@ -217,7 +218,7 @@ export function SearchPage() {
     ? "No Drawing/Document Reservations found. Try a different reservation ID or reason."
     : activeTab === "drawings"
       ? "No Drawing Documents Found. Try Widening The Numbering Group Filters Or The Date Range."
-      : "No Standard Documents Or Procedure Forms Found. Try Adjusting Filters.";
+      : "No Standard Documents, Procedures, Or Forms Found. Try Adjusting Filters.";
 
   return (
     <div className={styles.root}>
@@ -236,7 +237,7 @@ export function SearchPage() {
         onTabSelect={(_, d) => handleTabChange(d.value as SearchTab)}
       >
         <Tab value="drawings">Drawings (Drawing Documents)</Tab>
-        <Tab value="documents">Standard Documents &amp; Procedure Forms</Tab>
+        <Tab value="documents">Standard Documents, Procedures &amp; Forms</Tab>
         <Tab value="reservations">Reservations</Tab>
       </TabList>
 
@@ -245,7 +246,7 @@ export function SearchPage() {
           numberLabel={
             activeTab === "reservations"
               ? "Reservation ID or reason"
-              : "Drawing Document / Standard Document / Procedure Forms Number"
+              : "Drawing Document / Standard Document / Procedure / Form Number"
           }
           numberPlaceholder={
             activeTab === "reservations"

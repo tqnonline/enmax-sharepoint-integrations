@@ -60,7 +60,9 @@ export function filtersFromSearchParams(
   const { from, to } = defaultGridDateRange();
   const subtypeRaw = params.get("subtype");
   const documentSubtype: DocumentSubtypeSearchFilter =
-    subtypeRaw === "standard" || subtypeRaw === "procedure" ? subtypeRaw : "all";
+    subtypeRaw === "standard" || subtypeRaw === "procedure" || subtypeRaw === "form"
+      ? subtypeRaw
+      : "all";
 
   const byId = compositionFromParams(params);
   const hasIdComposition = COMPOSITION_KEYS.some((k) => byId[k]);
