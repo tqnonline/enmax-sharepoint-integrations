@@ -1,30 +1,24 @@
 import {
   Badge,
   Button,
-  Link,
   Spinner,
   Text,
   tokens,
   makeStyles,
 } from "@fluentui/react-components";
 import {
-  ArrowSquareUpRightRegular,
+  CalendarLtr24Regular,
   ChevronLeftRegular,
   ChevronRightRegular,
-  Document24Regular,
 } from "@fluentui/react-icons";
-import type { SearchDocumentRow } from "./useSearchDocuments";
-import { sharePointUrlFrom } from "../../components/DataGrid";
-import { SearchCheckoutAction } from "./SearchCheckoutAction";
+import type { ReservationRow } from "./useUnifiedSearch";
+import { RESERVATION_STATUS } from "../myitems/useMyReservations";
 
-const STATE_COLORS: Record<string, "success" | "warning" | "danger" | "informative" | "brand" | undefined> = {
-  Available: "success",
-  "Checked Out": "warning",
-  "Awaiting Validation": "warning",
-  "Pending Approval": "danger",
-  Obsolete: "informative",
-  Void: "danger",
-  Finalized: "brand",
+const STATUS_COLORS: Record<string, "success" | "warning" | "danger" | "informative" | undefined> = {
+  Pending: "warning",
+  Approved: "success",
+  Declined: "danger",
+  Cancelled: "informative",
 };
 
 const useStyles = makeStyles({
@@ -80,11 +74,6 @@ const useStyles = makeStyles({
     alignItems: "center",
     gap: tokens.spacingHorizontalS,
   },
-  number: {
-    fontFamily: "monospace",
-    fontWeight: tokens.fontWeightSemibold,
-    fontSize: tokens.fontSizeBase400,
-  },
   subtitle: {
     color: tokens.colorNeutralForeground2,
     overflow: "hidden",
@@ -94,14 +83,6 @@ const useStyles = makeStyles({
   meta: {
     color: tokens.colorNeutralForeground3,
     fontSize: tokens.fontSizeBase200,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  },
-  actions: {
-    flexShrink: 0,
-    display: "flex",
-    alignItems: "flex-start",
   },
   footer: {
     flexShrink: 0,
@@ -139,7 +120,7 @@ const useStyles = makeStyles({
 });
 
 interface Props {
-  rows: SearchDocumentRow[];
+  rows: ReservationRow[];
   totalCount: number;
   page: number;
   pageSize: number;
@@ -147,15 +128,15 @@ interface Props {
   hasQueried: boolean;
   emptyMessage: string;
   onPageChange: (page: number) => void;
-  onRowClick: (row: SearchDocumentRow) => void;
+  onRowClick: (row: ReservationRow) => void;
 }
 
 function matchingLabel(totalCount: number): string {
-  if (totalCount === 0) return "No matching documents";
-  return `${totalCount} matching document${totalCount === 1 ? "" : "s"}`;
+  if (totalCount === 0) return "No matching reservations";
+  return `${totalCount} matching reservation${totalCount === 1 ? "" : "s"}`;
 }
 
-export function SearchResultsList({
+export function SearchReservationResultsList({
   rows,
   totalCount,
   page,
@@ -176,7 +157,7 @@ export function SearchResultsList({
       <div className={styles.scroll}>
         {!hasQueried && (
           <div className={styles.empty}>
-            <Text>Search by issued number or numbering group, then click Query to see individual documents.</Text>
+            <Text>Search by reservation ID or reason, then click Query to see results.</Text>
           </div>
         )}
         {hasQueried && isLoading && rows.length === 0 && (
@@ -190,8 +171,8 @@ export function SearchResultsList({
           </div>
         )}
         {rows.map((row) => {
-          const spUrl = sharePointUrlFrom(row.sharePointUrl, row.destinationUrl);
-          const stateColor = STATE_COLORS[row.stateLabel] ?? "informative";
+          const statusLabel = RESERVATION_STATUS[row.status] ?? String(row.status);
+          const statusColor = STATUS_COLORS[statusLabel] ?? "informative";
           return (
             <button
               key={row.id}
@@ -199,34 +180,19 @@ export function SearchResultsList({
               className={styles.card}
               onClick={() => onRowClick(row)}
             >
-              <Document24Regular className={styles.icon} aria-hidden />
+              <CalendarLtr24Regular className={styles.icon} aria-hidden />
               <div className={styles.body}>
                 <div className={styles.titleRow}>
-                  <Text className={styles.number}>{row.documentNumber}</Text>
-                  <Badge appearance="tint" color="informative" size="small">{row.typeLabel}</Badge>
-                  <Badge appearance="tint" color={stateColor} size="small">{row.stateLabel}</Badge>
+                  <Text weight="semibold" size={400}>{row.number}</Text>
+                  <Badge appearance="tint" color={statusColor} size="small">{statusLabel}</Badge>
                 </div>
-                <Text className={styles.subtitle} title={row.filename || row.title}>
-                  {row.filename || row.title || "—"}
+                <Text className={styles.subtitle} title={row.reason}>
+                  {row.reason || "—"}
                 </Text>
-                <Text className={styles.meta} title={row.compositionSummary}>
-                  {row.compositionSummary}
-                  {row.currentRevision ? ` · Rev ${row.currentRevision}` : ""}
+                <Text className={styles.meta}>
+                  {row.submittedByName ? `Submitted by ${row.submittedByName}` : "Reservation"}
+                  {row.approvedByName ? ` · Approved by ${row.approvedByName}` : ""}
                 </Text>
-              </div>
-              <div className={styles.actions}>
-                <SearchCheckoutAction row={row} />
-                {spUrl && (
-                  <Link
-                    href={spUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    aria-label="Open in SharePoint"
-                  >
-                    <ArrowSquareUpRightRegular />
-                  </Link>
-                )}
               </div>
             </button>
           );

@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "1.0.0.0",
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "enmax_autocadconrefDataverse"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      },
+      "shared_office365": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "enmax_autocadconrefOutlook"
+        },
+        "api": {
+          "name": "shared_office365"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "PowerAppV2",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "To": {
+                  "type": "string"
+                },
+                "Cc": {
+                  "type": "string"
+                },
+                "Subject": {
+                  "type": "string"
+                },
+                "BodyHtml": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "To",
+                "Subject",
+                "BodyHtml"
+              ]
+            }
+          }
+        }
+      },
+      "actions": {
+        "Get_Shared_Mailbox": {
+          "type": "OpenApiConnection",
+          "runAfter": {},
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "ListRecords",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "enmax_autocadappconfigs",
+              "$filter": "enmax_acdnkey eq 'SharedMailboxAddress'",
+              "$top": 1
+            }
+          }
+        },
+        "Send_Email": {
+          "type": "OpenApiConnection",
+          "runAfter": {
+            "Get_Shared_Mailbox": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "host": {
+              "connectionName": "shared_office365",
+              "operationId": "SendEmailFromSharedMailbox_V2",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+            },
+            "parameters": {
+              "MailboxAddress": "@{outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue']}",
+              "To": "@{triggerBody()?['To']}",
+              "Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
+              "Subject": "@{triggerBody()?['Subject']}",
+              "Body": "@{triggerBody()?['BodyHtml']}",
+              "IsHtml": true,
+              "Importance": "Normal"
+            }
+          },
+          "retryPolicy": {
+            "type": "fixed",
+            "count": 1,
+            "interval": "PT30S"
+          }
+        }
+      }
+    },
+    "templateName": ""
+  }
+}

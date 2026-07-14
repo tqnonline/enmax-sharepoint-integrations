@@ -2,9 +2,17 @@ table: enmax_autocadappconfig
 natural_key_columns: [key]
 rows:
   - key: SharedMailboxAddress
-    value: "{{ APP_CONFIG_SHARED_MAILBOX | default('noreply-autocad@enmax.com') }}"
+    value: "{{ APP_CONFIG_SHARED_MAILBOX | default('EEC_PwrPlat_Svc@enmax.com') }}"
     value_type: String
-    description: Outbound mailbox for Power Automate flows. Send-As on this mailbox. NO-REPLY — email copy must not invite replies.
+    description: Outbound mailbox for Power Automate flows (DEV/UAT uses EEC_PwrPlat_Svc@enmax.com). Send-As on this mailbox. NO-REPLY — email copy must not invite replies.
+  - key: DocControlEmailAddress
+    value: GWE-DocControl@enmax.com
+    value_type: String
+    description: Document Control mailbox. Approval emails are sent TO this address; creator-facing checkout/check-in emails CC this address.
+  - key: CodeAppBaseUrl
+    value: "{{ CODE_APP_BASE_URL | default('https://apps.powerapps.com/play/e/default') }}"
+    value_type: String
+    description: Base URL of the published Code App (no trailing slash). Used by notification flows for deep links.
   - key: SingleAdminMode
     value: "false"
     value_type: Boolean
@@ -38,29 +46,29 @@ rows:
     value_type: String
     description: Dataverse team name holding the Admin role.
   - key: SharePointSiteUrl
-    value: https://enmax.sharepoint.com/sites/GenerationDrawings
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC
     value_type: String
-    description: Root SharePoint site where drawing document libraries are provisioned.
+    description: DEV/UAT SharePoint site (GEN-POC). Production uses separate Drawings and Documents sites.
   - key: CheckInUploadLibraryUrl
-    value: https://enmax.sharepoint.com/sites/GenerationDrawings/Shared%20Documents
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
     value_type: String
-    description: Single SharePoint document library where users upload revised drawing files at check-in. ALL drawings use this one library; admins move files to the right location afterward. Set to the actual library URL.
+    description: DEV/UAT drop-off library for check-in uploads (GEN-POC DropOffLibrary).
   - key: DrawingsDropOffLibraryUrl
-    value: https://enmax.sharepoint.com/sites/GenerationDrawings/DropOff
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
     value_type: String
-    description: WS5 - Drawings site drop-off (read/write) library base URL. Users upload working PDFs here while a drawing is checked out. Set to the actual library URL per environment.
+    description: WS5 - Drawings drop-off (read/write) library base URL. DEV/UAT uses GEN-POC DropOffLibrary.
   - key: DrawingsDestinationLibraryUrl
-    value: https://enmax.sharepoint.com/sites/GenerationDrawings/Destination
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
     value_type: String
-    description: WS5 - Drawings site destination (read-only) library base URL, organized with 1-level vendor/project folders holding final checked-in PDFs. Set to the actual library URL per environment.
+    description: WS5 - Drawings destination (read-only) library base URL. DEV/UAT uses GEN-POC GF library.
   - key: DocumentsDropOffLibraryUrl
-    value: https://enmax.sharepoint.com/sites/GenerationDocuments/DropOff
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
     value_type: String
-    description: WS5 - Documents site (Standards + Procedures) drop-off (read/write) library base URL. Set to the actual library URL per environment.
+    description: WS5 - Documents drop-off (read/write) library base URL. DEV/UAT uses GEN-POC DropOffLibrary.
   - key: DocumentsDestinationLibraryUrl
-    value: https://enmax.sharepoint.com/sites/GenerationDocuments/Destination
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
     value_type: String
-    description: WS5 - Documents site destination (read-only) library base URL, 1-level vendor/project folders. Set to the actual library URL per environment.
+    description: WS5 - Documents destination (read-only) library base URL. DEV/UAT uses GEN-POC GF library.
   - key: BusinessUnitName
     value: Enmax AutoCAD
     value_type: String

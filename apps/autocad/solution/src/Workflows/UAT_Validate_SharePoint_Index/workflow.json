@@ -1,0 +1,156 @@
+{
+  "schemaVersion": "1.0.0.0",
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "enmax_autocadconrefDataverse"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "metadata": {
+        "description": "WS5e UAT harness: validates indexer outcomes against an expected scenario matrix (drop-off only / destination only / both / neither; base vs child; vendor vs project folder). Emits pass/fail report after calling Manual_Refresh_SharePoint_Index / UpsertSharePointLinks."
+      },
+      "triggers": {
+        "Manual_Validate": {
+          "type": "Request",
+          "kind": "Http",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "expectations": {
+                  "type": "string",
+                  "title": "JSON array of {entityName,recordId,recordNumber,expectDropOff,expectDestination} rows"
+                }
+              },
+              "required": [
+                "expectations"
+              ]
+            }
+          }
+        }
+      },
+      "actions": {
+        "Initialize_Results": {
+          "type": "InitializeVariable",
+          "runAfter": {},
+          "inputs": {
+            "variables": [
+              {
+                "name": "PassCount",
+                "type": "integer",
+                "value": 0
+              },
+              {
+                "name": "FailCount",
+                "type": "integer",
+                "value": 0
+              },
+              {
+                "name": "Failures",
+                "type": "array",
+                "value": []
+              }
+            ]
+          }
+        },
+        "Apply_to_each_Expectation": {
+          "type": "Foreach",
+          "runAfter": {
+            "Initialize_Results": [
+              "Succeeded"
+            ]
+          },
+          "foreach": "@json(triggerBody()?['expectations'])",
+          "actions": {
+            "Get_Record": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "GetItem",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "@{concat(items('Apply_to_each_Expectation')?['entityName'], 's')}",
+                  "recordId": "@{items('Apply_to_each_Expectation')?['recordId']}",
+                  "$select": "enmax_acdnpresentindropoff,enmax_acdnpresentindestination,enmax_acdnsplibraryurl,enmax_acdnsharepointurl,enmax_acdnspdestinationurl"
+                }
+              }
+            },
+            "Check_Expectations": {
+              "type": "If",
+              "runAfter": {
+                "Get_Record": [
+                  "Succeeded"
+                ]
+              },
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@outputs('Get_Record')?['body/enmax_acdnpresentindropoff']",
+                      "@items('Apply_to_each_Expectation')?['expectDropOff']"
+                    ]
+                  },
+                  {
+                    "equals": [
+                      "@outputs('Get_Record')?['body/enmax_acdnpresentindestination']",
+                      "@items('Apply_to_each_Expectation')?['expectDestination']"
+                    ]
+                  }
+                ]
+              },
+              "actions": {
+                "Increment_Pass": {
+                  "type": "IncrementVariable",
+                  "inputs": {
+                    "name": "PassCount",
+                    "value": 1
+                  }
+                }
+              },
+              "else": {
+                "actions": {
+                  "Increment_Fail": {
+                    "type": "IncrementVariable",
+                    "inputs": {
+                      "name": "FailCount",
+                      "value": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "Response_Report": {
+          "type": "Response",
+          "runAfter": {
+            "Apply_to_each_Expectation": [
+              "Succeeded"
+            ]
+          },
+          "kind": "Http",
+          "inputs": {
+            "statusCode": 200,
+            "body": {
+              "pass": "@variables('PassCount')",
+              "fail": "@variables('FailCount')",
+              "overall": "@if(equals(variables('FailCount'), 0), 'PASS', 'FAIL')"
+            }
+          }
+        }
+      }
+    },
+    "templateName": ""
+  }
+}

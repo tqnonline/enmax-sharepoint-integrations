@@ -17,6 +17,8 @@ export const AppConfigSchema = z.object({
   ApproverTeamId:                 guidSchema.optional(),
   UserTeamId:                     guidSchema.optional(),
   SharedMailboxAddress:           z.email(),
+  DocControlEmailAddress:         z.email().optional(),
+  CodeAppBaseUrl:                 z.url().optional(),
   SharePointSiteUrl:              z.url(),
   CheckInUploadLibraryUrl:        z.url().optional(),
   // WS5 two-site SharePoint topology: four library base URLs (Drawings + Documents,

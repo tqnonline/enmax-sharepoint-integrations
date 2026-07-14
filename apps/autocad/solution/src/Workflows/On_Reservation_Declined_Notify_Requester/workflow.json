@@ -1,0 +1,150 @@
+{
+  "schemaVersion": "1.0.0.0",
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "enmax_autocadconrefDataverse"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "triggers": {
+        "When_Reservation_Updated_Declined": {
+          "type": "OpenApiConnectionWebhook",
+          "metadata": {
+            "description": "Trigger filter: Status=Declined(3) AND modifiedby ne service-account-id \u2014 prevents loop (Finding 5.5)"
+          },
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "SubscribeWebhookTrigger",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "subscriptionRequest/message": 3,
+              "subscriptionRequest/entityname": "enmax_autocadreservation",
+              "subscriptionRequest/scope": 4,
+              "subscriptionRequest/filterexpression": "enmax_acdnstatus eq 3 and _modifiedby_value ne '@{parameters('ServiceAccountUserId')}'"
+            }
+          }
+        }
+      },
+      "actions": {
+        "Get_DocControl_Email": {
+          "type": "OpenApiConnection",
+          "runAfter": {},
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "ListRecords",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "enmax_autocadappconfigs",
+              "$filter": "enmax_acdnkey eq 'DocControlEmailAddress'",
+              "$top": 1
+            }
+          }
+        },
+        "Get_Requester_User": {
+          "type": "OpenApiConnection",
+          "runAfter": {
+            "Get_DocControl_Email": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "GetItem",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "systemusers",
+              "recordId": "@{triggerOutputs()?['body/_createdby_value']}"
+            }
+          }
+        },
+        "Send_Declined_Email": {
+          "type": "Workflow",
+          "runAfter": {
+            "Get_Requester_User": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "host": {
+              "workflowReferenceName": "Child_Send_Approval_Result_Email"
+            },
+            "body": {
+              "RecipientEmail": "@{outputs('Get_Requester_User')?['body/internalemailaddress']}",
+              "Decision": "Declined",
+              "ReservationId": "@{triggerOutputs()?['body/enmax_acdnreservationnumber']}",
+              "DeclineReason": "@{triggerOutputs()?['body/enmax_acdndeclinereason']}",
+              "ApproverDisplayName": "@{triggerOutputs()?['body/_modifiedby_value@OData.Community.Display.V1.FormattedValue']}",
+              "Cc": "@{outputs('Get_DocControl_Email')?['body/value'][0]?['enmax_acdnvalue']}"
+            }
+          }
+        },
+        "Create_InApp_Notification_Declined": {
+          "type": "OpenApiConnection",
+          "runAfter": {
+            "Send_Declined_Email": [
+              "Succeeded",
+              "Failed"
+            ]
+          },
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "CreateRecord",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "enmax_autocadinappnotifications",
+              "item/enmax_acdntitle": "Declined: @{triggerOutputs()?['body/enmax_acdnreservationnumber']}",
+              "item/enmax_acdnbody": "Reason: @{replace(replace(triggerOutputs()?['body/enmax_acdndeclinereason'], '<', '&lt;'), '>', '&gt;')}",
+              "item/enmax_acdnseverity": 4,
+              "item/enmax_acdnsourceevent": 2,
+              "item/enmax_acdnsubjecttable": "enmax_autocadreservation",
+              "item/enmax_acdnsubjectid": "@{triggerOutputs()?['body/enmax_acdnreservationid']}",
+              "item/enmax_acdndeeplinkpath": "my-items/reservations/@{triggerOutputs()?['body/enmax_acdnreservationid']}",
+              "item/enmax_acdnread": false,
+              "item/enmax_acdnrecipient@odata.bind": "/systemusers(@{triggerOutputs()?['body/_createdby_value']})",
+              "item/enmax_acdnsubjectreservation@odata.bind": "/enmax_autocadreservations(@{triggerOutputs()?['body/enmax_acdnreservationid']})"
+            }
+          }
+        },
+        "Log_Audit_Declined": {
+          "type": "OpenApiConnection",
+          "runAfter": {
+            "Create_InApp_Notification_Declined": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "CreateRecord",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "enmax_autocadauditevents",
+              "item/enmax_acdnevent": 3,
+              "item/enmax_acdnsource": 2,
+              "item/enmax_acdnsubjectreservation@odata.bind": "/enmax_autocadreservations(@{triggerOutputs()?['body/enmax_acdnreservationid']})"
+            }
+          }
+        }
+      }
+    },
+    "templateName": ""
+  }
+}

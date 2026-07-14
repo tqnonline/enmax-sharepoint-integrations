@@ -1,0 +1,222 @@
+{
+  "schemaVersion": "1.0.0.0",
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "enmax_autocadconrefDataverse"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      },
+      "shared_office365": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "enmax_autocadconrefOutlook"
+        },
+        "api": {
+          "name": "shared_office365"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "PowerAppV2",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "RecipientEmail": {
+                  "type": "string"
+                },
+                "Decision": {
+                  "type": "string",
+                  "enum": [
+                    "Approved",
+                    "Declined"
+                  ]
+                },
+                "ReservationId": {
+                  "type": "string"
+                },
+                "IssuedNumbersFormatted": {
+                  "type": "string"
+                },
+                "SharePointLibraryUrl": {
+                  "type": "string"
+                },
+                "DeclineReason": {
+                  "type": "string"
+                },
+                "ApproverDisplayName": {
+                  "type": "string"
+                },
+                "Cc": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "RecipientEmail",
+                "Decision",
+                "ReservationId"
+              ]
+            }
+          }
+        }
+      },
+      "actions": {
+        "Get_Shared_Mailbox": {
+          "type": "OpenApiConnection",
+          "runAfter": {},
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "ListRecords",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "enmax_autocadappconfigs",
+              "$filter": "enmax_acdnkey eq 'SharedMailboxAddress'",
+              "$top": 1
+            }
+          }
+        },
+        "Choose_Template": {
+          "type": "Switch",
+          "runAfter": {
+            "Get_Shared_Mailbox": [
+              "Succeeded"
+            ]
+          },
+          "expression": "@triggerBody()?['Decision']",
+          "cases": {
+            "Approved": {
+              "case": "Approved",
+              "actions": {
+                "Get_Approved_Template": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "connectionName": "shared_commondataserviceforapps",
+                      "operationId": "GetItem",
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                    },
+                    "parameters": {
+                      "entityName": "webresourceset",
+                      "$filter": "name eq 'enmax_approval_approved'"
+                    }
+                  }
+                },
+                "Substitute_Approved": {
+                  "type": "Compose",
+                  "runAfter": {
+                    "Get_Approved_Template": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": "@{replace(replace(replace(replace(base64ToString(outputs('Get_Approved_Template')?['body/content']), '{{ReservationId}}', triggerBody()?['ReservationId']), '{{IssuedNumbersFormatted}}', triggerBody()?['IssuedNumbersFormatted']), '{{SharePointLibraryUrl}}', triggerBody()?['SharePointLibraryUrl']), '{{ApproverDisplayName}}', replace(replace(triggerBody()?['ApproverDisplayName'], '<', '&lt;'), '>', '&gt;'))}"
+                },
+                "Send_Approved_Email": {
+                  "type": "OpenApiConnection",
+                  "runAfter": {
+                    "Substitute_Approved": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "host": {
+                      "connectionName": "shared_office365",
+                      "operationId": "SendEmailFromSharedMailbox_V2",
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+                    },
+                    "parameters": {
+                      "MailboxAddress": "@{outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue']}",
+                      "To": "@{triggerBody()?['RecipientEmail']}",
+                      "Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
+                      "Subject": "Approved: @{triggerBody()?['ReservationId']}: @{triggerBody()?['IssuedNumbersFormatted']}",
+                      "Body": "@{outputs('Substitute_Approved')}",
+                      "IsHtml": true,
+                      "Importance": "Normal"
+                    }
+                  },
+                  "retryPolicy": {
+                    "type": "fixed",
+                    "count": 1,
+                    "interval": "PT30S"
+                  }
+                }
+              }
+            },
+            "Declined": {
+              "case": "Declined",
+              "actions": {
+                "Get_Declined_Template": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "connectionName": "shared_commondataserviceforapps",
+                      "operationId": "GetItem",
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                    },
+                    "parameters": {
+                      "entityName": "webresourceset",
+                      "$filter": "name eq 'enmax_approval_declined'"
+                    }
+                  }
+                },
+                "Substitute_Declined": {
+                  "type": "Compose",
+                  "runAfter": {
+                    "Get_Declined_Template": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": "@{replace(replace(replace(base64ToString(outputs('Get_Declined_Template')?['body/content']), '{{ReservationId}}', triggerBody()?['ReservationId']), '{{DeclineReason}}', replace(replace(triggerBody()?['DeclineReason'], '<', '&lt;'), '>', '&gt;')), '{{ApproverDisplayName}}', replace(replace(triggerBody()?['ApproverDisplayName'], '<', '&lt;'), '>', '&gt;'))}"
+                },
+                "Send_Declined_Email": {
+                  "type": "OpenApiConnection",
+                  "runAfter": {
+                    "Substitute_Declined": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "host": {
+                      "connectionName": "shared_office365",
+                      "operationId": "SendEmailFromSharedMailbox_V2",
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+                    },
+                    "parameters": {
+                      "MailboxAddress": "@{outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue']}",
+                      "To": "@{triggerBody()?['RecipientEmail']}",
+                      "Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
+                      "Subject": "Declined: @{triggerBody()?['ReservationId']}",
+                      "Body": "@{outputs('Substitute_Declined')}",
+                      "IsHtml": true,
+                      "Importance": "Normal"
+                    }
+                  },
+                  "retryPolicy": {
+                    "type": "fixed",
+                    "count": 1,
+                    "interval": "PT30S"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "actions": {}
+          }
+        }
+      }
+    },
+    "templateName": ""
+  }
+}

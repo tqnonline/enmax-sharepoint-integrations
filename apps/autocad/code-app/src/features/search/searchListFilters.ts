@@ -6,7 +6,7 @@ import type { DocumentSubtypeFilter } from "../reserve/taxonomyFilters";
 /** Drawing search type includes drawing rows as well as document subtypes. */
 export type SearchDrawingTypeFilter = DocumentSubtypeFilter | "drawing";
 
-export type SearchTab = "drawings" | "documents";
+export type SearchTab = "drawings" | "documents" | "reservations";
 
 export type DocumentSubtypeSearchFilter = "all" | "standard" | "procedure";
 
@@ -44,6 +44,7 @@ export function tabDrawingSubtype(
   tab: SearchTab,
   subtype: DocumentSubtypeSearchFilter,
 ): SearchDrawingTypeFilter | "documents" {
+  if (tab === "reservations") return "drawing";
   if (tab === "drawings") return "drawing";
   if (subtype === "standard") return "standard";
   if (subtype === "procedure") return "procedure";

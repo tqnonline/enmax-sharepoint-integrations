@@ -168,9 +168,75 @@
       "runAfter": { "Get_Related_Segments": ["Succeeded"] },
       "inputs": "@{outputs('Get_Business_Row')?['body/enmax_acdncode']}-@{outputs('Get_Asset_Row')?['body/enmax_acdncode']}-@{outputs('Get_Unit_Row')?['body/enmax_acdncode']}-@{outputs('Get_Domain_Row')?['body/enmax_acdncode']}-@{outputs('Get_System_Row')?['body/enmax_acdncode']}-@{outputs('Get_Kind_Row')?['body/enmax_acdncode']}-????"
     },
+    "Get_DocControl_Config": {
+      "type": "OpenApiConnection",
+      "runAfter": { "Compose_Preview": ["Succeeded"] },
+      "inputs": {
+        "host": {
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "ListRecords",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        },
+        "parameters": {
+          "entityName": "enmax_autocadappconfigs",
+          "$filter": "enmax_acdnkey eq 'DocControlEmailAddress'",
+          "$top": 1
+        }
+      }
+    },
+    "Get_CodeApp_BaseUrl_Config": {
+      "type": "OpenApiConnection",
+      "runAfter": { "Get_DocControl_Config": ["Succeeded"] },
+      "inputs": {
+        "host": {
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "ListRecords",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        },
+        "parameters": {
+          "entityName": "enmax_autocadappconfigs",
+          "$filter": "enmax_acdnkey eq 'CodeAppBaseUrl'",
+          "$top": 1
+        }
+      }
+    },
+    "Get_Requester_User": {
+      "type": "OpenApiConnection",
+      "runAfter": { "Get_CodeApp_BaseUrl_Config": ["Succeeded"] },
+      "inputs": {
+        "host": {
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "GetItem",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        },
+        "parameters": {
+          "entityName": "systemusers",
+          "recordId": "@{triggerOutputs()?['body/_createdby_value']}"
+        }
+      }
+    },
+    "Send_Approval_Email_To_DocControl": {
+      "type": "Workflow",
+      "runAfter": { "Get_Requester_User": ["Succeeded"] },
+      "inputs": {
+        "host": { "workflowReferenceName": "Child_Send_Approval_Needed_Email" },
+        "body": {
+          "RecipientEmail": "@{outputs('Get_DocControl_Config')?['body/value'][0]?['enmax_acdnvalue']}",
+          "RecipientDisplayName": "Document Control",
+          "ReservationId": "@{triggerOutputs()?['body/enmax_acdnreservationnumber']}",
+          "RequesterDisplayName": "@{variables('RequesterDisplayName')}",
+          "CompositionPreview": "@{outputs('Compose_Preview')}",
+          "Count": "@{triggerOutputs()?['body/enmax_acdndrawingcount']}",
+          "Reason": "@{triggerOutputs()?['body/enmax_acdnreason']}",
+          "OverrideText": "@{if(triggerOutputs()?['body/enmax_acdnoverride'], concat('Yes: ', triggerOutputs()?['body/enmax_acdnoverridereason']), 'No')}",
+          "DeepLink": "@{concat(outputs('Get_CodeApp_BaseUrl_Config')?['body/value'][0]?['enmax_acdnvalue'], '/approvals')}",
+          "Cc": ""
+        }
+      }
+    },
     "List_Admin_And_Approver_Members": {
       "type": "Parallel",
-      "runAfter": { "Compose_Preview": ["Succeeded"] },
+      "runAfter": { "Send_Approval_Email_To_DocControl": ["Succeeded", "Failed"] },
       "branches": {
         "List_Admin_Members": {
           "actions": {
@@ -264,29 +330,9 @@
           },
           "else": { "actions": {} }
         },
-        "Send_Approval_Needed_Email_Child": {
-          "type": "Workflow",
-          "runAfter": { "Create_InApp_Notification_If_Not_Exists": ["Succeeded", "Skipped"] },
-          "inputs": {
-            "host": {
-              "workflowReferenceName": "Child_Send_Approval_Needed_Email"
-            },
-            "body": {
-              "RecipientEmail":       "@{items('For_Each_Recipient')?['internalemailaddress']}",
-              "RecipientDisplayName": "@{items('For_Each_Recipient')?['fullname']}",
-              "ReservationId":        "@{triggerOutputs()?['body/enmax_acdnreservationnumber']}",
-              "RequesterDisplayName": "@{variables('RequesterDisplayName')}",
-              "CompositionPreview":   "@{outputs('Compose_Preview')}",
-              "Count":                "@{triggerOutputs()?['body/enmax_acdndrawingcount']}",
-              "Reason":               "@{triggerOutputs()?['body/enmax_acdnreason']}",
-              "OverrideText":         "@{if(triggerOutputs()?['body/enmax_acdnoverride'], concat('Yes: ', triggerOutputs()?['body/enmax_acdnoverridereason']), 'No')}",
-              "DeepLink":             "@{concat(outputs('Get_App_Config_SharedMailbox')?['body/value'][0]?['enmax_acdnvalue'], '#/approvals/', triggerOutputs()?['body/enmax_acdnreservationid'])}"
-            }
-          }
-        },
         "Post_Teams_Adaptive_Card": {
           "type": "OpenApiConnectionWebhook",
-          "runAfter": { "Send_Approval_Needed_Email_Child": ["Succeeded", "Failed"] },
+          "runAfter": { "Create_InApp_Notification_If_Not_Exists": ["Succeeded", "Skipped"] },
           "inputs": {
             "host": {
               "connectionName": "shared_teams",

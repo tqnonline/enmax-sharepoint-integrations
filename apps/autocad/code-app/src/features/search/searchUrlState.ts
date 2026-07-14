@@ -15,11 +15,13 @@ const COMPOSITION_KEYS: (keyof CompositionFilterIds)[] = [
 ];
 
 export function parseSearchTab(raw: string | null): SearchTab {
-  return raw === "documents" ? "documents" : "drawings";
+  if (raw === "documents") return "documents";
+  if (raw === "reservations") return "reservations";
+  return "drawings";
 }
 
 export function parseHeaderSearchTab(raw: string | null): HeaderSearchTab {
-  if (raw === "documents" || raw === "drawings") return raw;
+  if (raw === "documents" || raw === "drawings" || raw === "reservations") return raw;
   return "all";
 }
 
@@ -106,13 +108,27 @@ export function buildSearchPageUrl(opts: {
 export function buildDocumentDetailUrl(opts: {
   documentId: string;
   drawingId: string;
-  tab: SearchTab;
+  tab?: SearchTab;
   returnTo: string;
 }): string {
   const p = new URLSearchParams({
     drawingId: opts.drawingId,
-    tab: opts.tab,
+    tab: opts.tab ?? "drawings",
     returnTo: opts.returnTo,
   });
   return `/search/documents/${opts.documentId}?${p.toString()}`;
+}
+
+/** Full-bleed page listing all child documents on a parent drawing/record. */
+export function buildDrawingFamilyPageUrl(opts: {
+  drawingId: string;
+  returnTo?: string;
+  tab?: SearchTab;
+}): string {
+  return buildDocumentDetailUrl({
+    documentId: opts.drawingId,
+    drawingId: opts.drawingId,
+    tab: opts.tab ?? "drawings",
+    returnTo: opts.returnTo ?? "/my-items",
+  });
 }

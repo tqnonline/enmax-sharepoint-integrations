@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "1.0.0.0",
+  "properties": {
+    "connectionReferences": {
+      "shared_sharepointonline": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "enmax_autocadconrefSharePoint"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "metadata": {
+        "description": "WS5e UAT harness: seeds ~1KB valid PDF placeholders with deterministic filenames across configured drop-off/destination libraries (UAT site). Run manually/on-demand only \u2014 not wired into prod CD."
+      },
+      "triggers": {
+        "Manual_Seed": {
+          "type": "Request",
+          "kind": "Http",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "scenarioMatrix": {
+                  "type": "string",
+                  "title": "JSON array of {libraryUrl,folderPath,fileName} entries"
+                }
+              }
+            }
+          }
+        }
+      },
+      "actions": {
+        "Initialize_MinimalPdfBase64": {
+          "type": "InitializeVariable",
+          "runAfter": {},
+          "inputs": {
+            "variables": [
+              {
+                "name": "MinimalPdfBase64",
+                "type": "string",
+                "value": "JVBERi0xLjEKMSAwIG9iajw8Pj5lbmRvYmoKtrailerPD48Pj4KJSVFT0YK"
+              }
+            ]
+          },
+          "metadata": {
+            "description": "Minimal valid PDF (%PDF-1.1 \u2026 %%EOF) so SharePoint/Office preview path works in UAT."
+          }
+        },
+        "Apply_to_each_Scenario": {
+          "type": "Foreach",
+          "runAfter": {
+            "Initialize_MinimalPdfBase64": [
+              "Succeeded"
+            ]
+          },
+          "foreach": "@coalesce(json(triggerBody()?['scenarioMatrix']), json('[]'))",
+          "actions": {
+            "Create_Placeholder_PDF": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_sharepointonline",
+                  "operationId": "CreateFile",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+                },
+                "parameters": {
+                  "dataset": "@{items('Apply_to_each_Scenario')?['libraryUrl']}",
+                  "folderPath": "@{coalesce(items('Apply_to_each_Scenario')?['folderPath'], '/')}",
+                  "name": "@{items('Apply_to_each_Scenario')?['fileName']}",
+                  "body": "@base64ToBinary(variables('MinimalPdfBase64'))"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "templateName": ""
+  }
+}

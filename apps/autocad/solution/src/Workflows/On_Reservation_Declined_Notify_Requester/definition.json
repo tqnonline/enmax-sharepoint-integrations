@@ -22,17 +22,41 @@
     }
   },
   "actions": {
+    "Get_DocControl_Email": {
+      "type": "OpenApiConnection",
+      "runAfter": {},
+      "inputs": {
+        "host": { "connectionName": "shared_commondataserviceforapps", "operationId": "ListRecords", "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps" },
+        "parameters": {
+          "entityName": "enmax_autocadappconfigs",
+          "$filter": "enmax_acdnkey eq 'DocControlEmailAddress'",
+          "$top": 1
+        }
+      }
+    },
+    "Get_Requester_User": {
+      "type": "OpenApiConnection",
+      "runAfter": { "Get_DocControl_Email": ["Succeeded"] },
+      "inputs": {
+        "host": { "connectionName": "shared_commondataserviceforapps", "operationId": "GetItem", "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps" },
+        "parameters": {
+          "entityName": "systemusers",
+          "recordId": "@{triggerOutputs()?['body/_createdby_value']}"
+        }
+      }
+    },
     "Send_Declined_Email": {
       "type": "Workflow",
-      "runAfter": {},
+      "runAfter": { "Get_Requester_User": ["Succeeded"] },
       "inputs": {
         "host": { "workflowReferenceName": "Child_Send_Approval_Result_Email" },
         "body": {
-          "RecipientEmail":       "@{triggerOutputs()?['body/_createdby_value@OData.Community.Display.V1.FormattedValue']}",
+          "RecipientEmail":       "@{outputs('Get_Requester_User')?['body/internalemailaddress']}",
           "Decision":             "Declined",
           "ReservationId":        "@{triggerOutputs()?['body/enmax_acdnreservationnumber']}",
           "DeclineReason":        "@{triggerOutputs()?['body/enmax_acdndeclinereason']}",
-          "ApproverDisplayName":  "@{triggerOutputs()?['body/_modifiedby_value@OData.Community.Display.V1.FormattedValue']}"
+          "ApproverDisplayName":  "@{triggerOutputs()?['body/_modifiedby_value@OData.Community.Display.V1.FormattedValue']}",
+          "Cc":                   "@{outputs('Get_DocControl_Email')?['body/value'][0]?['enmax_acdnvalue']}"
         }
       }
     },

@@ -14,7 +14,8 @@
             "IssuedNumbersFormatted": { "type": "string" },
             "SharePointLibraryUrl":   { "type": "string" },
             "DeclineReason":          { "type": "string" },
-            "ApproverDisplayName":    { "type": "string" }
+            "ApproverDisplayName":    { "type": "string" },
+            "Cc":                     { "type": "string" }
           },
           "required": ["RecipientEmail", "Decision", "ReservationId"]
         }
@@ -22,9 +23,21 @@
     }
   },
   "actions": {
+    "Get_Shared_Mailbox": {
+      "type": "OpenApiConnection",
+      "runAfter": {},
+      "inputs": {
+        "host": { "connectionName": "shared_commondataserviceforapps", "operationId": "ListRecords", "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps" },
+        "parameters": {
+          "entityName": "enmax_autocadappconfigs",
+          "$filter": "enmax_acdnkey eq 'SharedMailboxAddress'",
+          "$top": 1
+        }
+      }
+    },
     "Choose_Template": {
       "type": "Switch",
-      "runAfter": {},
+      "runAfter": { "Get_Shared_Mailbox": ["Succeeded"] },
       "expression": "@triggerBody()?['Decision']",
       "cases": {
         "Approved": {
@@ -48,8 +61,9 @@
               "inputs": {
                 "host": { "connectionName": "shared_office365", "operationId": "SendEmailFromSharedMailbox_V2", "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365" },
                 "parameters": {
-                  "MailboxAddress": "@parameters('SharedMailboxAddress')",
+                  "MailboxAddress": "@{outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue']}",
                   "To": "@{triggerBody()?['RecipientEmail']}",
+                  "Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
                   "Subject": "Approved: @{triggerBody()?['ReservationId']}: @{triggerBody()?['IssuedNumbersFormatted']}",
                   "Body": "@{outputs('Substitute_Approved')}",
                   "IsHtml": true,
@@ -81,8 +95,9 @@
               "inputs": {
                 "host": { "connectionName": "shared_office365", "operationId": "SendEmailFromSharedMailbox_V2", "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365" },
                 "parameters": {
-                  "MailboxAddress": "@parameters('SharedMailboxAddress')",
+                  "MailboxAddress": "@{outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue']}",
                   "To": "@{triggerBody()?['RecipientEmail']}",
+                  "Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
                   "Subject": "Declined: @{triggerBody()?['ReservationId']}",
                   "Body": "@{outputs('Substitute_Declined')}",
                   "IsHtml": true,

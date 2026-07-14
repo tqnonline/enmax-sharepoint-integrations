@@ -5,15 +5,15 @@
  * |---------------------------------|----------------------|-------------------|------------------|
  * | BB-AA-UU-DDD-SSS-KK             | Numbering group      | Numbering group   | Numbering group  |
  * | BB-AA-UU-DDD-SSS-KK-NNNN        | Drawing Number       | Standard Document | (base)           |
- * | BB-AA-UU-DDD-SSS-KK-NNNN to YYYY| Drawing Number range | —                 | Procedure Number range |
- * | BB-AA-UU-DDD-SSS-KK-NNNN-SSS    | Drawing document     | —                 | Procedure form   |
+ * | BB-AA-UU-DDD-SSS-KK-NNNN to YYYY| Drawing Number Range | —                 | Procedure Number Range |
+ * | BB-AA-UU-DDD-SSS-KK-NNNN-SSS    | Drawing Document     | —                 | Procedure Form   |
  */
 
-export const NUMBERING_GROUP_LABEL = "Drawing/Document Numbering group";
+export const NUMBERING_GROUP_LABEL = "Drawing/Document Numbering Group";
 export const NUMBERING_GROUP_PATTERN = "BB-AA-UU-DDD-SSS-KK";
 export const BASE_SEQUENCE_SLOT = "NNNN";
 export const CHILD_SEQUENCE_SLOT = "SSS";
-export const RANGE_WORD = "to";
+export const RANGE_WORD = "To";
 
 const RESERVATION_TYPE_DRAWING = 1;
 const RESERVATION_TYPE_DOCUMENT = 2;
@@ -65,31 +65,30 @@ export function numberRangeLabel(
   reservationType?: number | null,
   documentSubtype?: number | null,
 ): string | null {
-  if (isDrawing(reservationType)) return "Drawing Number range";
-  if (isProcedure(reservationType, documentSubtype)) return "Procedure Number range";
+  if (isDrawing(reservationType)) return "Drawing Number Range";
+  if (isProcedure(reservationType, documentSubtype)) return "Procedure Number Range";
   return null;
 }
 
 /**
  * Label for an individual child file (…-NNNN-SSS) or the standard base record.
- * Drawing → Drawing document; Procedure → Procedure form; Standard → Standard Document.
+ * Drawing → Drawing Document; Procedure → Procedure Form; Standard → Standard Document.
  */
 export function individualItemLabel(
   reservationType?: number | null,
   documentSubtype?: number | null,
 ): string {
   if (isStandard(reservationType, documentSubtype)) return "Standard Document";
-  if (isProcedure(reservationType, documentSubtype)) return "Procedure form";
-  return "Drawing document";
+  if (isProcedure(reservationType, documentSubtype)) return "Procedure Form";
+  return "Drawing Document";
 }
 
 export function individualItemLabelPlural(
   reservationType?: number | null,
   documentSubtype?: number | null,
 ): string {
-  const one = individualItemLabel(reservationType, documentSubtype);
-  if (one === "Procedure form") return "Procedure forms";
-  if (one === "Drawing document") return "Drawing documents";
+  if (isProcedure(reservationType, documentSubtype)) return "Procedure Forms";
+  if (isDrawing(reservationType)) return "Drawing Documents";
   return "Standard Documents";
 }
 
@@ -98,12 +97,12 @@ export function searchNumberFieldLabel(
   reservationType?: number | null,
   documentSubtype?: number | null,
 ): string {
-  return `${individualItemLabel(reservationType, documentSubtype)} number`;
+  return `${individualItemLabel(reservationType, documentSubtype)} Number`;
 }
 
 /** Generic search placeholder covering all searchable item kinds. */
 export const GLOBAL_SEARCH_PLACEHOLDER =
-  "Search Drawing Numbers, Standard Documents, Procedure forms…";
+  "Search reservations, drawing numbers, standard documents, procedure forms…";
 
 /** Joins composition codes into the numbering group (no NNNN suffix). */
 export function formatNumberingGroup(codes: {

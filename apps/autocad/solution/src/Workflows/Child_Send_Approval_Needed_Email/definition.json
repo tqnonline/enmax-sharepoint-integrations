@@ -16,7 +16,8 @@
             "Count":                { "type": "string" },
             "Reason":               { "type": "string" },
             "OverrideText":         { "type": "string" },
-            "DeepLink":             { "type": "string" }
+            "DeepLink":             { "type": "string" },
+            "Cc":                   { "type": "string" }
           },
           "required": ["RecipientEmail", "ReservationId"]
         }
@@ -44,9 +45,25 @@
       "runAfter": { "Get_Template": ["Succeeded"] },
       "inputs": "@{replace(replace(replace(replace(replace(replace(replace(replace(replace(base64ToString(outputs('Get_Template')?['body/content']), '{{ReservationId}}', triggerBody()?['ReservationId']), '{{RequesterDisplayName}}', replace(replace(triggerBody()?['RequesterDisplayName'], '<', '&lt;'), '>', '&gt;')), '{{CompositionPreview}}', replace(replace(triggerBody()?['CompositionPreview'], '<', '&lt;'), '>', '&gt;')), '{{Count}}', triggerBody()?['Count']), '{{Reason}}', replace(replace(triggerBody()?['Reason'], '<', '&lt;'), '>', '&gt;')), '{{OverrideText}}', replace(replace(triggerBody()?['OverrideText'], '<', '&lt;'), '>', '&gt;')), '{{DeepLink}}', triggerBody()?['DeepLink']), '{{ApproveUrl}}', triggerBody()?['DeepLink']), '{{DeclineUrl}}', triggerBody()?['DeepLink'])}"
     },
-    "Send_Email": {
+    "Get_Shared_Mailbox": {
       "type": "OpenApiConnection",
       "runAfter": { "Substitute_Template": ["Succeeded"] },
+      "inputs": {
+        "host": {
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "ListRecords",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        },
+        "parameters": {
+          "entityName": "enmax_autocadappconfigs",
+          "$filter": "enmax_acdnkey eq 'SharedMailboxAddress'",
+          "$top": 1
+        }
+      }
+    },
+    "Send_Email": {
+      "type": "OpenApiConnection",
+      "runAfter": { "Get_Shared_Mailbox": ["Succeeded"] },
       "inputs": {
         "host": {
           "connectionName": "shared_office365",
@@ -54,8 +71,9 @@
           "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
         },
         "parameters": {
-          "MailboxAddress": "@parameters('SharedMailboxAddress')",
+          "MailboxAddress": "@{outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue']}",
           "To": "@{triggerBody()?['RecipientEmail']}",
+          "Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
           "Subject": "Reservation pending: @{triggerBody()?['ReservationId']}: @{triggerBody()?['CompositionPreview']}",
           "Body": "@{outputs('Substitute_Template')}",
           "IsHtml": true,
