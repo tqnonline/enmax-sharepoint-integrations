@@ -1,5 +1,24 @@
 import "@testing-library/jest-dom";
 
+function createLocalStorageMock() {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, value: string) => { store[key] = value; },
+    removeItem: (key: string) => { delete store[key]; },
+    clear: () => { store = {}; },
+    get length() { return Object.keys(store).length; },
+    key: (index: number) => Object.keys(store)[index] ?? null,
+  };
+}
+
+const localStorageMock = createLocalStorageMock();
+Object.defineProperty(window, "localStorage", { value: localStorageMock, writable: true });
+
+beforeEach(() => {
+  localStorageMock.clear();
+});
+
 // Global default: every test that renders a grid-containing page gets a working
 // AppConfig without needing its own mock. Per-file vi.mock() will override this.
 vi.mock("./config/useAppConfig", () => ({

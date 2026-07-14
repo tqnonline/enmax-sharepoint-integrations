@@ -317,6 +317,13 @@ export const dataSourcesInfo = {
     "dataSourceType": "Dataverse",
     "apis": {}
   },
+  "enmax_autocadflowexceptions": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "enmax_autocadflowexceptionid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
   "enmax_autocadrecordtypes": {
     "tableId": "",
     "version": "",

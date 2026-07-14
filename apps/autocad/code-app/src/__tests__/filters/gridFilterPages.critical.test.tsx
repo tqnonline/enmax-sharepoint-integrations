@@ -15,8 +15,8 @@ const FIXED_NOW = new Date("2026-07-09T12:00:00.000Z");
 const mockRole = { value: "User" as "User" | "Admin" | "Approver" };
 
 function expectDefaultDateInputs() {
-  const from = screen.getByLabelText("From Date") as HTMLInputElement;
-  const to = screen.getByLabelText("To Date") as HTMLInputElement;
+  const from = screen.getByLabelText("From date") as HTMLInputElement;
+  const to = screen.getByLabelText("To date") as HTMLInputElement;
   expect(isDefaultGridDateRange(from.value, to.value, FIXED_NOW)).toBe(true);
   expect(from.value).toBe(isoDateDaysAgo(GRID_DEFAULT_FROM_DAYS, FIXED_NOW));
   expect(to.value).toBe(isoDateToday(FIXED_NOW));
@@ -267,7 +267,7 @@ describe("Broadcasts grid filters", () => {
   it("loads with default 30-day range in filter inputs", async () => {
     const { BroadcastsPage } = await import("../../features/broadcasts/BroadcastsPage");
     renderWithProviders(<BroadcastsPage />);
-    await waitFor(() => expect(screen.getByLabelText("From Date")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByLabelText("From date")).toBeInTheDocument());
     expectDefaultDateInputs();
   });
 });
@@ -327,7 +327,7 @@ describe("Lookup grid filters (no date range)", () => {
     const { AppConfigPage } = await import("../../features/admin/AppConfigPage");
     const user = userEvent.setup();
     renderWithProviders(<AppConfigPage />);
-    expect(screen.queryByLabelText("From Date")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("From date")).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Key"), "GridPage");
     await user.click(screen.getByRole("button", { name: /query/i }));

@@ -154,7 +154,7 @@ test("shows top-level Query and Clear filter controls on every state tab", async
   expect(screen.getByRole("button", { name: "Clear filters" })).toBeInTheDocument();
   await user.click(screen.getByRole("tab", { name: /Checked Out/i }));
   expect(screen.getByRole("button", { name: "Query" })).toBeInTheDocument();
-  expect(screen.getByLabelText("From Date")).toBeInTheDocument();
+  expect(screen.getByLabelText("From date")).toBeInTheDocument();
 });
 
 test("shows secondary state tabs My Reservations, Available, Checked Out", () => {
@@ -174,7 +174,7 @@ test("My Reservations tab shows Reason column for submitted reservations", async
 
 test("composition column shows resolved codes and issued-number range", async () => {
   renderWithProviders(<MyItemsPage />);
-  await waitFor(() => expect(screen.getByText("GG-CG-00-ECS-AST-DD-0001 to 0003")).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText("GG-CG-00-ECS-AST-DD-0001 To 0003")).toBeInTheDocument());
   expect(screen.getByText("GG-CG-00-ECS-AST-DD-????")).toBeInTheDocument();
 });
 
