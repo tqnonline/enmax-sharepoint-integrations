@@ -98,9 +98,13 @@ vi.mock("../../features/checkout/hooks/useDocumentActivityTrail", () => ({
   }),
 }));
 
-vi.mock("../../features/approvals/hooks/useDrawingSheets", () => ({
-  useDrawingSheets: () => ({ data: [], isPending: false }),
-}));
+vi.mock("../../features/approvals/hooks/useDrawingSheets", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../features/approvals/hooks/useDrawingSheets")>();
+  return {
+    ...actual,
+    useDrawingSheets: () => ({ data: [], isPending: false }),
+  };
+});
 
 vi.mock("../../features/approvals/hooks/useSheetCheckouts", () => ({
   useSheetCheckouts: () => ({ data: new Map(), isPending: false }),
