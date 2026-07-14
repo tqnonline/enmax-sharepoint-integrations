@@ -141,9 +141,9 @@ function resetFiltersForTab(tab: MyRecordTabFilter, state: MyRecordStateFilter):
 }
 
 function personFilterLabel(state: MyRecordStateFilter): string {
-  if (state === "reservations") return "Submitted Or Approved By";
+  if (state === "reservations") return "Submitted or approved by";
   if (state === "available") return "Created or checked in by";
-  return "Checked Out Or Checked In By";
+  return "Checked out or checked in by";
 }
 
 function compositionFor(r: MyRecordRow, maps?: CompositionMaps): string {
@@ -463,12 +463,12 @@ export function MyItemsPage() {
   const emptyMessage = useMemo(() => {
     const hasReservations = (counts?.reservations?.value ?? 0) > 0;
     const messages: Record<MyRecordStateFilter, string> = {
-      reservations: "No Reservations In The Selected Date Range.",
+      reservations: "No reservations in the selected date range.",
       available: hasReservations
-        ? "No Available Drawing Documents From Your Reservations In This Date Range. Approved Reservations May Still Be Awaiting Number Issuance — Check My Reservations."
-        : "No Available Drawing Documents From Your Reservations In This Date Range.",
-      pendingapproval: "No Check-Out Requests Pending Approval From Your Reservations In This Date Range.",
-      checkedout: "No Checked-Out Items From Your Reservations In This Date Range.",
+        ? "No available drawing documents from your reservations in this date range. Approved reservations may still be awaiting number issuance — check My Reservations."
+        : "No available drawing documents from your reservations in this date range.",
+      pendingapproval: "No check-out requests pending approval from your reservations in this date range.",
+      checkedout: "No checked-out items from your reservations in this date range.",
     };
     return messages[activeState];
   }, [activeState, counts?.reservations?.value]);

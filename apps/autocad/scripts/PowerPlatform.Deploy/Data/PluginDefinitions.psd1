@@ -4,7 +4,7 @@
 # Loaded via Import-PowerShellDataFile by Register-PpPlugins.
 #
 # CustomAPI bindingtype:           0=Global  1=Entity  2=EntityCollection
-# CustomAPIRequestParameter type:  5=EntityReference  7=Integer  9=Picklist  10=String
+# CustomAPIRequestParameter type:  0=Boolean  5=EntityReference  7=Integer  9=Picklist  10=String
 # ActingUserId (optional, Type=10): WhoAmI user id from the Code App. Required at runtime when
 # InitiatingUserId is SYSTEM or an application user (Power Apps Code connection identity).
 # CustomAPIResponseProperty type:  same codes
@@ -18,6 +18,147 @@
 # converted to plain @{} — key lookup by name is used everywhere, order is irrelevant.
 
 @{
+    # CONTRACT-ONLY: frozen lifecycle API v2 shape. Register-PpPlugins consumes only
+    # CustomAPIDefs; keep these definitions out of that collection until matching
+    # plugin handlers exist, so Dataverse never exposes an unimplemented callable API.
+    #
+    # ResultJson schema:
+    #   schemaVersion, operationId, outcome (Succeeded | Rejected | Replayed),
+    #   retryable, correlationId,
+    #   files[] { file, checkout, from, to, rowVersion },
+    #   errors[] { fileId, code, message, retryable }.
+    # ApproveReservation may additionally include reservationId, parentIds, fileIds,
+    # firstNumber, and lastNumber.
+    LifecycleContractVersion = "2.0"
+    LifecycleContractDefs = @(
+        @{
+            UniqueName  = "enmax_acdnApproveReservationV2"
+            Status      = "ContractOnly"
+            Description = "Atomically and idempotently approves a reservation, issues or appends its files, and returns the resulting identifiers."
+            BindingType = 0
+            BoundEntity = $null
+            Params = @(
+                @{ Name="ActingUserId";      Type=10; Optional=$true  }
+                @{ Name="Reservation";       Type=5;  Optional=$false }
+                @{ Name="OperationId";       Type=10; Optional=$false }
+                @{ Name="ExpectedRowVersion"; Type=10; Optional=$false }
+            )
+            Response = @(
+                @{ Name="OperationId";  Type=10 }
+                @{ Name="Outcome";      Type=10 }
+                @{ Name="ReservationId"; Type=10 }
+                @{ Name="ResultJson";   Type=10 }
+            )
+        }
+
+        @{
+            UniqueName  = "enmax_acdnRequestFileCheckOutV2"
+            Status      = "ContractOnly"
+            Description = "Atomically requests checkout of a row-version-guarded file batch with idempotent replay."
+            BindingType = 0
+            BoundEntity = $null
+            Params = @(
+                @{ Name="ActingUserId";          Type=10; Optional=$true  }
+                @{ Name="FileIdsJson";           Type=10; Optional=$false }
+                @{ Name="OperationId";           Type=10; Optional=$false }
+                @{ Name="BatchId";               Type=10; Optional=$false }
+                @{ Name="ExpectedRowVersionsJson"; Type=10; Optional=$false }
+            )
+            Response = @(
+                @{ Name="OperationId"; Type=10 }
+                @{ Name="Outcome";     Type=10 }
+                @{ Name="BatchId";     Type=10 }
+                @{ Name="ResultJson";  Type=10 }
+            )
+        }
+
+        @{
+            UniqueName  = "enmax_acdnDecideFileCheckOutV2"
+            Status      = "ContractOnly"
+            Description = "Atomically approves or declines a checkout request using idempotency and optimistic concurrency."
+            BindingType = 0
+            BoundEntity = $null
+            Params = @(
+                @{ Name="ActingUserId";      Type=10; Optional=$true  }
+                @{ Name="Checkout";          Type=5;  Optional=$false }
+                @{ Name="Decision";          Type=7;  Optional=$false }
+                @{ Name="Reason";            Type=10; Optional=$true  }
+                @{ Name="OperationId";       Type=10; Optional=$false }
+                @{ Name="ExpectedRowVersion"; Type=10; Optional=$false }
+            )
+            Response = @(
+                @{ Name="OperationId"; Type=10 }
+                @{ Name="Outcome";     Type=10 }
+                @{ Name="ResultJson";  Type=10 }
+            )
+        }
+
+        @{
+            UniqueName  = "enmax_acdnSubmitFileCheckInV2"
+            Status      = "ContractOnly"
+            Description = "Atomically submits file check-in evidence and warnings with idempotency and optimistic concurrency."
+            BindingType = 0
+            BoundEntity = $null
+            Params = @(
+                @{ Name="ActingUserId";       Type=10; Optional=$true  }
+                @{ Name="Checkout";           Type=5;  Optional=$false }
+                @{ Name="SubmissionInfo";     Type=10; Optional=$false }
+                @{ Name="UploadEvidenceJson"; Type=10; Optional=$true  }
+                @{ Name="WarningAcknowledged"; Type=0; Optional=$true  }
+                @{ Name="OperationId";        Type=10; Optional=$false }
+                @{ Name="ExpectedRowVersion"; Type=10; Optional=$false }
+            )
+            Response = @(
+                @{ Name="OperationId"; Type=10 }
+                @{ Name="Outcome";     Type=10 }
+                @{ Name="ResultJson";  Type=10 }
+            )
+        }
+
+        @{
+            UniqueName  = "enmax_acdnDecideFileCheckInV2"
+            Status      = "ContractOnly"
+            Description = "Atomically approves or declines check-in after publication evidence is evaluated."
+            BindingType = 0
+            BoundEntity = $null
+            Params = @(
+                @{ Name="ActingUserId";          Type=10; Optional=$true  }
+                @{ Name="Checkout";              Type=5;  Optional=$false }
+                @{ Name="Decision";              Type=7;  Optional=$false }
+                @{ Name="Reason";                Type=10; Optional=$true  }
+                @{ Name="PublicationEvidenceJson"; Type=10; Optional=$true  }
+                @{ Name="OperationId";           Type=10; Optional=$false }
+                @{ Name="ExpectedRowVersion";    Type=10; Optional=$false }
+            )
+            Response = @(
+                @{ Name="OperationId"; Type=10 }
+                @{ Name="Outcome";     Type=10 }
+                @{ Name="ResultJson";  Type=10 }
+            )
+        }
+
+        @{
+            UniqueName  = "enmax_acdnForceFileCheckInV2"
+            Status      = "ContractOnly"
+            Description = "Atomically force-closes a checkout with a required reason, optional publication evidence, and idempotent concurrency protection."
+            BindingType = 0
+            BoundEntity = $null
+            Params = @(
+                @{ Name="ActingUserId";          Type=10; Optional=$true  }
+                @{ Name="Checkout";              Type=5;  Optional=$false }
+                @{ Name="Reason";                Type=10; Optional=$false }
+                @{ Name="PublicationEvidenceJson"; Type=10; Optional=$true  }
+                @{ Name="OperationId";           Type=10; Optional=$false }
+                @{ Name="ExpectedRowVersion";    Type=10; Optional=$false }
+            )
+            Response = @(
+                @{ Name="OperationId"; Type=10 }
+                @{ Name="Outcome";     Type=10 }
+                @{ Name="ResultJson";  Type=10 }
+            )
+        }
+    )
+
     CustomAPIDefs = @(
 
         # ── Global: IssueNumbers ──────────────────────────────────────────────

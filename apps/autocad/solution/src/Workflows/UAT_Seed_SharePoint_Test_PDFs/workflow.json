@@ -123,11 +123,7 @@
           "actions": {
             "Apply_to_each_Scenario": {
               "type": "Foreach",
-              "runAfter": {
-                "Initialize_MinimalPdfBase64": [
-                  "Succeeded"
-                ]
-              },
+              "runAfter": {},
               "foreach": "@coalesce(json(triggerBody()?['scenarioMatrix']), json('[]'))",
               "actions": {
                 "Create_Placeholder_PDF": {

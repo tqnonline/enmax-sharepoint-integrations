@@ -114,14 +114,38 @@ def _fix_hoisted_entry_run_after(hoisted: dict[str, Any], bootstrap_last: str) -
             action["runAfter"] = {bootstrap_last: ["Succeeded"]}
 
 
+def _sanitize_scoped_run_after(scoped: dict[str, Any], hoisted_names: set[str]) -> None:
+    """Scope actions cannot runAfter hoisted root actions — strip those deps."""
+    for action in scoped.values():
+        run_after = action.get("runAfter") or {}
+        if not run_after:
+            continue
+        cleaned = {dep: statuses for dep, statuses in run_after.items() if dep not in hoisted_names}
+        action["runAfter"] = cleaned if cleaned else {}
+
+
+def repair_wrapped_scoped_run_after(definition: dict[str, Any]) -> dict[str, Any]:
+    """Fix scoped actions that still runAfter hoisted root actions (PA validation error)."""
+    actions = definition.get("actions")
+    if not isinstance(actions, dict) or not _already_wrapped(actions):
+        return definition
+    out = copy.deepcopy(definition)
+    scope = out["actions"].get("Scope_Try_Main", {}).get("actions") or {}
+    root_names = set(out["actions"].keys()) - {"Scope_Try_Main", "Scope_Catch_Failure"}
+    _sanitize_scoped_run_after(scope, root_names)
+    return out
+
+
 def wrap_definition(definition: dict[str, Any], *, folder_slug: str, display_name: str) -> dict[str, Any]:
     """Return a copy of definition with standard error-handling scaffold."""
     if folder_slug in SKIP_WRAP:
         return definition
 
     actions = definition.get("actions")
-    if not isinstance(actions, dict) or _already_wrapped(actions):
+    if not isinstance(actions, dict):
         return definition
+    if _already_wrapped(actions):
+        return repair_wrapped_scoped_run_after(definition)
 
     exception_meta = _infer_exception_logging(definition)
     flow_run_template = load_flow_run_url_template()
@@ -139,6 +163,7 @@ def wrap_definition(definition: dict[str, Any], *, folder_slug: str, display_nam
     root_names = _root_action_names(try_actions)
     hoisted = {k: copy.deepcopy(v) for k, v in try_actions.items() if k in root_names}
     scoped = {k: copy.deepcopy(v) for k, v in try_actions.items() if k not in root_names}
+    _sanitize_scoped_run_after(scoped, root_names)
     _fix_hoisted_entry_run_after(hoisted, "Initialize_FlowRunUrlTemplate")
 
     wrapped: dict[str, Any] = {

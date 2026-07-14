@@ -106,11 +106,7 @@
               "recordId": "@{triggerOutputs()?['body/_enmax_acdnbusiness_value']}"
             }
           },
-          "runAfter": {
-            "Initialize_RequesterContext": [
-              "Succeeded"
-            ]
-          }
+          "runAfter": {}
         },
         "Get_Asset_Row": {
           "type": "OpenApiConnection",

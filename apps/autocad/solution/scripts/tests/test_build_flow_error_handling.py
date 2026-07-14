@@ -89,7 +89,61 @@ def test_hoists_initialize_variable_outside_try_scope() -> None:
     assert "Initialize_RequesterContext" in actions  # hoisted
     assert "Get_Config" in actions  # predecessor of init, hoisted
     assert "Send_Email" in actions["Scope_Try_Main"]["actions"]
-    assert "Send_Email" not in actions
+    assert actions["Scope_Try_Main"]["actions"]["Send_Email"].get("runAfter") == {}
+
+
+def test_scoped_actions_do_not_run_after_hoisted_inits() -> None:
+    definition = {
+        "actions": {
+            "Get_Config": {"type": "OpenApiConnection", "runAfter": {}, "inputs": {}},
+            "Initialize_RequesterContext": {
+                "type": "InitializeVariable",
+                "runAfter": {"Get_Config": ["Succeeded"]},
+                "inputs": {"variables": [{"name": "RequesterDisplayName", "type": "string", "value": "x"}]},
+            },
+            "Get_Business_Row": {
+                "type": "OpenApiConnection",
+                "runAfter": {"Initialize_RequesterContext": ["Succeeded"]},
+                "inputs": {},
+            },
+            "Send_Email": {
+                "type": "Compose",
+                "runAfter": {"Get_Business_Row": ["Succeeded"]},
+                "inputs": "x",
+            },
+        }
+    }
+    wrapped = bfe.wrap_definition(definition, folder_slug="Test_Flow", display_name="Test")
+    scope_actions = wrapped["actions"]["Scope_Try_Main"]["actions"]
+    assert scope_actions["Get_Business_Row"].get("runAfter") == {}
+    assert scope_actions["Send_Email"]["runAfter"] == {"Get_Business_Row": ["Succeeded"]}
+
+
+def test_repairs_already_wrapped_scoped_run_after() -> None:
+    wrapped = {
+        "actions": {
+            "Initialize_CorrelationId": {"type": "InitializeVariable", "runAfter": {}, "inputs": {}},
+            "Initialize_RequesterContext": {
+                "type": "InitializeVariable",
+                "runAfter": {},
+                "inputs": {"variables": [{"name": "RequesterDisplayName", "type": "string", "value": "x"}]},
+            },
+            "Scope_Try_Main": {
+                "type": "Scope",
+                "runAfter": {"Initialize_RequesterContext": ["Succeeded"]},
+                "actions": {
+                    "Get_Business_Row": {
+                        "type": "OpenApiConnection",
+                        "runAfter": {"Initialize_RequesterContext": ["Succeeded"]},
+                        "inputs": {},
+                    }
+                },
+            },
+            "Scope_Catch_Failure": {"type": "Scope", "runAfter": {"Scope_Try_Main": ["Failed"]}, "actions": {}},
+        }
+    }
+    repaired = bfe.repair_wrapped_scoped_run_after(wrapped)
+    assert repaired["actions"]["Scope_Try_Main"]["actions"]["Get_Business_Row"]["runAfter"] == {}
 
 
 def test_injects_correlation_on_child_workflow_calls() -> None:

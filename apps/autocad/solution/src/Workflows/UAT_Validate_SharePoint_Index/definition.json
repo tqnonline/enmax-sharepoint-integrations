@@ -108,11 +108,7 @@
       "actions": {
         "Apply_to_each_Expectation": {
           "type": "Foreach",
-          "runAfter": {
-            "Initialize_Results": [
-              "Succeeded"
-            ]
-          },
+          "runAfter": {},
           "foreach": "@json(triggerBody()?['expectations'])",
           "actions": {
             "Get_Record": {

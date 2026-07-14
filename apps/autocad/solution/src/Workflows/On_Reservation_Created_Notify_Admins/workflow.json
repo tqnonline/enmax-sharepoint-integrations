@@ -133,11 +133,7 @@
                 },
                 "authentication": "@parameters('$authentication')"
               },
-              "runAfter": {
-                "Initialize_RequesterContext": [
-                  "Succeeded"
-                ]
-              }
+              "runAfter": {}
             },
             "Get_Asset_Row": {
               "type": "OpenApiConnection",
