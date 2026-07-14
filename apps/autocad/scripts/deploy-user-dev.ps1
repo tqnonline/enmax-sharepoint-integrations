@@ -73,8 +73,10 @@ if (-not $PSBoundParameters.ContainsKey('DeployFlows'))          { $DeployFlows 
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 Import-Module "$PSScriptRoot/PowerPlatform.Deploy/PowerPlatform.Deploy.psd1" -Force
-# Private module helper used by this entry script (not exported from the module).
-. "$PSScriptRoot/PowerPlatform.Deploy/Private/Get-PpPacOrgWho.ps1"
+# Entry script uses private module helpers (Get-PpPacOrgWho, Invoke-PpPac, etc.).
+foreach ($file in Get-ChildItem -Path "$PSScriptRoot/PowerPlatform.Deploy/Private" -Filter '*.ps1') {
+    . $file.FullName
+}
 
 Write-Host "== ENMAX DEV deploy (user auth only) =="
 Write-Host "Profile: $PacProfileName | Web API auth: $UserAuth"
