@@ -73,6 +73,8 @@ if (-not $PSBoundParameters.ContainsKey('DeployFlows'))          { $DeployFlows 
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 Import-Module "$PSScriptRoot/PowerPlatform.Deploy/PowerPlatform.Deploy.psd1" -Force
+# Private module helper used by this entry script (not exported from the module).
+. "$PSScriptRoot/PowerPlatform.Deploy/Private/Get-PpPacOrgWho.ps1"
 
 Write-Host "== ENMAX DEV deploy (user auth only) =="
 Write-Host "Profile: $PacProfileName | Web API auth: $UserAuth"
@@ -107,7 +109,7 @@ if ($Full) {
 
     Write-Host "`n-- seed master (user token) --"
     Set-UserDataverseToken
-    & python3 "$repoRoot/solution/scripts/seed.py" --scope master --auth $UserAuth
+    & python3 "$repoRoot/solution/scripts/seed.py" --scope master --auth $UserAuth --environment dev
     if ($LASTEXITCODE -ne 0) { throw "seed failed" }
 
     Write-Host "`n-- provision roles (user token) --"
