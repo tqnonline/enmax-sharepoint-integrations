@@ -9,13 +9,16 @@ export function useDocumentActivityTrail(
   drawingId?: string,
   options?: { sheetIds?: string[]; focusedSheetId?: string },
 ) {
+  const focusedSheetId = options?.focusedSheetId;
+  const sheetIds = options?.sheetIds;
+
   const subjectIds = useMemo(() => {
     const ids = new Set<string>();
     if (drawingId) ids.add(drawingId);
-    options?.focusedSheetId && ids.add(options.focusedSheetId);
-    options?.sheetIds?.forEach((id) => ids.add(id));
+    if (focusedSheetId) ids.add(focusedSheetId);
+    sheetIds?.forEach((id) => ids.add(id));
     return [...ids];
-  }, [drawingId, options?.focusedSheetId, options?.sheetIds]);
+  }, [drawingId, focusedSheetId, sheetIds]);
 
   return useDrawingAuditTrail(subjectIds);
 }
