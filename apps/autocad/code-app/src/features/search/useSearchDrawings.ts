@@ -47,6 +47,10 @@ export interface DrawingRow {
   vendorDisplay: string;
   /** @deprecated use submittedByName */
   requesterDisplay: string;
+  /** Parent reservation GUID when linked (for document activity trail). */
+  reservationId?: string;
+  /** Record createdon — issuance fallback for Activity when Allocated audit is absent. */
+  createdOn?: string;
 }
 
 type DrawingRaw = {

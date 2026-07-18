@@ -16,6 +16,7 @@ import {
   ArrowSortDownRegular,
   ArrowSortUpRegular,
   ArrowDownloadRegular,
+  ArrowClockwiseRegular,
   SearchRegular,
 } from "@fluentui/react-icons";
 import { usePageSize } from "../../config/usePageSize";
@@ -122,6 +123,7 @@ export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
     onRowClick, enableQuickSearch = true,
     requireSearch = false, searchPrompt = "Enter a search term to begin.",
     allRecordsCount,
+    enableRefresh = true,
   } = props;
 
   const styles = useStyles();
@@ -164,7 +166,7 @@ export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { data, isPending, isError, isPlaceholderData } = useQuery({
+  const { data, isPending, isError, isPlaceholderData, isFetching, refetch } = useQuery({
     queryKey: [...(Array.isArray(queryKey) ? queryKey : [queryKey]), deferredParams],
     queryFn: async () => {
       const skipToken = tokenCache.current.get(deferredParams.page);
@@ -263,6 +265,17 @@ export function EnmaxDataGrid<T>(props: EnmaxDataGridProps<T>) {
             </Button>
           ))
         }
+
+        {enableRefresh && (
+          <Button
+            icon={<ArrowClockwiseRegular />}
+            disabled={gated || isFetching}
+            onClick={() => void refetch()}
+            aria-label="Refresh grid"
+          >
+            {isFetching && !isPending ? "Refreshing…" : "Refresh"}
+          </Button>
+        )}
 
         {enableExport && (
           <Button

@@ -21,6 +21,12 @@
             "ReservationId": {
               "type": "string"
             },
+            "TypeNoun": {
+              "type": "string"
+            },
+            "RequesterDisplayName": {
+              "type": "string"
+            },
             "IssuedNumbersFormatted": {
               "type": "string"
             },
@@ -31,6 +37,12 @@
               "type": "string"
             },
             "ApproverDisplayName": {
+              "type": "string"
+            },
+            "DeepLink": {
+              "type": "string"
+            },
+            "ResubmitUrl": {
               "type": "string"
             },
             "Cc": {
@@ -118,10 +130,30 @@
             }
           }
         },
+        "Get_Logo": {
+          "type": "OpenApiConnection",
+          "runAfter": {
+            "Get_Shared_Mailbox": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "ListRecords",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "webresourceset",
+              "$filter": "name eq 'enmax_logo_white'",
+              "$top": 1
+            }
+          }
+        },
         "Choose_Template": {
           "type": "Switch",
           "runAfter": {
-            "Get_Shared_Mailbox": [
+            "Get_Logo": [
               "Succeeded"
             ]
           },
@@ -152,7 +184,7 @@
                       "Succeeded"
                     ]
                   },
-                  "inputs": "@{replace(replace(replace(replace(base64ToString(outputs('Get_Approved_Template')?['body/value'][0]?['content']), '{{ReservationId}}', triggerBody()?['ReservationId']), '{{IssuedNumbersFormatted}}', triggerBody()?['IssuedNumbersFormatted']), '{{SharePointLibraryUrl}}', triggerBody()?['SharePointLibraryUrl']), '{{ApproverDisplayName}}', replace(replace(triggerBody()?['ApproverDisplayName'], '<', '&lt;'), '>', '&gt;'))}"
+                  "inputs": "@{replace(replace(replace(replace(replace(base64ToString(outputs('Get_Approved_Template')?['body/value'][0]?['content']), '{{ReservationId}}', coalesce(triggerBody()?['ReservationId'], '')), '{{IssuedNumbersFormatted}}', coalesce(triggerBody()?['IssuedNumbersFormatted'], '')), '{{SharePointLibraryUrl}}', coalesce(triggerBody()?['SharePointLibraryUrl'], '')), '{{ApproverDisplayName}}', replace(replace(coalesce(triggerBody()?['ApproverDisplayName'], ''), '<', '&lt;'), '>', '&gt;')), '{{DeepLink}}', coalesce(triggerBody()?['DeepLink'], ''))}"
                 },
                 "Send_Approved_Email": {
                   "type": "OpenApiConnection",
@@ -164,16 +196,21 @@
                   "inputs": {
                     "host": {
                       "connectionName": "shared_office365",
-                      "operationId": "SharedMailboxSendEmailV2",
+                      "operationId": "SendEmailV2",
                       "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
                     },
                     "parameters": {
-                      "emailMessage/MailboxAddress": "@{outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue']}",
                       "emailMessage/To": "@{triggerBody()?['RecipientEmail']}",
                       "emailMessage/Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
-                      "emailMessage/Subject": "Approved: @{triggerBody()?['ReservationId']}: @{triggerBody()?['IssuedNumbersFormatted']}",
+                      "emailMessage/Subject": "Approved: new @{coalesce(triggerBody()?['TypeNoun'], 'drawing')} reservation @{triggerBody()?['IssuedNumbersFormatted']} for @{triggerBody()?['RequesterDisplayName']}.",
                       "emailMessage/Body": "@{outputs('Substitute_Approved')}",
-                      "emailMessage/Importance": "Normal"
+                      "emailMessage/Importance": "Normal",
+                      "emailMessage/Attachments": [
+                        {
+                          "Name": "enmax_logo_white.png",
+                          "ContentBytes": "@{outputs('Get_Logo')?['body/value'][0]?['content']}"
+                        }
+                      ]
                     }
                   },
                   "retryPolicy": {
@@ -209,7 +246,7 @@
                       "Succeeded"
                     ]
                   },
-                  "inputs": "@{replace(replace(replace(base64ToString(outputs('Get_Declined_Template')?['body/value'][0]?['content']), '{{ReservationId}}', triggerBody()?['ReservationId']), '{{DeclineReason}}', replace(replace(triggerBody()?['DeclineReason'], '<', '&lt;'), '>', '&gt;')), '{{ApproverDisplayName}}', replace(replace(triggerBody()?['ApproverDisplayName'], '<', '&lt;'), '>', '&gt;'))}"
+                  "inputs": "@{replace(replace(replace(replace(base64ToString(outputs('Get_Declined_Template')?['body/value'][0]?['content']), '{{ReservationId}}', coalesce(triggerBody()?['ReservationId'], '')), '{{DeclineReason}}', replace(replace(coalesce(triggerBody()?['DeclineReason'], ''), '<', '&lt;'), '>', '&gt;')), '{{ApproverDisplayName}}', replace(replace(coalesce(triggerBody()?['ApproverDisplayName'], ''), '<', '&lt;'), '>', '&gt;')), '{{ResubmitUrl}}', coalesce(triggerBody()?['ResubmitUrl'], ''))}"
                 },
                 "Send_Declined_Email": {
                   "type": "OpenApiConnection",
@@ -221,16 +258,21 @@
                   "inputs": {
                     "host": {
                       "connectionName": "shared_office365",
-                      "operationId": "SharedMailboxSendEmailV2",
+                      "operationId": "SendEmailV2",
                       "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
                     },
                     "parameters": {
-                      "emailMessage/MailboxAddress": "@{outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue']}",
                       "emailMessage/To": "@{triggerBody()?['RecipientEmail']}",
                       "emailMessage/Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
-                      "emailMessage/Subject": "Declined: @{triggerBody()?['ReservationId']}",
+                      "emailMessage/Subject": "Declined: new @{coalesce(triggerBody()?['TypeNoun'], 'drawing')} reservation for @{triggerBody()?['RequesterDisplayName']}.",
                       "emailMessage/Body": "@{outputs('Substitute_Declined')}",
-                      "emailMessage/Importance": "Normal"
+                      "emailMessage/Importance": "Normal",
+                      "emailMessage/Attachments": [
+                        {
+                          "Name": "enmax_logo_white.png",
+                          "ContentBytes": "@{outputs('Get_Logo')?['body/value'][0]?['content']}"
+                        }
+                      ]
                     }
                   },
                   "retryPolicy": {

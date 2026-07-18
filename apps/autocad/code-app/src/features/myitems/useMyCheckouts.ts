@@ -15,6 +15,8 @@ export interface MyCheckout {
   /** Derived "Drawing" | "Standard Document" | "Procedure Form" from the record. */
   typeLabel: string;
   checkedOutOn: string;
+  /** Person the checkout is for (checked-out-by). */
+  checkedOutByName: string;
   daysOut: number;
   reminderStage: number;
   reminderStageLabel: string;
@@ -39,7 +41,7 @@ const CHECKOUT_STATUSES: Record<number, string> = {
 
 const CHECKOUT_SELECT = [
   "enmax_autocadcheckoutid", "enmax_acdnstatus", "enmax_acdnreminderstage",
-  "enmax_acdncheckedouton", "_enmax_acdndrawing_value",
+  "enmax_acdncheckedouton", "_enmax_acdndrawing_value", "_enmax_acdncheckedoutby_value",
 ] as const;
 
 interface ResolvedDrawing {
@@ -105,6 +107,8 @@ function mapCheckout(c: Record<string, unknown>, drawingMap: Map<string, Resolve
     drawingDestinationUrl: drawing.destinationUrl,
     typeLabel:          drawing.typeLabel,
     checkedOutOn:       (c["enmax_acdncheckedouton"] as string | undefined) ?? "",
+    checkedOutByName:
+      (c["_enmax_acdncheckedoutby_value@OData.Community.Display.V1.FormattedValue"] as string | undefined) ?? "",
     daysOut,
     reminderStage,
     reminderStageLabel: REMINDER_STAGES[reminderStage] ?? String(reminderStage),
@@ -142,6 +146,6 @@ export async function fetchMyCheckoutRows(
   const rows = (checkouts as unknown as Record<string, unknown>[]).map(c => mapCheckout(c, drawingMap));
 
   return clientPage(rows, params, {
-    searchText: r => [r.drawingNumber, r.drawingTitle, r.statusLabel, r.typeLabel],
+    searchText: r => [r.drawingNumber, r.drawingTitle, r.statusLabel, r.typeLabel, r.checkedOutByName],
   });
 }

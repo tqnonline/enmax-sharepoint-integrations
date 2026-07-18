@@ -174,9 +174,37 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         [Fact]
         public void Execute_AllowsDrawingReservation_GuardDoesNotBlock()
         {
-            // Drawing reservation (type=1) — the base-only guard must not trip.
+            // Legacy Drawing reservation (type=1, subtype unset) — the base-only guard must not trip.
             var (ctx, pluginCtx, drawingId, _) = BuildContext(count: 2,
                 reservationTypeSubtype: (1, 0));
+
+            ctx.ExecutePluginWith<AddChildItemsPlugin>(pluginCtx);
+
+            SheetNumbers(ctx, drawingId).Should().Equal(1, 2);
+        }
+
+        [Fact]
+        public void Execute_AllowsDrawingSubtype_GuardDoesNotBlock()
+        {
+            // Drawing/Drawing (type=1, subtype=2) — numbered children, guard must not trip.
+            var (ctx, pluginCtx, drawingId, _) = BuildContext(count: 2,
+                reservationTypeSubtype: (
+                    TaxonomyConstants.ReservationType.Drawing,
+                    TaxonomyConstants.DocumentSubtype.Drawing));
+
+            ctx.ExecutePluginWith<AddChildItemsPlugin>(pluginCtx);
+
+            SheetNumbers(ctx, drawingId).Should().Equal(1, 2);
+        }
+
+        [Fact]
+        public void Execute_AllowsFormDocument_GuardDoesNotBlock()
+        {
+            // Document/Form (type=2, subtype=5) — numbered children, guard must not trip.
+            var (ctx, pluginCtx, drawingId, _) = BuildContext(count: 2,
+                reservationTypeSubtype: (
+                    TaxonomyConstants.ReservationType.Document,
+                    TaxonomyConstants.DocumentSubtype.Form));
 
             ctx.ExecutePluginWith<AddChildItemsPlugin>(pluginCtx);
 
@@ -274,8 +302,35 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         [Fact]
         public void Execute_StandardReservation_Rejected()
         {
-            // Document/Standard (type=2, subtype=1) is base-only.
-            var (ctx, pluginCtx, _, _) = BuildContext(count: 1, reservationTypeSubtype: (2, 1));
+            // Document/Standard (type=2, subtype=3) is base-only.
+            var (ctx, pluginCtx, _, _) = BuildContext(count: 1, reservationTypeSubtype: (
+                TaxonomyConstants.ReservationType.Document,
+                TaxonomyConstants.DocumentSubtype.Standard));
+
+            Action act = () => ctx.ExecutePluginWith<AddChildItemsPlugin>(pluginCtx);
+            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*base-only*");
+        }
+
+        [Fact]
+        public void Execute_AllowsProcedureHost_ForFormChildren()
+        {
+            // Document/Procedure hosts Form appends (Form is Existing-only).
+            var (ctx, pluginCtx, drawingId, _) = BuildContext(count: 2, reservationTypeSubtype: (
+                TaxonomyConstants.ReservationType.Document,
+                TaxonomyConstants.DocumentSubtype.Procedure));
+
+            ctx.ExecutePluginWith<AddChildItemsPlugin>(pluginCtx);
+
+            SheetNumbers(ctx, drawingId).Should().Equal(1, 2);
+        }
+
+        [Fact]
+        public void Execute_DrawingDocumentReservation_Rejected()
+        {
+            // Drawing/DrawingDocument (type=1, subtype=1) is base-only.
+            var (ctx, pluginCtx, _, _) = BuildContext(count: 1, reservationTypeSubtype: (
+                TaxonomyConstants.ReservationType.Drawing,
+                TaxonomyConstants.DocumentSubtype.DrawingDocument));
 
             Action act = () => ctx.ExecutePluginWith<AddChildItemsPlugin>(pluginCtx);
             act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*base-only*");

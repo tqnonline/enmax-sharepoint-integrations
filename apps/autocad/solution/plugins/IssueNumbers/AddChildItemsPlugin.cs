@@ -10,7 +10,7 @@ namespace Enmax.AutoCAD
     /// Custom API: enmax_acdnAddChildItems (unbound; explicit Drawing input).
     ///
     /// Appends the next N child items (-sss) to an already-issued base number
-    /// (a Drawing or a Procedure). Children continue after the last existing
+    /// (a Drawing Number or a Procedure host for Forms). Children continue after the last existing
     /// child: given a base with max sheet number M, this creates M+1 .. M+N.
     ///
     /// Concurrency (CLAUDE.md Rule 14): there is no per-drawing counter, so the
@@ -35,10 +35,6 @@ namespace Enmax.AutoCAD
 
         // Child items are hard-capped at 999 (the 3-digit -sss ceiling).
         private const int MaxChildItems = 999;
-
-        private const int ReservationTypeDocument  = 2;
-        private const int DocumentSubtypeStandard  = 1;
-        private const int DocumentSubtypeProcedure = 2;
 
         public AddChildItemsPlugin() : base(typeof(AddChildItemsPlugin)) { }
 
@@ -84,8 +80,9 @@ namespace Enmax.AutoCAD
             string baseNumber = drawing.GetAttributeValue<string>("enmax_acdnnumber");
             var owner         = drawing.GetAttributeValue<EntityReference>("ownerid");
 
-            // Guard: Standard and Procedure are base-only and cannot take child items.
-            RejectIfBaseOnlyStandard(service, drawing);
+            // Guard: Standard / Drawing Document cannot take children. Procedure may —
+            // Forms are Existing-only and append under a Procedure number.
+            RejectIfCannotAppendChildren(service, drawing);
 
             // ── Determine the next index from the current max child (-sss) ────────
             int maxSheet = GetMaxSheetNumber(service, drawingRef.Id);
@@ -135,17 +132,17 @@ namespace Enmax.AutoCAD
         }
 
         /// <summary>
-        /// Document/Standard and Document/Procedure are base-only (ADR 0001 #1). Append
-        /// only Drawing and Document/Form bases. Also check denormalized subtype on the
-        /// drawing when the reservation link is missing (legacy rows).
+        /// Drawing/DrawingDocument and Document/Standard cannot take additional items.
+        /// Document/Procedure is allowed as the host base for Form children (Form is
+        /// Existing-only). Drawing/Drawing and Document/Form also allow append.
         /// </summary>
-        private static void RejectIfBaseOnlyStandard(IOrganizationService service, Entity drawing)
+        private static void RejectIfCannotAppendChildren(IOrganizationService service, Entity drawing)
         {
             var drawingType = drawing.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
             var drawingSubtype = drawing.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value;
-            if (IsBaseOnlyDocument(drawingType, drawingSubtype))
+            if (RejectsChildAppend(drawingType, drawingSubtype))
                 throw new InvalidPluginExecutionException(
-                    "Standard documents and Procedures are base-only and cannot take additional items.");
+                    "Drawing Documents and Standard documents are base-only and cannot take additional items.");
 
             var reservationRef = drawing.GetAttributeValue<EntityReference>("enmax_acdnreservation");
             if (reservationRef == null) return; // legacy drawing with no reservation link
@@ -157,13 +154,23 @@ namespace Enmax.AutoCAD
             var type    = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
             var subtype = reservation.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value;
 
-            if (IsBaseOnlyDocument(type, subtype))
+            if (RejectsChildAppend(type, subtype))
                 throw new InvalidPluginExecutionException(
-                    "Standard documents and Procedures are base-only and cannot take additional items.");
+                    "Drawing Documents and Standard documents are base-only and cannot take additional items.");
         }
 
-        private static bool IsBaseOnlyDocument(int? type, int? subtype)
-            => type == ReservationTypeDocument
-               && (subtype == DocumentSubtypeStandard || subtype == DocumentSubtypeProcedure);
+        /// <summary>
+        /// True when this taxonomy must not receive -SSS children via AddChildItems.
+        /// Procedure is excluded — it hosts Form appends.
+        /// </summary>
+        private static bool RejectsChildAppend(int? reservationType, int? documentSubtype)
+        {
+            var subtype = TaxonomyConstants.NormalizeDocumentSubtype(reservationType, documentSubtype);
+            if (reservationType == TaxonomyConstants.ReservationType.Document)
+                return subtype == TaxonomyConstants.DocumentSubtype.Standard;
+            if (reservationType == TaxonomyConstants.ReservationType.Drawing)
+                return subtype == TaxonomyConstants.DocumentSubtype.DrawingDocument;
+            return false;
+        }
     }
 }

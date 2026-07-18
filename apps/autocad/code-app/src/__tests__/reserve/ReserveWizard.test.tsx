@@ -63,14 +63,14 @@ const mockCreate = vi.mocked(Enmax_autocadreservationsService.create);
 type U = ReturnType<typeof userEvent.setup>;
 
 // The wizard now opens on the Type step. Drawing is the default selection, so this
-// helper just advances into Composition; pass a subtype to reserve a Document instead.
+// helper just advances into Coding sequence; pass a subtype to reserve a Document instead.
 async function chooseTypeAndAdvance(user: U, subtype?: "Standard" | "Procedure" | "Form") {
   if (subtype) {
-    await user.click(await screen.findByRole("radio", { name: /Document — Standard, Procedure, or Form/i }));
+    await user.click(await screen.findByRole("radio", { name: /^Document$/i }));
     const subtypeLabel = subtype === "Standard" ? "Standard Document" : subtype;
-    await user.click(await screen.findByRole("radio", { name: new RegExp(`^${subtypeLabel} —`, "i") }));
+    await user.click(await screen.findByRole("radio", { name: new RegExp(`^${subtypeLabel}$`, "i") }));
   }
-  await user.click(await screen.findByRole("button", { name: /Next: Composition/i }));
+  await user.click(await screen.findByRole("button", { name: /Next: Coding sequence/i }));
 }
 
 async function fillComposition(user: U) {
@@ -128,15 +128,16 @@ test("submitting valid form POSTs to enmax_autocadreservations with correct body
   expect(body["enmax_acdnBusiness@odata.bind"]).toBe("/enmax_autocadbusinesses(bus-1)");
   expect(body.enmax_acdndrawingcount).toBe(3);
   expect(body.enmax_acdnstatus).toBe(1);
-  // Default reservation is a Drawing (type=1) with no document subtype (ADR 0001 #1).
+  // Default reservation is a plain Drawing: type=1, subtype=2 (Drawing Document
+  // is a separate, explicit subtype selection — docs/drawing-document-subtype-CONTRACT.md).
   expect(body.enmax_acdnreservationtype).toBe(1);
-  expect(body.enmax_acdndocumentsubtype).toBeUndefined();
+  expect(body.enmax_acdndocumentsubtype).toBe(2);
   // Combination override is removed (ADR 0001 #4) — no longer sent.
   expect(body.enmax_acdnoverride).toBeUndefined();
 });
 
 // Test 7b — Document/Standard is base-only: no child-count field, and type/subtype are sent
-test("Document/Standard reservation hides child count and sends type=2, subtype=1", async () => {
+test("Document/Standard reservation hides child count and sends type=2, subtype=3", async () => {
   mockCreate.mockClear();
 
   const user = userEvent.setup();
@@ -163,7 +164,7 @@ test("Document/Standard reservation hides child count and sends type=2, subtype=
   await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
   const body = mockCreate.mock.calls[0][0] as Record<string, unknown>;
   expect(body.enmax_acdnreservationtype).toBe(2);
-  expect(body.enmax_acdndocumentsubtype).toBe(1);
+  expect(body.enmax_acdndocumentsubtype).toBe(3);
 });
 
 test("Standard: details step uses MaxRecordsPerReservation as count ceiling", async () => {

@@ -24,16 +24,26 @@ import {
 import { Dismiss24Regular, ChevronLeft16Regular, ChevronRight16Regular } from "@fluentui/react-icons";
 import { useState, useEffect, useMemo } from "react";
 import { usePageSize } from "../../../config/usePageSize";
+import { useAppConfig } from "../../../config/useAppConfig";
+import { isCheckoutEnabledForTaxonomy } from "../../../config/checkoutTaxonomyConfig";
 import type { PendingReservation } from "../../approvals/hooks/usePendingReservations";
 import { useReservationDrawings, type ReservationDrawingRow } from "../hooks/useReservationDrawings";
 import { DrawingActionsPanel } from "./DrawingActionsPanel";
 import { ReleaseDrawingsPanel } from "./ReleaseDrawingsPanel";
+import { ReservationDocumentSheetsGrid } from "./ReservationDocumentSheetsGrid";
 import { useCurrentUser } from "../../../auth/useCurrentUser";
 import { useUserRole } from "../../../auth/useUserRole";
 import { DrawingState, DRAWING_STATE_LABELS, DRAWING_STATE_BADGE_COLOR } from "../api/checkoutClient";
 import type { BadgeColor } from "../api/checkoutClient";
-import { formatComposition } from "../../approvals/compositionUtils";
+import { formatComposition, formatReservationDisplay } from "../../approvals/compositionUtils";
 import { formatGridDateTime } from "../../../lib/formatDateTime";
+import {
+  reservationChildNounPluralLower,
+  reservationHasChildItems,
+  reservationRecordsLabel,
+} from "../../reserve/terminology";
+
+const PANEL_TOASTER_ID = "approvals-toaster";
 
 function useScreenWidth(): number {
   const [width, setWidth] = useState(() => window.innerWidth);
@@ -79,17 +89,37 @@ export function ReservationDrawingsPanel({ reservation, onClose }: Props) {
   const width     = useScreenWidth();
   const drawerSize = width >= 1024 ? "large" : "medium";
   const pageSize  = usePageSize();
+  const appConfig = useAppConfig();
   const [drawingPage, setDrawingPage] = useState(1);
   const [batchReleaseOpen, setBatchReleaseOpen] = useState(false);
   const { data: currentUser } = useCurrentUser();
   const { role } = useUserRole();
   const isAdmin = role === "Admin";
 
+  const hasChildItems = reservationHasChildItems(
+    reservation?.reservationType,
+    reservation?.documentSubtype,
+  );
+  const checkoutEnabled = isCheckoutEnabledForTaxonomy(
+    appConfig,
+    reservation?.reservationType,
+    reservation?.documentSubtype,
+  );
+  const recordsLabel = reservationRecordsLabel(
+    reservation?.reservationType,
+    reservation?.documentSubtype,
+  );
+  const recordsLabelLower = recordsLabel.toLowerCase();
+  const childPluralLower = reservationChildNounPluralLower(
+    reservation?.reservationType,
+    reservation?.documentSubtype,
+  );
+
   const columns = useMemo((): TableColumnDefinition<ReservationDrawingRow>[] => [
     createTableColumn<ReservationDrawingRow>({
       columnId: "number",
       compare: (a, b) => (a.drawing.number ?? "").localeCompare(b.drawing.number ?? ""),
-      renderHeaderCell: () => "Drawing",
+      renderHeaderCell: () => recordsLabel.replace(/s$/, ""),
       renderCell: ({ drawing }) => (
         <TableCellLayout>
           <Text style={{ fontFamily: "monospace" }}>{drawing.number ?? "—"}</Text>
@@ -137,10 +167,12 @@ export function ReservationDrawingsPanel({ reservation, onClose }: Props) {
         </TableCellLayout>
       ),
     }),
-  ], []);
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization -- deps [recordsLabel] complete (callback otherwise captures only module-level constants); React Compiler cannot preserve this manual memo but runtime semantics are correct.
+  ], [recordsLabel]);
 
   const drawingsQuery = useReservationDrawings(
     reservation?.enmax_acdnstatus === 2 ? reservation.enmax_acdnreservationid : null,
+    reservation?.isAppend ? reservation.targetDrawingId : undefined,
   );
 
   // Releasable = Available AND never checked out (currentRevision empty). A drawing
@@ -168,6 +200,10 @@ export function ReservationDrawingsPanel({ reservation, onClose }: Props) {
   const safeDrawingPage = Math.min(drawingPage, totalDrawingPages);
 
   const statusBadge = reservation ? (STATUS_BADGE[reservation.enmax_acdnstatus] ?? STATUS_BADGE[1]) : null;
+  const sheetDrawings = (drawingsQuery.data ?? []).map((r) => ({
+    id: r.drawing.id,
+    number: r.drawing.number,
+  }));
 
   return (
     <OverlayDrawer
@@ -183,7 +219,16 @@ export function ReservationDrawingsPanel({ reservation, onClose }: Props) {
             <Button appearance="subtle" icon={<Dismiss24Regular />} onClick={onClose} aria-label="Close" />
           }
         >
-          {reservation?.enmax_acdnreservationnumber ?? "Reservation"}
+          {reservation
+            ? formatReservationDisplay({
+                ...reservation,
+                enmax_acdnissuednumbers: reservation.enmax_acdnissuednumbers,
+                appendFirst: reservation.appendFirst,
+                appendLast: reservation.appendLast,
+                targetDrawingId: reservation.targetDrawingId,
+                sequenceType: reservation.sequenceType,
+              }) || "Reservation"
+            : "Reservation"}
         </DrawerHeaderTitle>
       </DrawerHeader>
 
@@ -202,7 +247,7 @@ export function ReservationDrawingsPanel({ reservation, onClose }: Props) {
             )}
 
             <Text className={styles.meta}>
-              {reservation.enmax_acdndrawingcount} drawing{reservation.enmax_acdndrawingcount !== 1 ? "s" : ""}
+              {reservation.enmax_acdndrawingcount} {reservation.enmax_acdndrawingcount !== 1 ? recordsLabelLower : recordsLabelLower.replace(/s$/, "")}
             </Text>
 
             {reservation._createdby_value_Formatted && (
@@ -226,29 +271,31 @@ export function ReservationDrawingsPanel({ reservation, onClose }: Props) {
 
             {reservation.enmax_acdnstatus === 1 && (
               <Text style={{ color: tokens.colorNeutralForeground3 }}>
-                Drawings will be created once this reservation is approved.
+                {recordsLabel} will be created once this reservation is approved.
               </Text>
             )}
 
             {reservation.enmax_acdnstatus === 3 && (
               <Text style={{ color: tokens.colorNeutralForeground3 }}>
-                This reservation was declined. No drawings were created.
+                This reservation was declined. No {recordsLabelLower} were created.
               </Text>
             )}
 
             {reservation.enmax_acdnstatus === 2 && (
               <>
-                {drawingsQuery.isPending && <Spinner label="Loading drawings…" />}
+                {drawingsQuery.isPending && (
+                  <Spinner label={hasChildItems ? `Loading ${childPluralLower}…` : `Loading ${recordsLabelLower}…`} />
+                )}
 
                 {drawingsQuery.isError && (
                   <MessageBar intent="error">
-                    <MessageBarBody>Failed to load drawings. Please refresh.</MessageBarBody>
+                    <MessageBarBody>Failed to load {recordsLabelLower}. Please refresh.</MessageBarBody>
                   </MessageBar>
                 )}
 
                 {drawingsQuery.data && drawingsQuery.data.length === 0 && (
                   <Text style={{ color: tokens.colorNeutralForeground3 }}>
-                    No drawings found for this reservation.
+                    No {recordsLabelLower} found for this reservation.
                   </Text>
                 )}
 
@@ -263,50 +310,65 @@ export function ReservationDrawingsPanel({ reservation, onClose }: Props) {
                         Release unused drawings
                       </Button>
                     )}
-                    <DataGrid
-                      items={pagedDrawings}
-                      columns={columns}
-                      sortable
-                      getRowId={(r) => r.drawing.id}
-                      focusMode="composite"
-                    >
-                      <DataGridHeader>
-                        <DataGridRow>
-                          {({ renderHeaderCell }) => (
-                            <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
-                          )}
-                        </DataGridRow>
-                      </DataGridHeader>
-                      <DataGridBody<ReservationDrawingRow>>
-                        {({ item, rowId }) => (
-                          <DataGridRow<ReservationDrawingRow> key={rowId}>
-                            {({ renderCell }) => <DataGridCell>{renderCell(item)}</DataGridCell>}
-                          </DataGridRow>
+
+                    {hasChildItems ? (
+                      <ReservationDocumentSheetsGrid
+                        drawings={sheetDrawings}
+                        reservationType={reservation.reservationType}
+                        documentSubtype={reservation.documentSubtype}
+                        checkoutEnabled={checkoutEnabled}
+                        appendFirst={reservation.appendFirst}
+                        appendLast={reservation.appendLast}
+                        toasterId={PANEL_TOASTER_ID}
+                      />
+                    ) : (
+                      <>
+                        <DataGrid
+                          items={pagedDrawings}
+                          columns={columns}
+                          sortable
+                          getRowId={(r) => r.drawing.id}
+                          focusMode="composite"
+                        >
+                          <DataGridHeader>
+                            <DataGridRow>
+                              {({ renderHeaderCell }) => (
+                                <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
+                              )}
+                            </DataGridRow>
+                          </DataGridHeader>
+                          <DataGridBody<ReservationDrawingRow>>
+                            {({ item, rowId }) => (
+                              <DataGridRow<ReservationDrawingRow> key={rowId}>
+                                {({ renderCell }) => <DataGridCell>{renderCell(item)}</DataGridCell>}
+                              </DataGridRow>
+                            )}
+                          </DataGridBody>
+                        </DataGrid>
+                        {totalDrawingPages > 1 && (
+                          <div className={styles.pagination}>
+                            <Button
+                              icon={<ChevronLeft16Regular />}
+                              appearance="subtle"
+                              disabled={safeDrawingPage <= 1}
+                              onClick={() => setDrawingPage((p) => Math.max(1, p - 1))}
+                              aria-label="Previous page"
+                            />
+                            <Text size={200}>
+                              Page {safeDrawingPage} of {totalDrawingPages}
+                              {" · "}
+                              {(safeDrawingPage - 1) * pageSize + 1}–{Math.min(safeDrawingPage * pageSize, drawingsQuery.data.length)} of {drawingsQuery.data.length}
+                            </Text>
+                            <Button
+                              icon={<ChevronRight16Regular />}
+                              appearance="subtle"
+                              disabled={safeDrawingPage >= totalDrawingPages}
+                              onClick={() => setDrawingPage((p) => Math.min(totalDrawingPages, p + 1))}
+                              aria-label="Next page"
+                            />
+                          </div>
                         )}
-                      </DataGridBody>
-                    </DataGrid>
-                    {totalDrawingPages > 1 && (
-                      <div className={styles.pagination}>
-                        <Button
-                          icon={<ChevronLeft16Regular />}
-                          appearance="subtle"
-                          disabled={safeDrawingPage <= 1}
-                          onClick={() => setDrawingPage((p) => Math.max(1, p - 1))}
-                          aria-label="Previous page"
-                        />
-                        <Text size={200}>
-                          Page {safeDrawingPage} of {totalDrawingPages}
-                          {" · "}
-                          {(safeDrawingPage - 1) * pageSize + 1}–{Math.min(safeDrawingPage * pageSize, drawingsQuery.data.length)} of {drawingsQuery.data.length}
-                        </Text>
-                        <Button
-                          icon={<ChevronRight16Regular />}
-                          appearance="subtle"
-                          disabled={safeDrawingPage >= totalDrawingPages}
-                          onClick={() => setDrawingPage((p) => Math.min(totalDrawingPages, p + 1))}
-                          aria-label="Next page"
-                        />
-                      </div>
+                      </>
                     )}
                   </>
                 )}

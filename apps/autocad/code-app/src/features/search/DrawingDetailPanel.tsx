@@ -45,9 +45,9 @@ import { SheetStatusBadge } from "../checkout/components/SheetStatusBadge";
 import { useDrawingDetail } from "./useDrawingDetail";
 import { useDrawingCheckout } from "../checkout/hooks/useDrawingCheckout";
 import { useDocumentActivityTrail } from "../checkout/hooks/useDocumentActivityTrail";
+import { collapseDuplicateAllocated } from "../checkout/hooks/auditSentence";
 import { useDrawingSheets } from "../approvals/hooks/useDrawingSheets";
 import { useSheetCheckouts } from "../approvals/hooks/useSheetCheckouts";
-import { SharePointLinkStatus } from "../sharepoint/SharePointLinkStatus";
 import type { DrawingRow } from "./useSearchDrawings";
 
 const DRAWING_PANEL_TOASTER_ID = "drawing-detail-toaster";
@@ -106,12 +106,24 @@ export function DrawingDetailPanel({ drawing, selectedSheetId, onClose }: Drawin
   const { data: checkoutMap } = useSheetCheckouts(parentDrawingId ?? "", !!parentDrawingId);
   const { data: activeCheckout } = useDrawingCheckout(selectedSheetId ? undefined : parentDrawingId);
   const sheetIds = useMemo(() => sheets?.map((s) => s.id) ?? [], [sheets]);
-  const { data: auditEvents = [] } = useDocumentActivityTrail(parentDrawingId, {
-    sheetIds,
-    focusedSheetId: selectedSheetId,
-  });
-
   const d = detail ?? drawing;
+  const { data: rawAuditEvents = [] } = useDocumentActivityTrail(parentDrawingId, {
+    // Sheet-focused view: parent drawing (one Allocated) + this sheet's lifecycle only.
+    // Family view: parent + all sheets so check-out/in across children still appear.
+    sheetIds: selectedSheetId ? undefined : sheetIds,
+    focusedSheetId: selectedSheetId,
+    reservationId: detail?.reservationId ?? (drawing as DrawingRow | null)?.reservationId,
+    drawingCreatedOn: detail?.createdOn ?? (drawing as DrawingRow | null)?.createdOn,
+    allocatedByName:
+      detail?.approvedByName
+      || detail?.submittedByName
+      || (drawing as DrawingRow | null)?.approvedByName
+      || (drawing as DrawingRow | null)?.submittedByName,
+  });
+  const auditEvents = useMemo(
+    () => collapseDuplicateAllocated(rawAuditEvents),
+    [rawAuditEvents],
+  );
   const matchedSheet = selectedSheetId
     ? sheets?.find((s) => s.id === selectedSheetId)
     : undefined;
@@ -208,13 +220,6 @@ export function DrawingDetailPanel({ drawing, selectedSheetId, onClose }: Drawin
                   Open in SharePoint <OpenRegular style={{ verticalAlign: "middle" }} />
                 </Link>
               )}
-              {standardDocument && (
-                <SharePointLinkStatus
-                  presentInDropOff={matchedSheet?.presentInDropOff ?? d?.enmax_acdnpresentindropoff}
-                  presentInDestination={matchedSheet?.presentInDestination ?? d?.enmax_acdnpresentindestination}
-                  recordNumber={displayNumber}
-                />
-              )}
             </div>
 
             {showsChildItems && parentDrawingId && (
@@ -290,6 +295,7 @@ export function DrawingDetailPanel({ drawing, selectedSheetId, onClose }: Drawin
                       documentSubtype: d.enmax_acdndocumentsubtype,
                     }}
                     openCheckout={activeCheckout}
+                    checkoutEnabled={checkoutEnabled}
                   />
                 )
               )}

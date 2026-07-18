@@ -225,23 +225,25 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         [Fact]
         public void Execute_Taxonomy_CopiedOntoDrawingAndSheet()
         {
-            // Document/Procedure (type=2, subtype=2): base + child both self-identifying (ADR 0001).
+            // Document/Form (type=2, subtype=5): base + child both self-identifying (ADR 0001).
             var (ctx, pluginCtx, _) = BuildContext(
-                new[] { 1 }, sheetsPer: 1, reservationType: 2, documentSubtype: 2);
+                new[] { 1 }, sheetsPer: 1,
+                reservationType: TaxonomyConstants.ReservationType.Document,
+                documentSubtype: TaxonomyConstants.DocumentSubtype.Form);
 
             ctx.ExecutePluginWith<AutoCreateDrawingsPlugin>(pluginCtx);
 
             var drawing = ctx.CreateQuery(DrawingEntity).Single();
             drawing.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value
-                .Should().Be(2, because: "the base record must carry its reservation type");
+                .Should().Be(TaxonomyConstants.ReservationType.Document, because: "the base record must carry its reservation type");
             drawing.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value
-                .Should().Be(2, because: "the base record must carry its document subtype");
+                .Should().Be(TaxonomyConstants.DocumentSubtype.Form, because: "the base record must carry its document subtype");
 
             var sheet = ctx.CreateQuery(SheetEntity).Single();
             sheet.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value
-                .Should().Be(2, because: "the child form/document must carry its reservation type");
+                .Should().Be(TaxonomyConstants.ReservationType.Document, because: "the child form/document must carry its reservation type");
             sheet.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value
-                .Should().Be(2, because: "the child form/document must carry its document subtype");
+                .Should().Be(TaxonomyConstants.DocumentSubtype.Form, because: "the child form/document must carry its document subtype");
         }
 
         // ── Guard: append reservation (target drawing set) ───────────────────────
@@ -376,7 +378,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var svc    = ctx.GetFakedOrganizationService();
             var audits = svc.RetrieveMultiple(new QueryExpression("enmax_autocadauditevent") { ColumnSet = new ColumnSet(true) });
 
-            audits.Entities.Should().HaveCount(4, because: "one Allocated audit per drawing and per sheet");
+            audits.Entities.Should().HaveCount(2, because: "one Allocated audit per drawing only (not per sheet)");
             audits.Entities.Should().OnlyContain(a => a.GetAttributeValue<OptionSetValue>("enmax_acdnevent").Value == 1,
                 because: "event type 1 = Created");
             audits.Entities.Should().OnlyContain(a => a.GetAttributeValue<string>("enmax_acdntostate") == "Allocated",
@@ -384,9 +386,33 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 
             var drawings   = svc.RetrieveMultiple(new QueryExpression("enmax_autocaddrawing") { ColumnSet = new ColumnSet("enmax_autocaddrawingid") });
             var drawingIds = new HashSet<string>(drawings.Entities.Select(d => d.Id.ToString()));
-            audits.Entities.Where(a => a.GetAttributeValue<string>("enmax_acdnsubjecttable") == "enmax_autocaddrawing")
-                .Should().OnlyContain(a => drawingIds.Contains(a.GetAttributeValue<string>("enmax_acdnsubjectid")),
+            audits.Entities.Should().OnlyContain(a => a.GetAttributeValue<string>("enmax_acdnsubjecttable") == "enmax_autocaddrawing",
+                because: "Allocated is recorded once on the parent drawing, not on each sheet");
+            audits.Entities.Should().OnlyContain(a => drawingIds.Contains(a.GetAttributeValue<string>("enmax_acdnsubjectid")),
                 because: "each drawing audit subjectid must be a real drawing id");
+        }
+
+        [Fact]
+        public void Allocated_audit_actedby_prefers_approver_over_pipeline_user()
+        {
+            var (ctx, pluginCtx, reservationId) = BuildContext(numbers: new[] { 1 }, sheetsPer: 1);
+            var approverId = Guid.NewGuid();
+            var svc = ctx.GetFakedOrganizationService();
+            svc.Create(new Entity("systemuser", approverId) { ["fullname"] = "Approver User" });
+
+            var post = pluginCtx.PostEntityImages["postImage"];
+            post["enmax_acdnapprover"] = new EntityReference("systemuser", approverId);
+            // Also stamp the reservation row so Retrieve in ResolveAllocationActor finds it.
+            var reservation = svc.Retrieve("enmax_autocadreservation", reservationId, new ColumnSet(true));
+            reservation["enmax_acdnapprover"] = new EntityReference("systemuser", approverId);
+            svc.Update(reservation);
+
+            ctx.ExecutePluginWith<AutoCreateDrawingsPlugin>(pluginCtx);
+
+            var audits = svc.RetrieveMultiple(new QueryExpression("enmax_autocadauditevent") { ColumnSet = new ColumnSet(true) });
+            audits.Entities.Should().HaveCount(1);
+            audits.Entities.Single().GetAttributeValue<EntityReference>("enmax_acdnactedby")?.Id
+                .Should().Be(approverId, because: "Allocated must credit the approver, not SYSTEM");
         }
 
         [Fact]

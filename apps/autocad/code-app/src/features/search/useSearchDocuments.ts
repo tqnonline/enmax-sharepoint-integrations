@@ -1,6 +1,7 @@
 import {
   Enmax_autocaddrawingsService,
   Enmax_autocadsheetsService,
+  Enmax_autocadcheckoutsService,
 } from "../../generated";
 import type { GridFetchParams } from "../../components/DataGrid";
 import { clientPage } from "../../components/DataGrid/clientPage";
@@ -18,6 +19,17 @@ import { SHEET_STATE_LABELS } from "../myitems/useMyRecords";
 import {
   resolveSharePointFileUrls,
 } from "../sharepoint/sharepointUrls";
+import {
+  CHECKOUT_STATUS_LABELS,
+  CheckoutStatus,
+  openCheckoutFilterForDrawings,
+} from "../checkout/api/checkoutClient";
+import type { SheetCheckoutInfo } from "../approvals/hooks/useSheetCheckouts";
+import {
+  matchesDocumentStatusFilter,
+  searchDocumentHolderDetail,
+  searchDocumentStatusLabel,
+} from "./searchDocumentStatus";
 
 const DRAWING_FETCH_CAP = 500;
 const DRAWING_ID_CHUNK = 40;
@@ -34,6 +46,8 @@ export interface SearchDocumentRow {
   typeLabel: string;
   state: number;
   stateLabel: string;
+  /** e.g. "Checked out to Heather" / "Check-out requested by …" — empty when Available. */
+  statusDetail: string;
   enmax_acdnreservationtype?: number;
   enmax_acdndocumentsubtype?: number;
   sharePointUrl: string;
@@ -137,6 +151,7 @@ function sheetToRow(sheet: RawSheet, drawing: DrawingRow): SearchDocumentRow {
     typeLabel: reservationTypeDisplayLabel(reservationType, documentSubtype),
     state,
     stateLabel: SHEET_STATE_LABELS[state] ?? String(state),
+    statusDetail: "",
     enmax_acdnreservationtype: reservationType,
     enmax_acdndocumentsubtype: documentSubtype,
     sharePointUrl: sp.dropOffUrl,
@@ -180,6 +195,7 @@ function drawingToRow(drawing: DrawingRow): SearchDocumentRow {
     typeLabel: drawing.typeLabel,
     state,
     stateLabel: DRAWING_STATE_LABELS[state] ?? String(state),
+    statusDetail: "",
     enmax_acdnreservationtype: drawing.enmax_acdnreservationtype,
     enmax_acdndocumentsubtype: drawing.enmax_acdndocumentsubtype,
     sharePointUrl: sp.dropOffUrl,
@@ -223,6 +239,118 @@ async function expandDrawingsToDocuments(drawings: DrawingRow[]): Promise<Search
   return rows;
 }
 
+const OPEN_CHECKOUT_STATUSES = new Set<number>([
+  CheckoutStatus.Open,
+  CheckoutStatus.AwaitingValidation,
+  CheckoutStatus.Requested,
+]);
+
+function checkoutFromRaw(raw: Record<string, unknown>): SheetCheckoutInfo {
+  const status = (raw["enmax_acdnstatus"] as number) ?? 0;
+  return {
+    checkoutId: (raw["enmax_autocadcheckoutid"] as string) ?? "",
+    status,
+    statusLabel: CHECKOUT_STATUS_LABELS[status] ?? "Unknown",
+    checkedOutBy: (raw["_enmax_acdncheckedoutby_value"] as string | undefined) ?? undefined,
+    checkedOutOn: (raw["enmax_acdncheckedouton"] as string | undefined) ?? undefined,
+    checkedOutByName:
+      (raw["_enmax_acdncheckedoutby_value@OData.Community.Display.V1.FormattedValue"] as string | undefined)
+      ?? undefined,
+    closedOn: (raw["enmax_acdnclosedon"] as string | undefined) ?? undefined,
+    closedByName:
+      (raw["_enmax_acdnclosedby_value@OData.Community.Display.V1.FormattedValue"] as string | undefined)
+      ?? undefined,
+    requestedOn: (raw["createdon"] as string | undefined) ?? undefined,
+  };
+}
+
+function pickOpenCheckout(rows: Record<string, unknown>[]): SheetCheckoutInfo | undefined {
+  if (rows.length === 0) return undefined;
+  const sorted = [...rows].sort((a, b) =>
+    String(b["createdon"] ?? "").localeCompare(String(a["createdon"] ?? "")),
+  );
+  const active = sorted.find((r) => OPEN_CHECKOUT_STATUSES.has((r["enmax_acdnstatus"] as number) ?? 0));
+  return checkoutFromRaw(active ?? sorted[0]!);
+}
+
+async function fetchOpenCheckoutsForDrawings(
+  drawingIds: string[],
+): Promise<{ bySheet: Map<string, SheetCheckoutInfo>; byDrawing: Map<string, SheetCheckoutInfo> }> {
+  const bySheet = new Map<string, SheetCheckoutInfo>();
+  const byDrawing = new Map<string, SheetCheckoutInfo>();
+  const valid = drawingIds.filter(isGuid);
+  if (valid.length === 0) return { bySheet, byDrawing };
+
+  for (let i = 0; i < valid.length; i += DRAWING_ID_CHUNK) {
+    const chunk = valid.slice(i, i + DRAWING_ID_CHUNK);
+    const result = await Enmax_autocadcheckoutsService.getAll({
+      filter: openCheckoutFilterForDrawings(chunk),
+      select: [
+        "enmax_autocadcheckoutid",
+        "enmax_acdnstatus",
+        "enmax_acdncheckedouton",
+        "enmax_acdnclosedon",
+        "createdon",
+        "_enmax_acdndrawing_value",
+        "_enmax_acdnsheet_value",
+        "_enmax_acdncheckedoutby_value",
+        "_enmax_acdnclosedby_value",
+      ],
+      orderBy: ["createdon desc"],
+      top: DRAWING_FETCH_CAP,
+    } as Parameters<typeof Enmax_autocadcheckoutsService.getAll>[0]);
+
+    if (!result.success) {
+      logDataverseError("Search/Checkouts", result.error);
+      continue;
+    }
+
+    const sheetGroups = new Map<string, Record<string, unknown>[]>();
+    const drawingGroups = new Map<string, Record<string, unknown>[]>();
+    for (const raw of (result.data ?? []) as unknown as Record<string, unknown>[]) {
+      const sheetId = (raw["_enmax_acdnsheet_value"] as string | undefined) ?? "";
+      const drawingId = (raw["_enmax_acdndrawing_value"] as string | undefined) ?? "";
+      if (sheetId) {
+        const list = sheetGroups.get(sheetId) ?? [];
+        list.push(raw);
+        sheetGroups.set(sheetId, list);
+      } else if (drawingId) {
+        const list = drawingGroups.get(drawingId) ?? [];
+        list.push(raw);
+        drawingGroups.set(drawingId, list);
+      }
+    }
+    for (const [sheetId, rows] of sheetGroups) {
+      const info = pickOpenCheckout(rows);
+      if (info) bySheet.set(sheetId, info);
+    }
+    for (const [drawingId, rows] of drawingGroups) {
+      const info = pickOpenCheckout(rows);
+      if (info) byDrawing.set(drawingId, info);
+    }
+  }
+
+  return { bySheet, byDrawing };
+}
+
+function enrichDocumentsWithCheckout(
+  rows: SearchDocumentRow[],
+  bySheet: Map<string, SheetCheckoutInfo>,
+  byDrawing: Map<string, SheetCheckoutInfo>,
+): SearchDocumentRow[] {
+  return rows.map((row) => {
+    const checkout = row.isChildDocument
+      ? bySheet.get(row.id)
+      : (byDrawing.get(row.drawingId) ?? bySheet.get(row.id));
+    const stateLabel = searchDocumentStatusLabel(row.state, checkout);
+    return {
+      ...row,
+      stateLabel,
+      statusDetail: searchDocumentHolderDetail(stateLabel, checkout),
+    };
+  });
+}
+
 /** Number/title filter applied client-side on individual document numbers and filenames. */
 function applyDocumentTextFilter(rows: SearchDocumentRow[], needle: string): SearchDocumentRow[] {
   if (!needle) return rows;
@@ -249,9 +377,19 @@ export async function fetchSearchDocuments(
   const drawingResult = await fetchSearchDrawings(merged);
   let documents = await expandDrawingsToDocuments(drawingResult.rows);
 
+  const drawingIds = [...new Set(documents.map((d) => d.drawingId))];
+  const { bySheet, byDrawing } = await fetchOpenCheckoutsForDrawings(drawingIds);
+  documents = enrichDocumentsWithCheckout(documents, bySheet, byDrawing);
+
   const numberNeedle = applied.number.trim();
   if (numberNeedle) {
     documents = applyDocumentTextFilter(documents, numberNeedle);
+  }
+
+  if (applied.documentStatus && applied.documentStatus !== "all") {
+    documents = documents.filter((r) =>
+      matchesDocumentStatusFilter(r.stateLabel, applied.documentStatus),
+    );
   }
 
   return clientPage(documents, params, {
@@ -262,6 +400,8 @@ export async function fetchSearchDocuments(
       r.filename,
       r.compositionSummary,
       r.typeLabel,
+      r.stateLabel,
+      r.statusDetail,
     ],
   });
 }

@@ -80,3 +80,18 @@ export function formatAuditSentence(
   const when = ev.createdOn ? new Date(ev.createdOn).toLocaleString() : "";
   return `${who} ${verb}${when ? ` on ${when}` : ""}.`;
 }
+
+/**
+ * Issuance historically wrote Allocated once per sheet plus the parent drawing.
+ * Document/form detail should show a single Allocated step.
+ */
+export function collapseDuplicateAllocated(events: AuditEvent[]): AuditEvent[] {
+  const allocated = events.filter((ev) => lifecycleStepLabel(ev) === "Allocated");
+  if (allocated.length <= 1) return events;
+  const keep = allocated.reduce((earliest, ev) => {
+    const a = earliest.createdOn ? new Date(earliest.createdOn).getTime() : Number.POSITIVE_INFINITY;
+    const b = ev.createdOn ? new Date(ev.createdOn).getTime() : Number.POSITIVE_INFINITY;
+    return b < a ? ev : earliest;
+  });
+  return events.filter((ev) => lifecycleStepLabel(ev) !== "Allocated" || ev.id === keep.id);
+}

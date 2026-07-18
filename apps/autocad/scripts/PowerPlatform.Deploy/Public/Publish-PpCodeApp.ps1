@@ -5,13 +5,17 @@ function Publish-PpCodeApp {
 
     .DESCRIPTION
       Performs the following steps:
-        1. Loads credentials from .env.<Environment> via Get-PpEnvConfig.
-        2. Ensures pac CLI is authenticated via Connect-PpDataverse (idempotent).
+        1. Loads credentials from .env.<Environment> via Get-PpEnvConfig
+           (or builds config from an existing pac USER profile when -PacProfileName
+           is set).
+        2. Ensures pac CLI is authenticated via Connect-PpDataverse (idempotent)
+           for Dataverse org discovery / solution work — not for the Code App push.
         3. Writes apps\code-app\power.config.json with the environment-specific
            configuration, including the full databaseReferences dataSources map
            (23 Dataverse entity sets) required for the app's data bindings.
         4. Runs `npm run build` in apps\code-app.
-        5. Runs `pac code push` (uses the pac auth profile set up by Connect-PpDataverse).
+        5. Runs `npx power-apps push` (never `pac code push` — pac's Code App
+           path fails on macOS and rejects SP ownership checks in this tenant).
         6. Prints the play URL so it can be opened immediately.
 
       Steps 3–5 (config write, build, push) are guarded by SupportsShouldProcess —
@@ -28,14 +32,15 @@ function Publish-PpCodeApp {
     .EXAMPLE
       Publish-PpCodeApp -Environment dev -WhatIf
 
-      Shows what would happen without writing files, running npm, or calling pac.
+      Shows what would happen without writing files, running npm, or pushing.
       Safe for dry-run validation in CI pipelines.
 
     .NOTES
-      Requires pac CLI installed as a dotnet global tool.
       Requires Node.js and npm available on PATH.
+      Code App push always uses `npx power-apps push` (npm Power Apps CLI).
       Credentials are read from apps\code-app\.env.<Environment> with a git-worktree
-      fallback to the main repo checkout (see Get-PpEnvConfig).
+      fallback to the main repo checkout (see Get-PpEnvConfig), unless
+      -PacProfileName is used (user auth + APP_ID).
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param(
@@ -44,9 +49,6 @@ function Publish-PpCodeApp {
 
         # User-auth path: use an existing pac USER profile (no SPN / .env required).
         [string]$PacProfileName,
-
-        # Push via `pac code push` (user auth) instead of `npx power-apps push` (SPN).
-        [switch]$UsePacCodePush,
 
         [string]$AppId = $env:APP_ID,
         [string]$AppDisplayName = 'EEC Generation Document Management system'
@@ -90,14 +92,9 @@ function Publish-PpCodeApp {
         Invoke-PpNpm -WorkingDir $codeApp -Arguments @('run', 'build')
         Assert-PpExitCode -Operation 'npm run build'
 
-        Write-PpLog "Pushing to Power Apps..."
-        if ($UsePacCodePush -or $PacProfileName) {
-            Invoke-PpPac code push
-            Assert-PpExitCode -Operation 'pac code push'
-        } else {
-            Invoke-PpPowerAppsPush -WorkingDir $codeApp -Cfg $cfg
-            Assert-PpExitCode -Operation 'power-apps push'
-        }
+        Write-PpLog "Pushing to Power Apps (npx power-apps push)..."
+        Invoke-PpPowerAppsPush -WorkingDir $codeApp -Cfg $cfg
+        Assert-PpExitCode -Operation 'power-apps push'
 
         Write-PpLog "Done! Open app at:"
         Write-PpLog "  https://apps.powerapps.com/play/e/$($cfg['ENVIRONMENT_ID'])/app/$($cfg['APP_ID'])"
@@ -179,16 +176,14 @@ function Invoke-PpPowerAppsPush {
     <#
     .SYNOPSIS Thin, mockable wrapper around the Code App push CLI. Seam for Pester mocking.
     .DESCRIPTION
-      Uses `npx power-apps push` (the npm Power Apps CLI), authenticated via the
-      SP_CLIENT_ID / SP_CLIENT_SECRET / SP_TENANT_ID environment variables (set here
-      from $Cfg so the push works both locally and in CI).
+      Always uses `npx power-apps push` (npm Power Apps CLI). Never `pac code push`:
+      pac's Code App script is missing/broken on macOS ("Could not find the PowerApps
+      CLI script"), and in this tenant pac's ownership check rejects the deploy SP.
 
-      `pac code push` was tried (commit #21) but its app-ownership access check rejects
-      the deploy service principal in this tenant: `startSession` returns 403
-      PowerAppsNoAccess ("does not have access to the app"). The SP holds the Dataverse
-      plane (it registers the Custom APIs) but not Power Apps app-plane ownership, and
-      pac cannot push without it. The npm CLI's SP-credential path is accepted, so we
-      use it for every push. cd-dev.yml already supplies the SP_* env vars.
+      When $Cfg has ClientId/ClientSecret/TenantId (CI / .env.<env>), those are exported
+      as SP_* for non-interactive SP auth. When pushing via -PacProfileName (user auth),
+      those keys are absent — leave any existing SP_* alone and let the CLI use the
+      interactive / cached user session.
     #>
     [CmdletBinding()]
     param(
@@ -197,10 +192,15 @@ function Invoke-PpPowerAppsPush {
     )
     Push-Location $WorkingDir
     try {
-        $env:SP_CLIENT_ID     = $Cfg['ClientId']
-        $env:SP_CLIENT_SECRET = $Cfg['ClientSecret']
-        $env:SP_TENANT_ID     = $Cfg['TenantId']
-        & npx power-apps push --non-interactive
+        if ($Cfg['ClientId'] -and $Cfg['ClientSecret'] -and $Cfg['TenantId']) {
+            $env:SP_CLIENT_ID     = $Cfg['ClientId']
+            $env:SP_CLIENT_SECRET = $Cfg['ClientSecret']
+            $env:SP_TENANT_ID     = $Cfg['TenantId']
+            & npx power-apps push --non-interactive
+        } else {
+            # User-auth / local: interactive session (do not blank SP_* with nulls).
+            & npx power-apps push
+        }
     }
     finally { Pop-Location }
 }

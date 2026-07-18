@@ -9,7 +9,7 @@
     - pac solution pack/import for the Dataverse solution
     - Register-PpPlugins -UserAuth device for plugin DLL + Custom APIs
     - seed.py / backfill_taxonomy.py with --auth device for reference data
-    - Publish-PpCodeApp -PacProfileName -UsePacCodePush for the Code App
+    - Publish-PpCodeApp -PacProfileName (npx power-apps push) for the Code App
 
   Backend (import, plugins, seed master, roles) already landed on ENMAX DEV via CI.
   Default: publish Code App + taxonomy backfill only.
@@ -103,10 +103,15 @@ if ($Full) {
     python3 "$repoRoot/solution/scripts/import.py"
     if ($LASTEXITCODE -ne 0) { throw "import failed" }
 
+    Write-Host "`n-- Heather document-subtype remumber (atomic with solution import) --"
+    Set-UserDataverseToken
+    & python3 "$repoRoot/solution/scripts/migrate_document_subtype_heather.py" --auth $UserAuth --confirm-dev-uat
+    if ($LASTEXITCODE -ne 0) { throw "Heather subtype migration failed" }
+
     if (-not $SkipPlugins) {
         Write-Host "`n-- register plugins (user token) --"
         Set-UserDataverseToken
-        Register-PpPlugins -Environment dev -SkipBuild -UserAuth $UserAuth -DataverseUrl $org.Url
+        Register-PpPlugins -Environment dev -UserAuth $UserAuth -DataverseUrl $org.Url
     }
 
     Write-Host "`n-- seed master (user token) --"
@@ -163,8 +168,8 @@ if (-not $SkipBackfill) {
 }
 
 if (-not $SkipPublish) {
-    Write-Host "`n-- publish Code App (pac code push, user auth) --"
-    Publish-PpCodeApp -Environment dev -PacProfileName $PacProfileName -UsePacCodePush -AppId $AppId
+    Write-Host "`n-- publish Code App (npx power-apps push) --"
+    Publish-PpCodeApp -Environment dev -PacProfileName $PacProfileName -AppId $AppId
     Write-Host "`nPlay URL:"
     Write-Host "  https://apps.powerapps.com/play/e/$($org.ENVIRONMENT_ID)/app/$AppId"
 }

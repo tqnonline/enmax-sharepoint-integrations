@@ -23,14 +23,12 @@ namespace Enmax.AutoCAD
         private const int StateAvailable = 1;
         private const int SheetStateAvailable = 2;
 
-        // Type-aware issuance (ADR 0001). Document/Standard and Document/Procedure are
-        // base-only; Drawing, Document/Form, and legacy/null reservations get child items.
+        // Type-aware issuance (ADR 0001, docs/drawing-document-subtype-CONTRACT.md).
+        // Base-only (singleton sheet, no numbered -sss): Drawing/DrawingDocument or
+        // Document/Standard or Document/Procedure. Numbered children: Drawing/Drawing,
+        // Document/Form, or legacy reservations with no type/subtype set.
         // Child items are hard-capped at 999 (the 3-digit -sss ceiling), default 1.
-        private const int ReservationTypeDocument  = 2;
-        private const int DocumentSubtypeStandard  = 1;
-        private const int DocumentSubtypeProcedure = 2;
-        private const int DocumentSubtypeForm      = 3;
-        private const int MaxChildItems            = 999;
+        private const int MaxChildItems = 999;
 
         public CreateDrawingsPlugin() : base(typeof(CreateDrawingsPlugin)) { }
 
@@ -152,27 +150,26 @@ namespace Enmax.AutoCAD
         }
 
         /// <summary>
-        /// Drawing, Document/Form, and legacy/null-type reservations create child items
-        /// (-sss). Document/Standard and Document/Procedure are base-only.
+        /// Drawing/Drawing, Document/Form, and legacy reservations with no type/subtype
+        /// set create numbered child items (-sss). Drawing/DrawingDocument and
+        /// Document/Standard and Document/Procedure are base-only.
         /// </summary>
         private static bool CreatesChildItems(Entity reservation)
         {
-            var type    = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
+            var type = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
             var subtype = reservation.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value;
-            if (type != ReservationTypeDocument) return true;
-            return subtype == DocumentSubtypeForm;
+            return TaxonomyConstants.CreatesChildItems(type, subtype);
         }
 
         /// <summary>
-        /// Standard and Procedure get a singleton sheet carrier (no sheet number) for
-        /// checkout/check-in; Form uses numbered children instead.
+        /// Drawing/DrawingDocument, Standard, and Procedure get a singleton sheet carrier
+        /// (no sheet number) for checkout/check-in; Drawing and Form use numbered children.
         /// </summary>
         private static bool IsBaseOnlyDocument(Entity reservation)
         {
             var type = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
             var subtype = reservation.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value;
-            return type == ReservationTypeDocument
-                && (subtype == DocumentSubtypeStandard || subtype == DocumentSubtypeProcedure);
+            return TaxonomyConstants.IsBaseOnlyDocument(type, subtype);
         }
 
         private static void CopyLookup(Entity source, Entity target, string attribute)

@@ -400,13 +400,46 @@
                 "authentication": "@parameters('$authentication')"
               }
             },
+            "Get_CodeApp_BaseUrl_Config": {
+              "type": "OpenApiConnection",
+              "runAfter": {
+                "Update_Reservation_IssuedNumbers": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "ListRecords",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "enmax_autocadappconfigs",
+                  "$filter": "enmax_acdnkey eq 'CodeAppBaseUrl'",
+                  "$top": 1
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Compose_TypeNoun": {
+              "type": "Compose",
+              "runAfter": {
+                "Get_Requester_User": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@{toLower(coalesce(triggerOutputs()?['body/enmax_acdnreservationtype@OData.Community.Display.V1.FormattedValue'], 'Drawing'))}"
+            },
             "Notify_Requester_Approved": {
               "type": "Workflow",
               "runAfter": {
                 "Get_DocControl_Email": [
                   "Succeeded"
                 ],
-                "Get_Requester_User": [
+                "Compose_TypeNoun": [
+                  "Succeeded"
+                ],
+                "Get_CodeApp_BaseUrl_Config": [
                   "Succeeded"
                 ]
               },
@@ -418,8 +451,11 @@
                   "RecipientEmail": "@{outputs('Get_Requester_User')?['body/internalemailaddress']}",
                   "Decision": "Approved",
                   "ReservationId": "@{triggerOutputs()?['body/enmax_acdnreservationnumber']}",
+                  "TypeNoun": "@{outputs('Compose_TypeNoun')}",
+                  "RequesterDisplayName": "@{outputs('Get_Requester_User')?['body/fullname']}",
                   "IssuedNumbersFormatted": "@{join(body('Parse_IssuedNumbers'), ', ')}",
                   "SharePointLibraryUrl": "",
+                  "DeepLink": "@{concat(outputs('Get_CodeApp_BaseUrl_Config')?['body/value'][0]?['enmax_acdnvalue'], '?target=reservation&id=', triggerOutputs()?['body/enmax_autocadreservationid'])}",
                   "Cc": "@{outputs('Get_DocControl_Email')?['body/value'][0]?['enmax_acdnvalue']}",
                   "CorrelationId": "@{variables('CorrelationId')}"
                 }

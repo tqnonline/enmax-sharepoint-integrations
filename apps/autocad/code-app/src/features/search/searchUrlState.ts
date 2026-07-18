@@ -21,7 +21,8 @@ export function parseSearchTab(raw: string | null): SearchTab {
 }
 
 export function parseHeaderSearchTab(raw: string | null): HeaderSearchTab {
-  if (raw === "documents" || raw === "drawings" || raw === "reservations") return raw;
+  // Header search is documents/drawings only — never RES-#### reservation lookup.
+  if (raw === "documents" || raw === "drawings") return raw;
   return "all";
 }
 
@@ -75,6 +76,7 @@ export function filtersFromSearchParams(
     from,
     to,
     documentSubtype,
+    documentStatus: "all",
     peopleIds: [],
     composition,
   };

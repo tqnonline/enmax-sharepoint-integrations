@@ -27,6 +27,7 @@ import { approveInputFromReservation } from "./approveInputFromReservation";
 import { useApprovalAudit } from "./hooks/useApprovalAudit";
 import { DeclineDialog } from "./DeclineDialog";
 import { useCurrentUser } from "../../auth/useCurrentUser";
+import { buildDeepLinkUrl } from "../../lib/deeplink/deeplinkTargets";
 
 function formatAuditLabel(event: number, formatted: string): string {
   const map: Record<number, string> = { 1: "Submitted", 3: "Approval Granted", 4: "Approval Denied" };
@@ -143,9 +144,17 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
   // "small" = 320px at tablet portrait; "medium" = 592px at desktop/landscape
   const drawerSize = screenWidth >= 1024 ? "medium" : "small";
 
+  const compositionPreview = reservation
+    ? formatReservationDisplay({
+        ...reservation,
+        enmax_acdnissuednumbers: reservation.enmax_acdnissuednumbers,
+        targetDrawingId: reservation.targetDrawingId,
+      })
+    : "";
+
   function handleApprove() {
     if (!reservation) return;
-    const num = reservation.enmax_acdnreservationnumber;
+    const num = compositionPreview || "reservation";
     // Append reservations only need the target base + count; composition codes are
     // not used (issuance happens via AddChildItems, not IssueNumbers).
     approveMutation.mutate(
@@ -156,20 +165,12 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
 
   function handleDecline(reason: string) {
     if (!reservation) return;
-    const num = reservation.enmax_acdnreservationnumber;
+    const num = compositionPreview || "reservation";
     approveMutation.mutate(
       { reservationId: reservation.enmax_acdnreservationid, decision: "Declined", reason },
       { onSuccess: () => { setDeclineOpen(false); onClose(); onDeclined?.(num); } },
     );
   }
-
-  const compositionPreview = reservation
-    ? formatReservationDisplay({
-        ...reservation,
-        enmax_acdnissuednumbers: reservation.enmax_acdnissuednumbers,
-        targetDrawingId: reservation.targetDrawingId,
-      })
-    : "";
 
   return (
     <>
@@ -190,8 +191,11 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
                     icon={<ArrowSquareUpRightRegular />}
                     onClick={() => {
                       const { appId, environmentId, tenantId } = currentUser;
+                      // Deep links must ride as pre-hash query params: the player
+                      // drops the hash on launch. DeepLinkBootstrap redirects.
+                      const base = `https://apps.powerapps.com/play/e/${environmentId}/app/${appId}?tenantId=${tenantId}`;
                       window.open(
-                        `https://apps.powerapps.com/play/e/${environmentId}/app/${appId}?tenantId=${tenantId}#/reservations/${reservation.enmax_acdnreservationid}`,
+                        buildDeepLinkUrl(base, "reservation", { id: reservation.enmax_acdnreservationid }),
                         "_blank",
                         "noopener,noreferrer",
                       );
@@ -203,7 +207,7 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
               </div>
             }
           >
-            {reservation?.enmax_acdnreservationnumber ?? "Reservation"}
+            {compositionPreview || "Reservation"}
           </DrawerHeaderTitle>
         </DrawerHeader>
 

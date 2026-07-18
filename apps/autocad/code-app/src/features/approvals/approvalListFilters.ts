@@ -8,7 +8,7 @@ export interface ApprovalListFilters {
   number: string;
   from: string;
   to: string;
-  /** When non-empty, row must match at least one person id (submitter or approver). */
+  /** When non-empty, row must match at least one person id. */
   peopleIds: string[];
 }
 
@@ -32,7 +32,7 @@ export function applyReservationApprovalFilters(
 
   return rows.filter((row) => {
     if (!inIsoDateRange(row.createdon, filters.from, filters.to)) return false;
-    if (!matchesOptionalPeople(filters.peopleIds, row.submittedById, row.approvedById)) return false;
+    if (!matchesOptionalPeople(filters.peopleIds, row.submittedById)) return false;
     if (!needle) return true;
     const haystack = [
       row.enmax_acdnreservationnumber ?? "",

@@ -30,6 +30,10 @@ import {
   type SearchTab,
 } from "./searchListFilters";
 import {
+  DOCUMENT_STATUS_OPTIONS,
+  type DocumentStatusSearchFilter,
+} from "./searchDocumentStatus";
+import {
   buildDocumentDetailUrl,
   filtersFromSearchParams,
   hasSearchPrefill,
@@ -38,6 +42,8 @@ import {
 import { usePageSize } from "../../config/usePageSize";
 
 const SEARCH_TOASTER_ID = "search-page-toaster";
+const NUMBER_FIELD_LABEL = "Drawing Document / Standard Document / Procedure / Form Number";
+const NUMBER_FIELD_PLACEHOLDER = "e.g. GG-CG-00-ECS-AST-DD-0001-001";
 
 const useStyles = makeStyles({
   root: {
@@ -86,6 +92,7 @@ function initialFilters(tab: SearchTab = "drawings"): SearchListFilters {
     from,
     to,
     documentSubtype: "all",
+    documentStatus: "all",
     peopleIds: [],
     composition: emptyComposition(),
   };
@@ -153,7 +160,7 @@ export function SearchPage() {
         dateTo: appliedFilters.to || null,
         peopleIds: appliedFilters.peopleIds.length > 0 ? appliedFilters.peopleIds : null,
       },
-      sort: { column: "number", direction: "desc" },
+      sort: { column: "createdon", direction: "desc" },
       page,
       pageSize,
     }),
@@ -187,6 +194,7 @@ export function SearchPage() {
       from: filterDraft.from,
       to: filterDraft.to,
       documentSubtype: filterDraft.documentSubtype,
+      documentStatus: filterDraft.documentStatus,
       peopleIds: [...filterDraft.peopleIds],
       composition: { ...filterDraft.composition },
     });
@@ -215,7 +223,7 @@ export function SearchPage() {
   }, [navigate]);
 
   const emptyMessage = activeTab === "reservations"
-    ? "No Drawing/Document Reservations found. Try a different reservation ID or reason."
+    ? "No reservations found for that Drawing/Document number. Try a different number or reason."
     : activeTab === "drawings"
       ? "No Drawing Documents Found. Try Widening The Numbering Group Filters Or The Date Range."
       : "No Standard Documents, Procedures, Or Forms Found. Try Adjusting Filters.";
@@ -226,9 +234,9 @@ export function SearchPage() {
       <div>
         <Title2 as="h1">Search</Title2>
         <Text className={styles.intro} size={300} block>
-          Find Drawing/Document Reservations, issued drawing documents, standard documents,
-          and procedure forms. Open a document to view detail or request Check Out when it is
-          Available.
+          Find Drawing/Document Reservations by issued number range, or issued drawing documents,
+          standard documents, procedures, and forms. Open a document to view detail or request
+          Check Out when it is Available.
         </Text>
       </div>
 
@@ -243,16 +251,8 @@ export function SearchPage() {
 
       <div className={styles.filters}>
         <GridQueryFilterBar
-          numberLabel={
-            activeTab === "reservations"
-              ? "Reservation ID or reason"
-              : "Drawing Document / Standard Document / Procedure / Form Number"
-          }
-          numberPlaceholder={
-            activeTab === "reservations"
-              ? "e.g. RES-1152 or pump replacement"
-              : "e.g. GG-CG-00-ECS-AST-DD-0001-001"
-          }
+          numberLabel={NUMBER_FIELD_LABEL}
+          numberPlaceholder={NUMBER_FIELD_PLACEHOLDER}
           draft={{ number: filterDraft.number, from: filterDraft.from, to: filterDraft.to }}
           onDraftChange={(patch) => setFilterDraft((prev) => ({ ...prev, ...patch }))}
           onQuery={handleQuery}
@@ -261,21 +261,39 @@ export function SearchPage() {
           personLabel="Submitted Or Approved By"
           peopleIds={filterDraft.peopleIds}
           onPeopleChange={(ids) => setFilterDraft((prev) => ({ ...prev, peopleIds: ids }))}
-          extraFields={activeTab === "documents" ? (
-            <Field label="Type">
-              <Select
-                value={filterDraft.documentSubtype}
-                onChange={(_, d) => setFilterDraft((prev) => ({
-                  ...prev,
-                  documentSubtype: d.value as DocumentSubtypeSearchFilter,
-                }))}
-                aria-label="Filter by document type"
-              >
-                {DOCUMENT_TYPE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </Select>
-            </Field>
+          extraFields={activeTab !== "reservations" ? (
+            <>
+              <Field label="Status">
+                <Select
+                  value={filterDraft.documentStatus}
+                  onChange={(_, d) => setFilterDraft((prev) => ({
+                    ...prev,
+                    documentStatus: d.value as DocumentStatusSearchFilter,
+                  }))}
+                  aria-label="Filter by document status"
+                >
+                  {DOCUMENT_STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </Select>
+              </Field>
+              {activeTab === "documents" && (
+                <Field label="Type">
+                  <Select
+                    value={filterDraft.documentSubtype}
+                    onChange={(_, d) => setFilterDraft((prev) => ({
+                      ...prev,
+                      documentSubtype: d.value as DocumentSubtypeSearchFilter,
+                    }))}
+                    aria-label="Filter by document type"
+                  >
+                    {DOCUMENT_TYPE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </Select>
+                </Field>
+              )}
+            </>
           ) : undefined}
         />
 

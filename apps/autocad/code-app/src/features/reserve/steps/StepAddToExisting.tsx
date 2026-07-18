@@ -140,14 +140,22 @@ export function StepAddToExisting({ onBack }: Props) {
   return (
     <div className={styles.root}>
       <Field
-        label={`Find an existing ${term.createsChildren ? `${term.baseNoun} number` : "coding"}`}
+        label={
+          documentSubtype === "Form"
+            ? "Find an existing procedure number"
+            : `Find an existing ${term.createsChildren ? `${term.baseNoun} number` : "coding"}`
+        }
         hint="Type at least 2 characters of the coding or number."
       >
         <Input
           value={rawQuery}
           onChange={(_, data) => setRawQuery(data.value)}
           contentBefore={<Search20Regular />}
-          placeholder="e.g. GG-CG-00-ECS-AST-DD"
+          placeholder={
+            documentSubtype === "Form"
+              ? "e.g. GG-9A-00-AES-AAA-PR-0001"
+              : "e.g. GG-CG-00-ECS-AST-DD"
+          }
         />
       </Field>
 

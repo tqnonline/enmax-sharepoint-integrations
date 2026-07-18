@@ -188,6 +188,15 @@
           },
           "inputs": "@{outputs('Get_CodeApp_BaseUrl_Config')?['body/value'][0]?['enmax_acdnvalue']}"
         },
+        "Compose_ReservationDeepLink": {
+          "type": "Compose",
+          "runAfter": {
+            "Compose_CodeApp_BaseUrl": [
+              "Succeeded"
+            ]
+          },
+          "inputs": "@{concat(outputs('Compose_CodeApp_BaseUrl'), '?target=reservation&id=', outputs('Get_Reservation')?['body/enmax_autocadreservationid'])}"
+        },
         "Compose_Document_Number": {
           "type": "Compose",
           "runAfter": {
@@ -204,6 +213,9 @@
               "Succeeded"
             ],
             "Compose_CodeApp_BaseUrl": [
+              "Succeeded"
+            ],
+            "Compose_ReservationDeepLink": [
               "Succeeded"
             ],
             "Compose_Document_Number": [
@@ -224,8 +236,8 @@
                     "body": {
                       "To": "@{outputs('Compose_DocControl')}",
                       "Cc": "",
-                      "Subject": "Check Out approval needed: @{outputs('Compose_Document_Number')}",
-                      "BodyHtml": "<p>A check-out request is awaiting approval.</p><p><strong>Document:</strong> @{replace(replace(outputs('Compose_Document_Number'), '<', '&lt;'), '>', '&gt;')}</p><p><strong>Requested by:</strong> @{replace(replace(triggerOutputs()?['body/_enmax_acdncheckedoutby_value@OData.Community.Display.V1.FormattedValue'], '<', '&lt;'), '>', '&gt;')}</p><p><strong>Reservation creator:</strong> @{replace(replace(outputs('Get_Reservation_Creator')?['body/fullname'], '<', '&lt;'), '>', '&gt;')} (@{outputs('Get_Reservation_Creator')?['body/internalemailaddress']})</p><p><a href=\"@{outputs('Compose_CodeApp_BaseUrl')}/approvals?section=documents&amp;tab=checkout\">Open Approvals</a></p>"
+                      "Subject": "Check-out approval needed for @{outputs('Compose_Document_Number')} requested by @{triggerOutputs()?['body/_enmax_acdncheckedoutby_value@OData.Community.Display.V1.FormattedValue']}.",
+                      "BodyHtml": "<div style=\"margin:0;padding:24px 0;background:#f4f4f4;font-family:'Segoe UI',Arial,sans-serif;color:#1a1a1a;\"><div style=\"max-width:600px;margin:0 auto;background:#ffffff;border-radius:10px;overflow:hidden;border:1px solid #e6e6e6;\"><div style=\"background:#E1393E;padding:22px 32px;\"><img src=\"cid:enmax_logo_white.png\" width=\"140\" height=\"65\" alt=\"ENMAX\" style=\"display:block;border:0;outline:none;text-decoration:none;\" /><div style=\"color:#ffffff;font-size:12px;letter-spacing:0.5px;opacity:0.92;margin-top:3px;\">EEC Generation Document Management</div></div><div style=\"padding:28px 32px;\"><h2 style=\"margin:0 0 10px;font-size:18px;\">Check-out approval needed</h2><p style=\"margin:0 0 8px;font-size:14px;line-height:1.5;color:#333;\">A team member has requested to check out a controlled document. Review the request and approve it so they can download and revise the file.</p><table style=\"width:100%;border-collapse:collapse;margin:16px 0 4px;font-size:14px;\"><tr><td style=\"padding:6px 0;color:#666;width:160px;vertical-align:top;\">Document</td><td style=\"padding:6px 0;font-weight:600;\">@{replace(replace(outputs('Compose_Document_Number'), '<', '&lt;'), '>', '&gt;')}</td></tr><tr><td style=\"padding:6px 0;color:#666;vertical-align:top;\">Requested by</td><td style=\"padding:6px 0;\">@{replace(replace(triggerOutputs()?['body/_enmax_acdncheckedoutby_value@OData.Community.Display.V1.FormattedValue'], '<', '&lt;'), '>', '&gt;')}</td></tr><tr><td style=\"padding:6px 0;color:#666;vertical-align:top;\">Reservation owner</td><td style=\"padding:6px 0;\">@{replace(replace(outputs('Get_Reservation_Creator')?['body/fullname'], '<', '&lt;'), '>', '&gt;')} (@{outputs('Get_Reservation_Creator')?['body/internalemailaddress']})</td></tr><tr><td style=\"padding:6px 0;color:#666;vertical-align:top;\">Status</td><td style=\"padding:6px 0;color:#E1393E;font-weight:600;\">Awaiting your approval</td></tr></table><div style=\"margin:24px 0 4px;\"><a href=\"@{outputs('Compose_CodeApp_BaseUrl')}?target=approvals&amp;section=documents&amp;tab=checkout\" style=\"display:inline-block;background:#E1393E;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;font-size:14px;\">Review check-out request</a></div><p style=\"margin:14px 0 0;font-size:12px;color:#888;line-height:1.5;\">After approval, the requester uploads the revised PDF to the drop-off library and then submits Check In for validation.</p></div><div style=\"padding:16px 32px;background:#faf0f0;border-top:1px solid #eee;font-size:12px;color:#777;\">Automated message from a no-reply mailbox &mdash; please don't reply. Use the button above or open the EEC Generation Document Management app to take action.</div></div></div>"
                     }
                   }
                 }
@@ -243,8 +255,8 @@
                     "body": {
                       "To": "@{outputs('Get_Reservation_Creator')?['body/internalemailaddress']}",
                       "Cc": "@{outputs('Compose_DocControl')}",
-                      "Subject": "Checked out: @{outputs('Compose_Document_Number')}",
-                      "BodyHtml": "<p>Your reserved document has been checked out.</p><p><strong>Document:</strong> @{outputs('Compose_Document_Number')}</p><p>Upload your revised PDF to the drop-off library, then submit Check In from the Code App.</p><p><a href=\"@{outputs('Compose_CodeApp_BaseUrl')}/my-items\">Open My Items</a></p>"
+                      "Subject": "@{outputs('Compose_Document_Number')} is now checked out to @{triggerOutputs()?['body/_enmax_acdncheckedoutby_value@OData.Community.Display.V1.FormattedValue']}.",
+                      "BodyHtml": "<div style=\"margin:0;padding:24px 0;background:#f4f4f4;font-family:'Segoe UI',Arial,sans-serif;color:#1a1a1a;\"><div style=\"max-width:600px;margin:0 auto;background:#ffffff;border-radius:10px;overflow:hidden;border:1px solid #e6e6e6;\"><div style=\"background:#E1393E;padding:22px 32px;\"><img src=\"cid:enmax_logo_white.png\" width=\"140\" height=\"65\" alt=\"ENMAX\" style=\"display:block;border:0;outline:none;text-decoration:none;\" /><div style=\"color:#ffffff;font-size:12px;letter-spacing:0.5px;opacity:0.92;margin-top:3px;\">EEC Generation Document Management</div></div><div style=\"padding:28px 32px;\"><h2 style=\"margin:0 0 10px;font-size:18px;\">Your document is checked out</h2><p style=\"margin:0 0 8px;font-size:14px;line-height:1.5;color:#333;\">Your check-out request was approved. The document below is now checked out to you and ready to revise.</p><table style=\"width:100%;border-collapse:collapse;margin:16px 0 4px;font-size:14px;\"><tr><td style=\"padding:6px 0;color:#666;width:160px;vertical-align:top;\">Document</td><td style=\"padding:6px 0;font-weight:600;\">@{outputs('Compose_Document_Number')}</td></tr><tr><td style=\"padding:6px 0;color:#666;vertical-align:top;\">Status</td><td style=\"padding:6px 0;color:#107C10;font-weight:600;\">Checked out to you</td></tr></table><p style=\"margin:18px 0 6px;font-size:14px;font-weight:600;\">Next steps</p><ol style=\"margin:0;padding-left:20px;font-size:14px;line-height:1.7;color:#333;\"><li>Download the current file and make your revisions.</li><li>Upload the revised PDF to the drop-off library.</li><li>Submit <strong>Check In</strong> from the app so Document Control can validate it.</li></ol><div style=\"margin:24px 0 4px;\"><a href=\"@{outputs('Compose_ReservationDeepLink')}\" style=\"display:inline-block;background:#E1393E;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;font-size:14px;\">Open reservation</a></div></div><div style=\"padding:16px 32px;background:#faf0f0;border-top:1px solid #eee;font-size:12px;color:#777;\">Automated message from a no-reply mailbox &mdash; please don't reply. Use the button above or open the EEC Generation Document Management app to take action.</div></div></div>"
                     }
                   }
                 }

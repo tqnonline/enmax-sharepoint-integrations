@@ -209,6 +209,11 @@ export function SearchResultsList({
                   <Badge appearance="tint" color="informative" size="small">{row.typeLabel}</Badge>
                   <Badge appearance="tint" color={stateColor} size="small">{row.stateLabel}</Badge>
                 </div>
+                {row.statusDetail && (
+                  <Text className={styles.meta} title={row.statusDetail}>
+                    {row.statusDetail}
+                  </Text>
+                )}
                 <Text className={styles.subtitle} title={row.filename || row.title}>
                   {row.filename || row.title || "—"}
                 </Text>

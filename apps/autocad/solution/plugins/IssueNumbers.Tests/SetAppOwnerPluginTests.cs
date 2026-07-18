@@ -105,5 +105,31 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             target.Contains("ownerid").Should().BeFalse(
                 because: "plugin must leave ownerid absent when config key is missing");
         }
+
+        // ─── Test 4: fail-open on Guid.Empty placeholder (legacy seed) ───────────
+
+        [Fact]
+        public void Create_EmptyGuidConfig_FailsOpenWithoutStampingOwner()
+        {
+            var ctx = new XrmFakedContext();
+            ctx.Initialize(new[]
+            {
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "AppOwnerTeamId",
+                    ["enmax_acdnvalue"] = Guid.Empty.ToString(),
+                },
+            });
+
+            var target    = new Entity("enmax_autocadbusiness") { Id = Guid.NewGuid() };
+            var pluginCtx = BuildPluginCtx(ctx, target);
+
+            Action execute = () => ctx.ExecutePluginWith<SetAppOwnerPlugin>(pluginCtx);
+
+            execute.Should().NotThrow(
+                because: "Guid.Empty parses but must not be stamped as ownerid");
+            target.Contains("ownerid").Should().BeFalse(
+                because: "legacy empty-GUID placeholder must fail-open like missing config");
+        }
     }
 }

@@ -2,25 +2,15 @@ import { useAppConfig } from "../../config/useAppConfig";
 import {
   DOCUMENT_SUBTYPE_VALUE,
   RESERVATION_TYPE_VALUE,
+  isBaseOnlyDocument,
 } from "../reserve/terminology";
 import { CheckoutStatus, DrawingState } from "../checkout/api/checkoutClient";
 import { SHEET_STATE_AWAITING_VALIDATION } from "../approvals/hooks/useDrawingSheets";
 
-function isBaseOnlyDocument(
-  reservationType?: number | null,
-  documentSubtype?: number | null,
-): boolean {
-  return reservationType === RESERVATION_TYPE_VALUE.Document
-    && (
-      documentSubtype === DOCUMENT_SUBTYPE_VALUE.Standard
-      || documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure
-    );
-}
-
 /**
  * Heather model: indexed SharePoint PDFs exist only on
- * - Standard / Procedure: `BB-AA-UU-DDD-SSS-KK-NNNN.pdf` (base drawing record)
- * - Drawing document / Form: `BB-AA-UU-DDD-SSS-KK-NNNN-SSS.pdf` (child sheet)
+ * - Drawing Document / Standard / Procedure: `BB-AA-UU-DDD-SSS-KK-NNNN.pdf` (base record)
+ * - Drawing / Form: `BB-AA-UU-DDD-SSS-KK-NNNN-SSS.pdf` (child sheet)
  */
 export function recordCarriesSharePointPdf(
   reservationType?: number | null,
@@ -119,6 +109,9 @@ export function gridSharePointFileUrl(
 export interface TaxonomyLibraryConfig {
   DrawingDropOffLibraryUrl?: string;
   DrawingDestinationLibraryUrl?: string;
+  DocumentDropOffLibraryUrl?: string;
+  DocumentDestinationLibraryUrl?: string;
+  // Legacy per-subtype fallbacks, kept for migration cutover (docs/drawing-document-subtype-CONTRACT.md).
   StandardDocumentDropOffLibraryUrl?: string;
   StandardDocumentDestinationLibraryUrl?: string;
   ProcedureDocumentDropOffLibraryUrl?: string;
@@ -133,9 +126,12 @@ export interface TaxonomyLibraryConfig {
 }
 
 /**
- * Resolve taxonomy library URLs from AppConfig with fallback chain:
- * taxonomy-specific key → legacy Drawings/Documents key → CheckInUploadLibraryUrl
- * for drop-off only (destination has no legacy single-library equivalent).
+ * Resolve taxonomy library URLs from AppConfig, keyed by reservation TYPE only
+ * (docs/drawing-document-subtype-CONTRACT.md — two pairs: Drawing* covers Drawing
+ * Document + Drawing, Document* covers Standard/Procedure/Form). Fallback chain:
+ * type pair → legacy Drawings/Documents key → old per-subtype key (Document only)
+ * → CheckInUploadLibraryUrl for drop-off only (destination has no legacy
+ * single-library equivalent).
  */
 export function resolveLibraryUrls(
   reservationType: number | null | undefined,
@@ -144,23 +140,8 @@ export function resolveLibraryUrls(
 ): { dropOff?: string; destination?: string } {
   const isDocument = reservationType === RESERVATION_TYPE_VALUE.Document;
 
-  let taxonomyDropOff: string | undefined;
-  let taxonomyDestination: string | undefined;
-  if (isDocument) {
-    if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Standard) {
-      taxonomyDropOff = config.StandardDocumentDropOffLibraryUrl;
-      taxonomyDestination = config.StandardDocumentDestinationLibraryUrl;
-    } else if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure) {
-      taxonomyDropOff = config.ProcedureDocumentDropOffLibraryUrl;
-      taxonomyDestination = config.ProcedureDocumentDestinationLibraryUrl;
-    } else if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Form) {
-      taxonomyDropOff = config.FormDocumentDropOffLibraryUrl;
-      taxonomyDestination = config.FormDocumentDestinationLibraryUrl;
-    }
-  } else {
-    taxonomyDropOff = config.DrawingDropOffLibraryUrl;
-    taxonomyDestination = config.DrawingDestinationLibraryUrl;
-  }
+  const typeDropOff = isDocument ? config.DocumentDropOffLibraryUrl : config.DrawingDropOffLibraryUrl;
+  const typeDestination = isDocument ? config.DocumentDestinationLibraryUrl : config.DrawingDestinationLibraryUrl;
 
   const legacyDropOff = isDocument
     ? config.DocumentsDropOffLibraryUrl
@@ -169,9 +150,24 @@ export function resolveLibraryUrls(
     ? config.DocumentsDestinationLibraryUrl
     : config.DrawingsDestinationLibraryUrl;
 
+  let oldSubtypeDropOff: string | undefined;
+  let oldSubtypeDestination: string | undefined;
+  if (isDocument) {
+    if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Standard) {
+      oldSubtypeDropOff = config.StandardDocumentDropOffLibraryUrl;
+      oldSubtypeDestination = config.StandardDocumentDestinationLibraryUrl;
+    } else if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure) {
+      oldSubtypeDropOff = config.ProcedureDocumentDropOffLibraryUrl;
+      oldSubtypeDestination = config.ProcedureDocumentDestinationLibraryUrl;
+    } else if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Form) {
+      oldSubtypeDropOff = config.FormDocumentDropOffLibraryUrl;
+      oldSubtypeDestination = config.FormDocumentDestinationLibraryUrl;
+    }
+  }
+
   return {
-    dropOff: taxonomyDropOff ?? legacyDropOff ?? config.CheckInUploadLibraryUrl,
-    destination: taxonomyDestination ?? legacyDestination,
+    dropOff: typeDropOff ?? legacyDropOff ?? oldSubtypeDropOff ?? config.CheckInUploadLibraryUrl,
+    destination: typeDestination ?? legacyDestination ?? oldSubtypeDestination,
   };
 }
 

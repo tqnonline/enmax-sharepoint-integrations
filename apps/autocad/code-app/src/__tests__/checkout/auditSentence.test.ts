@@ -1,4 +1,4 @@
-import { formatAuditSentence, lifecycleStepLabel } from "../../features/checkout/hooks/auditSentence";
+import { formatAuditSentence, lifecycleStepLabel, collapseDuplicateAllocated } from "../../features/checkout/hooks/auditSentence";
 import {
   DOCUMENT_SUBTYPE_VALUE,
   RESERVATION_TYPE_VALUE,
@@ -17,7 +17,7 @@ test("check-out request reads as a lifecycle sentence", () => {
   };
   expect(lifecycleStepLabel(ev)).toBe("Check-out requested");
   const s = formatAuditSentence(ev);
-  expect(s).toMatch(/^M365 Developer requested check-out for the drawing document on .+\.$/);
+  expect(s).toMatch(/^M365 Developer requested check-out for the drawing sheet on .+\.$/);
 });
 
 test("check-in completion reads as checked in", () => {
@@ -32,7 +32,7 @@ test("check-in completion reads as checked in", () => {
     createdOn: "2026-05-24T12:00:00Z",
   };
   expect(lifecycleStepLabel(ev)).toBe("Checked in");
-  expect(formatAuditSentence(ev)).toContain("Heather checked in the drawing document on");
+  expect(formatAuditSentence(ev)).toContain("Heather checked in the drawing sheet on");
 });
 
 test("allocation reads as allocated", () => {
@@ -46,7 +46,7 @@ test("allocation reads as allocated", () => {
     reason: "",
     createdOn: "2026-05-24T10:00:00Z",
   });
-  expect(s).toContain("Bob allocated the drawing document on");
+  expect(s).toContain("Bob allocated the drawing sheet on");
 });
 
 test("uses procedure form noun for procedure taxonomy", () => {
@@ -87,4 +87,43 @@ test("uses standard document noun for standard taxonomy", () => {
     },
   );
   expect(s).toContain("Carol finalized the standard document on");
+});
+
+test("collapseDuplicateAllocated keeps a single earliest Allocated row", () => {
+  const events = [
+    {
+      id: "a1",
+      event: 1,
+      eventLabel: "Created",
+      fromState: "",
+      toState: "Allocated",
+      actedBy: "SYSTEM",
+      reason: "",
+      createdOn: "2026-05-24T10:00:01Z",
+    },
+    {
+      id: "a0",
+      event: 1,
+      eventLabel: "Created",
+      fromState: "",
+      toState: "Allocated",
+      actedBy: "SYSTEM",
+      reason: "",
+      createdOn: "2026-05-24T10:00:00Z",
+    },
+    {
+      id: "c1",
+      event: 2,
+      eventLabel: "State Changed",
+      fromState: "Available",
+      toState: "CheckedOut",
+      actedBy: "Bob",
+      reason: "",
+      createdOn: "2026-05-24T11:00:00Z",
+    },
+  ];
+  const collapsed = collapseDuplicateAllocated(events);
+  expect(collapsed.filter((e) => e.toState === "Allocated")).toHaveLength(1);
+  expect(collapsed.find((e) => e.toState === "Allocated")?.id).toBe("a0");
+  expect(collapsed).toContainEqual(events[2]);
 });

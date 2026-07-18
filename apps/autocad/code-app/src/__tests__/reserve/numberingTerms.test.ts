@@ -18,7 +18,7 @@ import {
 
 describe("numberingTerms", () => {
   it("exposes Heather numbering group label and pattern", () => {
-    expect(NUMBERING_GROUP_LABEL).toBe("Drawing/Document Numbering Group");
+    expect(NUMBERING_GROUP_LABEL).toBe("Coding Sequence");
     expect(NUMBERING_GROUP_PATTERN).toBe("BB-AA-UU-DDD-SSS-KK");
   });
 
@@ -53,7 +53,11 @@ describe("numberingTerms", () => {
   });
 
   it("maps taxonomy to individual item labels", () => {
-    expect(individualItemLabel(RESERVATION_TYPE_VALUE.Drawing)).toBe("Drawing Document");
+    expect(individualItemLabel(RESERVATION_TYPE_VALUE.Drawing, DOCUMENT_SUBTYPE_VALUE.Drawing))
+      .toBe("Drawing Sheet");
+    expect(
+      individualItemLabel(RESERVATION_TYPE_VALUE.Drawing, DOCUMENT_SUBTYPE_VALUE.DrawingDocument),
+    ).toBe("Drawing Document");
     expect(
       individualItemLabel(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Standard),
     ).toBe("Standard Document");
@@ -63,7 +67,8 @@ describe("numberingTerms", () => {
     expect(
       individualItemLabel(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Form),
     ).toBe("Form");
-    expect(individualItemLabelPlural(RESERVATION_TYPE_VALUE.Drawing)).toBe("Drawing Documents");
+    expect(individualItemLabelPlural(RESERVATION_TYPE_VALUE.Drawing, DOCUMENT_SUBTYPE_VALUE.Drawing))
+      .toBe("Drawing Sheets");
     expect(
       individualItemLabelPlural(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Form),
     ).toBe("Forms");

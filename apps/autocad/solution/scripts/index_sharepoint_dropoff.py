@@ -2,8 +2,8 @@
 """
 WS5 SharePoint indexer (DEV/UAT helper).
 
-Scans the four taxonomy-specific drop-off/destination libraries (Drawing,
-Standard Document, Procedure, Form) for PDFs, then:
+Scans the two type-level SharePoint library pairs (Drawing* and Document*) for
+PDFs, then:
   - upserts FoundFiles metadata via enmax_acdnUpsertSharePointLinks for every
     known drawing/sheet record, and
   - for a destination-library PDF with NO matching Dataverse record, calls
@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 import sys
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -42,33 +43,44 @@ import seed  # noqa: E402
 import sharepoint_graph as spg  # noqa: E402
 from seed_sharepoint_placeholders_dev import (  # noqa: E402
     _child_number,
-    _is_base_only_document,
     _normalize_library_url,
     _option_value,
     _require,
 )
+from taxonomy_predicates import (  # noqa: E402
+    is_base_only_document as _is_base_only_document,
+    taxonomy_label_from_record_type,
+)
 
-TAXONOMIES = ("Drawing", "Standard", "Procedure", "Form")
-
-# Per-taxonomy (dropOff, destination) App Config key pairs.
+# Two library pairs only (docs/drawing-document-subtype-CONTRACT.md): Drawing
+# (incl. Drawing Document) and Document (Standard/Procedure/Form — Kind-
+# classified, see _classify_orphan_taxonomy_subtype). Legacy per-taxonomy and
+# plural keys are read-only fallbacks during cutover.
 TAXONOMY_CONFIG_KEYS: dict[str, tuple[str, str]] = {
-    "Drawing":   ("DrawingDropOffLibraryUrl", "DrawingDestinationLibraryUrl"),
-    "Standard":  ("StandardDocumentDropOffLibraryUrl", "StandardDocumentDestinationLibraryUrl"),
-    "Procedure": ("ProcedureDocumentDropOffLibraryUrl", "ProcedureDocumentDestinationLibraryUrl"),
-    "Form":      ("FormDocumentDropOffLibraryUrl", "FormDocumentDestinationLibraryUrl"),
+    "Drawing":  ("DrawingDropOffLibraryUrl", "DrawingDestinationLibraryUrl"),
+    "Document": ("DocumentDropOffLibraryUrl", "DocumentDestinationLibraryUrl"),
 }
 
-# Legacy plural keys (Drawings*/Documents*) used before the per-taxonomy split.
-# Read only as a fallback when the taxonomy-specific key is unset.
-LEGACY_FALLBACK_KEYS: dict[str, str] = {
-    "DrawingDropOffLibraryUrl": "DrawingsDropOffLibraryUrl",
-    "DrawingDestinationLibraryUrl": "DrawingsDestinationLibraryUrl",
-    "StandardDocumentDropOffLibraryUrl": "DocumentsDropOffLibraryUrl",
-    "StandardDocumentDestinationLibraryUrl": "DocumentsDestinationLibraryUrl",
-    "ProcedureDocumentDropOffLibraryUrl": "DocumentsDropOffLibraryUrl",
-    "ProcedureDocumentDestinationLibraryUrl": "DocumentsDestinationLibraryUrl",
-    "FormDocumentDropOffLibraryUrl": "DocumentsDropOffLibraryUrl",
-    "FormDocumentDestinationLibraryUrl": "DocumentsDestinationLibraryUrl",
+# Fallback chain (in order) for each primary key, tried when the primary key
+# is unset. Drawing falls back to the legacy plural Drawings* key; Document
+# falls back to the legacy plural Documents* key, then to the (now-retired)
+# per-taxonomy Standard/Procedure/Form keys, in case only one of those was
+# ever configured for an environment mid-cutover.
+FALLBACK_KEY_CHAINS: dict[str, tuple[str, ...]] = {
+    "DrawingDropOffLibraryUrl": ("DrawingsDropOffLibraryUrl",),
+    "DrawingDestinationLibraryUrl": ("DrawingsDestinationLibraryUrl",),
+    "DocumentDropOffLibraryUrl": (
+        "DocumentsDropOffLibraryUrl",
+        "StandardDocumentDropOffLibraryUrl",
+        "ProcedureDocumentDropOffLibraryUrl",
+        "FormDocumentDropOffLibraryUrl",
+    ),
+    "DocumentDestinationLibraryUrl": (
+        "DocumentsDestinationLibraryUrl",
+        "StandardDocumentDestinationLibraryUrl",
+        "ProcedureDocumentDestinationLibraryUrl",
+        "FormDocumentDestinationLibraryUrl",
+    ),
 }
 
 OTHER_CONFIG_KEYS = (
@@ -78,7 +90,22 @@ OTHER_CONFIG_KEYS = (
     "SharePointIndexerIncrementalHours",
     "SharePointRecordTypeMap",
     "SharePointSiteUrl",
+    "StandardDocumentKindCodes",
+    "ProcedureDocumentKindCodes",
 )
+
+RESERVATION_TYPE_DRAWING = 1
+RESERVATION_TYPE_DOCUMENT = 2
+DOCUMENT_SUBTYPE_DRAWING_DOCUMENT = 1
+DOCUMENT_SUBTYPE_DRAWING = 2
+DOCUMENT_SUBTYPE_STANDARD = 3
+DOCUMENT_SUBTYPE_PROCEDURE = 4
+DOCUMENT_SUBTYPE_FORM = 5
+
+# A child (sheet) filename ends in a literal dash then exactly three digits
+# (Rule: -sss ceiling of 999 items). Mirrors CreateSharePointImportStubPlugin's
+# ChildSuffixPattern.
+_CHILD_SUFFIX_RE = re.compile(r"-\d{3}$")
 
 CSV_COLUMNS = (
     "Timestamp", "RunType", "CorrelationId", "RecordNumber", "EntityType",
@@ -87,9 +114,11 @@ CSV_COLUMNS = (
 
 
 def _library_url_keys() -> set[str]:
-    keys = set(LEGACY_FALLBACK_KEYS.values())
+    keys: set[str] = set()
     for pair in TAXONOMY_CONFIG_KEYS.values():
         keys.update(pair)
+    for chain in FALLBACK_KEY_CHAINS.values():
+        keys.update(chain)
     return keys
 
 
@@ -112,12 +141,25 @@ def _fetch_all_app_config(sess: requests.Session, url: str, token: str) -> dict[
     return out
 
 
+def _resolve_key(cfg: dict[str, str], primary_key: str) -> str:
+    """First non-empty value among the primary key and its fallback chain."""
+    value = cfg.get(primary_key, "").strip()
+    if value:
+        return value
+    for fallback in FALLBACK_KEY_CHAINS.get(primary_key, ()):
+        value = cfg.get(fallback, "").strip()
+        if value:
+            return value
+    return ""
+
+
 def _resolve_taxonomy_libraries(cfg: dict[str, str]) -> dict[str, tuple[str, str]]:
-    """Per-taxonomy (dropOffUrl, destinationUrl), falling back to legacy plural keys."""
+    """Per-taxonomy (dropOffUrl, destinationUrl): Drawing and Document pairs
+    only, each falling back through FALLBACK_KEY_CHAINS during cutover."""
     resolved: dict[str, tuple[str, str]] = {}
     for taxonomy, (drop_key, dest_key) in TAXONOMY_CONFIG_KEYS.items():
-        drop_url = cfg.get(drop_key, "").strip() or cfg.get(LEGACY_FALLBACK_KEYS[drop_key], "").strip()
-        dest_url = cfg.get(dest_key, "").strip() or cfg.get(LEGACY_FALLBACK_KEYS[dest_key], "").strip()
+        drop_url = _resolve_key(cfg, drop_key)
+        dest_url = _resolve_key(cfg, dest_key)
         resolved[taxonomy] = (drop_url.rstrip("/"), dest_url.rstrip("/"))
     return resolved
 
@@ -151,24 +193,89 @@ def _load_record_type_map(cfg: dict[str, str]) -> dict[str, str]:
     return {str(k): str(v) for k, v in parsed.items() if isinstance(v, str)}
 
 
-def _resolve_orphan_taxonomy(
+def _kind_code_set(cfg: dict[str, str], key: str) -> set[str]:
+    raw = cfg.get(key, "")
+    return {code.strip() for code in raw.split(",") if code.strip()}
+
+
+def _has_child_suffix(file_name: str) -> bool:
+    stem = file_name[:-4] if file_name.lower().endswith(".pdf") else file_name
+    return bool(_CHILD_SUFFIX_RE.search(stem))
+
+
+def _classify_orphan_taxonomy_subtype(
     entry: dict,
     library_taxonomies: set[str],
-    record_type_map: dict[str, str],
-) -> str | None:
-    """Best-effort taxonomy for an unmatched destination PDF.
+    standard_kinds: set[str],
+    procedure_kinds: set[str],
+    record_type_map: dict[str, str] | None = None,
+) -> tuple[int, int] | None:
+    """Classify an unmatched destination PDF into (reservationType, documentSubtype).
 
-    Prefers the SharePoint Record Type column (mapped via SharePointRecordTypeMap)
-    since a destination library is often shared across taxonomies; falls back to
-    the sole taxonomy when the library URL is taxonomy-specific. Returns None
-    (skip, don't guess) when neither source resolves it.
+    Never guesses:
+      - Drawing library: no -SSS suffix -> Drawing Document (1); -SSS -> Drawing (2).
+        Kind is irrelevant here — StandardDocumentKindCodes/ProcedureDocumentKindCodes
+        only ever apply to the Document library.
+      - Document library: -SSS -> Form (5); Kind CSV -> Standard/Procedure; else
+        SharePointRecordTypeMap / Record Type label fallback; otherwise skip.
+      - Any other case (library shared by/ambiguous between taxonomies, or neither
+        configured) is skipped — a physical library must map to exactly one taxonomy
+        for this to resolve.
     """
-    record_type_sp = entry.get("recordTypeSp")
-    if record_type_sp and record_type_sp in record_type_map:
-        return record_type_map[record_type_sp]
-    if len(library_taxonomies) == 1:
-        return next(iter(library_taxonomies))
+    file_name = entry.get("fileName", "")
+    record_type_map = record_type_map or {}
+
+    if library_taxonomies == {"Drawing"}:
+        if _has_child_suffix(file_name):
+            return (RESERVATION_TYPE_DRAWING, DOCUMENT_SUBTYPE_DRAWING)
+        # Optional Record Type override (e.g. "Drawing Document" vs "Drawing Number")
+        mapped = taxonomy_label_from_record_type(entry.get("recordTypeSp") or "", record_type_map)
+        if mapped == "Drawing":
+            return (RESERVATION_TYPE_DRAWING, DOCUMENT_SUBTYPE_DRAWING)
+        return (RESERVATION_TYPE_DRAWING, DOCUMENT_SUBTYPE_DRAWING_DOCUMENT)
+
+    if library_taxonomies == {"Document"}:
+        # Numbered -SSS wins over Kind / Record Type.
+        if _has_child_suffix(file_name):
+            return (RESERVATION_TYPE_DOCUMENT, DOCUMENT_SUBTYPE_FORM)
+        kind = (entry.get("kindSp") or "").strip()
+        if kind and kind in standard_kinds:
+            return (RESERVATION_TYPE_DOCUMENT, DOCUMENT_SUBTYPE_STANDARD)
+        if kind and kind in procedure_kinds:
+            return (RESERVATION_TYPE_DOCUMENT, DOCUMENT_SUBTYPE_PROCEDURE)
+        mapped = taxonomy_label_from_record_type(entry.get("recordTypeSp") or "", record_type_map)
+        if mapped == "Standard":
+            return (RESERVATION_TYPE_DOCUMENT, DOCUMENT_SUBTYPE_STANDARD)
+        if mapped == "Procedure":
+            return (RESERVATION_TYPE_DOCUMENT, DOCUMENT_SUBTYPE_PROCEDURE)
+        if mapped == "Form":
+            return (RESERVATION_TYPE_DOCUMENT, DOCUMENT_SUBTYPE_FORM)
+        return None
+
     return None
+
+
+_TAXONOMY_LABEL_BY_DOCUMENT_SUBTYPE: dict[int, str] = {
+    DOCUMENT_SUBTYPE_DRAWING_DOCUMENT: "DrawingDocument",
+    DOCUMENT_SUBTYPE_DRAWING: "Drawing",
+    DOCUMENT_SUBTYPE_STANDARD: "Standard",
+    DOCUMENT_SUBTYPE_PROCEDURE: "Procedure",
+    DOCUMENT_SUBTYPE_FORM: "Form",
+}
+
+
+def _taxonomy_label_for_subtype(reservation_type: int, document_subtype: int) -> str:
+    """Map a classified (reservationType, documentSubtype) pair to the Taxonomy
+    string accepted by enmax_acdnCreateSharePointImportStub
+    (CreateSharePointImportStubPlugin.ParseTaxonomy).
+    """
+    label = _TAXONOMY_LABEL_BY_DOCUMENT_SUBTYPE.get(document_subtype)
+    if label is None:
+        raise ValueError(
+            f"No stub Taxonomy label for reservationType={reservation_type} "
+            f"documentSubtype={document_subtype}"
+        )
+    return label
 
 
 def _parse_graph_datetime(value: str | None) -> datetime | None:
@@ -513,6 +620,8 @@ def main() -> int:
     # drawing/sheet. Never done for drop-off — that library is a working area.
     orphan_created = 0
     orphan_skipped = 0
+    standard_kinds = _kind_code_set(cfg, "StandardDocumentKindCodes")
+    procedure_kinds = _kind_code_set(cfg, "ProcedureDocumentKindCodes")
     record_type_map = _load_record_type_map(cfg)
     for token, entries in file_index.items():
         if token in matched_tokens:
@@ -520,20 +629,24 @@ def main() -> int:
         for entry in entries:
             if entry["libraryKind"] != "Destination":
                 continue
-            taxonomy = _resolve_orphan_taxonomy(entry, entry["taxonomies"], record_type_map)
-            if taxonomy is None:
+            classified = _classify_orphan_taxonomy_subtype(
+                entry, entry["taxonomies"], standard_kinds, procedure_kinds, record_type_map,
+            )
+            if classified is None:
                 orphan_skipped += 1
-                print(f"ORPHAN SKIP {entry['fileName']}: cannot resolve taxonomy", file=sys.stderr)
+                print(f"ORPHAN SKIP {entry['fileName']}: cannot classify taxonomy/subtype", file=sys.stderr)
                 log_rows.append(_log_row(
                     record_number="", entity_type="", entity_id="", library_kind="Destination",
                     action="OrphanSkipped", file_url=entry.get("absoluteUrl", ""),
-                    notes="Cannot resolve taxonomy (no unique library + no Record Type match)",
+                    notes="Cannot classify taxonomy/subtype (ambiguous library, Kind, or Record Type)",
                 ))
                 continue
+            reservation_type, document_subtype = classified
+            taxonomy = _taxonomy_label_for_subtype(reservation_type, document_subtype)
             try:
                 result = _create_import_stub(sess, dv_url, dv_token, entry, taxonomy)
                 orphan_created += 1
-                print(f"ORPHAN STUB {entry['fileName']} -> {taxonomy} "
+                print(f"ORPHAN STUB {entry['fileName']} -> {taxonomy} (subtype={document_subtype}) "
                       f"(drawing {result.get('DrawingId')}, created={result.get('Created')})")
                 log_rows.append(_log_row(
                     record_number=result.get("RecordNumber", ""), entity_type=taxonomy,

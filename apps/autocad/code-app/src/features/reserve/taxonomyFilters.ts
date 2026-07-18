@@ -19,6 +19,23 @@ export function effectiveTypeFilter(
   return "documents";
 }
 
+/**
+ * Taxonomy to search when picking an Existing base.
+ * Form is Existing-only and appends under a Procedure number (not a Form base).
+ */
+export function existingBaseSearchTaxonomy(
+  reservationType: ReserveForm["reservationType"],
+  documentSubtype?: ReserveForm["documentSubtype"],
+): {
+  reservationType: ReserveForm["reservationType"];
+  documentSubtype: ReserveForm["documentSubtype"];
+} {
+  if (reservationType === "Document" && documentSubtype === "Form") {
+    return { reservationType: "Document", documentSubtype: "Procedure" };
+  }
+  return { reservationType, documentSubtype };
+}
+
 /** OData filter matching WS1a taxonomy on reservation/drawing rows (ADR 0001). */
 export function taxonomyFilterClause(
   reservationType: ReserveForm["reservationType"],
@@ -32,6 +49,7 @@ export function taxonomyFilterClause(
       return `(enmax_acdnreservationtype eq ${RESERVATION_TYPE_VALUE.Document} and enmax_acdndocumentsubtype eq ${DOCUMENT_SUBTYPE_VALUE.Procedure})`;
     }
     if (documentSubtype === "Form") {
+      // Prefer Procedure host search via existingBaseSearchTaxonomy; keep Form clause for direct use.
       return `(enmax_acdnreservationtype eq ${RESERVATION_TYPE_VALUE.Document} and enmax_acdndocumentsubtype eq ${DOCUMENT_SUBTYPE_VALUE.Form})`;
     }
   }

@@ -472,15 +472,17 @@ class TestUpsertAppConfigPatches:
         with (
             patch.object(
                 client, "_get",
-                return_value={"value": [{"enmax_autocadappconfigid": existing_id}]},
+                return_value={"value": [{"enmax_autocadappconfigid": existing_id, "enmax_acdnvalue": "old"}]},
             ),
             patch.object(client, "_patch") as mock_patch,
             patch.object(client, "_post") as mock_post,
+            patch.object(client, "_delete") as mock_delete,
         ):
             upsert_app_config(client, "AppOwnerTeamId", "team-abc")
 
         mock_patch.assert_called_once()
         mock_post.assert_not_called()
+        mock_delete.assert_not_called()
         patch_path = mock_patch.call_args[0][0]
         assert existing_id in patch_path, (
             f"PATCH path must include the config id; got: {patch_path}"
@@ -505,11 +507,13 @@ class TestUpsertAppConfigPosts:
             patch.object(client, "_get", return_value={"value": []}),
             patch.object(client, "_patch") as mock_patch,
             patch.object(client, "_post", return_value=mock_resp) as mock_post,
+            patch.object(client, "_delete") as mock_delete,
         ):
             upsert_app_config(client, "AppOwnerTeamId", "team-xyz")
 
         mock_post.assert_called_once()
         mock_patch.assert_not_called()
+        mock_delete.assert_not_called()
         post_args = mock_post.call_args[0]
         assert post_args[0] == "enmax_autocadappconfigs", (
             f"POST path must be 'enmax_autocadappconfigs'; got: {post_args[0]}"
@@ -518,3 +522,38 @@ class TestUpsertAppConfigPosts:
         assert post_body == {"enmax_acdnkey": "AppOwnerTeamId", "enmax_acdnvalue": "team-xyz"}, (
             f"POST body mismatch: {post_body}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Test 10: upsert_app_config dedupes duplicate keys (keep real GUID, delete empty)
+# ---------------------------------------------------------------------------
+
+class TestUpsertAppConfigDedupes:
+    """Duplicate AppOwnerTeamId rows must collapse to one real value."""
+
+    def test_upsert_keeps_non_empty_and_deletes_empty_duplicate(self):
+        client = _make_client()
+        empty_id = "cfg-empty"
+        real_id = "cfg-real"
+        empty_guid = "00000000-0000-0000-0000-000000000000"
+
+        with (
+            patch.object(
+                client, "_get",
+                return_value={"value": [
+                    {"enmax_autocadappconfigid": empty_id, "enmax_acdnvalue": empty_guid},
+                    {"enmax_autocadappconfigid": real_id, "enmax_acdnvalue": "team-keep"},
+                ]},
+            ),
+            patch.object(client, "_patch") as mock_patch,
+            patch.object(client, "_post") as mock_post,
+            patch.object(client, "_delete") as mock_delete,
+        ):
+            upsert_app_config(client, "AppOwnerTeamId", "team-new")
+
+        mock_post.assert_not_called()
+        mock_patch.assert_called_once()
+        assert real_id in mock_patch.call_args[0][0]
+        assert mock_patch.call_args[0][1] == {"enmax_acdnvalue": "team-new"}
+        mock_delete.assert_called_once()
+        assert empty_id in mock_delete.call_args[0][0]

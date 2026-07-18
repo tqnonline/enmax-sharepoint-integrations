@@ -35,17 +35,12 @@ namespace Enmax.AutoCAD
         }
 
         /// <summary>
-        /// Resolves per-taxonomy checkout/check-in AppConfig keys (ADR 0001).
-        /// Legacy rows with null reservation type behave as Drawing.
+        /// Resolves per-taxonomy checkout/check-in AppConfig keys
+        /// (docs/drawing-document-subtype-CONTRACT.md). Legacy rows with null
+        /// reservation type/subtype behave as Drawing.
         /// </summary>
         public static class TaxonomyCheckoutConfig
         {
-            private const int ReservationTypeDrawing  = 1;
-            private const int ReservationTypeDocument = 2;
-            private const int DocumentSubtypeStandard = 1;
-            private const int DocumentSubtypeProcedure = 2;
-            private const int DocumentSubtypeForm = 3;
-
             public static bool IsCheckoutEnabled(
                 IOrganizationService service,
                 int? reservationType,
@@ -60,85 +55,114 @@ namespace Enmax.AutoCAD
 
             private static string ResolveCheckoutKey(int? reservationType, int? documentSubtype)
             {
-                if (reservationType == ReservationTypeDocument)
+                if (reservationType == TaxonomyConstants.ReservationType.Drawing
+                    && documentSubtype == TaxonomyConstants.DocumentSubtype.DrawingDocument)
+                    return "EnableDrawingDocumentCheckout";
+
+                if (reservationType == TaxonomyConstants.ReservationType.Document)
                 {
-                    if (documentSubtype == DocumentSubtypeStandard) return "EnableStandardCheckout";
-                    if (documentSubtype == DocumentSubtypeProcedure) return "EnableProcedureCheckout";
-                    if (documentSubtype == DocumentSubtypeForm) return "EnableFormCheckout";
+                    if (documentSubtype == TaxonomyConstants.DocumentSubtype.Standard) return "EnableStandardCheckout";
+                    if (documentSubtype == TaxonomyConstants.DocumentSubtype.Procedure) return "EnableProcedureCheckout";
+                    if (documentSubtype == TaxonomyConstants.DocumentSubtype.Form) return "EnableFormCheckout";
                 }
                 return "EnableDrawingCheckout";
             }
 
             private static string ResolveCheckInKey(int? reservationType, int? documentSubtype)
             {
-                if (reservationType == ReservationTypeDocument)
+                if (reservationType == TaxonomyConstants.ReservationType.Drawing
+                    && documentSubtype == TaxonomyConstants.DocumentSubtype.DrawingDocument)
+                    return "EnableDrawingDocumentCheckIn";
+
+                if (reservationType == TaxonomyConstants.ReservationType.Document)
                 {
-                    if (documentSubtype == DocumentSubtypeStandard) return "EnableStandardCheckIn";
-                    if (documentSubtype == DocumentSubtypeProcedure) return "EnableProcedureCheckIn";
-                    if (documentSubtype == DocumentSubtypeForm) return "EnableFormCheckIn";
+                    if (documentSubtype == TaxonomyConstants.DocumentSubtype.Standard) return "EnableStandardCheckIn";
+                    if (documentSubtype == TaxonomyConstants.DocumentSubtype.Procedure) return "EnableProcedureCheckIn";
+                    if (documentSubtype == TaxonomyConstants.DocumentSubtype.Form) return "EnableFormCheckIn";
                 }
                 return "EnableDrawingCheckIn";
             }
         }
 
         /// <summary>
-        /// Resolves per-taxonomy SharePoint drop-off/destination library URLs.
-        /// Fallback chain: taxonomy-specific key → legacy Drawings/Documents key →
-        /// (drop-off only) CheckInUploadLibraryUrl. Mirrors the TypeScript
-        /// resolveLibraryUrls in apps/code-app/src/features/sharepoint/sharepointUrls.ts.
+        /// Resolves SharePoint drop-off/destination library URLs by reservation TYPE only
+        /// (docs/drawing-document-subtype-CONTRACT.md) — Drawing (incl. Drawing Document)
+        /// uses the Drawing* pair; Document (Standard/Procedure/Form) uses the Document*
+        /// pair. Fallback chain: type key → legacy plural Drawings*/Documents* key → (Document
+        /// only) old subtype-specific key from the pre-remap taxonomy → (drop-off only)
+        /// CheckInUploadLibraryUrl. Mirrors the TypeScript resolveLibraryUrls in
+        /// apps/code-app/src/features/sharepoint/sharepointUrls.ts.
         /// </summary>
         public static class TaxonomyLibraryConfig
         {
-            private const int ReservationTypeDocument = 2;
-            private const int DocumentSubtypeStandard = 1;
-            private const int DocumentSubtypeProcedure = 2;
-            private const int DocumentSubtypeForm = 3;
+            public static string ResolveDropOffKey(int? reservationType)
+                => reservationType == TaxonomyConstants.ReservationType.Document
+                    ? "DocumentDropOffLibraryUrl"
+                    : "DrawingDropOffLibraryUrl";
 
-            public static string ResolveDropOffKey(int? reservationType, int? documentSubtype)
-            {
-                if (reservationType == ReservationTypeDocument)
-                {
-                    if (documentSubtype == DocumentSubtypeStandard) return "StandardDocumentDropOffLibraryUrl";
-                    if (documentSubtype == DocumentSubtypeProcedure) return "ProcedureDocumentDropOffLibraryUrl";
-                    if (documentSubtype == DocumentSubtypeForm) return "FormDocumentDropOffLibraryUrl";
-                }
-                return "DrawingDropOffLibraryUrl";
-            }
-
-            public static string ResolveDestinationKey(int? reservationType, int? documentSubtype)
-            {
-                if (reservationType == ReservationTypeDocument)
-                {
-                    if (documentSubtype == DocumentSubtypeStandard) return "StandardDocumentDestinationLibraryUrl";
-                    if (documentSubtype == DocumentSubtypeProcedure) return "ProcedureDocumentDestinationLibraryUrl";
-                    if (documentSubtype == DocumentSubtypeForm) return "FormDocumentDestinationLibraryUrl";
-                }
-                return "DrawingDestinationLibraryUrl";
-            }
+            public static string ResolveDestinationKey(int? reservationType)
+                => reservationType == TaxonomyConstants.ReservationType.Document
+                    ? "DocumentDestinationLibraryUrl"
+                    : "DrawingDestinationLibraryUrl";
 
             private static string LegacyDropOffKey(int? reservationType)
-                => reservationType == ReservationTypeDocument ? "DocumentsDropOffLibraryUrl" : "DrawingsDropOffLibraryUrl";
+                => reservationType == TaxonomyConstants.ReservationType.Document
+                    ? "DocumentsDropOffLibraryUrl"
+                    : "DrawingsDropOffLibraryUrl";
 
             private static string LegacyDestinationKey(int? reservationType)
-                => reservationType == ReservationTypeDocument ? "DocumentsDestinationLibraryUrl" : "DrawingsDestinationLibraryUrl";
+                => reservationType == TaxonomyConstants.ReservationType.Document
+                    ? "DocumentsDestinationLibraryUrl"
+                    : "DrawingsDestinationLibraryUrl";
+
+            /// <summary>Pre-remap per-subtype keys, retained as a final fallback for Document during cutover.</summary>
+            private static string OldSubtypeDropOffKey(int? reservationType, int? documentSubtype)
+            {
+                if (reservationType != TaxonomyConstants.ReservationType.Document) return null;
+                if (documentSubtype == TaxonomyConstants.DocumentSubtype.Standard) return "StandardDocumentDropOffLibraryUrl";
+                if (documentSubtype == TaxonomyConstants.DocumentSubtype.Procedure) return "ProcedureDocumentDropOffLibraryUrl";
+                if (documentSubtype == TaxonomyConstants.DocumentSubtype.Form) return "FormDocumentDropOffLibraryUrl";
+                return null;
+            }
+
+            /// <summary>Pre-remap per-subtype keys, retained as a final fallback for Document during cutover.</summary>
+            private static string OldSubtypeDestinationKey(int? reservationType, int? documentSubtype)
+            {
+                if (reservationType != TaxonomyConstants.ReservationType.Document) return null;
+                if (documentSubtype == TaxonomyConstants.DocumentSubtype.Standard) return "StandardDocumentDestinationLibraryUrl";
+                if (documentSubtype == TaxonomyConstants.DocumentSubtype.Procedure) return "ProcedureDocumentDestinationLibraryUrl";
+                if (documentSubtype == TaxonomyConstants.DocumentSubtype.Form) return "FormDocumentDestinationLibraryUrl";
+                return null;
+            }
 
             public static string GetDropOffUrl(IOrganizationService service, int? reservationType, int? documentSubtype)
             {
-                string taxonomy = GetValue(service, ResolveDropOffKey(reservationType, documentSubtype));
-                if (!string.IsNullOrWhiteSpace(taxonomy)) return taxonomy;
+                string typeKey = GetValue(service, ResolveDropOffKey(reservationType));
+                if (!string.IsNullOrWhiteSpace(typeKey)) return typeKey;
 
                 string legacy = GetValue(service, LegacyDropOffKey(reservationType));
                 if (!string.IsNullOrWhiteSpace(legacy)) return legacy;
+
+                string oldSubtypeKey = OldSubtypeDropOffKey(reservationType, documentSubtype);
+                if (oldSubtypeKey != null)
+                {
+                    string oldSubtype = GetValue(service, oldSubtypeKey);
+                    if (!string.IsNullOrWhiteSpace(oldSubtype)) return oldSubtype;
+                }
 
                 return GetValue(service, "CheckInUploadLibraryUrl");
             }
 
             public static string GetDestinationUrl(IOrganizationService service, int? reservationType, int? documentSubtype)
             {
-                string taxonomy = GetValue(service, ResolveDestinationKey(reservationType, documentSubtype));
-                if (!string.IsNullOrWhiteSpace(taxonomy)) return taxonomy;
+                string typeKey = GetValue(service, ResolveDestinationKey(reservationType));
+                if (!string.IsNullOrWhiteSpace(typeKey)) return typeKey;
 
-                return GetValue(service, LegacyDestinationKey(reservationType));
+                string legacy = GetValue(service, LegacyDestinationKey(reservationType));
+                if (!string.IsNullOrWhiteSpace(legacy)) return legacy;
+
+                string oldSubtypeKey = OldSubtypeDestinationKey(reservationType, documentSubtype);
+                return oldSubtypeKey != null ? GetValue(service, oldSubtypeKey) : null;
             }
         }
     }

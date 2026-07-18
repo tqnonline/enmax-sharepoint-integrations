@@ -140,8 +140,9 @@ function resetFiltersForTab(tab: MyRecordTabFilter, state: MyRecordStateFilter):
   return buildMyItemsFilters(tab, state, "all");
 }
 
-function personFilterLabel(state: MyRecordStateFilter): string {
-  if (state === "reservations") return "Submitted or approved by";
+/** Person filter is omitted on My Reservations — rows are always the logged-in user. */
+function personFilterLabel(state: MyRecordStateFilter): string | undefined {
+  if (state === "reservations") return undefined;
   if (state === "available") return "Created or checked in by";
   return "Checked out or checked in by";
 }
@@ -165,8 +166,7 @@ function compositionFor(r: MyRecordRow, maps?: CompositionMaps): string {
 
 function displayNumber(r: MyRecordRow, maps?: CompositionMaps): string {
   if (r.source === "reservation") {
-    const comp = compositionFor(r, maps);
-    return comp || r.reservationNumber || r.number;
+    return compositionFor(r, maps);
   }
   return documentDisplayNumber(
     r.baseNumber ?? r.number,
@@ -371,7 +371,7 @@ export function MyItemsPage() {
     const base: ColumnDef<MyRecordRow>[] = [
       {
         id: "number",
-        header: activeState === "reservations" ? "Reservation #" : "Issued Number",
+        header: activeState === "reservations" ? "Drawing/Document Number" : "Issued Number",
         accessor: r => displayNumber(r, compMaps),
         sortable: activeState !== "reservations",
         width: 220,
@@ -474,8 +474,9 @@ export function MyItemsPage() {
   }, [activeState, counts?.reservations?.value]);
 
   const numberLabel = activeState === "reservations"
-    ? "Reservation #"
+    ? "Drawing/Document Number"
     : "Issued Number";
+  const personLabel = personFilterLabel(activeState);
 
   return (
     <div className={styles.root}>
@@ -536,9 +537,11 @@ export function MyItemsPage() {
         onQuery={handleQuery}
         onClear={handleClear}
         isQuerying={isFetching}
-        personLabel={personFilterLabel(activeState)}
-        peopleIds={filterDraft.peopleIds}
-        onPeopleChange={(ids) => setFilterDraft((prev) => ({ ...prev, peopleIds: ids }))}
+        personLabel={personLabel}
+        peopleIds={personLabel ? filterDraft.peopleIds : undefined}
+        onPeopleChange={personLabel
+          ? (ids) => setFilterDraft((prev) => ({ ...prev, peopleIds: ids }))
+          : undefined}
         extraFields={activeTab === "documents" ? (
           <Field label="Type">
             <Select

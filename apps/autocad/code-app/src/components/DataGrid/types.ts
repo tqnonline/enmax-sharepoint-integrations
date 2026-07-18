@@ -79,4 +79,6 @@ export interface EnmaxDataGridProps<T> {
   searchPrompt?: string;
   /** When set with totalCount, footer shows "X of Y records" (filtered vs all). */
   allRecordsCount?: number;
+  /** Manual refresh toolbar button. Defaults to true — grids do not auto-refresh. */
+  enableRefresh?: boolean;
 }

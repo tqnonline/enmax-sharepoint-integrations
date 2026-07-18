@@ -30,21 +30,17 @@ import requests
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import seed  # noqa: E402
 import sharepoint_graph as spg  # noqa: E402
+from taxonomy_predicates import is_base_only_document as _is_base_only_document  # noqa: E402
 
 MINIMAL_PDF = b"%PDF-1.1\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n"
 
+# docs/drawing-document-subtype-CONTRACT.md: 1 Drawing Document, 2 Drawing,
+# 3 Standard Document, 4 Procedure, 5 Form.
+RESERVATION_TYPE_DRAWING = 1
 RESERVATION_TYPE_DOCUMENT = 2
-DOCUMENT_SUBTYPE_STANDARD = 1
-DOCUMENT_SUBTYPE_PROCEDURE = 2
-DOCUMENT_SUBTYPE_FORM = 3
-
-
-def _is_base_only_document(rtype: int | None, stype: int | None) -> bool:
-    """Standard and Procedure carry PDFs on the base; Form/Drawing use child sheets."""
-    return rtype == RESERVATION_TYPE_DOCUMENT and stype in (
-        DOCUMENT_SUBTYPE_STANDARD,
-        DOCUMENT_SUBTYPE_PROCEDURE,
-    )
+DOCUMENT_SUBTYPE_DRAWING_DOCUMENT = 1
+DOCUMENT_SUBTYPE_STANDARD = 3
+DOCUMENT_SUBTYPE_PROCEDURE = 4
 
 
 def _option_value(row: dict, field: str) -> int | None:

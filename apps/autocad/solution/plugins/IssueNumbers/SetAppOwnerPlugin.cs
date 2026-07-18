@@ -28,9 +28,11 @@ namespace Enmax.AutoCAD
             }
 
             var value = AppConfigReader.GetValue(ctx.SystemUserService, "AppOwnerTeamId");
-            if (!Guid.TryParse(value, out var teamId))
+            // Guid.Empty parses successfully but Dataverse rejects ownerid=Guid.Empty —
+            // treat nil placeholder (legacy seed) the same as missing config.
+            if (!Guid.TryParse(value, out var teamId) || teamId == Guid.Empty)
             {
-                ctx.Trace("SetAppOwner: AppOwnerTeamId missing/unparsable — fail-open, leaving creator-owned.");
+                ctx.Trace("SetAppOwner: AppOwnerTeamId missing/unparsable/empty — fail-open, leaving creator-owned.");
                 return;
             }
 

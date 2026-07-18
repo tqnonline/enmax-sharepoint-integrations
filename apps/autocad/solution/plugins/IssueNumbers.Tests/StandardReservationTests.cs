@@ -26,8 +26,8 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         private const string SheetEntity       = "enmax_autocadsheet";
         private const string SequenceEntity    = "enmax_autocadnumbersequence";
 
-        private const int TypeDocument     = 2;
-        private const int SubtypeStandard  = 1;
+        private const int TypeDocument     = TaxonomyConstants.ReservationType.Document;
+        private const int SubtypeStandard  = TaxonomyConstants.DocumentSubtype.Standard;
         private const int SheetStateAvailable = 2;
 
         private const string SequenceKey = "GG-CG-00-ECS-AST-DD";

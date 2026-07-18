@@ -64,6 +64,9 @@ const useStyles = makeStyles({
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalXL}`,
+    "@media (max-width: 640px)": {
+      gridTemplateColumns: "1fr",
+    },
   },
   groupHeader: {
     fontWeight: tokens.fontWeightSemibold,

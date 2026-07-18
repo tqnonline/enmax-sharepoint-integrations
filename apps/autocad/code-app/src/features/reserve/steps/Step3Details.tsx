@@ -71,7 +71,11 @@ export function Step3Details({ maxCount, maxSheets, onNext, onBack }: Props) {
               control={control}
               render={({ field }) => (
                 <Field
-                  label={`${capitalize(term.childNoun!)}s per ${term.baseNoun} (1–${maxSheets})`}
+                  label={
+                    term.baseNoun === "drawing number"
+                      ? `No of Sheet per Drawing (1–${maxSheets})`
+                      : `${capitalize(term.childNoun!)}s per ${term.baseNoun} (1–${maxSheets})`
+                  }
                   validationMessage={errors.sheetsPerDrawing?.message}
                   required
                 >

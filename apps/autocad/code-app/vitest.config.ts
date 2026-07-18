@@ -24,6 +24,19 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],
+      include: [
+        "src/features/reserve/**",
+        "src/features/sharepoint/sharepointUrls.ts",
+        "src/config/**",
+        "src/lib/drawingTaxonomy.ts",
+      ],
+      exclude: ["src/generated/**", "**/*.d.ts", "src/__tests__/**"],
+      thresholds: {
+        lines: 85,
+        functions: 80,
+        branches: 80,
+        statements: 85,
+      },
     },
   },
 });

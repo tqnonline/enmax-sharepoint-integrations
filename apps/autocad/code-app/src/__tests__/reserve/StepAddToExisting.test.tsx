@@ -76,7 +76,7 @@ test("Drawing: creates an append reservation with target base", async () => {
   const count = await screen.findByRole("spinbutton");
   fireEvent.change(count, { target: { value: "2" } });
 
-  await user.click(screen.getByRole("button", { name: /Add Drawing Documents/i }));
+  await user.click(screen.getByRole("button", { name: /Add Drawing Sheets/i }));
 
   await waitFor(() => expect(createMutate).toHaveBeenCalledWith(expect.objectContaining({
     targetDrawingId: "d1",
@@ -100,7 +100,9 @@ test("Form: creates an append reservation with target base", async () => {
   const user = userEvent.setup();
   renderWithProviders(<Harness subtype="Form" />, { initialPath: "/reserve" });
 
-  await user.type(screen.getByPlaceholderText(/GG-CG-00/i), "GG");
+  expect(screen.getByLabelText(/Find an existing procedure number/i)).toBeInTheDocument();
+  await user.type(screen.getByPlaceholderText(/GG-9A-00-AES-AAA-PR/i), "GG");
+  // Hook still receives Form; search maps Form → Procedure inside useSearchExistingBases.
   expect(searchRef.lastArgs).toMatchObject({ reservationType: "Document", documentSubtype: "Form" });
   await user.click(await screen.findByText(BASE.number));
 

@@ -53,7 +53,7 @@ _KEY_PATTERNS = [
     re.compile(r'(?:GetValue|GetBoolDefaultTrue)\s*\(\s*\w+\s*,\s*"(?P<key>[A-Za-z][A-Za-z0-9_]+)"'),
     # C# string literals that look like config keys in AppConfigReader.cs Taxonomy*
     re.compile(r'return\s+"(?P<key>Enable[A-Za-z]+(?:Checkout|CheckIn))"'),
-    re.compile(r'return\s+"(?P<key>(?:Drawing|StandardDocument|ProcedureDocument|FormDocument)(?:DropOff|Destination)LibraryUrl)"'),
+    re.compile(r'return\s+"(?P<key>(?:Drawing|Document|StandardDocument|ProcedureDocument|FormDocument)(?:DropOff|Destination)LibraryUrl)"'),
     # TypeScript Zod / object keys in AppConfigSchema (PascalCase identifiers before :)
     re.compile(r'^\s+(?P<key>[A-Z][A-Za-z0-9]+)\s*:', re.MULTILINE),
     # Flow OData filter: enmax_acdnkey eq 'Key'
@@ -119,6 +119,8 @@ def referenced_keys() -> set[str]:
         "AppOwnerTeamId",
         "DrawingDropOffLibraryUrl",
         "DrawingDestinationLibraryUrl",
+        "DocumentDropOffLibraryUrl",
+        "DocumentDestinationLibraryUrl",
         "StandardDocumentDropOffLibraryUrl",
         "StandardDocumentDestinationLibraryUrl",
         "ProcedureDocumentDropOffLibraryUrl",
@@ -132,6 +134,11 @@ def referenced_keys() -> set[str]:
         "SharePointIndexerIncrementalHours",
         "SharePointRecordTypeMap",
         "FlowRunUrlTemplate",
+        "StandardDocumentKindCodes",
+        "ProcedureDocumentKindCodes",
+        "AllowDrawingDocumentExistingSequence",
+        "EnableDrawingDocumentCheckout",
+        "EnableDrawingDocumentCheckIn",
     }
     return keys
 
@@ -165,12 +172,13 @@ def main() -> int:
     }
     missing = [k for k in missing if k not in false_positives]
 
-    # Require plan-critical keys are seeded
+    # Require plan-critical keys are seeded (team GUID keys are PROVISIONED_KEYS only)
     required = {
         "RequireCheckInApproval",
-        "AppOwnerTeamId",
         "DrawingDropOffLibraryUrl",
         "DrawingDestinationLibraryUrl",
+        "DocumentDropOffLibraryUrl",
+        "DocumentDestinationLibraryUrl",
         "StandardDocumentDropOffLibraryUrl",
         "StandardDocumentDestinationLibraryUrl",
         "ProcedureDocumentDropOffLibraryUrl",
@@ -183,6 +191,11 @@ def main() -> int:
         "SharePointIndexerMaxCsvRows",
         "SharePointIndexerIncrementalHours",
         "SharePointRecordTypeMap",
+        "StandardDocumentKindCodes",
+        "ProcedureDocumentKindCodes",
+        "AllowDrawingDocumentExistingSequence",
+        "EnableDrawingDocumentCheckout",
+        "EnableDrawingDocumentCheckIn",
     }
     missing_required = sorted(required - seeded)
 

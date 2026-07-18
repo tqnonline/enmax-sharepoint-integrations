@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useUserRole } from "../../../auth/useUserRole";
 import { useCurrentUser } from "../../../auth/useCurrentUser";
 import { useAppConfig } from "../../../config/useAppConfig";
+import { isCheckoutEnabledForTaxonomy } from "../../../config/checkoutTaxonomyConfig";
 import { useCheckOut } from "../hooks/useCheckOut";
 import { DrawingState, DRAWING_STATE_LABELS, DRAWING_STATE_BADGE_COLOR, CheckoutStatus } from "../api/checkoutClient";
 import type { DrawingForPanel, CheckoutForPanel } from "../api/checkoutClient";
@@ -61,13 +62,23 @@ interface Props {
   drawing: DrawingForPanel;
   openCheckout?: CheckoutForPanel;
   variant?: "inline" | "split";
+  /** Override; defaults from Enable*Checkout for the drawing's taxonomy. */
+  checkoutEnabled?: boolean;
 }
 
-export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" }: Props) {
+export function DrawingActionsPanel({
+  drawing,
+  openCheckout,
+  variant = "inline",
+  checkoutEnabled: checkoutEnabledProp,
+}: Props) {
   const styles = useStyles();
   const { role } = useUserRole();
   const { data: currentUser } = useCurrentUser();
-  const { RequireCheckOutApproval, ShowFinalizeButton, ShowObsoleteButton } = useAppConfig();
+  const appConfig = useAppConfig();
+  const { RequireCheckOutApproval, ShowFinalizeButton, ShowObsoleteButton } = appConfig;
+  const checkoutEnabled = checkoutEnabledProp
+    ?? isCheckoutEnabledForTaxonomy(appConfig, drawing.reservationType, drawing.documentSubtype);
   const isAdmin    = role === "Admin";
   const isApprover = role === "Approver";
   const isOwner      = !!drawing.ownerId && drawing.ownerId === currentUser?.id;
@@ -93,7 +104,7 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
 
   // WS3 gated Check Out: while a request is pending, the drawing is still Available but must
   // not offer another Check Out. Show a read-only "requested" badge instead.
-  if (openCheckout?.status === CheckoutStatus.Requested) {
+  if (checkoutEnabled && openCheckout?.status === CheckoutStatus.Requested) {
     const mine = openCheckout.checkedOutBy === currentUser?.id;
     return (
       <div className={styles.readOnly}>
@@ -110,7 +121,13 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
   }
 
   if (drawing.state === DrawingState.Available) {
-    if (variant === "split") {
+    const secondaryItems = [
+      ...(ShowFinalizeButton && hasCheckin ? [{ key: "finalize", label: "Finalize", onClick: () => setOpenDialog("finalize") }] : []),
+      ...(ShowObsoleteButton && isAdmin && hasCheckin ? [{ key: "obsolete", label: "Mark Obsolete", onClick: () => setOpenDialog("obsolete") }] : []),
+      ...(canRelease ? [{ key: "release", label: "Release", onClick: () => setOpenDialog("release") }] : []),
+    ];
+
+    if (variant === "split" && checkoutEnabled) {
       return (
         <>
           <SplitButton
@@ -123,11 +140,7 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
             primaryDisabled={checkOut.isPending}
             primaryLoading={checkOut.isPending}
             onPrimary={() => checkOut.mutate(drawing.id)}
-            items={[
-              ...(ShowFinalizeButton && hasCheckin ? [{ key: "finalize", label: "Finalize", onClick: () => setOpenDialog("finalize") }] : []),
-              ...(ShowObsoleteButton && isAdmin && hasCheckin ? [{ key: "obsolete", label: "Mark Obsolete", onClick: () => setOpenDialog("obsolete") }] : []),
-              ...(canRelease ? [{ key: "release", label: "Release", onClick: () => setOpenDialog("release") }] : []),
-            ]}
+            items={secondaryItems}
           />
           {checkOut.isError && (
             <Text size={200} style={{ color: tokens.colorPaletteRedForeground1, display: "block", marginTop: tokens.spacingVerticalXS }}>Check Out failed. Try again.</Text>
@@ -138,9 +151,14 @@ export function DrawingActionsPanel({ drawing, openCheckout, variant = "inline" 
         </>
       );
     }
+
+    if (!checkoutEnabled && secondaryItems.length === 0) {
+      return null;
+    }
+
     return (
       <div className={styles.actionRow}>
-        <CheckOutButton drawingId={drawing.id} />
+        {checkoutEnabled && <CheckOutButton drawingId={drawing.id} />}
         {ShowFinalizeButton && hasCheckin && <FinalizeDialog drawingId={drawing.id} />}
         {ShowObsoleteButton && isAdmin && hasCheckin && <MarkObsoleteDialog drawingId={drawing.id} />}
         {canRelease && <ReleaseDrawingDialog drawingId={drawing.id} forceRelease={forceRelease} />}

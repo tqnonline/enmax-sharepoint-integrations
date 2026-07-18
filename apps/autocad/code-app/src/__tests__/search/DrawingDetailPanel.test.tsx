@@ -70,7 +70,7 @@ vi.mock("../../features/search/DocumentActivityTimeline", () => ({
         <span>{props.title ?? "Activity"}</span>
         {first ? (
           <span>
-            {first.actedBy} checked out the drawing document ({first.fromState} → {first.toState})
+            {first.actedBy} checked out the drawing sheet ({first.fromState} → {first.toState})
           </span>
         ) : (
           <span>No activity yet</span>
@@ -170,7 +170,7 @@ test("DrawingDetailPanel renders sentence-style activity with from→to transiti
   );
 
   expect(
-    await screen.findByText(/M365 Developer checked out the drawing document/i),
+    await screen.findByText(/M365 Developer checked out the drawing sheet/i),
   ).toBeInTheDocument();
   expect(activitySpy).toHaveBeenCalled();
   expect(activitySpy.mock.calls.at(-1)?.[0].events[0]).toMatchObject({

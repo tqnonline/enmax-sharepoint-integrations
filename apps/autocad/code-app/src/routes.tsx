@@ -1,5 +1,7 @@
 import { createHashRouter, Outlet } from "react-router-dom";
 import { AppShell } from "./app/AppShell";
+import { DeepLinkBootstrap } from "./app/DeepLinkBootstrap";
+import { LinkLanding } from "./app/LinkLanding";
 import { RequireRole } from "./auth/RequireRole";
 import Home from "./pages/Home";
 import Search from "./pages/Search";
@@ -17,15 +19,18 @@ import { ReserveSuccess } from "./features/reserve/ReserveSuccess";
 import { ApprovalsPage } from "./features/approvals/ApprovalsPage";
 import ReservationDetail from "./pages/ReservationDetail";
 
-// Browser router — Power Apps host serves Code App at a deep URL with ?env=...
-// query string. Browser router uses path segments; env query stays attached.
+// Hash router — the Power Apps player drops inbound hash routes on launch, so
+// email/share deep links arrive as pre-hash query params and are redirected to
+// the right hash route by DeepLinkBootstrap (see lib/deeplink). `#/link` is a
+// testable in-app landing that exercises the same resolver.
 export const router = createHashRouter([
   {
     path: "/",
-    element: <AppShell><Outlet /></AppShell>,
+    element: <AppShell><DeepLinkBootstrap><Outlet /></DeepLinkBootstrap></AppShell>,
     errorElement: <NotFound />,
     children: [
       { index: true, element: <Home /> },
+      { path: "link", element: <LinkLanding /> },
       {
         path: "reserve",
         element: <RequireRole roles={["User", "Admin"]}><Outlet /></RequireRole>,

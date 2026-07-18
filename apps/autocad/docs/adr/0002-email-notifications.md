@@ -12,6 +12,36 @@ ENMAX Document Control (`GWE-DocControl@enmax.com`) must receive all approval re
    - `DocControlEmailAddress` — approval mail **To**; CC on creator lifecycle mail
    - `CodeAppBaseUrl` — deep links in HTML email bodies
 
+   `CodeAppBaseUrl` is the **full play URL up to and including the app id** —
+   `https://apps.powerapps.com/play/e/{environmentId}/app/{appId}` — with **no**
+   trailing slash, **no** query, and **no** hash. Deep links ride as a **query
+   string** appended by flows, not a hash route:
+   `{CodeAppBaseUrl}?target=reservation&id={reservationId}` (reservation detail),
+   `{CodeAppBaseUrl}?target=approvals&section=documents&tab=checkout|checkin` (queues).
+   The earlier value `https://apps.powerapps.com/play/e/default` was invalid
+   (`EnvironmentIdInvalid`) — it lacked a real environment id and the `/app/{appId}`
+   segment. Set it per environment via the `app_config.<env>.yaml` overlay or the
+   `CODE_APP_BASE_URL` deploy token; the shared base default is an obvious
+   placeholder so a missing override fails loudly. This row is the single place the
+   per-environment env/app GUIDs are managed for flows; the Code App derives them at
+   runtime from `getContext()`. Do **not** encode the `apps.powerapps.com.mcas.ms`
+   Defender-for-Cloud-Apps proxy host — MCAS rewrites transparently and preserves
+   the query string.
+
+   **Why query params, not hash routes** (deep-link capability): the Power Apps
+   player runs the Code App in an iframe and normalizes the launch URL to `?<params>#`
+   (empty fragment), so an inbound hash route (`#/reservations/{id}`) is dropped
+   before the app loads. The supported channel is query parameters, surfaced via
+   `getContext().app.queryParams`. On boot, `DeepLinkBootstrap` (mounted at the app
+   root inside `AppShell`) reads those params — falling back to
+   `window.location.search` for local dev — maps them through the single
+   `resolveDeepLink` registry in [`lib/deeplink/deeplinkTargets.ts`](../../apps/code-app/src/lib/deeplink/deeplinkTargets.ts),
+   and redirects once (`navigate(path, { replace: true })`) to the internal hash
+   route. In-app share links use the same registry via `buildDeepLinkUrl`, and
+   `#/link?target=...` is a testable in-app landing that exercises the resolver.
+   Adding a new deep-linkable page is one registry entry. Guard tests assert flows
+   emit `?target=` links and never `#/` routes.
+
 2. **Shared child flow** `Child_Send_System_Email` — parameterized To / Cc / Subject / BodyHtml from shared mailbox.
 
 3. **Reservation approval**
@@ -37,7 +67,24 @@ ENMAX Document Control (`GWE-DocControl@enmax.com`) must receive all approval re
 ## Consequences
 
 - Flows must be imported/enabled in each environment after solution deploy; `pp-deploy flows` remains a stub.
-- `CodeAppBaseUrl` must be set per environment to the published Code App URL.
+- `CodeAppBaseUrl` must be set per environment to the published Code App URL (full `/play/e/{env}/app/{app}` form — see decision 1). Because the player drops the URL fragment, all deep links are query-param based and resolved in-app by `DeepLinkBootstrap`; a new deep-linkable page requires one entry in the `deeplinkTargets` registry.
+- **Branding**: all notification emails (HTML web-resource templates and the inline
+  checkout/check-in bodies) share an ENMAX-branded shell — a header in ENMAX red
+  (`#E1393E`, the `BrandPrimary` App Config value) carrying the white ENMAX logo,
+  a scannable detail table, a clear primary call-to-action button, and a no-reply
+  footer. Copy is written to tell the recipient what happened, what it means, and
+  what to do next.
+- **Logo delivery (CID inline attachment)**: the white ENMAX logo
+  (`solution/src/WebResources/images/enmax_logo_white.png`, deployed as the
+  `enmax_logo_white` PNG web resource by `deploy_email_webresources.py`) is sent
+  as an inline attachment named `enmax_logo_white.png` and referenced from every
+  HTML header as `cid:enmax_logo_white.png`. Each send flow (`Child_Send_System_Email`,
+  `Child_Send_Approval_Needed_Email`, `Child_Send_Approval_Result_Email`) fetches the
+  web resource `content` (base64) and passes it as `emailMessage/Attachments`.
+  Chosen over: SVG inline / data-URI (Outlook — the recipient client — renders
+  neither), and a hosted HTTPS PNG (no sanctioned no-auth image host; Dataverse/
+  SharePoint URLs require auth and are blocked in mail). The earlier styled-text
+  wordmark was replaced once ENMAX supplied the official logo assets.
 - `SharedMailboxAddress` defaults to `EEC_PwrPlat_Svc@enmax.com` in DEV/UAT seed; all child mail flows read it from App Config (not flow parameters).
 - Checkout flows no-op if drawing has no reservation link (Get Reservation step fails); legacy rows without reservation should be rare post-issuance.
 

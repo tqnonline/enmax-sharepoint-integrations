@@ -2,6 +2,7 @@ import { reserveSchema } from "../../features/reserve/schema";
 
 const VALID_BASE = {
   reservationType: "Drawing" as const,
+  documentSubtype: "Drawing" as const,
   business: "bus-id",
   asset:    "asset-id",
   unit:     "unit-id",
@@ -40,6 +41,31 @@ test("rejects reason shorter than 10 characters", () => {
 test("accepts a valid Drawing reservation", () => {
   const result = reserveSchema.safeParse(VALID_BASE);
   expect(result.success).toBe(true);
+});
+
+// Taxonomy (docs/drawing-document-subtype-CONTRACT.md): Drawing must specify a
+// subtype (Drawing Document | Drawing) just like Document does.
+test("accepts a Drawing/DrawingDocument reservation", () => {
+  const result = reserveSchema.safeParse({ ...VALID_BASE, documentSubtype: "DrawingDocument" });
+  expect(result.success).toBe(true);
+});
+
+test("rejects a Drawing reservation with no subtype", () => {
+  const result = reserveSchema.safeParse({ ...VALID_BASE, documentSubtype: undefined });
+  expect(result.success).toBe(false);
+  if (!result.success) {
+    const paths = result.error.issues.map((e) => e.path[0]);
+    expect(paths).toContain("documentSubtype");
+  }
+});
+
+test("rejects a Drawing reservation with a Document subtype", () => {
+  const result = reserveSchema.safeParse({ ...VALID_BASE, documentSubtype: "Standard" });
+  expect(result.success).toBe(false);
+  if (!result.success) {
+    const paths = result.error.issues.map((e) => e.path[0]);
+    expect(paths).toContain("documentSubtype");
+  }
 });
 
 // Taxonomy (ADR 0001 #1): a Document must specify a subtype (Standard | Procedure).

@@ -29,6 +29,7 @@ const MOCK_DOCUMENT: SearchDocumentRow = {
   submittedByName: "Jane Doe",
   approvedByName: "",
   isChildDocument: true,
+  statusDetail: "",
 };
 
 vi.mock("../../auth/useUserRole", () => ({
@@ -100,11 +101,17 @@ test("clicking a result navigates to document detail page", async () => {
   );
 });
 
+test("shows status filter on drawings tab", async () => {
+  renderWithProviders(<SearchPage />);
+  expect(screen.getByLabelText(/Filter by document status/i)).toBeInTheDocument();
+});
+
 test("documents tab shows type filter", async () => {
   const user = userEvent.setup();
   renderWithProviders(<SearchPage />);
   await user.click(screen.getByRole("tab", { name: /Standard Documents, Procedures & Forms/i }));
   expect(screen.getByLabelText(/Filter by document type/i)).toBeInTheDocument();
+  expect(screen.getByLabelText(/Filter by document status/i)).toBeInTheDocument();
 });
 
 test("shows pagination and matching count when results exceed page size", async () => {

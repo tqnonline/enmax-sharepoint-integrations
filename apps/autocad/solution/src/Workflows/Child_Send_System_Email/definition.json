@@ -111,10 +111,33 @@
           },
           "inputs": "@{coalesce(outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue'], '')}"
         },
+        "Get_Logo": {
+          "type": "OpenApiConnection",
+          "runAfter": {
+            "Get_Shared_Mailbox": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "ListRecords",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "webresourceset",
+              "$filter": "name eq 'enmax_logo_white'",
+              "$top": 1
+            }
+          }
+        },
         "Condition_Mailbox_Configured": {
           "type": "If",
           "runAfter": {
             "Compose_Mailbox": [
+              "Succeeded"
+            ],
+            "Get_Logo": [
               "Succeeded"
             ]
           },
@@ -145,16 +168,21 @@
               "inputs": {
                 "host": {
                   "connectionName": "shared_office365",
-                  "operationId": "SharedMailboxSendEmailV2",
+                  "operationId": "SendEmailV2",
                   "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
                 },
                 "parameters": {
-                  "emailMessage/MailboxAddress": "@{outputs('Compose_Mailbox')}",
                   "emailMessage/To": "@{triggerBody()?['To']}",
                   "emailMessage/Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
                   "emailMessage/Subject": "@{triggerBody()?['Subject']}",
                   "emailMessage/Body": "@{triggerBody()?['BodyHtml']}",
-                  "emailMessage/Importance": "Normal"
+                  "emailMessage/Importance": "Normal",
+                  "emailMessage/Attachments": [
+                    {
+                      "Name": "enmax_logo_white.png",
+                      "ContentBytes": "@{outputs('Get_Logo')?['body/value'][0]?['content']}"
+                    }
+                  ]
                 }
               },
               "retryPolicy": {

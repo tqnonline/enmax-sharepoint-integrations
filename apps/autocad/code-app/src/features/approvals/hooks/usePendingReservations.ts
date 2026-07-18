@@ -56,6 +56,7 @@ export interface PendingReservation {
   // items to an existing base rather than issuing new base numbers.
   sequenceType?:        number;
   reservationType?:     number;
+  documentSubtype?:     number;
   targetDrawingId?:     string;
   targetDrawingNumber?: string;
   isAppend: boolean;
@@ -159,6 +160,7 @@ async function fetchReservations(status: 1 | 2 | 3): Promise<PendingReservation[
       typeLabel:    reservationTypeDisplayLabel(raw.enmax_acdnreservationtype, raw.enmax_acdndocumentsubtype),
       sequenceType:        raw.enmax_acdnsequencetype,
       reservationType:     raw.enmax_acdnreservationtype,
+      documentSubtype:     raw.enmax_acdndocumentsubtype,
       targetDrawingId:     raw._enmax_acdntargetdrawing_value,
       targetDrawingNumber: raw._enmax_acdntargetdrawing_value
         ? targetDrawingMap.get(raw._enmax_acdntargetdrawing_value)

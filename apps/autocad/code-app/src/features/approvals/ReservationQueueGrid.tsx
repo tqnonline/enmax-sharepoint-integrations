@@ -28,9 +28,29 @@ interface Props {
 
 const COLUMNS: ColumnDef<PendingReservation>[] = [
   {
-    id: "enmax_acdnreservationnumber", header: "Reservation #",
-    accessor: r => r.enmax_acdnreservationnumber,
-    sortable: true, filterable: true,
+    id: "composition", header: "Drawing/Document Number",
+    accessor: r => formatReservationDisplay({
+      ...r,
+      enmax_acdnissuednumbers: r.enmax_acdnissuednumbers,
+      appendFirst: r.appendFirst,
+      appendLast: r.appendLast,
+      targetDrawingId: r.targetDrawingId,
+      sequenceType: r.sequenceType,
+    }),
+    filterable: true,
+    width: 220,
+    cell: r => (
+      <Text weight="semibold" style={{ fontFamily: "monospace", whiteSpace: "nowrap" }}>
+        {formatReservationDisplay({
+          ...r,
+          enmax_acdnissuednumbers: r.enmax_acdnissuednumbers,
+          appendFirst: r.appendFirst,
+          appendLast: r.appendLast,
+          targetDrawingId: r.targetDrawingId,
+          sequenceType: r.sequenceType,
+        })}
+      </Text>
+    ),
   },
   sharePointColumn<PendingReservation>(() => ""),
   {
@@ -69,30 +89,6 @@ const COLUMNS: ColumnDef<PendingReservation>[] = [
     cell: r => <Text>{r.typeLabel}</Text>,
   },
   {
-    id: "composition", header: "Issued Number",
-    accessor: r => formatReservationDisplay({
-      ...r,
-      enmax_acdnissuednumbers: r.enmax_acdnissuednumbers,
-      appendFirst: r.appendFirst,
-      appendLast: r.appendLast,
-      targetDrawingId: r.targetDrawingId,
-      sequenceType: r.sequenceType,
-    }),
-    filterable: true,
-    cell: r => (
-      <Text style={{ fontFamily: "monospace", whiteSpace: "nowrap" }}>
-        {formatReservationDisplay({
-          ...r,
-          enmax_acdnissuednumbers: r.enmax_acdnissuednumbers,
-          appendFirst: r.appendFirst,
-          appendLast: r.appendLast,
-          targetDrawingId: r.targetDrawingId,
-          sequenceType: r.sequenceType,
-        })}
-      </Text>
-    ),
-  },
-  {
     id: "enmax_acdndrawingcount", header: "Count",
     accessor: r => r.enmax_acdndrawingcount,
     sortable: true,
@@ -123,13 +119,19 @@ export function ReservationQueueGrid({ reservations, onSelect, onBulkApprove, em
     async (params: GridFetchParams): Promise<{ rows: PendingReservation[]; totalCount: number }> =>
       clientPage(reservations, params, {
         searchText: r => [
-          r.enmax_acdnreservationnumber ?? "",
+          formatReservationDisplay({
+            ...r,
+            enmax_acdnissuednumbers: r.enmax_acdnissuednumbers,
+            appendFirst: r.appendFirst,
+            appendLast: r.appendLast,
+            targetDrawingId: r.targetDrawingId,
+            sequenceType: r.sequenceType,
+          }),
           r.submittedByName ?? "",
           r.approvedByName ?? "",
           r.enmax_acdnreason ?? "",
         ],
         filterText: {
-          enmax_acdnreservationnumber: r => r.enmax_acdnreservationnumber ?? "",
           composition: r => formatReservationDisplay({
             ...r,
             enmax_acdnissuednumbers: r.enmax_acdnissuednumbers,

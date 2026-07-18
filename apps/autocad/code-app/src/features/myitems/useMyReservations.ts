@@ -17,6 +17,8 @@ export interface MyReservation {
   createdOn: string;
   approvedOn: string;
   approverDisplay: string;
+  /** Reservation submitter — "Reserved for" on Home. */
+  submitterDisplay: string;
   businessId: string;
   assetId: string;
   unitId: string;
@@ -24,6 +26,11 @@ export interface MyReservation {
   systemId: string;
   kindId: string;
   typeLabel: string;
+  sequenceType?: number;
+  targetDrawingId?: string;
+  targetDrawingNumber?: string;
+  appendFirst?: number;
+  appendLast?: number;
 }
 
 type RawReservation = {
@@ -37,6 +44,8 @@ type RawReservation = {
   enmax_acdnapprovedon?: string;
   _enmax_acdnapprover_value?: string;
   "_enmax_acdnapprover_value@OData.Community.Display.V1.FormattedValue"?: string;
+  _createdby_value?: string;
+  "_createdby_value@OData.Community.Display.V1.FormattedValue"?: string;
   _enmax_acdnbusiness_value?: string;
   "_enmax_acdnbusiness_value@OData.Community.Display.V1.FormattedValue"?: string;
   _enmax_acdnasset_value?: string;
@@ -51,6 +60,10 @@ type RawReservation = {
   "_enmax_acdnkind_value@OData.Community.Display.V1.FormattedValue"?: string;
   enmax_acdnreservationtype?: number;
   enmax_acdndocumentsubtype?: number;
+  enmax_acdnsequencetype?: number;
+  _enmax_acdntargetdrawing_value?: string;
+  enmax_acdnappendfirst?: number;
+  enmax_acdnappendlast?: number;
 };
 
 export const RESERVATION_STATUS: Record<number, string> = {
@@ -74,6 +87,7 @@ function toMyReservation(r: RawReservation): MyReservation {
     createdOn:        r.createdon ?? "",
     approvedOn:       r.enmax_acdnapprovedon ?? "",
     approverDisplay:  r["_enmax_acdnapprover_value@OData.Community.Display.V1.FormattedValue"] ?? "",
+    submitterDisplay: r["_createdby_value@OData.Community.Display.V1.FormattedValue"] ?? "",
     businessId:       r._enmax_acdnbusiness_value ?? "",
     assetId:          r._enmax_acdnasset_value    ?? "",
     unitId:           r._enmax_acdnunit_value     ?? "",
@@ -81,6 +95,10 @@ function toMyReservation(r: RawReservation): MyReservation {
     systemId:         r._enmax_acdnsystem_value   ?? "",
     kindId:           r._enmax_acdnkind_value     ?? "",
     typeLabel:        reservationTypeDisplayLabel(r.enmax_acdnreservationtype, r.enmax_acdndocumentsubtype),
+    sequenceType:     r.enmax_acdnsequencetype,
+    targetDrawingId:  r._enmax_acdntargetdrawing_value,
+    appendFirst:      r.enmax_acdnappendfirst,
+    appendLast:       r.enmax_acdnappendlast,
   };
 }
 
@@ -88,10 +106,12 @@ const RESERVATION_SELECT = [
   "enmax_autocadreservationid", "enmax_acdnreservationid", "enmax_acdnstatus",
   "enmax_acdndrawingcount", "enmax_acdnissuednumbers", "enmax_acdnreason",
   "createdon", "enmax_acdnapprovedon",
-  "_enmax_acdnapprover_value", "_enmax_acdnbusiness_value",
+  "_createdby_value", "_enmax_acdnapprover_value", "_enmax_acdnbusiness_value",
   "_enmax_acdnasset_value", "_enmax_acdnunit_value",
   "_enmax_acdndomain_value", "_enmax_acdnsystem_value", "_enmax_acdnkind_value",
   "enmax_acdnreservationtype", "enmax_acdndocumentsubtype",
+  "enmax_acdnsequencetype", "_enmax_acdntargetdrawing_value",
+  "enmax_acdnappendfirst", "enmax_acdnappendlast",
 ] as const;
 
 export async function fetchMyReservationRows(
@@ -120,7 +140,10 @@ export async function fetchMyReservationRows(
   const rows = (result.data ?? []).map(r => toMyReservation(r as RawReservation));
 
   return clientPage(rows, params, {
-    searchText: r => [r.reservationNumber, r.statusLabel, r.typeLabel, r.approverDisplay, r.reason],
+    searchText: r => [
+      r.reservationNumber, r.statusLabel, r.typeLabel, r.approverDisplay,
+      r.submitterDisplay, r.reason,
+    ],
   });
 }
 
@@ -134,6 +157,7 @@ export function useCancelReservation() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my-reservations"] });
+      qc.invalidateQueries({ queryKey: ["home-my-reservations"] });
       qc.invalidateQueries({ queryKey: ["reservation-detail"] });
     },
     onError: (e, reservationId) =>

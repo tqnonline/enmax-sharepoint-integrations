@@ -4,8 +4,12 @@ values:
   - value: 0
     label: None
   - value: 1
-    label: Standard
+    label: Drawing Document
   - value: 2
-    label: Procedure
+    label: Drawing
   - value: 3
+    label: Standard Document
+  - value: 4
+    label: Procedure
+  - value: 5
     label: Form

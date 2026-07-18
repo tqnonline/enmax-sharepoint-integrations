@@ -106,8 +106,8 @@ test("ApprovalsPage is not rendered for User role — RequireRole redirects", ()
 test("grid shows only pending reservations — filter by Status=Pending in query", async () => {
   renderWithProviders(<ApprovalsPage />);
 
-  await waitFor(() => expect(screen.getByText("RES-00001")).toBeInTheDocument(), { timeout: 3000 });
-  await waitFor(() => expect(screen.getByText("RES-00002")).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText("GG-CG-00-ECS-AST-DD-????")).toBeInTheDocument(), { timeout: 3000 });
+  await waitFor(() => expect(screen.getByText("TX-DC-01-ECS-AST-DD-????")).toBeInTheDocument());
 
   // No status-column cells showing resolved status text — grid has no Status column
   const rows = screen.getAllByRole("row");
@@ -142,7 +142,7 @@ test("bulk approve calls ApproveReservation action once per reservation in order
   const user = userEvent.setup();
   renderWithProviders(<ApprovalsPage />);
 
-  await waitFor(() => expect(screen.getByText("RES-00001")).toBeInTheDocument(), { timeout: 3000 });
+  await waitFor(() => expect(screen.getByText("GG-CG-00-ECS-AST-DD-????")).toBeInTheDocument(), { timeout: 3000 });
 
   const headerCheckbox = screen.getAllByRole("checkbox")[0];
   await user.click(headerCheckbox);
@@ -170,7 +170,7 @@ test("multi-select does NOT show a 'Bulk decline' or 'Decline selected' button �
   const user = userEvent.setup();
   renderWithProviders(<ApprovalsPage />);
 
-  await waitFor(() => expect(screen.getByText("RES-00001")).toBeInTheDocument(), { timeout: 3000 });
+  await waitFor(() => expect(screen.getByText("GG-CG-00-ECS-AST-DD-????")).toBeInTheDocument(), { timeout: 3000 });
 
   const headerCheckbox = screen.getAllByRole("checkbox")[0];
   await user.click(headerCheckbox);

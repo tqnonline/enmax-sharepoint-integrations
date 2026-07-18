@@ -87,10 +87,26 @@ vi.mock("../../features/checkout/hooks/useReleaseDrawing", () => ({
 // WS4 item 14: Finalize/Obsolete are hidden unless ShowFinalizeButton/ShowObsoleteButton
 // are true. The visibility tests below exercise the OTHER gates (hasCheckin, isAdmin), so
 // the default mock turns the flags ON; dedicated tests flip them OFF to prove the hide.
-const mockConfig: { RequireCheckInApproval: boolean; ShowFinalizeButton: boolean; ShowObsoleteButton: boolean } = {
+const mockConfig: {
+  RequireCheckInApproval: boolean;
+  RequireCheckOutApproval: boolean;
+  ShowFinalizeButton: boolean;
+  ShowObsoleteButton: boolean;
+  EnableDrawingCheckout: boolean;
+  EnableProcedureCheckout: boolean;
+  EnableStandardCheckout: boolean;
+  EnableFormCheckout: boolean;
+  EnableDrawingDocumentCheckout: boolean;
+} = {
   RequireCheckInApproval: false,
+  RequireCheckOutApproval: false,
   ShowFinalizeButton: true,
   ShowObsoleteButton: true,
+  EnableDrawingCheckout: true,
+  EnableProcedureCheckout: true,
+  EnableStandardCheckout: true,
+  EnableFormCheckout: true,
+  EnableDrawingDocumentCheckout: true,
 };
 vi.mock("../../config/useAppConfig", () => ({
   useAppConfig: () => mockConfig,
@@ -108,8 +124,11 @@ afterEach(() => {
   server.resetHandlers();
   mockRole.value = "User";
   mockConfig.RequireCheckInApproval = false;
+  mockConfig.RequireCheckOutApproval = false;
   mockConfig.ShowFinalizeButton = true;
   mockConfig.ShowObsoleteButton = true;
+  mockConfig.EnableDrawingCheckout = true;
+  mockConfig.EnableProcedureCheckout = true;
   mockCheckOutState.isPending = false;
   mockCheckOutState.isError = false;
   mockCheckOutMutate.mockClear();
@@ -149,6 +168,16 @@ test("CheckOutButton renders when drawing state is Available", () => {
     <DrawingActionsPanel drawing={makeDrawing(DrawingState.Available)} />,
   );
   expect(screen.getByRole("button", { name: /check out/i })).toBeInTheDocument();
+});
+
+test("CheckOutButton hidden when taxonomy checkout is disabled (e.g. EnableProcedureCheckout=false)", () => {
+  renderWithProviders(
+    <DrawingActionsPanel
+      drawing={makeDrawing(DrawingState.Available, { currentRevision: undefined })}
+      checkoutEnabled={false}
+    />,
+  );
+  expect(screen.queryByRole("button", { name: /check out/i })).not.toBeInTheDocument();
 });
 
 // Test 1b — CheckOutButton absent when Drawing is not Available

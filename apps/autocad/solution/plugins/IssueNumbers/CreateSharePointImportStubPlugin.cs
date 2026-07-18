@@ -12,11 +12,11 @@ namespace Enmax.AutoCAD
     /// PDF discovered in a destination library with no matching Dataverse record.
     /// Custom API: enmax_acdnCreateSharePointImportStub (unbound).
     ///
-    /// Always ensures the PARENT enmax_autocaddrawing exists first (Drawing/Standard/Procedure/
-    /// Form taxonomy). Drawing/Form filenames carrying a -ddd sheet suffix additionally
-    /// find-or-create the enmax_autocadsheet child and place the destination link there;
-    /// Standard/Procedure (base-only, ADR 0001) and non-suffixed Drawing/Form filenames place
-    /// the destination link on the parent itself.
+    /// Always ensures the PARENT enmax_autocaddrawing exists first (DrawingDocument/Drawing/
+    /// Standard/Procedure/Form taxonomy). Drawing/Form filenames carrying a -ddd sheet suffix
+    /// additionally find-or-create the enmax_autocadsheet child and place the destination link
+    /// there; DrawingDocument/Standard/Procedure (base-only, docs/drawing-document-subtype-CONTRACT.md)
+    /// and non-suffixed Drawing/Form filenames place the destination link on the parent itself.
     ///
     /// Idempotent on FileUrl: re-running the indexer against an unchanged file is a no-op that
     /// returns the previously created ids (Created=false). This is a system/indexer operation —
@@ -46,12 +46,6 @@ namespace Enmax.AutoCAD
 
         private const int StatePendingSharePointImport = 8;
         private const int SheetStateAvailable          = 2;
-
-        private const int ReservationTypeDrawing  = 1;
-        private const int ReservationTypeDocument = 2;
-        private const int DocumentSubtypeStandard  = 1;
-        private const int DocumentSubtypeProcedure = 2;
-        private const int DocumentSubtypeForm      = 3;
 
         private const string PdfExtension = ".pdf";
 
@@ -83,6 +77,8 @@ namespace Enmax.AutoCAD
 
             int reservationType    = ResolveReservationType(taxonomy);
             int? documentSubtype   = ResolveDocumentSubtype(taxonomy);
+            // Drawing/Drawing and Document/Form take numbered -sss children; Drawing/DrawingDocument,
+            // Standard, and Procedure are base-only (docs/drawing-document-subtype-CONTRACT.md).
             bool takesChildren     = taxonomy == Taxonomy.Drawing || taxonomy == Taxonomy.Form;
 
             string parentNumber = recordNumber;
@@ -175,8 +171,8 @@ namespace Enmax.AutoCAD
             }
             else
             {
-                // Standard/Procedure (base-only) and non-suffixed Drawing/Form numbers carry
-                // the destination link on the parent record itself.
+                // DrawingDocument/Standard/Procedure (base-only) and non-suffixed Drawing/Form
+                // numbers carry the destination link on the parent record itself.
                 service.Update(new Entity(DrawingEntity, drawingId)
                 {
                     [ColDestinationUrl]       = fileUrl,
@@ -187,33 +183,38 @@ namespace Enmax.AutoCAD
             SetOutputs(context, drawingId, sheetId, recordNumber, created: drawingCreated || sheetCreated);
         }
 
-        private enum Taxonomy { Drawing, Standard, Procedure, Form }
+        private enum Taxonomy { DrawingDocument, Drawing, Standard, Procedure, Form }
 
         private static Taxonomy ParseTaxonomy(string raw)
         {
             switch (raw.Trim().ToLowerInvariant())
             {
-                case "drawing":   return Taxonomy.Drawing;
-                case "standard":  return Taxonomy.Standard;
-                case "procedure": return Taxonomy.Procedure;
-                case "form":      return Taxonomy.Form;
+                case "drawingdocument": return Taxonomy.DrawingDocument;
+                case "drawing":         return Taxonomy.Drawing;
+                case "standard":        return Taxonomy.Standard;
+                case "procedure":       return Taxonomy.Procedure;
+                case "form":            return Taxonomy.Form;
                 default:
                     throw new InvalidPluginExecutionException(
-                        $"Taxonomy must be one of Drawing, Standard, Procedure, Form; got '{raw}'.");
+                        $"Taxonomy must be one of DrawingDocument, Drawing, Standard, Procedure, Form; got '{raw}'.");
             }
         }
 
         private static int ResolveReservationType(Taxonomy taxonomy)
-            => taxonomy == Taxonomy.Drawing ? ReservationTypeDrawing : ReservationTypeDocument;
+            => taxonomy == Taxonomy.DrawingDocument || taxonomy == Taxonomy.Drawing
+                ? TaxonomyConstants.ReservationType.Drawing
+                : TaxonomyConstants.ReservationType.Document;
 
         private static int? ResolveDocumentSubtype(Taxonomy taxonomy)
         {
             switch (taxonomy)
             {
-                case Taxonomy.Standard:  return DocumentSubtypeStandard;
-                case Taxonomy.Procedure: return DocumentSubtypeProcedure;
-                case Taxonomy.Form:      return DocumentSubtypeForm;
-                default:                 return null;
+                case Taxonomy.DrawingDocument: return TaxonomyConstants.DocumentSubtype.DrawingDocument;
+                case Taxonomy.Drawing:         return TaxonomyConstants.DocumentSubtype.Drawing;
+                case Taxonomy.Standard:        return TaxonomyConstants.DocumentSubtype.Standard;
+                case Taxonomy.Procedure:       return TaxonomyConstants.DocumentSubtype.Procedure;
+                case Taxonomy.Form:            return TaxonomyConstants.DocumentSubtype.Form;
+                default:                       return null;
             }
         }
 

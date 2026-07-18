@@ -1,11 +1,9 @@
 import { fetchSearchDocuments, type SearchDocumentRow } from "./useSearchDocuments";
-import { fetchSearchReservations, type ReservationRow } from "./useUnifiedSearch";
 import type { SearchListFilters, SearchTab } from "./searchListFilters";
 import { emptyComposition } from "./searchListFilters";
 import type { MatchingGuids } from "./compositionQuery";
 import { guidsToCompositionFilter } from "./compositionQuery";
 import type { HeaderSearchTab } from "./searchUrlState";
-import { RESERVATION_STATUS } from "../myitems/useMyReservations";
 
 const HEADER_LIMIT = 8;
 
@@ -18,22 +16,13 @@ export interface HeaderDocumentResult {
   filename: string;
   typeLabel: string;
   stateLabel: string;
-  tab: Exclude<SearchTab, "reservations">;
+  tab: SearchTab;
   compositionSummary: string;
   revisionDate: string;
 }
 
-export interface HeaderReservationResult {
-  kind: "reservation";
-  id: string;
-  reservationNumber: string;
-  statusLabel: string;
-  reason: string;
-  submittedByName: string;
-  createdon: string;
-}
-
-export type HeaderSearchResult = HeaderDocumentResult | HeaderReservationResult;
+/** Header search returns issued document/drawing numbers only — never RES-####. */
+export type HeaderSearchResult = HeaderDocumentResult;
 
 function buildFilters(q: string, guids?: MatchingGuids): SearchListFilters {
   return {
@@ -41,12 +30,13 @@ function buildFilters(q: string, guids?: MatchingGuids): SearchListFilters {
     from: "",
     to: "",
     documentSubtype: "all",
+    documentStatus: "all",
     peopleIds: [],
     composition: guids ? guidsToCompositionFilter(guids) : emptyComposition(),
   };
 }
 
-function toHeaderDocument(row: SearchDocumentRow, tab: Exclude<SearchTab, "reservations">): HeaderDocumentResult {
+function toHeaderDocument(row: SearchDocumentRow, tab: SearchTab): HeaderDocumentResult {
   return {
     kind: "document",
     id: row.id,
@@ -62,20 +52,8 @@ function toHeaderDocument(row: SearchDocumentRow, tab: Exclude<SearchTab, "reser
   };
 }
 
-function toHeaderReservation(row: ReservationRow): HeaderReservationResult {
-  return {
-    kind: "reservation",
-    id: row.id,
-    reservationNumber: row.number,
-    statusLabel: RESERVATION_STATUS[row.status] ?? String(row.status),
-    reason: row.reason,
-    submittedByName: row.submittedByName,
-    createdon: row.createdon,
-  };
-}
-
 async function fetchDocuments(
-  tab: Exclude<SearchTab, "reservations">,
+  tab: SearchTab,
   filters: SearchListFilters,
 ): Promise<HeaderDocumentResult[]> {
   const result = await fetchSearchDocuments(tab, filters, {
@@ -88,17 +66,6 @@ async function fetchDocuments(
   return result.rows.map((r) => toHeaderDocument(r, tab));
 }
 
-async function fetchReservations(q: string): Promise<HeaderReservationResult[]> {
-  const result = await fetchSearchReservations({
-    search: q.trim(),
-    filters: {},
-    sort: { column: "number", direction: "desc" },
-    page: 0,
-    pageSize: HEADER_LIMIT,
-  });
-  return result.rows.map(toHeaderReservation);
-}
-
 export async function fetchHeaderSearch(
   q: string,
   tab: HeaderSearchTab,
@@ -108,19 +75,13 @@ export async function fetchHeaderSearch(
 
   if (tab === "drawings") return fetchDocuments("drawings", filters);
   if (tab === "documents") return fetchDocuments("documents", filters);
-  if (tab === "reservations") return fetchReservations(q);
 
-  const [drawings, documents, reservations] = await Promise.all([
+  const [drawings, documents] = await Promise.all([
     fetchDocuments("drawings", filters),
     fetchDocuments("documents", filters),
-    fetchReservations(q),
   ]);
-  const merged: HeaderSearchResult[] = [...drawings, ...documents, ...reservations];
-  merged.sort((a, b) => {
-    const labelA = a.kind === "document" ? a.documentNumber : a.reservationNumber;
-    const labelB = b.kind === "document" ? b.documentNumber : b.reservationNumber;
-    return labelA.localeCompare(labelB);
-  });
+  const merged = [...drawings, ...documents];
+  merged.sort((a, b) => a.documentNumber.localeCompare(b.documentNumber));
   return merged.slice(0, HEADER_LIMIT);
 }
 

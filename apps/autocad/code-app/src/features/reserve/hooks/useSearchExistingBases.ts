@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Enmax_autocaddrawingsService } from "../../../generated";
 import type { ReserveForm } from "../schema";
-import { taxonomyFilterClause } from "../taxonomyFilters";
+import { existingBaseSearchTaxonomy, taxonomyFilterClause } from "../taxonomyFilters";
 
 export interface ExistingBase {
   id: string;
@@ -33,7 +33,7 @@ const TERMINAL_STATES = [5, 6, 7, 8];
 
 /**
  * Searches issued base numbers (enmax_autocaddrawing) by coding/number substring,
- * scoped to the selected reservation taxonomy (Drawing / Standard / Procedure).
+ * scoped to the host taxonomy for Add-to-existing (Form → Procedure numbers).
  */
 export function useSearchExistingBases(
   query: string,
@@ -42,9 +42,18 @@ export function useSearchExistingBases(
   enabled = true,
 ) {
   const q = query.trim();
-  const typeClause = taxonomyFilterClause(reservationType, documentSubtype);
+  const searchTaxonomy = existingBaseSearchTaxonomy(reservationType, documentSubtype);
+  const typeClause = taxonomyFilterClause(
+    searchTaxonomy.reservationType,
+    searchTaxonomy.documentSubtype,
+  );
   return useQuery<ExistingBase[]>({
-    queryKey: ["existing-bases", q, reservationType, documentSubtype ?? ""],
+    queryKey: [
+      "existing-bases",
+      q,
+      searchTaxonomy.reservationType,
+      searchTaxonomy.documentSubtype ?? "",
+    ],
     enabled: enabled && q.length >= 2,
     staleTime: 15_000,
     throwOnError: false,

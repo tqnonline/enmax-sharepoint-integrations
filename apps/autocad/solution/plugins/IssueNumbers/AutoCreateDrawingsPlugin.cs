@@ -28,12 +28,10 @@ namespace Enmax.AutoCAD
         private const int    AuditSourceAction  = 4;
         private const int    SheetStateAvailable = 2;
 
-        // Type-aware issuance (ADR 0001). Document/Standard and Document/Procedure are
-        // base-only; Drawing, Document/Form, and legacy/null reservations get child items.
-        private const int    ReservationTypeDocument   = 2;
-        private const int    DocumentSubtypeStandard   = 1;
-        private const int    DocumentSubtypeProcedure  = 2;
-        private const int    DocumentSubtypeForm       = 3;
+        // Type-aware issuance (ADR 0001, docs/drawing-document-subtype-CONTRACT.md).
+        // Base-only (singleton sheet, no numbered -sss): Drawing/DrawingDocument or
+        // Document/Standard or Document/Procedure. Numbered children: Drawing/Drawing,
+        // Document/Form, or legacy reservations with no type/subtype set.
         private const int    MaxChildItems             = 999;
 
         public AutoCreateDrawingsPlugin() : base(typeof(AutoCreateDrawingsPlugin)) { }
@@ -140,6 +138,10 @@ namespace Enmax.AutoCAD
                 ? post.GetAttributeValue<int>("enmax_acdnsheetsperdrawing") : 0;
             int sheetCount = Math.Min(Math.Max(sheetsPer, 1), MaxChildItems);
 
+            // Async pipeline runs as SYSTEM — attribute Allocated to the approver (or
+            // reservation owner when that is a user), not the platform identity.
+            Guid auditActorId = ResolveAllocationActor(service, post, actorId);
+
             // Type-aware issuance (ADR 0001): Document/Standard and Document/Procedure are
             // base-only. Type/Subtype on the post-image (missing -> null -> Drawing).
             bool createChildren = CreatesChildItems(post);
@@ -186,18 +188,10 @@ namespace Enmax.AutoCAD
                         if (owner != null) sheet["ownerid"] = owner;
                         CopyLookup(post, sheet, "enmax_acdnreservationtype");
                         CopyLookup(post, sheet, "enmax_acdndocumentsubtype");
-                        Guid sheetId = service.Create(sheet);
-
-                        service.Create(new Entity(AuditEntity)
-                        {
-                            ["enmax_acdnevent"]        = new OptionSetValue(AuditEventCreated),
-                            ["enmax_acdnsource"]       = new OptionSetValue(AuditSourceAction),
-                            ["enmax_acdnsubjectid"]    = sheetId.ToString(),
-                            ["enmax_acdnsubjecttable"] = SheetEntity,
-                            ["enmax_acdnactedby"]      = new EntityReference("systemuser", actorId),
-                            ["enmax_acdntostate"]      = "Allocated",
-                            ["enmax_acdnname"]         = $"Sheet {sheetId} allocated",
-                        });
+                        service.Create(sheet);
+                        // No per-sheet Allocated audit — one Allocated on the parent drawing
+                        // covers issuance for all child documents/forms (UI would otherwise
+                        // show N identical "allocated" rows for one document).
                     }
                 }
 
@@ -207,7 +201,7 @@ namespace Enmax.AutoCAD
                     ["enmax_acdnsource"]       = new OptionSetValue(AuditSourceAction),
                     ["enmax_acdnsubjectid"]    = drawingId.ToString(),
                     ["enmax_acdnsubjecttable"] = DrawingEntity,
-                    ["enmax_acdnactedby"]      = new EntityReference("systemuser", actorId),
+                    ["enmax_acdnactedby"]      = new EntityReference("systemuser", auditActorId),
                     ["enmax_acdntostate"]      = "Allocated",
                     ["enmax_acdnname"]         = $"Drawing {drawingId} allocated",
                 });
@@ -254,27 +248,64 @@ namespace Enmax.AutoCAD
         }
 
         /// <summary>
-        /// Drawing, Document/Form, and legacy/null-type reservations create child items
-        /// (-sss). Document/Standard and Document/Procedure are base-only.
+        /// Drawing/Drawing, Document/Form, and legacy reservations with no type/subtype
+        /// set create numbered child items (-sss). Drawing/DrawingDocument and
+        /// Document/Standard and Document/Procedure are base-only.
         /// </summary>
         private static bool CreatesChildItems(Entity reservation)
         {
-            var type    = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
+            var type = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
             var subtype = reservation.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value;
-            if (type != ReservationTypeDocument) return true;
-            return subtype == DocumentSubtypeForm;
+            return TaxonomyConstants.CreatesChildItems(type, subtype);
         }
 
         /// <summary>
-        /// Standard and Procedure get a singleton sheet carrier (no sheet number) for
-        /// checkout/check-in; Form uses numbered children instead.
+        /// Drawing/DrawingDocument, Standard, and Procedure get a singleton sheet carrier
+        /// (no sheet number) for checkout/check-in; Drawing and Form use numbered children.
         /// </summary>
         private static bool IsBaseOnlyDocument(Entity reservation)
         {
             var type = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
             var subtype = reservation.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value;
-            return type == ReservationTypeDocument
-                && (subtype == DocumentSubtypeStandard || subtype == DocumentSubtypeProcedure);
+            return TaxonomyConstants.IsBaseOnlyDocument(type, subtype);
+        }
+
+        /// <summary>
+        /// Prefer the human approver, then a user owner, then the pipeline ActingUserId.
+        /// Async AutoCreate runs as SYSTEM; without this, Allocated reads as "SYSTEM allocated…".
+        /// </summary>
+        private static Guid ResolveAllocationActor(
+            IOrganizationService service, Entity post, Guid fallbackActorId)
+        {
+            Guid? UserId(EntityReference er)
+            {
+                if (er == null) return null;
+                if (!string.Equals(er.LogicalName, "systemuser", StringComparison.OrdinalIgnoreCase))
+                    return null;
+                return er.Id != Guid.Empty ? er.Id : (Guid?)null;
+            }
+
+            Guid? approverId = UserId(post.GetAttributeValue<EntityReference>("enmax_acdnapprover"));
+            Guid? ownerId = UserId(post.GetAttributeValue<EntityReference>("ownerid"));
+
+            if (!approverId.HasValue || !ownerId.HasValue)
+            {
+                try
+                {
+                    var reservation = service.Retrieve(
+                        ReservationEntity, post.Id, new ColumnSet("enmax_acdnapprover", "ownerid"));
+                    if (!approverId.HasValue)
+                        approverId = UserId(reservation.GetAttributeValue<EntityReference>("enmax_acdnapprover"));
+                    if (!ownerId.HasValue)
+                        ownerId = UserId(reservation.GetAttributeValue<EntityReference>("ownerid"));
+                }
+                catch
+                {
+                    // Fall through to ActingUserId.
+                }
+            }
+
+            return approverId ?? ownerId ?? fallbackActorId;
         }
 
         private static void CopyLookup(Entity source, Entity target, string attribute)

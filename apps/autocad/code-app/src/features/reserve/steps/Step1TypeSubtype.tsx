@@ -5,24 +5,55 @@ import {
   RadioGroup,
   Radio,
   Button,
-  Text,
-  MessageBar,
-  MessageBarBody,
   makeStyles,
   tokens,
 } from "@fluentui/react-components";
 import type { ReserveForm } from "../schema";
-import { reserveTerminology } from "../terminology";
+import { DOCUMENT_SUBTYPE_VALUE, RESERVATION_TYPE_VALUE } from "../terminology";
+import { useAppConfig } from "../../../config/useAppConfig";
+import {
+  isExistingSequenceAllowedForTaxonomy,
+  isNewSequenceAllowedForTaxonomy,
+} from "../../../config/sequenceTaxonomyConfig";
+
+const FADE_UP = {
+  from: { opacity: "0", transform: "translateY(6px)" },
+  to:   { opacity: "1", transform: "translateY(0)" },
+};
 
 const useStyles = makeStyles({
-  root: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalL },
-  groupHeader: {
-    fontWeight: tokens.fontWeightSemibold,
-    color: tokens.colorNeutralForeground2,
-    marginBottom: tokens.spacingVerticalXS,
+  root: {
+    display: "flex",
+    flexDirection: "column",
+    gap: tokens.spacingVerticalL,
+    maxWidth: "720px",
   },
-  hint: { color: tokens.colorNeutralForeground3 },
-  actions: { display: "flex", gap: tokens.spacingHorizontalS, marginTop: tokens.spacingVerticalM },
+  panel: {
+    display: "flex",
+    flexDirection: "column",
+    gap: tokens.spacingVerticalS,
+    animationName: FADE_UP,
+    animationDuration: "200ms",
+    animationTimingFunction: "ease-out",
+    animationFillMode: "both",
+  },
+  actions: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: tokens.spacingHorizontalS,
+    marginTop: tokens.spacingVerticalM,
+  },
+  primary: {
+    transitionProperty: "transform, box-shadow",
+    transitionDuration: tokens.durationFast,
+    transitionTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+    ":hover:not(:disabled)": {
+      transform: "translateY(-1px)",
+    },
+    ":active:not(:disabled)": {
+      transform: "translateY(0) scale(0.98)",
+    },
+  },
 });
 
 interface Props {
@@ -31,26 +62,46 @@ interface Props {
 
 export function Step1TypeSubtype({ onNext }: Props) {
   const styles = useStyles();
+  const config = useAppConfig();
   const { control, watch, setValue, formState: { errors }, trigger } = useFormContext<ReserveForm>();
 
   const reservationType = watch("reservationType");
   const documentSubtype = watch("documentSubtype");
   const sequenceType    = watch("sequenceType");
   const isDocument = reservationType === "Document";
+  const isDrawing  = reservationType === "Drawing";
   const isExisting = sequenceType === "Existing";
 
-  // Drawing has no subtype — clear any stale value when switching back.
-  useEffect(() => {
-    if (!isDocument && documentSubtype) setValue("documentSubtype", undefined);
-  }, [isDocument, documentSubtype, setValue]);
+  const typeValue = reservationType === "Drawing"
+    ? RESERVATION_TYPE_VALUE.Drawing
+    : reservationType === "Document"
+      ? RESERVATION_TYPE_VALUE.Document
+      : undefined;
+  const subtypeValue = documentSubtype ? DOCUMENT_SUBTYPE_VALUE[documentSubtype] : undefined;
 
-  const term = reserveTerminology(reservationType, documentSubtype);
-  const canProceed = !isDocument || !!documentSubtype;
+  const existingAllowed = isExistingSequenceAllowedForTaxonomy(config, typeValue, subtypeValue);
+  const newAllowed = isNewSequenceAllowedForTaxonomy(typeValue, subtypeValue);
+
+  useEffect(() => {
+    if (isDrawing && documentSubtype !== "DrawingDocument" && documentSubtype !== "Drawing") {
+      setValue("documentSubtype", "Drawing");
+    }
+    if (isDocument && (documentSubtype === "DrawingDocument" || documentSubtype === "Drawing")) {
+      setValue("documentSubtype", undefined);
+    }
+  }, [isDrawing, isDocument, documentSubtype, setValue]);
+
+  useEffect(() => {
+    if (!existingAllowed && sequenceType === "Existing") setValue("sequenceType", "New");
+    if (!newAllowed && sequenceType === "New") setValue("sequenceType", "Existing");
+  }, [existingAllowed, newAllowed, sequenceType, setValue]);
+
+  const canProceed = isDrawing
+    ? documentSubtype === "DrawingDocument" || documentSubtype === "Drawing"
+    : !!documentSubtype;
 
   async function handleNext() {
-    const fields: Array<keyof ReserveForm> = isDocument
-      ? ["reservationType", "documentSubtype", "sequenceType"]
-      : ["reservationType", "sequenceType"];
+    const fields: Array<keyof ReserveForm> = ["reservationType", "documentSubtype", "sequenceType"];
     if (await trigger(fields)) onNext();
   }
 
@@ -65,30 +116,52 @@ export function Step1TypeSubtype({ onNext }: Props) {
               value={field.value ?? ""}
               onChange={(_, data) => field.onChange(data.value)}
             >
-              <Radio value="Drawing"  label="Drawing — Reserves A Drawing Number With One Or More Drawing Documents (-SSS)" />
-              <Radio value="Document" label="Document — Standard, Procedure, or Form" />
+              <Radio value="Drawing"  label="Drawing" />
+              <Radio value="Document" label="Document" />
             </RadioGroup>
           </Field>
         )}
       />
 
+      {isDrawing && (
+        <div key="drawing-subtype" className={styles.panel}>
+          <Controller
+            name="documentSubtype"
+            control={control}
+            render={({ field }) => (
+              <Field label="Drawing Type" validationMessage={errors.documentSubtype?.message} required>
+                <RadioGroup
+                  value={field.value ?? ""}
+                  onChange={(_, data) => field.onChange(data.value)}
+                >
+                  <Radio value="DrawingDocument" label="Drawing Document" />
+                  <Radio value="Drawing"         label="Drawing" />
+                </RadioGroup>
+              </Field>
+            )}
+          />
+        </div>
+      )}
+
       {isDocument && (
-        <Controller
-          name="documentSubtype"
-          control={control}
-          render={({ field }) => (
-            <Field label="Document Type" validationMessage={errors.documentSubtype?.message} required>
-              <RadioGroup
-                value={field.value ?? ""}
-                onChange={(_, data) => field.onChange(data.value)}
-              >
-                <Radio value="Standard"  label="Standard Document — Single Issued Number (BB-AA-UU-DDD-SSS-KK-NNNN)" />
-                <Radio value="Procedure" label="Procedure — Single Issued Number (BB-AA-UU-DDD-SSS-KK-NNNN)" />
-                <Radio value="Form"      label="Form — Form Number With One Or More Forms (-SSS)" />
-              </RadioGroup>
-            </Field>
-          )}
-        />
+        <div key="document-subtype" className={styles.panel}>
+          <Controller
+            name="documentSubtype"
+            control={control}
+            render={({ field }) => (
+              <Field label="Document Type" validationMessage={errors.documentSubtype?.message} required>
+                <RadioGroup
+                  value={field.value ?? ""}
+                  onChange={(_, data) => field.onChange(data.value)}
+                >
+                  <Radio value="Standard"  label="Standard Document" />
+                  <Radio value="Procedure" label="Procedure" />
+                  <Radio value="Form"      label="Form" />
+                </RadioGroup>
+              </Field>
+            )}
+          />
+        </div>
       )}
 
       <Controller
@@ -100,31 +173,21 @@ export function Step1TypeSubtype({ onNext }: Props) {
               value={field.value ?? "New"}
               onChange={(_, data) => field.onChange(data.value)}
             >
-              <Radio value="New"      label="Reserve new" />
-              <Radio value="Existing" label="Add to existing coding" />
+              <Radio value="New"      label="Reserve new" disabled={!newAllowed} />
+              <Radio value="Existing" label="Add to existing" disabled={!existingAllowed} />
             </RadioGroup>
           </Field>
         )}
       />
 
-      {canProceed && (
-        <MessageBar intent="info">
-          <MessageBarBody>
-            <Text weight="semibold">{term.typeLabel}</Text>
-            {isExisting
-              ? term.createsChildren
-                ? ` — you'll search for an existing coding and append the next ${term.childNoun}s to it.`
-                : ` — you'll search for an existing coding and issue the next ${term.baseNoun} number(s) in it.`
-              : term.createsChildren
-                ? ` — you'll reserve one or more ${term.baseNounPlural}, each with one or more ${term.childNoun}s.`
-                : ` — you'll reserve one or more ${term.baseNounPlural} (base numbers only, no child items).`}
-          </MessageBarBody>
-        </MessageBar>
-      )}
-
       <div className={styles.actions}>
-        <Button appearance="primary" disabled={!canProceed} onClick={() => void handleNext()}>
-          {isExisting ? "Next: Find existing" : "Next: Composition"}
+        <Button
+          appearance="primary"
+          className={styles.primary}
+          disabled={!canProceed}
+          onClick={() => void handleNext()}
+        >
+          {isExisting ? "Next: Find existing" : "Next: Coding sequence"}
         </Button>
       </div>
     </div>

@@ -13,12 +13,12 @@ describe("taxonomyFilterClause", () => {
 
   it("scopes Procedure search to procedure taxonomy", () => {
     const clause = taxonomyFilterClause("Document", "Procedure");
-    expect(clause).toContain("enmax_acdndocumentsubtype eq 2");
+    expect(clause).toContain("enmax_acdndocumentsubtype eq 4");
   });
 
   it("scopes Standard search to standard taxonomy", () => {
     const clause = taxonomyFilterClause("Document", "Standard");
-    expect(clause).toContain("enmax_acdndocumentsubtype eq 1");
+    expect(clause).toContain("enmax_acdndocumentsubtype eq 3");
   });
 });
 

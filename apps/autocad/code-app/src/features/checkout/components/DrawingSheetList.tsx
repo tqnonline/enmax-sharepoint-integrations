@@ -43,6 +43,7 @@ import {
 import { SheetStatusBadge } from "./SheetStatusBadge";
 import { DocumentActivityTimeline } from "../../search/DocumentActivityTimeline";
 import { useDrawingAuditTrail } from "../hooks/useDrawingAuditTrail";
+import { collapseDuplicateAllocated } from "../hooks/auditSentence";
 import { reservationChildNounPluralLower } from "../../reserve/terminology";
 import { useRetinaDisplay } from "../../../lib/useRetinaDisplay";
 import {
@@ -239,9 +240,10 @@ function SheetActivityPanel({
   documentSubtype?: number;
 }) {
   const { data: events = [] } = useDrawingAuditTrail([sheetId, drawingId]);
+  const displayEvents = useMemo(() => collapseDuplicateAllocated(events), [events]);
   return (
     <DocumentActivityTimeline
-      events={events}
+      events={displayEvents}
       reservationType={reservationType}
       documentSubtype={documentSubtype}
       title="Document activity"
@@ -353,6 +355,19 @@ export function DrawingSheetList({
 
   const allSelected = selectableIds.size > 0 && [...selectableIds].every((id) => selected.has(id));
   const showCheckboxColumn = checkoutEnabled;
+  const showActionColumn = checkoutEnabled || showPerRowActivity;
+  // When checkout is disabled, omit select + check-out/in person columns entirely.
+  const gridTemplateColumns = checkoutEnabled
+    ? (isFull
+      ? "44px minmax(220px, 1.4fr) minmax(140px, 0.9fr) minmax(180px, 1fr) minmax(180px, 1fr) 48px minmax(180px, auto)"
+      : "36px minmax(160px, 1.2fr) minmax(110px, 0.8fr) minmax(130px, 1fr) minmax(130px, 1fr) 40px minmax(120px, auto)")
+    : showActionColumn
+      ? (isFull
+        ? "minmax(220px, 1.4fr) minmax(140px, 0.9fr) 48px minmax(120px, auto)"
+        : "minmax(160px, 1.2fr) minmax(110px, 0.8fr) 40px minmax(100px, auto)")
+      : (isFull
+        ? "minmax(220px, 1.4fr) minmax(140px, 0.9fr) 48px"
+        : "minmax(160px, 1.2fr) minmax(110px, 0.8fr) 40px");
 
   return (
     <div className={styles.wrap}>
@@ -396,15 +411,14 @@ export function DrawingSheetList({
       </div>
 
       <div className={styles.grid}>
-        <div className={headerClass} role="row">
+        <div className={headerClass} role="row" style={{ gridTemplateColumns }}>
           {showCheckboxColumn && <span>Select</span>}
-          {!showCheckboxColumn && <span aria-hidden />}
           <span>{childNoun} #</span>
           <span>Status</span>
-          <span>Last checked out</span>
-          <span>Last checked in</span>
+          {checkoutEnabled && <span>Last checked out</span>}
+          {checkoutEnabled && <span>Last checked in</span>}
           <span>SharePoint</span>
-          <span style={{ textAlign: "right" }}>Action</span>
+          {showActionColumn && <span style={{ textAlign: "right" }}>Action</span>}
         </div>
 
         {sheets.map((sheet) => {
@@ -435,16 +449,15 @@ export function DrawingSheetList({
               <div
                 className={`${rowClass} ${isSelectedRow ? styles.sheetRowSelected : ""}`}
                 role="row"
+                style={{ gridTemplateColumns }}
               >
-                {showCheckboxColumn ? (
+                {showCheckboxColumn && (
                   <Checkbox
                     aria-label={`Select ${displayNum}`}
                     checked={selected.has(sheet.id)}
                     disabled={!requestable || checkOutSheets.isPending}
                     onChange={(_, d) => toggleOne(sheet.id, !!d.checked)}
                   />
-                ) : (
-                  <span aria-hidden />
                 )}
                 <div>
                   <Text
@@ -473,8 +486,12 @@ export function DrawingSheetList({
                 <div className={styles.statusCell}>
                   <SheetStatusBadge sheetState={sheet.state} checkout={checkout} size={isFull ? "medium" : "small"} />
                 </div>
-                <Text size={200} className={styles.sheetMeta} title={checkedOutLine}>{checkedOutLine}</Text>
-                <Text size={200} className={styles.sheetMeta} title={checkedInLine}>{checkedInLine}</Text>
+                {checkoutEnabled && (
+                  <Text size={200} className={styles.sheetMeta} title={checkedOutLine}>{checkedOutLine}</Text>
+                )}
+                {checkoutEnabled && (
+                  <Text size={200} className={styles.sheetMeta} title={checkedInLine}>{checkedInLine}</Text>
+                )}
                 <div>
                   {sheetSpUrl ? (
                     <Tooltip content="Open in SharePoint" relationship="label">
@@ -493,33 +510,35 @@ export function DrawingSheetList({
                     <Text size={100} className={styles.sheetMetaMuted}>—</Text>
                   )}
                 </div>
-                <div className={styles.sheetActions}>
-                  {showPerRowActivity && (
-                    <Tooltip content="Show activity" relationship="label">
+                {showActionColumn && (
+                  <div className={styles.sheetActions}>
+                    {showPerRowActivity && (
+                      <Tooltip content="Show activity" relationship="label">
+                        <Button
+                          appearance={activityOpen ? "primary" : "subtle"}
+                          icon={<History24Regular />}
+                          size={buttonSize}
+                          aria-label={`Activity for ${displayNum}`}
+                          onClick={() => toggleActivity(sheet.id)}
+                        />
+                      </Tooltip>
+                    )}
+                    {checkoutEnabled && requestable && (
                       <Button
-                        appearance={activityOpen ? "primary" : "subtle"}
-                        icon={<History24Regular />}
+                        appearance="primary"
                         size={buttonSize}
-                        aria-label={`Activity for ${displayNum}`}
-                        onClick={() => toggleActivity(sheet.id)}
-                      />
-                    </Tooltip>
-                  )}
-                  {checkoutEnabled && requestable && (
-                    <Button
-                      appearance="primary"
-                      size={buttonSize}
-                      icon={checkOutSheets.isPending ? <Spinner size="tiny" /> : <ArrowDownload24Regular />}
-                      disabled={checkOutSheets.isPending}
-                      onClick={() => runCheckout([sheet.id])}
-                    >
-                      {checkOutSheets.isPending ? "…" : checkoutSingleLabel(requireApproval)}
-                    </Button>
-                  )}
-                  {checkoutEnabled && checkout?.status === CheckoutStatus.Requested && (
-                    <Text size={100} className={styles.sheetMetaMuted}>Pending approval</Text>
-                  )}
-                </div>
+                        icon={checkOutSheets.isPending ? <Spinner size="tiny" /> : <ArrowDownload24Regular />}
+                        disabled={checkOutSheets.isPending}
+                        onClick={() => runCheckout([sheet.id])}
+                      >
+                        {checkOutSheets.isPending ? "…" : checkoutSingleLabel(requireApproval)}
+                      </Button>
+                    )}
+                    {checkoutEnabled && checkout?.status === CheckoutStatus.Requested && (
+                      <Text size={100} className={styles.sheetMetaMuted}>Pending approval</Text>
+                    )}
+                  </div>
+                )}
               </div>
               {showPerRowActivity && activityOpen && (
                 <div className={styles.activityPanel}>

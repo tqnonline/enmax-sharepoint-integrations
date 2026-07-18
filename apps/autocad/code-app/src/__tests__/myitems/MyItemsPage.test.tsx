@@ -107,7 +107,7 @@ const CHECKED_OUT_RECORD: MyRecordRow = {
   systemDisplay: "AST",
   kindDisplay: "DD",
   enmax_acdnreservationtype: 2,
-  enmax_acdndocumentsubtype: 1,
+  enmax_acdndocumentsubtype: 3,
 };
 
 vi.mock("../../features/myitems/useMyRecords", async () => {
@@ -170,6 +170,11 @@ test("My Reservations tab shows Reason column for submitted reservations", async
   expect(screen.getByText("Need numbers for project")).toBeInTheDocument();
   expect(screen.getByText("GG-CG-00-ECS-AST-DD-????")).toBeInTheDocument();
   expect(screen.getAllByText("Pending").length).toBeGreaterThan(0);
+  // Always the logged-in user — no person filter; number filter is Drawing/Document Number.
+  expect(screen.getByLabelText("Drawing/Document Number")).toBeInTheDocument();
+  expect(screen.getByRole("columnheader", { name: "Drawing/Document Number" })).toBeInTheDocument();
+  expect(screen.queryByText("Submitted or approved by")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Reservation #")).not.toBeInTheDocument();
 });
 
 test("composition column shows resolved codes and issued-number range", async () => {

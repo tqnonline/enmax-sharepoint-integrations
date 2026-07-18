@@ -66,6 +66,7 @@ function row(overrides: Partial<SearchDocumentRow> = {}): SearchDocumentRow {
     typeLabel: "Drawing Document",
     state: DrawingState.Available,
     stateLabel: "Available",
+    statusDetail: "",
     enmax_acdnreservationtype: RESERVATION_TYPE_VALUE.Drawing,
     enmax_acdndocumentsubtype: undefined,
     sharePointUrl: "",

@@ -80,25 +80,25 @@ describe("approval list filters", () => {
     expect(rows).toHaveLength(0);
   });
 
-  it("number filter applies only when entered", () => {
+  it("number filter matches drawing/document coding sequence", () => {
     const all = applyReservationApprovalFilters(
       [reservation],
       { number: "", from: "", to: "", peopleIds: [] },
     );
     const match = applyReservationApprovalFilters(
       [reservation],
-      { number: "RES-00001", from: "", to: "", peopleIds: [] },
+      { number: "GG-CG-00-ECS-AST-DD", from: "", to: "", peopleIds: [] },
     );
     const miss = applyReservationApprovalFilters(
       [reservation],
-      { number: "RES-99999", from: "", to: "", peopleIds: [] },
+      { number: "ZZ-99-99-XXX-YYY-ZZ", from: "", to: "", peopleIds: [] },
     );
     expect(all).toHaveLength(1);
     expect(match).toHaveLength(1);
     expect(miss).toHaveLength(0);
   });
 
-  it("people filter applies only when ids are selected", () => {
+  it("people filter matches submitted by only, not approver", () => {
     const bySubmitter = applyReservationApprovalFilters(
       [reservation],
       { number: "", from: "", to: "", peopleIds: ["user-a"] },
@@ -112,7 +112,7 @@ describe("approval list filters", () => {
       { number: "", from: "", to: "", peopleIds: ["other"] },
     );
     expect(bySubmitter).toHaveLength(1);
-    expect(byApprover).toHaveLength(1);
+    expect(byApprover).toHaveLength(0);
     expect(none).toHaveLength(0);
   });
 

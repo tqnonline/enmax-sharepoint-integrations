@@ -26,6 +26,7 @@ function buildFilters(q: string, guids?: MatchingGuids): SearchListFilters {
     from: "",
     to: "",
     documentSubtype: "all",
+    documentStatus: "all",
     peopleIds: [],
     composition: guids ? guidsToCompositionFilter(guids) : emptyComposition(),
   };

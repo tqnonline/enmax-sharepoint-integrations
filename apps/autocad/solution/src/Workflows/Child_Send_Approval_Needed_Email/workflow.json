@@ -54,6 +54,24 @@
                 "RequesterDisplayName": {
                   "type": "string"
                 },
+                "RequesterEmail": {
+                  "type": "string"
+                },
+                "TypeLabel": {
+                  "type": "string"
+                },
+                "TypeNoun": {
+                  "type": "string"
+                },
+                "SubmittedOn": {
+                  "type": "string"
+                },
+                "RequestKind": {
+                  "type": "string"
+                },
+                "CodingSequence": {
+                  "type": "string"
+                },
                 "CompositionPreview": {
                   "type": "string"
                 },
@@ -67,6 +85,9 @@
                   "type": "string"
                 },
                 "DeepLink": {
+                  "type": "string"
+                },
+                "ApprovalsUrl": {
                   "type": "string"
                 },
                 "Cc": {
@@ -161,7 +182,7 @@
                   "Succeeded"
                 ]
               },
-              "inputs": "@{replace(replace(replace(replace(replace(replace(replace(replace(replace(base64ToString(outputs('Get_Template')?['body/value'][0]?['content']), '{{ReservationId}}', triggerBody()?['ReservationId']), '{{RequesterDisplayName}}', replace(replace(triggerBody()?['RequesterDisplayName'], '<', '&lt;'), '>', '&gt;')), '{{CompositionPreview}}', replace(replace(triggerBody()?['CompositionPreview'], '<', '&lt;'), '>', '&gt;')), '{{Count}}', triggerBody()?['Count']), '{{Reason}}', replace(replace(triggerBody()?['Reason'], '<', '&lt;'), '>', '&gt;')), '{{OverrideText}}', replace(replace(triggerBody()?['OverrideText'], '<', '&lt;'), '>', '&gt;')), '{{DeepLink}}', triggerBody()?['DeepLink']), '{{ApproveUrl}}', triggerBody()?['DeepLink']), '{{DeclineUrl}}', triggerBody()?['DeepLink'])}"
+              "inputs": "@{replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(base64ToString(outputs('Get_Template')?['body/value'][0]?['content']), '{{ReservationId}}', coalesce(triggerBody()?['ReservationId'], '')), '{{RequesterDisplayName}}', replace(replace(coalesce(triggerBody()?['RequesterDisplayName'], ''), '<', '&lt;'), '>', '&gt;')), '{{CompositionPreview}}', replace(replace(coalesce(triggerBody()?['CompositionPreview'], ''), '<', '&lt;'), '>', '&gt;')), '{{Count}}', coalesce(triggerBody()?['Count'], '')), '{{Reason}}', replace(replace(coalesce(triggerBody()?['Reason'], ''), '<', '&lt;'), '>', '&gt;')), '{{OverrideText}}', replace(replace(coalesce(triggerBody()?['OverrideText'], ''), '<', '&lt;'), '>', '&gt;')), '{{DeepLink}}', coalesce(triggerBody()?['DeepLink'], '')), '{{ApprovalsUrl}}', coalesce(triggerBody()?['ApprovalsUrl'], coalesce(triggerBody()?['DeepLink'], ''))), '{{RequesterEmail}}', replace(replace(coalesce(triggerBody()?['RequesterEmail'], ''), '<', '&lt;'), '>', '&gt;')), '{{TypeLabel}}', replace(replace(coalesce(triggerBody()?['TypeLabel'], ''), '<', '&lt;'), '>', '&gt;')), '{{SubmittedOn}}', coalesce(triggerBody()?['SubmittedOn'], '')), '{{RequestKind}}', coalesce(triggerBody()?['RequestKind'], '')), '{{CodingSequence}}', replace(replace(coalesce(triggerBody()?['CodingSequence'], ''), '<', '&lt;'), '>', '&gt;'))}"
             },
             "Get_Shared_Mailbox": {
               "type": "OpenApiConnection",
@@ -184,7 +205,7 @@
                 "authentication": "@parameters('$authentication')"
               }
             },
-            "Send_Email": {
+            "Get_Logo": {
               "type": "OpenApiConnection",
               "runAfter": {
                 "Get_Shared_Mailbox": [
@@ -193,17 +214,43 @@
               },
               "inputs": {
                 "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "ListRecords",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "webresourceset",
+                  "$filter": "name eq 'enmax_logo_white'",
+                  "$top": 1
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Send_Email": {
+              "type": "OpenApiConnection",
+              "runAfter": {
+                "Get_Logo": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
                   "connectionName": "shared_office365",
-                  "operationId": "SharedMailboxSendEmailV2",
+                  "operationId": "SendEmailV2",
                   "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
                 },
                 "parameters": {
-                  "emailMessage/MailboxAddress": "@{outputs('Get_Shared_Mailbox')?['body/value'][0]?['enmax_acdnvalue']}",
                   "emailMessage/To": "@{triggerBody()?['RecipientEmail']}",
                   "emailMessage/Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
-                  "emailMessage/Subject": "Reservation pending: @{triggerBody()?['ReservationId']}: @{triggerBody()?['CompositionPreview']}",
+                  "emailMessage/Subject": "Approval needed for new @{coalesce(triggerBody()?['TypeNoun'], 'drawing')} reservation for @{triggerBody()?['CompositionPreview']} from @{triggerBody()?['RequesterDisplayName']}.",
                   "emailMessage/Body": "@{outputs('Substitute_Template')}",
-                  "emailMessage/Importance": "Normal"
+                  "emailMessage/Importance": "Normal",
+                  "emailMessage/Attachments": [
+                    {
+                      "Name": "enmax_logo_white.png",
+                      "ContentBytes": "@{outputs('Get_Logo')?['body/value'][0]?['content']}"
+                    }
+                  ]
                 },
                 "authentication": "@parameters('$authentication')"
               },

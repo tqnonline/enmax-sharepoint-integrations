@@ -10,9 +10,20 @@ rows:
     value_type: String
     description: Document Control mailbox. Approval emails are sent TO this address; creator-facing checkout/check-in emails CC this address.
   - key: CodeAppBaseUrl
-    value: "{{ CODE_APP_BASE_URL | default('https://apps.powerapps.com/play/e/default') }}"
+    value: "{{ CODE_APP_BASE_URL | default('https://apps.powerapps.com/play/e/REPLACE_ENVIRONMENT_ID/app/REPLACE_APP_ID') }}"
     value_type: String
-    description: Base URL of the published Code App (no trailing slash). Used by notification flows for deep links.
+    description: >-
+      Full play URL of the published Code App up to and including the app id
+      (https://apps.powerapps.com/play/e/{environmentId}/app/{appId}) — NO trailing
+      slash, NO query, NO hash. Notification flows append a deep-link query string
+      (e.g. ?target=reservation&id={id}, ?target=approvals&section=documents&tab=checkout)
+      which the app resolves on boot via DeepLinkBootstrap. Hash routes are NOT used
+      in links: the Power Apps player drops the URL fragment on launch. This row is the
+      single place the per-environment env/app GUIDs are managed for flows; the Code App
+      itself derives them at runtime from getContext(). Do not encode the apps.powerapps.com.mcas.ms
+      Defender-for-Cloud-Apps proxy host here — MCAS rewrites transparently and preserves the query.
+      Must be set per environment (dev/uat/prod overlay or CODE_APP_BASE_URL); the base default is
+      an obvious placeholder so a missing override fails loudly instead of producing a broken link.
   - key: FlowRunUrlTemplate
     value: "https://make.powerautomate.com/environments/{environmentId}/flows/{flowId}/runs/{runId}"
     value_type: String
@@ -65,30 +76,46 @@ rows:
     value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
     value_type: String
     description: Drawing taxonomy destination (read-only) library base URL.
+  - key: DocumentDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+    value_type: String
+    description: Document taxonomy (Standard/Procedure/Form) drop-off (read/write) library base URL.
+  - key: DocumentDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+    value_type: String
+    description: Document taxonomy (Standard/Procedure/Form) destination (read-only) library base URL.
+  - key: StandardDocumentKindCodes
+    value: ""
+    value_type: String
+    description: Comma-separated Kind codes classified as Standard Document (indexer only; empty = none configured).
+  - key: ProcedureDocumentKindCodes
+    value: ""
+    value_type: String
+    description: Comma-separated Kind codes classified as Procedure (indexer only; empty = none configured).
   - key: StandardDocumentDropOffLibraryUrl
     value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
     value_type: String
-    description: Standard Document taxonomy drop-off library base URL.
+    description: LEGACY FALLBACK (cutover) — prefer DocumentDropOffLibraryUrl; Standard Document drop-off URL.
   - key: StandardDocumentDestinationLibraryUrl
     value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
     value_type: String
-    description: Standard Document taxonomy destination library base URL.
+    description: LEGACY FALLBACK (cutover) — prefer DocumentDestinationLibraryUrl; Standard Document destination URL.
   - key: ProcedureDocumentDropOffLibraryUrl
     value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
     value_type: String
-    description: Procedure taxonomy drop-off library base URL.
+    description: LEGACY FALLBACK (cutover) — prefer DocumentDropOffLibraryUrl; Procedure drop-off URL.
   - key: ProcedureDocumentDestinationLibraryUrl
     value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
     value_type: String
-    description: Procedure taxonomy destination library base URL.
+    description: LEGACY FALLBACK (cutover) — prefer DocumentDestinationLibraryUrl; Procedure destination URL.
   - key: FormDocumentDropOffLibraryUrl
     value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
     value_type: String
-    description: Form taxonomy drop-off library base URL.
+    description: LEGACY FALLBACK (cutover) — prefer DocumentDropOffLibraryUrl; Form drop-off URL.
   - key: FormDocumentDestinationLibraryUrl
     value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
     value_type: String
-    description: Form taxonomy destination library base URL.
+    description: LEGACY FALLBACK (cutover) — prefer DocumentDestinationLibraryUrl; Form destination URL.
   - key: DrawingDocumentSPContentTypeName
     value: Generation Drawing Information
     value_type: String
@@ -110,29 +137,17 @@ rows:
     value_type: Integer
     description: Lookback window in hours for the incremental SharePoint indexer.
   - key: SharePointRecordTypeMap
-    value: '{"Drawing Number":"Drawing","Standard Document":"Standard","Procedure":"Procedure","Form":"Form"}'
+    value: '{"Drawing Number":"Drawing","Drawing Document":"DrawingDocument","Standard Document":"Standard","Procedure":"Procedure","Form":"Form"}'
     value_type: String
-    description: JSON map of SharePoint Record Type choice labels to Drawing/Standard/Procedure/Form taxonomy.
+    description: JSON map of SharePoint Record Type choice labels to stub Taxonomy (DrawingDocument/Drawing/Standard/Procedure/Form). Used by the indexer when Kind CSVs do not classify an orphan.
   - key: RequireCheckInApproval
     value: "true"
     value_type: Boolean
     description: When true, check-in stays Awaiting Validation until an Approver/Admin validates. Seed false to auto-close.
-  - key: AppOwnerTeamId
-    value: "00000000-0000-0000-0000-000000000000"
-    value_type: String
-    description: Placeholder GUID for the parent-BU app owner team. Filled by roles provisioning after teams exist.
-  - key: AdminTeamId
-    value: "00000000-0000-0000-0000-000000000000"
-    value_type: String
-    description: Placeholder GUID for Admin team. Filled by sync_team_app_config after teams exist.
-  - key: ApproverTeamId
-    value: "00000000-0000-0000-0000-000000000000"
-    value_type: String
-    description: Placeholder GUID for Approver team. Filled by sync_team_app_config after teams exist.
-  - key: UserTeamId
-    value: "00000000-0000-0000-0000-000000000000"
-    value_type: String
-    description: Placeholder GUID for User team. Filled by roles/team sync after teams exist.
+  # AppOwnerTeamId / AdminTeamId / ApproverTeamId / UserTeamId are NOT seeded.
+  # Seed used to write Guid.Empty placeholders, which duplicated the live rows
+  # written by roles provisioning and could make SetAppOwnerPlugin stamp ownerid=Guid.Empty.
+  # Those keys are filled only by pp-deploy roles / sync_team_app_config (PROVISIONED_KEYS).
   - key: BusinessUnitName
     value: Enmax AutoCAD
     value_type: String
@@ -193,6 +208,18 @@ rows:
     value: "true"
     value_type: Boolean
     description: When true, Check In is available for Drawing reservations. Set false to hide/disable check-in for drawings only.
+  - key: EnableDrawingDocumentCheckout
+    value: "true"
+    value_type: Boolean
+    description: When true, Check Out is available for Drawing Document reservations. Set false to hide/disable checkout for Drawing Documents only.
+  - key: EnableDrawingDocumentCheckIn
+    value: "true"
+    value_type: Boolean
+    description: When true, Check In is available for Drawing Document reservations. Set false to hide/disable check-in for Drawing Documents only.
+  - key: AllowDrawingDocumentExistingSequence
+    value: "false"
+    value_type: Boolean
+    description: Drawing Document is New-sequence-only (docs/drawing-document-subtype-CONTRACT.md); leave false. Existing-sequence append is not supported for this subtype.
   - key: EnableProcedureCheckout
     value: "true"
     value_type: Boolean

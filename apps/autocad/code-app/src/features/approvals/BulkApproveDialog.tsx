@@ -18,6 +18,7 @@ import {
 import { ArrowClockwise24Regular, CheckmarkCircle24Regular } from "@fluentui/react-icons";
 import type { PendingReservation } from "./hooks/usePendingReservations";
 import { bulkResultMessage, type BulkActionResult } from "./bulkActionResult";
+import { formatReservationDisplay } from "./compositionUtils";
 
 const useStyles = makeStyles({
   list: { listStyle: "none", padding: 0, margin: 0, maxHeight: "240px", overflowY: "auto" },
@@ -85,11 +86,17 @@ export function BulkApproveDialog({
                 <ul className={styles.list}>
                   {reservations.map((r) => (
                     <li key={r.enmax_acdnreservationid} className={styles.item}>
-                      <Text>{r.enmax_acdnreservationnumber}</Text>
-                      <Text>{r._createdby_value_Formatted}</Text>
-                      <Text>
-                        {r.businessCode}-{r.assetCode}-{r.unitCode}-{r.domainCode}-{r.systemCode}-{r.kindCode}-????
+                      <Text style={{ fontFamily: "monospace" }}>
+                        {formatReservationDisplay({
+                          ...r,
+                          enmax_acdnissuednumbers: r.enmax_acdnissuednumbers,
+                          appendFirst: r.appendFirst,
+                          appendLast: r.appendLast,
+                          targetDrawingId: r.targetDrawingId,
+                          sequenceType: r.sequenceType,
+                        })}
                       </Text>
+                      <Text>{r._createdby_value_Formatted}</Text>
                     </li>
                   ))}
                 </ul>

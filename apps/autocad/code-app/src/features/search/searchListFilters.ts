@@ -2,6 +2,9 @@ import type { GridFetchParams } from "../../components/DataGrid";
 import { DOCUMENT_SUBTYPE_VALUE, RESERVATION_TYPE_VALUE } from "../reserve/terminology";
 import { typeFilterClause } from "../reserve/taxonomyFilters";
 import type { DocumentSubtypeFilter } from "../reserve/taxonomyFilters";
+import type { DocumentStatusSearchFilter } from "./searchDocumentStatus";
+
+export type { DocumentStatusSearchFilter } from "./searchDocumentStatus";
 
 /** Drawing search type includes drawing rows as well as document subtypes. */
 export type SearchDrawingTypeFilter = DocumentSubtypeFilter | "drawing";
@@ -25,6 +28,8 @@ export interface SearchListFilters {
   to: string;
   /** Documents tab only — narrows Standard / Procedure / Form. */
   documentSubtype: DocumentSubtypeSearchFilter;
+  /** Drawings / documents tabs — narrows by lifecycle status. */
+  documentStatus: DocumentStatusSearchFilter;
   peopleIds: string[];
   composition: CompositionFilterIds;
 }
@@ -44,8 +49,7 @@ export function tabDrawingSubtype(
   tab: SearchTab,
   subtype: DocumentSubtypeSearchFilter,
 ): SearchDrawingTypeFilter | "documents" {
-  if (tab === "reservations") return "drawing";
-  if (tab === "drawings") return "drawing";
+  if (tab === "reservations" || tab === "drawings") return "drawing";
   if (subtype === "standard") return "standard";
   if (subtype === "procedure") return "procedure";
   if (subtype === "form") return "form";

@@ -157,7 +157,9 @@ export function SearchReservationResultsList({
       <div className={styles.scroll}>
         {!hasQueried && (
           <div className={styles.empty}>
-            <Text>Search by reservation ID or reason, then click Query to see results.</Text>
+            <Text>
+              Search by Drawing Document / Standard Document / Procedure / Form Number, then click Query.
+            </Text>
           </div>
         )}
         {hasQueried && isLoading && rows.length === 0 && (
@@ -183,14 +185,16 @@ export function SearchReservationResultsList({
               <CalendarLtr24Regular className={styles.icon} aria-hidden />
               <div className={styles.body}>
                 <div className={styles.titleRow}>
-                  <Text weight="semibold" size={400}>{row.number}</Text>
+                  <Text weight="semibold" size={400} style={{ fontFamily: tokens.fontFamilyMonospace }}>
+                    {row.displayNumber}
+                  </Text>
                   <Badge appearance="tint" color={statusColor} size="small">{statusLabel}</Badge>
                 </div>
                 <Text className={styles.subtitle} title={row.reason}>
-                  {row.reason || "—"}
+                  {[row.typeLabel, row.reason].filter(Boolean).join(" · ") || "—"}
                 </Text>
                 <Text className={styles.meta}>
-                  {row.submittedByName ? `Submitted by ${row.submittedByName}` : "Reservation"}
+                  {row.submittedByName ? `Reserved for ${row.submittedByName}` : "Reservation"}
                   {row.approvedByName ? ` · Approved by ${row.approvedByName}` : ""}
                 </Text>
               </div>

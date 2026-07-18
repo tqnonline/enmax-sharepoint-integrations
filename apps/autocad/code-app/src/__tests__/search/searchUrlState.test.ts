@@ -4,6 +4,8 @@ import {
   buildSearchPageUrl,
   filtersFromSearchParams,
   hasSearchPrefill,
+  parseHeaderSearchTab,
+  parseSearchTab,
 } from "../../features/search/searchUrlState";
 
 describe("searchUrlState", () => {
@@ -35,6 +37,11 @@ describe("searchUrlState", () => {
     expect(filters.composition.businessId).toBe("biz-1");
     expect(filters.from).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(filters.to).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("keeps reservations tab for Search page; header search never uses RES tab", () => {
+    expect(parseSearchTab("reservations")).toBe("reservations");
+    expect(parseHeaderSearchTab("reservations")).toBe("all");
   });
 
   it("builds document detail url with returnTo for back navigation", () => {

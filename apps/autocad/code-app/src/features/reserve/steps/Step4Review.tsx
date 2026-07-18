@@ -177,7 +177,11 @@ export function Step4Review({ refData, onBack, onSubmit, isSubmitting }: Props) 
 
         {term.createsChildren && (
           <>
-            <span className={styles.label}>{term.childNoun}s / {term.baseNoun}</span>
+            <span className={styles.label}>
+              {term.baseNoun === "drawing number"
+                ? "No of Sheet per Drawing"
+                : `${term.childNoun}s / ${term.baseNoun}`}
+            </span>
             <span>{form.sheetsPerDrawing}</span>
           </>
         )}

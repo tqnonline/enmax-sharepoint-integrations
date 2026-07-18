@@ -33,11 +33,13 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         private const string ColSheetNumber  = "enmax_acdnsheetnumber";
 
         private const int StatePendingImport = 8;
-        private const int ReservationTypeDrawing  = 1;
-        private const int ReservationTypeDocument = 2;
-        private const int DocumentSubtypeStandard = 1;
-        private const int DocumentSubtypeProcedure = 2;
-        private const int DocumentSubtypeForm      = 3;
+        private const int ReservationTypeDrawing        = TaxonomyConstants.ReservationType.Drawing;
+        private const int ReservationTypeDocument       = TaxonomyConstants.ReservationType.Document;
+        private const int DocumentSubtypeDrawingDocument = TaxonomyConstants.DocumentSubtype.DrawingDocument;
+        private const int DocumentSubtypeDrawing        = TaxonomyConstants.DocumentSubtype.Drawing;
+        private const int DocumentSubtypeStandard       = TaxonomyConstants.DocumentSubtype.Standard;
+        private const int DocumentSubtypeProcedure      = TaxonomyConstants.DocumentSubtype.Procedure;
+        private const int DocumentSubtypeForm           = TaxonomyConstants.DocumentSubtype.Form;
 
         private const string BaseNumber  = "GG-CG-00-ECS-AST-DD-0007";
         private const string ChildNumber = BaseNumber + "-001";
@@ -105,6 +107,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 because: "the parent must be the base number with the -ddd sheet suffix stripped");
             drawing.GetAttributeValue<OptionSetValue>(ColDrawingState).Value.Should().Be(StatePendingImport);
             drawing.GetAttributeValue<OptionSetValue>(ColReservationType).Value.Should().Be(ReservationTypeDrawing);
+            drawing.GetAttributeValue<OptionSetValue>(ColDocumentSubtype).Value.Should().Be(DocumentSubtypeDrawing);
             drawing.GetAttributeValue<string>(ColSpImportSourceUrl).Should().Be(fileUrl);
 
             var sheet = svc.RetrieveMultiple(new QueryExpression(SheetEntity) { ColumnSet = new ColumnSet(true) })
@@ -119,6 +122,33 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 
             pluginCtx.OutputParameters["SheetId"].Should().Be(sheet.Id.ToString());
             pluginCtx.OutputParameters["RecordNumber"].Should().Be(ChildNumber);
+            pluginCtx.OutputParameters["Created"].Should().Be(true);
+        }
+
+        [Fact]
+        public void DrawingDocument_creates_parent_with_destination_on_drawing_itself()
+        {
+            var fileUrl = "https://enmaxcorp.sharepoint.com/sites/Drawings/Destination/" + BaseNumber + ".pdf";
+            var (ctx, pluginCtx) = BuildContext(BaseNumber + ".pdf", fileUrl, "DrawingDocument");
+
+            ctx.ExecutePluginWith<CreateSharePointImportStubPlugin>(pluginCtx);
+
+            var svc = ctx.GetFakedOrganizationService();
+            var drawing = svc.RetrieveMultiple(new QueryExpression(DrawingEntity) { ColumnSet = new ColumnSet(true) })
+                .Entities.Should().ContainSingle().Subject;
+
+            drawing.GetAttributeValue<string>(ColNumber).Should().Be(BaseNumber);
+            drawing.GetAttributeValue<OptionSetValue>(ColDrawingState).Value.Should().Be(StatePendingImport);
+            drawing.GetAttributeValue<OptionSetValue>(ColReservationType).Value.Should().Be(ReservationTypeDrawing);
+            drawing.GetAttributeValue<OptionSetValue>(ColDocumentSubtype).Value.Should().Be(DocumentSubtypeDrawingDocument);
+            drawing.GetAttributeValue<string>(ColDestinationUrl).Should().Be(fileUrl,
+                because: "Drawing Documents are base-only — the destination link lives on the parent");
+            drawing.GetAttributeValue<bool>(ColPresentInDest).Should().BeTrue();
+
+            svc.RetrieveMultiple(new QueryExpression(SheetEntity) { ColumnSet = new ColumnSet(false) })
+                .Entities.Should().BeEmpty(because: "Drawing Documents never take child sheets");
+
+            pluginCtx.OutputParameters["SheetId"].Should().Be(string.Empty);
             pluginCtx.OutputParameters["Created"].Should().Be(true);
         }
 

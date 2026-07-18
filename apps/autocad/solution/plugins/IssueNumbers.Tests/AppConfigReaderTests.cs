@@ -67,10 +67,12 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         [Theory]
+        [InlineData(1, 1, "EnableDrawingDocumentCheckout", "EnableDrawingDocumentCheckIn")]
+        [InlineData(1, 2, "EnableDrawingCheckout", "EnableDrawingCheckIn")]
         [InlineData(1, null, "EnableDrawingCheckout", "EnableDrawingCheckIn")]
-        [InlineData(2, 1, "EnableStandardCheckout", "EnableStandardCheckIn")]
-        [InlineData(2, 2, "EnableProcedureCheckout", "EnableProcedureCheckIn")]
-        [InlineData(2, 3, "EnableFormCheckout", "EnableFormCheckIn")]
+        [InlineData(2, 3, "EnableStandardCheckout", "EnableStandardCheckIn")]
+        [InlineData(2, 4, "EnableProcedureCheckout", "EnableProcedureCheckIn")]
+        [InlineData(2, 5, "EnableFormCheckout", "EnableFormCheckIn")]
         public void TaxonomyCheckoutConfig_ResolvesKeysByTaxonomy(
             int reservationType,
             int? documentSubtype,
@@ -102,21 +104,18 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         [Theory]
-        [InlineData(1, null, "DrawingDropOffLibraryUrl", "DrawingDestinationLibraryUrl")]
-        [InlineData(2, 1, "StandardDocumentDropOffLibraryUrl", "StandardDocumentDestinationLibraryUrl")]
-        [InlineData(2, 2, "ProcedureDocumentDropOffLibraryUrl", "ProcedureDocumentDestinationLibraryUrl")]
-        [InlineData(2, 3, "FormDocumentDropOffLibraryUrl", "FormDocumentDestinationLibraryUrl")]
-        public void TaxonomyLibraryConfig_ResolveKeys_MatchesTaxonomy(
+        [InlineData(1, "DrawingDropOffLibraryUrl", "DrawingDestinationLibraryUrl")]
+        [InlineData(2, "DocumentDropOffLibraryUrl", "DocumentDestinationLibraryUrl")]
+        public void TaxonomyLibraryConfig_ResolveKeys_MatchesReservationTypeOnly(
             int reservationType,
-            int? documentSubtype,
             string dropOffKey,
             string destinationKey)
         {
             AppConfigReader.TaxonomyLibraryConfig
-                .ResolveDropOffKey(reservationType, documentSubtype)
+                .ResolveDropOffKey(reservationType)
                 .Should().Be(dropOffKey);
             AppConfigReader.TaxonomyLibraryConfig
-                .ResolveDestinationKey(reservationType, documentSubtype)
+                .ResolveDestinationKey(reservationType)
                 .Should().Be(destinationKey);
         }
 
@@ -169,8 +168,27 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             var svc = ctx.GetFakedOrganizationService();
 
             AppConfigReader.TaxonomyLibraryConfig
-                .GetDropOffUrl(svc, reservationType: 2, documentSubtype: 1)
+                .GetDropOffUrl(svc, reservationType: 2, documentSubtype: 3)
                 .Should().Be("https://sp.example/legacy-documents-dropoff");
+        }
+
+        [Fact]
+        public void TaxonomyLibraryConfig_GetDropOffUrl_FallsBackToOldSubtypeKey_WhenTypeAndLegacyKeysAbsent()
+        {
+            var ctx = new XrmFakedContext();
+            ctx.Initialize(new[]
+            {
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "StandardDocumentDropOffLibraryUrl",
+                    ["enmax_acdnvalue"] = "https://sp.example/old-standard-dropoff",
+                },
+            });
+            var svc = ctx.GetFakedOrganizationService();
+
+            AppConfigReader.TaxonomyLibraryConfig
+                .GetDropOffUrl(svc, reservationType: 2, documentSubtype: 3)
+                .Should().Be("https://sp.example/old-standard-dropoff");
         }
 
         [Fact]
@@ -196,7 +214,36 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         [Fact]
-        public void TaxonomyLibraryConfig_GetDestinationUrl_PrefersTaxonomyKeyOverLegacy()
+        public void TaxonomyLibraryConfig_GetDestinationUrl_PrefersTypeKeyOverLegacy()
+        {
+            var ctx = new XrmFakedContext();
+            ctx.Initialize(new[]
+            {
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "DocumentDestinationLibraryUrl",
+                    ["enmax_acdnvalue"] = "https://sp.example/type-dest",
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "DocumentsDestinationLibraryUrl",
+                    ["enmax_acdnvalue"] = "https://sp.example/legacy-dest",
+                },
+                new Entity("enmax_autocadappconfig", Guid.NewGuid())
+                {
+                    ["enmax_acdnkey"]   = "FormDocumentDestinationLibraryUrl",
+                    ["enmax_acdnvalue"] = "https://sp.example/old-form-dest",
+                },
+            });
+            var svc = ctx.GetFakedOrganizationService();
+
+            AppConfigReader.TaxonomyLibraryConfig
+                .GetDestinationUrl(svc, reservationType: 2, documentSubtype: 5)
+                .Should().Be("https://sp.example/type-dest");
+        }
+
+        [Fact]
+        public void TaxonomyLibraryConfig_GetDestinationUrl_FallsBackToOldSubtypeKey_WhenTypeAndLegacyKeysAbsent()
         {
             var ctx = new XrmFakedContext();
             ctx.Initialize(new[]
@@ -204,19 +251,14 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 new Entity("enmax_autocadappconfig", Guid.NewGuid())
                 {
                     ["enmax_acdnkey"]   = "FormDocumentDestinationLibraryUrl",
-                    ["enmax_acdnvalue"] = "https://sp.example/taxonomy-dest",
-                },
-                new Entity("enmax_autocadappconfig", Guid.NewGuid())
-                {
-                    ["enmax_acdnkey"]   = "DocumentsDestinationLibraryUrl",
-                    ["enmax_acdnvalue"] = "https://sp.example/legacy-dest",
+                    ["enmax_acdnvalue"] = "https://sp.example/old-form-dest",
                 },
             });
             var svc = ctx.GetFakedOrganizationService();
 
             AppConfigReader.TaxonomyLibraryConfig
-                .GetDestinationUrl(svc, reservationType: 2, documentSubtype: 3)
-                .Should().Be("https://sp.example/taxonomy-dest");
+                .GetDestinationUrl(svc, reservationType: 2, documentSubtype: 5)
+                .Should().Be("https://sp.example/old-form-dest");
         }
     }
 }

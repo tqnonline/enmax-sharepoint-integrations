@@ -113,6 +113,12 @@ def upload_pdf(library_url: str, file_name: str, token: str, content: bytes) -> 
 # just means recordTypeSp stays None and taxonomy falls back to library URL.
 _RECORD_TYPE_FIELD_CANDIDATES = ("RecordType", "Record_x0020_Type", "DocumentType", "Document_x0020_Type")
 
+# SharePoint "Kind" column (Document* library only) drives Standard vs
+# Procedure classification for orphan destination PDFs via
+# StandardDocumentKindCodes / ProcedureDocumentKindCodes App Config. Same
+# best-effort candidate-list approach as Record Type above.
+_KIND_FIELD_CANDIDATES = ("Kind", "DocumentKind", "Document_x0020_Kind")
+
 
 def _iter_children(drive_id: str, token: str, item_id: str | None, *, expand_fields: bool) -> list[dict]:
     """List all children (paged) of a drive item, or the drive root when item_id is None."""
@@ -139,7 +145,17 @@ def _extract_list_fields(item: dict) -> dict:
         if isinstance(value, str) and value.strip():
             record_type_sp = value.strip()
             break
-    return {"contentTypeId": fields.get("ContentTypeId"), "recordTypeSp": record_type_sp}
+    kind_sp = None
+    for candidate in _KIND_FIELD_CANDIDATES:
+        value = fields.get(candidate)
+        if isinstance(value, str) and value.strip():
+            kind_sp = value.strip()
+            break
+    return {
+        "contentTypeId": fields.get("ContentTypeId"),
+        "recordTypeSp": record_type_sp,
+        "kindSp": kind_sp,
+    }
 
 
 def list_pdfs(
@@ -153,7 +169,7 @@ def list_pdfs(
     """Return PDF descriptors for a library, recursing into subfolders by default.
 
     Each result: {fileName, absoluteUrl, serverRelativeUrl, lastModifiedDateTime,
-    recordTypeSp, contentTypeId}.
+    recordTypeSp, kindSp, contentTypeId}.
 
     Content-type filtering is best-effort: Graph has no server-side content-type
     filter on drive listings, so this expands `listItem.fields` per item and
@@ -181,7 +197,11 @@ def list_pdfs(
             if not name.lower().endswith(".pdf"):
                 continue
 
-            meta = _extract_list_fields(item) if include_metadata else {"contentTypeId": None, "recordTypeSp": None}
+            meta = (
+                _extract_list_fields(item)
+                if include_metadata
+                else {"contentTypeId": None, "recordTypeSp": None, "kindSp": None}
+            )
             item_ct = meta["contentTypeId"]
             if content_type_id and item_ct and not str(item_ct).startswith(content_type_id):
                 continue
@@ -194,6 +214,7 @@ def list_pdfs(
                 "serverRelativeUrl": rel,
                 "lastModifiedDateTime": item.get("lastModifiedDateTime"),
                 "recordTypeSp": meta["recordTypeSp"],
+                "kindSp": meta["kindSp"],
                 "contentTypeId": item_ct,
             })
     return results

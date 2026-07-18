@@ -25,6 +25,9 @@ export const AppConfigSchema = z.object({
   // Legacy Drawings*/Documents* keys remain optional for migration fallback.
   DrawingDropOffLibraryUrl:                 z.url().optional(),
   DrawingDestinationLibraryUrl:             z.url().optional(),
+  DocumentDropOffLibraryUrl:                z.url().optional(),
+  DocumentDestinationLibraryUrl:            z.url().optional(),
+  // Legacy per-subtype fallbacks, kept optional for migration (docs/drawing-document-subtype-CONTRACT.md).
   StandardDocumentDropOffLibraryUrl:        z.url().optional(),
   StandardDocumentDestinationLibraryUrl:    z.url().optional(),
   ProcedureDocumentDropOffLibraryUrl:       z.url().optional(),
@@ -35,6 +38,9 @@ export const AppConfigSchema = z.object({
   DrawingsDestinationLibraryUrl:  z.url().optional(),
   DocumentsDropOffLibraryUrl:     z.url().optional(),
   DocumentsDestinationLibraryUrl: z.url().optional(),
+  // Indexer-only kind CSVs (docs/drawing-document-subtype-CONTRACT.md).
+  StandardDocumentKindCodes:      z.string().optional(),
+  ProcedureDocumentKindCodes:     z.string().optional(),
   DrawingDocumentSPContentTypeName: z.string().optional(),
   DrawingDocumentSPContentTypeId:   z.string().optional(),
   SharePointIndexerLogFolderPath:   z.string().optional(),
@@ -70,12 +76,17 @@ export const AppConfigSchema = z.object({
   // checkout flows stay enabled unless an admin explicitly disables a type.
   EnableDrawingCheckout:          z.boolean().default(true),
   EnableDrawingCheckIn:           z.boolean().default(true),
+  EnableDrawingDocumentCheckout:  z.boolean().default(true),
+  EnableDrawingDocumentCheckIn:   z.boolean().default(true),
   EnableProcedureCheckout:        z.boolean().default(true),
   EnableProcedureCheckIn:         z.boolean().default(true),
   EnableStandardCheckout:         z.boolean().default(true),
   EnableStandardCheckIn:          z.boolean().default(true),
   EnableFormCheckout:             z.boolean().default(true),
   EnableFormCheckIn:              z.boolean().default(true),
+  // Drawing Document is New-only (docs/drawing-document-subtype-CONTRACT.md) —
+  // Existing sequence append is disallowed regardless of admin overrides.
+  AllowDrawingDocumentExistingSequence: z.boolean().default(false),
 });
 
 export type AppConfig = z.infer<typeof AppConfigSchema>;

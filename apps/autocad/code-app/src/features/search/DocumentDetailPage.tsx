@@ -20,7 +20,7 @@ import {
 } from "../checkout/api/checkoutClient";
 import { useDrawingCheckout } from "../checkout/hooks/useDrawingCheckout";
 import { useDocumentActivityTrail } from "../checkout/hooks/useDocumentActivityTrail";
-import { SharePointLinkStatus } from "../sharepoint/SharePointLinkStatus";
+import { collapseDuplicateAllocated } from "../checkout/hooks/auditSentence";
 import { useDrawingSheets, SHEET_STATE_LABELS } from "../approvals/hooks/useDrawingSheets";
 import { useSheetCheckouts } from "../approvals/hooks/useSheetCheckouts";
 import { DrawingSheetList } from "../checkout/components/DrawingSheetList";
@@ -37,7 +37,6 @@ import { useAppConfig } from "../../config/useAppConfig";
 import { isCheckoutEnabledForTaxonomy } from "../../config/checkoutTaxonomyConfig";
 import {
   preferSharePointDropOff,
-  recordCarriesSharePointPdf,
   resolveSharePointFileUrls,
   sharePointFileUrl,
 } from "../sharepoint/sharepointUrls";
@@ -143,7 +142,14 @@ export function DocumentDetailPage() {
   const { data: auditEvents = [] } = useDocumentActivityTrail(drawingId, {
     sheetIds: matchedSheet ? undefined : (sheets?.map((s) => s.id) ?? []),
     focusedSheetId: matchedSheet?.id,
+    reservationId: d?.reservationId,
+    drawingCreatedOn: d?.createdOn,
+    allocatedByName: d?.approvedByName || d?.submittedByName,
   });
+  const displayAuditEvents = useMemo(
+    () => collapseDuplicateAllocated(auditEvents),
+    [auditEvents],
+  );
 
   const isFamilyView = !matchedSheet && documentId === drawingId;
 
@@ -196,12 +202,6 @@ export function DocumentDetailPage() {
       drawingState: d?.enmax_acdnstate,
     }),
   });
-  const showSharePointStatus = recordCarriesSharePointPdf(
-    d?.enmax_acdnreservationtype,
-    d?.enmax_acdndocumentsubtype,
-    { isChildSheet: !!matchedSheet },
-  );
-
   const drawingForPanel = d
     ? {
         id: d.id,
@@ -289,16 +289,6 @@ export function DocumentDetailPage() {
 
       <div className={styles.layout}>
         <aside className={styles.sidePanel}>
-          {showSharePointStatus && (
-            <div className={styles.section}>
-              <SharePointLinkStatus
-                presentInDropOff={matchedSheet?.presentInDropOff ?? d?.enmax_acdnpresentindropoff}
-                presentInDestination={matchedSheet?.presentInDestination ?? d?.enmax_acdnpresentindestination}
-                recordNumber={displayNumber}
-              />
-            </div>
-          )}
-
           <div className={styles.metaGrid}>
             <MetaField label="Business" value={d?.businessDisplay} />
             <MetaField label="Asset" value={d?.assetDisplay} />
@@ -332,12 +322,16 @@ export function DocumentDetailPage() {
           {!showsChildItems && drawingForPanel && (
             <div className={styles.section}>
               <Text weight="semibold" size={400}>Actions</Text>
-              <DrawingActionsPanel drawing={drawingForPanel} openCheckout={activeCheckout} />
+              <DrawingActionsPanel
+                drawing={drawingForPanel}
+                openCheckout={activeCheckout}
+                checkoutEnabled={checkoutEnabled}
+              />
             </div>
           )}
 
           <DocumentActivityTimeline
-            events={auditEvents}
+            events={displayAuditEvents}
             reservationType={d?.enmax_acdnreservationtype}
             documentSubtype={d?.enmax_acdndocumentsubtype}
             title={matchedSheet ? "Document activity" : "Activity"}

@@ -183,7 +183,23 @@ test("clicking sortable column header triggers refetch with sort params", async 
   expect(lastParams?.sort?.direction).toBe("asc");
 });
 
-// Test 10 — Empty state renders custom message
+// Test 10 — Manual refresh button
+test("refresh button refetches the current page", async () => {
+  const user = userEvent.setup();
+  const rows = makeRows(2);
+  const fetcherSpy = vi.fn(async () => ({ rows, totalCount: rows.length }));
+
+  renderWithProviders(
+    <EnmaxDataGrid queryKey={["test-refresh"]} fetcher={fetcherSpy} columns={COLUMNS} rowKey={r => r.id} />,
+  );
+  await waitFor(() => expect(screen.getByText("Row 0")).toBeInTheDocument());
+  const callsBefore = fetcherSpy.mock.calls.length;
+
+  await user.click(screen.getByRole("button", { name: /refresh/i }));
+  await waitFor(() => expect(fetcherSpy.mock.calls.length).toBeGreaterThan(callsBefore));
+});
+
+// Test 11 — Empty state renders custom message
 test("renders empty message when fetcher returns 0 rows", async () => {
   renderWithProviders(
     <EnmaxDataGrid

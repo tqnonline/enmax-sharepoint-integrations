@@ -12,10 +12,10 @@ using Xunit;
 namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 {
     /// <summary>
-    /// Type-aware issuance (ADR 0001): Document/Standard and Document/Procedure are
-    /// base-only; Drawing, Document/Form, and legacy/null-type reservations create
-    /// child items. Child count is hard-capped at 999. Complements the golden tests,
-    /// which pin the unchanged Drawing output contract.
+    /// Type-aware issuance (docs/drawing-document-subtype-CONTRACT.md): Drawing/DrawingDocument,
+    /// Document/Standard, and Document/Procedure are base-only; Drawing/Drawing, Document/Form,
+    /// and legacy/null-type reservations create child items. Child count is hard-capped at 999.
+    /// Complements the golden tests, which pin the unchanged Drawing output contract.
     /// </summary>
     public class TypeAwareIssuanceTests
     {
@@ -25,11 +25,13 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 
         private const int StatusApproved = 2;
 
-        private const int TypeDrawing        = 1;
-        private const int TypeDocument       = 2;
-        private const int SubtypeStandard    = 1;
-        private const int SubtypeProcedure   = 2;
-        private const int SubtypeForm        = 3;
+        private const int TypeDrawing               = TaxonomyConstants.ReservationType.Drawing;
+        private const int TypeDocument              = TaxonomyConstants.ReservationType.Document;
+        private const int SubtypeDrawingDocument     = TaxonomyConstants.DocumentSubtype.DrawingDocument;
+        private const int SubtypeDrawing             = TaxonomyConstants.DocumentSubtype.Drawing;
+        private const int SubtypeStandard            = TaxonomyConstants.DocumentSubtype.Standard;
+        private const int SubtypeProcedure           = TaxonomyConstants.DocumentSubtype.Procedure;
+        private const int SubtypeForm                = TaxonomyConstants.DocumentSubtype.Form;
 
         private static readonly Guid ApproverTeamId = Guid.NewGuid();
         private static readonly Guid AdminTeamId    = Guid.NewGuid();
@@ -89,6 +91,34 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 
         private static int CountSheets(XrmFakedContext ctx) => ctx.CreateQuery(SheetEntity).Count();
         private static int CountDrawings(XrmFakedContext ctx) => ctx.CreateQuery(DrawingEntity).Count();
+
+        [Fact]
+        public void CreateDrawings_DrawingDocument_CreatesSingletonSheet()
+        {
+            var (ctx, pluginCtx) = BuildCreateDrawingsContext(
+                new[] { 1 }, TypeDrawing, SubtypeDrawingDocument, sheetsPer: 3);
+
+            ctx.ExecutePluginWith<CreateDrawingsPlugin>(pluginCtx);
+
+            CountDrawings(ctx).Should().Be(1, because: "a Drawing Document is a single base record");
+            CountSheets(ctx).Should().Be(1, because: "Drawing Document gets a singleton sheet carrier for checkout/check-in");
+            var drawing = ctx.CreateQuery(DrawingEntity).Single();
+            drawing.GetAttributeValue<int>("enmax_acdnsheetcount").Should().Be(1);
+            var sheet = ctx.CreateQuery(SheetEntity).Single();
+            sheet.Contains("enmax_acdnsheetnumber").Should().BeFalse("singleton Drawing Document sheet stores no numeric suffix");
+        }
+
+        [Fact]
+        public void CreateDrawings_DrawingSubtype_CreatesChildItems()
+        {
+            var (ctx, pluginCtx) = BuildCreateDrawingsContext(
+                new[] { 3 }, TypeDrawing, SubtypeDrawing, sheetsPer: 4);
+
+            ctx.ExecutePluginWith<CreateDrawingsPlugin>(pluginCtx);
+
+            CountDrawings(ctx).Should().Be(1);
+            CountSheets(ctx).Should().Be(4, because: "Drawing/Drawing (subtype 2) creates numbered child items");
+        }
 
         [Fact]
         public void CreateDrawings_StandardDocument_CreatesSingletonSheet()
@@ -225,6 +255,34 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             pluginCtx.PostEntityImages = new EntityImageCollection { ["postImage"] = post };
 
             return (ctx, pluginCtx);
+        }
+
+        [Fact]
+        public void AutoCreate_DrawingDocument_CreatesSingletonSheet()
+        {
+            var (ctx, pluginCtx) = BuildAutoCreateContext(
+                new[] { 1 }, TypeDrawing, SubtypeDrawingDocument, sheetsPer: 3);
+
+            ctx.ExecutePluginWith<AutoCreateDrawingsPlugin>(pluginCtx);
+
+            CountDrawings(ctx).Should().Be(1);
+            CountSheets(ctx).Should().Be(1, because: "Drawing Document gets a singleton sheet carrier on async issuance too");
+            var drawing = ctx.CreateQuery(DrawingEntity).Single();
+            drawing.GetAttributeValue<int>("enmax_acdnsheetcount").Should().Be(1);
+            var sheet = ctx.CreateQuery(SheetEntity).Single();
+            sheet.Contains("enmax_acdnsheetnumber").Should().BeFalse("singleton Drawing Document sheet stores no numeric suffix");
+        }
+
+        [Fact]
+        public void AutoCreate_DrawingSubtype_CreatesChildItems()
+        {
+            var (ctx, pluginCtx) = BuildAutoCreateContext(
+                new[] { 3 }, TypeDrawing, SubtypeDrawing, sheetsPer: 4);
+
+            ctx.ExecutePluginWith<AutoCreateDrawingsPlugin>(pluginCtx);
+
+            CountDrawings(ctx).Should().Be(1);
+            CountSheets(ctx).Should().Be(4, because: "Drawing/Drawing (subtype 2) creates numbered child items");
         }
 
         [Fact]

@@ -6,10 +6,10 @@
  * | BB-AA-UU-DDD-SSS-KK             | Numbering group      | Numbering group   | Numbering group | Numbering group |
  * | BB-AA-UU-DDD-SSS-KK-NNNN        | Drawing Number       | Standard Document | Procedure | Form (base)     |
  * | BB-AA-UU-DDD-SSS-KK-NNNN to YYYY| Drawing Number Range | —                 | —         | Form Number Range |
- * | BB-AA-UU-DDD-SSS-KK-NNNN-SSS    | Drawing Document     | —                 | —         | Form            |
+ * | BB-AA-UU-DDD-SSS-KK-NNNN-SSS    | Drawing Sheet        | —                 | —         | Form            |
  */
 
-export const NUMBERING_GROUP_LABEL = "Drawing/Document Numbering Group";
+export const NUMBERING_GROUP_LABEL = "Coding Sequence";
 export const NUMBERING_GROUP_PATTERN = "BB-AA-UU-DDD-SSS-KK";
 export const BASE_SEQUENCE_SLOT = "NNNN";
 export const CHILD_SEQUENCE_SLOT = "SSS";
@@ -17,9 +17,10 @@ export const RANGE_WORD = "To";
 
 const RESERVATION_TYPE_DRAWING = 1;
 const RESERVATION_TYPE_DOCUMENT = 2;
-const DOCUMENT_SUBTYPE_STANDARD = 1;
-const DOCUMENT_SUBTYPE_PROCEDURE = 2;
-const DOCUMENT_SUBTYPE_FORM = 3;
+const DOCUMENT_SUBTYPE_DRAWING_DOCUMENT = 1;
+const DOCUMENT_SUBTYPE_STANDARD = 3;
+const DOCUMENT_SUBTYPE_PROCEDURE = 4;
+const DOCUMENT_SUBTYPE_FORM = 5;
 
 export type TaxonomyValues = {
   enmax_acdnreservationtype?: number | null;
@@ -42,6 +43,11 @@ function isDrawing(type?: number | null): boolean {
   return !type || type === RESERVATION_TYPE_DRAWING;
 }
 
+/** Drawing Document: type Drawing, base-only + singleton sheet (not the numbered-children Drawing subtype). */
+function isDrawingDocument(type?: number | null, subtype?: number | null): boolean {
+  return isDrawing(type) && subtype === DOCUMENT_SUBTYPE_DRAWING_DOCUMENT;
+}
+
 /** User-facing type label for grids, badges, and audit context. */
 export function taxonomyTypeLabel(
   reservationType?: number | null,
@@ -50,12 +56,15 @@ export function taxonomyTypeLabel(
   if (isStandard(reservationType, documentSubtype)) return "Standard Document";
   if (isProcedure(reservationType, documentSubtype)) return "Procedure";
   if (isForm(reservationType, documentSubtype)) return "Form";
+  if (isDrawingDocument(reservationType, documentSubtype)) return "Drawing Document";
   return "Drawing";
 }
 
 /**
  * Label for the base issued number (…-NNNN).
- * Drawing → Drawing Number; Standard → Standard Document; Procedure → Procedure; Form → Form.
+ * Drawing → Drawing Number; Drawing Document → Drawing Document (base-only,
+ * mirrors Standard/Procedure); Standard → Standard Document; Procedure →
+ * Procedure; Form → Form.
  */
 export function baseNumberLabel(
   reservationType?: number | null,
@@ -64,22 +73,30 @@ export function baseNumberLabel(
   if (isStandard(reservationType, documentSubtype)) return "Standard Document";
   if (isProcedure(reservationType, documentSubtype)) return "Procedure";
   if (isForm(reservationType, documentSubtype)) return "Form";
+  if (isDrawingDocument(reservationType, documentSubtype)) return "Drawing Document";
   return "Drawing Number";
 }
 
-/** Label for a reserved/applied sequence range (…-NNNN to YYYY). */
+/**
+ * Label for a reserved/applied sequence range (…-NNNN to YYYY). Base-only
+ * subtypes (Standard, Procedure, Drawing Document) have no range; Drawing and
+ * Form do.
+ */
 export function numberRangeLabel(
   reservationType?: number | null,
   documentSubtype?: number | null,
 ): string | null {
-  if (isDrawing(reservationType)) return "Drawing Number Range";
   if (isForm(reservationType, documentSubtype)) return "Form Number Range";
+  if (isDrawingDocument(reservationType, documentSubtype)) return null;
+  if (isStandard(reservationType, documentSubtype) || isProcedure(reservationType, documentSubtype)) return null;
+  if (isDrawing(reservationType)) return "Drawing Number Range";
   return null;
 }
 
 /**
  * Label for an individual child file (…-NNNN-SSS) or the standard/procedure base record.
- * Drawing → Drawing Document; Form → Form; Standard/Procedure → their base labels.
+ * Drawing → Drawing Sheet; Drawing Document (base-only) → Drawing Document;
+ * Form → Form; Standard/Procedure → their base labels.
  */
 export function individualItemLabel(
   reservationType?: number | null,
@@ -88,7 +105,8 @@ export function individualItemLabel(
   if (isStandard(reservationType, documentSubtype)) return "Standard Document";
   if (isProcedure(reservationType, documentSubtype)) return "Procedure";
   if (isForm(reservationType, documentSubtype)) return "Form";
-  return "Drawing Document";
+  if (isDrawingDocument(reservationType, documentSubtype)) return "Drawing Document";
+  return "Drawing Sheet";
 }
 
 export function individualItemLabelPlural(
@@ -97,7 +115,8 @@ export function individualItemLabelPlural(
 ): string {
   if (isForm(reservationType, documentSubtype)) return "Forms";
   if (isProcedure(reservationType, documentSubtype)) return "Procedures";
-  if (isDrawing(reservationType)) return "Drawing Documents";
+  if (isDrawingDocument(reservationType, documentSubtype)) return "Drawing Documents";
+  if (isDrawing(reservationType)) return "Drawing Sheets";
   return "Standard Documents";
 }
 
@@ -109,9 +128,9 @@ export function searchNumberFieldLabel(
   return `${individualItemLabel(reservationType, documentSubtype)} Number`;
 }
 
-/** Generic search placeholder covering all searchable item kinds. */
+/** Generic search placeholder covering issued document/drawing numbers only. */
 export const GLOBAL_SEARCH_PLACEHOLDER =
-  "Search reservations, drawing numbers, standard documents, procedures, forms…";
+  "Search drawing documents, standard documents, procedures, forms…";
 
 /** Joins composition codes into the numbering group (no NNNN suffix). */
 export function formatNumberingGroup(codes: {

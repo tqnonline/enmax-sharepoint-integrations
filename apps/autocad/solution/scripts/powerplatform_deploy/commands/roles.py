@@ -164,18 +164,35 @@ def sync_team_app_config(client: DataverseClient, logger: Any) -> None:
 
 
 def upsert_app_config(client: DataverseClient, key: str, value: str) -> None:
-    """Idempotently set an App Configuration key=value (find by key, patch or create)."""
+    """Idempotently set an App Configuration key=value (find by key, patch or create).
+
+    If duplicate rows share the same key (historical seed+roles race), keep the
+    first row, patch its value, and delete the extras so AppConfigReader's
+    TopCount=1 cannot return a stale Guid.Empty placeholder.
+    """
     data = client._get("enmax_autocadappconfigs", {
         "$filter": f"enmax_acdnkey eq '{key}'",
-        "$select": "enmax_autocadappconfigid",
-        "$top": "1",
+        "$select": "enmax_autocadappconfigid,enmax_acdnvalue",
+        "$orderby": "createdon asc",
     })
     items = data.get("value", [])
-    if items:
-        client._patch(f"enmax_autocadappconfigs({items[0]['enmax_autocadappconfigid']})",
-                      {"enmax_acdnvalue": value})
-    else:
+    if not items:
         client._post("enmax_autocadappconfigs", {"enmax_acdnkey": key, "enmax_acdnvalue": value})
+        return
+
+    # Prefer a row that already has a non-empty, non-nil GUID when keeping one.
+    empty = {"", "00000000-0000-0000-0000-000000000000"}
+    keeper = next(
+        (r for r in items if (r.get("enmax_acdnvalue") or "").strip().lower() not in empty),
+        items[0],
+    )
+    keeper_id = keeper["enmax_autocadappconfigid"]
+    client._patch(f"enmax_autocadappconfigs({keeper_id})", {"enmax_acdnvalue": value})
+    for row in items:
+        row_id = row["enmax_autocadappconfigid"]
+        if row_id == keeper_id:
+            continue
+        client._delete(f"enmax_autocadappconfigs({row_id})")
 
 
 # ---------------------------------------------------------------------------

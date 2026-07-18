@@ -15,15 +15,25 @@
     </option>
     <option value="1" ExternalValue="" IsHidden="0">
       <labels>
-        <label description="Standard" languagecode="1033" />
+        <label description="Drawing Document" languagecode="1033" />
       </labels>
     </option>
     <option value="2" ExternalValue="" IsHidden="0">
       <labels>
-        <label description="Procedure" languagecode="1033" />
+        <label description="Drawing" languagecode="1033" />
       </labels>
     </option>
     <option value="3" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Standard Document" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="4" ExternalValue="" IsHidden="0">
+      <labels>
+        <label description="Procedure" languagecode="1033" />
+      </labels>
+    </option>
+    <option value="5" ExternalValue="" IsHidden="0">
       <labels>
         <label description="Form" languagecode="1033" />
       </labels>

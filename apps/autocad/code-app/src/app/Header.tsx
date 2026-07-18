@@ -15,7 +15,6 @@ import {
   Search24Regular,
   Navigation24Regular,
   DocumentMultiple20Regular,
-  CalendarLtr20Regular,
 } from "@fluentui/react-icons";
 import { NotificationBell } from "./NotificationBell";
 import { useUiStore } from "../store/uiStore";
@@ -32,13 +31,6 @@ import enmaxLogo from "../assets/brand/ENX_Logo_RED.svg";
 
 type BadgeColor = "success" | "warning" | "informative" | "subtle";
 
-const RESERVATION_BADGE: Record<string, BadgeColor> = {
-  Pending: "warning",
-  Approved: "success",
-  Declined: "informative",
-  Cancelled: "subtle",
-};
-
 const STATE_BADGE: Record<string, BadgeColor> = {
   Available: "success",
   "Checked Out": "warning",
@@ -51,7 +43,6 @@ const STATE_BADGE: Record<string, BadgeColor> = {
 
 const TABS: { key: HeaderSearchTab; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "reservations", label: "Reservations" },
   { key: "drawings", label: "Drawings" },
   { key: "documents", label: "Documents" },
 ];
@@ -245,12 +236,6 @@ export function Header() {
   }), [debounced, activeTab, matchingGuids]);
 
   const handleSelect = useCallback((r: HeaderSearchResult) => {
-    if (r.kind === "reservation") {
-      navigate(`/reservations/${r.id}`);
-      setValue("");
-      setOpen(false);
-      return;
-    }
     const returnTo = searchReturnUrl();
     navigate(buildDocumentDetailUrl({
       documentId: r.id,
@@ -340,36 +325,6 @@ export function Header() {
             )}
 
             {!isFetching && results.map((r, i) => {
-              if (r.kind === "reservation") {
-                const badgeColor = RESERVATION_BADGE[r.statusLabel] ?? "informative";
-                return (
-                  <div
-                    key={`reservation-${r.id}`}
-                    className={styles.dropdownItem}
-                    role="option"
-                    aria-selected={i === highlighted}
-                    style={i === highlighted ? { backgroundColor: tokens.colorNeutralBackground1Hover } : undefined}
-                    onClick={() => handleSelect(r)}
-                    onMouseEnter={() => setHighlighted(i)}
-                  >
-                    <CalendarLtr20Regular className={styles.dropdownItemIcon} />
-                    <div className={styles.dropdownItemBody}>
-                      <div className={styles.dropdownItemTitle}>
-                        <Text size={300} weight="semibold">{r.reservationNumber}</Text>
-                        <Badge appearance="tint" color={badgeColor} size="small">{r.statusLabel}</Badge>
-                        <Badge appearance="outline" size="small">Reservation</Badge>
-                      </div>
-                      <Text size={200} className={styles.dropdownItemMeta}>
-                        {r.reason || r.submittedByName || "Drawing/Document Reservation"}
-                      </Text>
-                    </div>
-                    <Text size={200} className={styles.dropdownItemDate}>
-                      {relativeTime(r.createdon)}
-                    </Text>
-                  </div>
-                );
-              }
-
               const badgeColor = STATE_BADGE[r.stateLabel] ?? "informative";
               return (
                 <div

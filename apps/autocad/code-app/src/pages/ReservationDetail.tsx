@@ -1,14 +1,11 @@
-import { useState, useMemo } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useState, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { useReservationDrawings } from "../features/checkout/hooks/useReservationDrawings";
-import { DrawingActionsPanel } from "../features/checkout/components/DrawingActionsPanel";
-import type { CheckoutForPanel, DrawingStateValue } from "../features/checkout/api/checkoutClient";
-import { DrawingState } from "../features/checkout/api/checkoutClient";
-import { DrawingSheetList } from "../features/checkout/components/DrawingSheetList";
+import { ReservationDocumentSheetsGrid } from "../features/checkout/components/ReservationDocumentSheetsGrid";
 import { useAppConfig } from "../config/useAppConfig";
 import {
-  reservationChildNoun,
+  reservationChildNounPlural,
+  reservationHasChildItems,
   reservationRecordsLabel,
 } from "../features/reserve/terminology";
 import {
@@ -22,10 +19,6 @@ import {
   MessageBarBody,
   Divider,
   Tooltip,
-  Accordion,
-  AccordionItem,
-  AccordionHeader,
-  AccordionPanel,
   Dialog,
   DialogSurface,
   DialogTitle,
@@ -50,7 +43,7 @@ import {
 } from "@fluentui/react-icons";
 import { useReservationDetail, type DrawingDetail } from "../features/approvals/hooks/useReservationDetail";
 import { NUMBERING_GROUP_LABEL } from "../features/reserve/numberingTerms";
-import { formatNumberRange, formatAppendDisplay } from "../features/approvals/compositionUtils";
+import { formatNumberRange, formatAppendDisplay, formatReservationDisplay } from "../features/approvals/compositionUtils";
 import { useCancelReservation } from "../features/myitems/useMyReservations";
 import { useRetryIssueNumbers } from "../features/approvals/hooks/useRetryIssueNumbers";
 import { useRetryAppend } from "../features/approvals/hooks/useRetryAppend";
@@ -77,6 +70,18 @@ const DRAWING_STATE_MAP: Record<number, { label: string; color: BadgeColor }> = 
   5: { label: "Obsolete",            color: "subtle" },
   6: { label: "Void",               color: "danger" },
 };
+
+/** Available + never checked out → Allocated (issuance only). */
+function drawingStatePresentation(
+  state: number,
+  currentRevision?: string,
+): { label: string; color: BadgeColor } {
+  const base = DRAWING_STATE_MAP[state] ?? DRAWING_STATE_MAP[1];
+  if (state === 1 && !currentRevision) {
+    return { label: "Allocated", color: "success" };
+  }
+  return base;
+}
 
 
 function relativeTime(iso: string): string {
@@ -363,86 +368,6 @@ const useStyles = makeStyles({
 
 const DETAIL_TOASTER_ID = "reservation-detail-toaster";
 
-function DrawingRow({
-  drawing,
-  isOpen,
-  checkout,
-  missingSheets,
-  childNoun,
-  reservationType,
-  documentSubtype,
-  checkoutEnabled,
-  appendFirst,
-  appendLast,
-  targetDrawingNumber,
-}: {
-  drawing: DrawingDetail;
-  isOpen: boolean;
-  checkout?: CheckoutForPanel;
-  missingSheets?: string;
-  childNoun: string;
-  reservationType?: number;
-  documentSubtype?: number;
-  checkoutEnabled: boolean;
-  appendFirst?: number;
-  appendLast?: number;
-  targetDrawingNumber?: string;
-}) {
-  const styles = useStyles();
-  const ds = DRAWING_STATE_MAP[drawing.state] ?? DRAWING_STATE_MAP[1];
-  const isAppendTarget = targetDrawingNumber != null && drawing.number === targetDrawingNumber;
-  const showCheckInActions = checkout !== undefined
-    || (drawing.state !== DrawingState.Available && drawing.state !== DrawingState.None);
-  const drawingForPanel = {
-    id: drawing.id,
-    state: drawing.state as DrawingStateValue,
-    number: drawing.number,
-    spLibraryUrl: drawing.spLibraryUrl,
-    currentRevision: drawing.currentRevision,
-    missingSheets,
-  };
-
-  return (
-    <AccordionItem value={drawing.id}>
-      <AccordionHeader>
-        <div className={styles.drawingRowContent}>
-          <Text className={styles.monospace} weight="semibold">{drawing.number ?? drawing.id}</Text>
-          <Badge appearance="tint" color={ds.color} size="small">{ds.label}</Badge>
-        </div>
-      </AccordionHeader>
-      <AccordionPanel>
-        <div className={styles.sheetList}>
-          {showCheckInActions && isOpen && !checkoutEnabled && (
-            <div style={{ marginBottom: tokens.spacingVerticalS, paddingBottom: tokens.spacingVerticalS, borderBottom: `1px solid ${tokens.colorNeutralStroke2}` }}>
-              <DrawingActionsPanel drawing={drawingForPanel} openCheckout={checkout} />
-            </div>
-          )}
-          {showCheckInActions && isOpen && checkoutEnabled && drawing.state !== DrawingState.Available && (
-            <div style={{ marginBottom: tokens.spacingVerticalS, paddingBottom: tokens.spacingVerticalS, borderBottom: `1px solid ${tokens.colorNeutralStroke2}` }}>
-              <DrawingActionsPanel drawing={drawingForPanel} openCheckout={checkout} />
-            </div>
-          )}
-          {isOpen && (
-            <DrawingSheetList
-              drawingId={drawing.id}
-              baseNumber={drawing.number}
-              reservationType={reservationType}
-              documentSubtype={documentSubtype}
-              checkoutEnabled={checkoutEnabled}
-              childNoun={childNoun}
-              appendFirst={isAppendTarget ? appendFirst : undefined}
-              appendLast={isAppendTarget ? appendLast : undefined}
-              toasterId={DETAIL_TOASTER_ID}
-              variant="full"
-              showPerRowActivity
-            />
-          )}
-        </div>
-      </AccordionPanel>
-    </AccordionItem>
-  );
-}
-
 function CancelReservationControl({ reservationId }: { reservationId: string }) {
   const styles = useStyles();
   const [open, setOpen] = useState(false);
@@ -511,7 +436,6 @@ function CancelReservationControl({ reservationId }: { reservationId: string }) 
 export default function ReservationDetail() {
   const { reservationId } = useParams<{ reservationId: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
   const styles = useStyles();
   const query = useReservationDetail(reservationId);
   const queryClient = useQueryClient();
@@ -521,20 +445,9 @@ export default function ReservationDetail() {
   const { role } = useUserRole();
   const retryIssueMutation = useRetryIssueNumbers();
   const retryAppendMutation = useRetryAppend();
-  const expandDrawingId = (location.state as { expandDrawingId?: string } | null)?.expandDrawingId;
-  const [openItems, setOpenItems] = useState<string[]>(() => expandDrawingId ? [expandDrawingId] : []);
   const [drawingPage, setDrawingPage] = useState(1);
-
-  const drawingsQuery = useReservationDrawings(
-    query.data?.status === 2 ? reservationId ?? null : null,
-  );
-  const checkoutMap = useMemo(() => {
-    const map = new Map<string, { checkout?: CheckoutForPanel; missingSheets?: string }>();
-    for (const row of drawingsQuery.data ?? []) {
-      map.set(row.drawing.id, { checkout: row.checkout, missingSheets: row.drawing.missingSheets });
-    }
-    return map;
-  }, [drawingsQuery.data]);
+  const [sheetIds, setSheetIds] = useState<string[]>([]);
+  const onSheetIdsChange = useCallback((ids: string[]) => setSheetIds(ids), []);
 
   if (query.isPending) {
     return <Spinner label="Loading reservation…" style={{ marginTop: tokens.spacingVerticalXXL }} />;
@@ -557,7 +470,8 @@ export default function ReservationDetail() {
   const status = STATUS_MAP[res.status] ?? STATUS_MAP[1];
   const recordsLabel = reservationRecordsLabel(res.reservationType, res.documentSubtype);
   const recordsLabelLower = recordsLabel.toLowerCase();
-  const childNoun = reservationChildNoun(res.reservationType, res.documentSubtype);
+  const childSheetsLabel = reservationChildNounPlural(res.reservationType, res.documentSubtype);
+  const hasChildItems = reservationHasChildItems(res.reservationType, res.documentSubtype);
   const checkoutEnabled = isCheckoutEnabledForTaxonomy(
     appConfig,
     res.reservationType,
@@ -580,6 +494,8 @@ export default function ReservationDetail() {
   const totalDrawingPages = Math.max(1, Math.ceil(allDrawings.length / pageSize));
   const safeDrawingPage   = Math.min(drawingPage, totalDrawingPages);
   const pagedDrawings     = allDrawings.slice((safeDrawingPage - 1) * pageSize, safeDrawingPage * pageSize);
+  const sectionTitle = hasChildItems ? childSheetsLabel : recordsLabel;
+  const sectionCount = hasChildItems ? sheetIds.length || "…" : allDrawings.length;
 
   return (
     <div className={styles.page}>
@@ -655,7 +571,22 @@ export default function ReservationDetail() {
       <div className={styles.header} style={{ borderLeftColor: status.accentToken }}>
         {/* Title + meta columns */}
         <div className={styles.headerTop}>
-          <Title2 as="h1" className={styles.resTitle}>{res.number}</Title2>
+          <Title2 as="h1" className={styles.resTitle}>
+            {formatReservationDisplay({
+              businessCode: res.businessCode,
+              assetCode: res.assetCode,
+              unitCode: res.unitCode,
+              domainCode: res.domainCode,
+              systemCode: res.systemCode,
+              kindCode: res.kindCode,
+              enmax_acdnissuednumbers: res.issuedNumbers,
+              sequenceType: res.sequenceType,
+              targetDrawingId: res.targetDrawingId,
+              targetDrawingNumber: res.targetDrawingNumber,
+              appendFirst: res.appendFirst,
+              appendLast: res.appendLast,
+            })}
+          </Title2>
           <div className={styles.headerMetaCols}>
             <div className={styles.headerMetaCol}>
               <span className={styles.metaLabel}>Submitted</span>
@@ -666,7 +597,7 @@ export default function ReservationDetail() {
               <Text size={300} weight="semibold">{res.typeLabel}</Text>
             </div>
             <div className={styles.headerMetaCol}>
-              <span className={styles.metaLabel}>Drawing Count</span>
+              <span className={styles.metaLabel}>Count</span>
               <Text size={300} weight="semibold">{res.drawingCount}</Text>
             </div>
             {res.submitterName && (
@@ -803,39 +734,22 @@ export default function ReservationDetail() {
 
       <Divider style={{ marginBottom: tokens.spacingVerticalL }} />
 
-      {/* Drawings */}
+      {/* Drawings / drawing documents */}
       <div className={styles.drawingsSection}>
         <div className={styles.drawingsHeading}>
-          <Title3 as="h2" style={{ margin: 0 }}>{recordsLabel}</Title3>
-          <Badge appearance="outline" shape="rounded">{allDrawings.length}</Badge>
+          <Title3 as="h2" style={{ margin: 0 }}>{sectionTitle}</Title3>
+          <Badge appearance="outline" shape="rounded">{sectionCount}</Badge>
           {query.isFetching && !!query.data && <Spinner size="tiny" />}
           <div className={styles.drawingsHeadingActions}>
-            {res.drawings.length > 0 && (
-              <>
-                <Button
-                  appearance="subtle"
-                  size="small"
-                  onClick={() => setOpenItems(pagedDrawings.map(d => d.id))}
-                >
-                  Expand All
-                </Button>
-                <Button
-                  appearance="subtle"
-                  size="small"
-                  onClick={() => setOpenItems([])}
-                >
-                  Collapse All
-                </Button>
-              </>
-            )}
-            <Tooltip content="Refresh drawings and sheets" relationship="label">
+            <Tooltip content={`Refresh ${sectionTitle.toLowerCase()}`} relationship="label">
               <Button
                 appearance="subtle"
                 icon={<ArrowClockwise20Regular />}
                 size="small"
-                aria-label="Refresh drawings and sheets"
+                aria-label={`Refresh ${sectionTitle.toLowerCase()}`}
                 onClick={() => {
                   void query.refetch();
+                  void queryClient.invalidateQueries({ queryKey: ["reservation-sheets"] });
                   void queryClient.invalidateQueries({ queryKey: ["drawing-sheets"] });
                   void queryClient.invalidateQueries({ queryKey: ["sheet-checkouts"] });
                 }}
@@ -856,43 +770,57 @@ export default function ReservationDetail() {
           </MessageBar>
         )}
 
-        {allDrawings.length > 0 && (
+        {allDrawings.length > 0 && hasChildItems && (
+          <ReservationDocumentSheetsGrid
+            drawings={allDrawings.map((d) => ({ id: d.id, number: d.number }))}
+            reservationType={res.reservationType}
+            documentSubtype={res.documentSubtype}
+            checkoutEnabled={checkoutEnabled}
+            appendFirst={res.appendFirst}
+            appendLast={res.appendLast}
+            toasterId={DETAIL_TOASTER_ID}
+            onSheetIdsChange={onSheetIdsChange}
+          />
+        )}
+
+        {allDrawings.length > 0 && !hasChildItems && (
           <>
-            <Accordion
-              multiple
-              collapsible
-              openItems={openItems}
-              onToggle={(_e, data) => {
-                setOpenItems(data.openItems as string[]);
-              }}
-            >
-              {pagedDrawings.map(drawing => {
-                const co = checkoutMap.get(drawing.id);
-                return (
-                  <DrawingRow
-                    key={drawing.id}
-                    drawing={drawing}
-                    isOpen={openItems.includes(drawing.id)}
-                    checkout={co?.checkout}
-                    missingSheets={co?.missingSheets}
-                    childNoun={childNoun}
-                    reservationType={res.reservationType}
-                    documentSubtype={res.documentSubtype}
-                    checkoutEnabled={checkoutEnabled}
-                    appendFirst={res.appendFirst}
-                    appendLast={res.appendLast}
-                    targetDrawingNumber={res.targetDrawingNumber}
-                  />
-                );
-              })}
-            </Accordion>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th className={styles.compColLabel} style={{ textAlign: "left", padding: tokens.spacingVerticalS }}>
+                    {recordsLabel.replace(/s$/, "")} #
+                  </th>
+                  <th className={styles.compColLabel} style={{ textAlign: "left", padding: tokens.spacingVerticalS }}>
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedDrawings.map((drawing: DrawingDetail) => {
+                  const ds = drawingStatePresentation(drawing.state, drawing.currentRevision);
+                  return (
+                    <tr key={drawing.id}>
+                      <td style={{ padding: tokens.spacingVerticalS }}>
+                        <Text className={styles.monospace} weight="semibold">
+                          {drawing.number ?? drawing.id}
+                        </Text>
+                      </td>
+                      <td style={{ padding: tokens.spacingVerticalS }}>
+                        <Badge appearance="tint" color={ds.color} size="small">{ds.label}</Badge>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
             {totalDrawingPages > 1 && (
               <div className={styles.drawingsPagination}>
                 <Button
                   icon={<ChevronLeft16Regular />}
                   appearance="subtle"
                   disabled={safeDrawingPage <= 1}
-                  onClick={() => { setDrawingPage((p) => Math.max(1, p - 1)); setOpenItems([]); }}
+                  onClick={() => setDrawingPage((p) => Math.max(1, p - 1))}
                   aria-label="Previous page"
                 />
                 <Text size={200}>
@@ -904,14 +832,13 @@ export default function ReservationDetail() {
                   icon={<ChevronRight16Regular />}
                   appearance="subtle"
                   disabled={safeDrawingPage >= totalDrawingPages}
-                  onClick={() => { setDrawingPage((p) => Math.min(totalDrawingPages, p + 1)); setOpenItems([]); }}
+                  onClick={() => setDrawingPage((p) => Math.min(totalDrawingPages, p + 1))}
                   aria-label="Next page"
                 />
               </div>
             )}
           </>
         )}
-
       </div>
     </div>
   );

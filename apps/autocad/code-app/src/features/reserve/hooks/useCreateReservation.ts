@@ -37,9 +37,11 @@ async function createReservation(form: CreateReservationInput): Promise<CreatedR
     enmax_acdnreason:           form.reason,
     enmax_acdnstatus:           1,
     // Taxonomy (WS1a columns): drives type-aware, base-only vs. child issuance in the
-    // AutoCreateDrawings plug-in (ADR 0001 #1). Subtype is only set for Documents.
+    // AutoCreateDrawings plug-in (ADR 0001 #1, docs/drawing-document-subtype-CONTRACT.md).
+    // Subtype is now stamped for both Drawing (Drawing Document | Drawing) and
+    // Document (Standard | Procedure | Form) reservations.
     enmax_acdnreservationtype:  RESERVATION_TYPE_VALUE[form.reservationType],
-    ...(form.reservationType === "Document" && form.documentSubtype
+    ...(form.documentSubtype
       ? { enmax_acdndocumentsubtype: DOCUMENT_SUBTYPE_VALUE[form.documentSubtype] }
       : {}),
     // Bind the target base so the approver's AddChildItems knows where to append.

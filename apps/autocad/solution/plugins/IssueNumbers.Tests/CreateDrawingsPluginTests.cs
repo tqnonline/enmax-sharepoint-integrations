@@ -148,20 +148,22 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         [Fact]
         public void Execute_Taxonomy_CopiedOntoDrawingAndSheet()
         {
-            // Document/Procedure (type=2, subtype=2) creates children; both the base
+            // Document/Form (type=2, subtype=5) creates children; both the base
             // drawing and its child sheet must be self-identifying (ADR 0001).
             var (ctx, pluginCtx, _, _) = BuildContext(
-                new[] { 1 }, sheetsPer: 1, reservationType: 2, documentSubtype: 2);
+                new[] { 1 }, sheetsPer: 1,
+                reservationType: TaxonomyConstants.ReservationType.Document,
+                documentSubtype: TaxonomyConstants.DocumentSubtype.Form);
 
             ctx.ExecutePluginWith<CreateDrawingsPlugin>(pluginCtx);
 
             var drawing = ctx.CreateQuery(DrawingEntity).Single();
-            drawing.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value.Should().Be(2);
-            drawing.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value.Should().Be(2);
+            drawing.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value.Should().Be(TaxonomyConstants.ReservationType.Document);
+            drawing.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value.Should().Be(TaxonomyConstants.DocumentSubtype.Form);
 
             var sheet = ctx.CreateQuery(SheetEntity).Single();
-            sheet.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value.Should().Be(2);
-            sheet.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value.Should().Be(2);
+            sheet.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value.Should().Be(TaxonomyConstants.ReservationType.Document);
+            sheet.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value.Should().Be(TaxonomyConstants.DocumentSubtype.Form);
         }
 
         [Fact]

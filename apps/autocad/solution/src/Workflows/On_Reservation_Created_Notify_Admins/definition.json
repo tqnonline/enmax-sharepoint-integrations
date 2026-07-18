@@ -271,10 +271,55 @@
             }
           }
         },
+        "Compose_TypeLabel": {
+          "type": "Compose",
+          "runAfter": {
+            "Get_Requester_User": [
+              "Succeeded"
+            ]
+          },
+          "inputs": "@{if(greater(coalesce(triggerOutputs()?['body/enmax_acdndocumentsubtype'], 0), 0), triggerOutputs()?['body/enmax_acdndocumentsubtype@OData.Community.Display.V1.FormattedValue'], coalesce(triggerOutputs()?['body/enmax_acdnreservationtype@OData.Community.Display.V1.FormattedValue'], 'Drawing'))}"
+        },
+        "Compose_SubmittedOn": {
+          "type": "Compose",
+          "runAfter": {
+            "Compose_TypeLabel": [
+              "Succeeded"
+            ]
+          },
+          "inputs": "@{formatDateTime(triggerOutputs()?['body/createdon'], 'MMM d, yyyy h:mm tt')} UTC"
+        },
+        "Compose_RequestKind": {
+          "type": "Compose",
+          "runAfter": {
+            "Compose_SubmittedOn": [
+              "Succeeded"
+            ]
+          },
+          "inputs": "@{if(equals(coalesce(triggerOutputs()?['body/enmax_acdnsequencetype'], 0), 2), 'Add to an existing base number', 'New number sequence')}"
+        },
+        "Compose_CodingSequence": {
+          "type": "Compose",
+          "runAfter": {
+            "Compose_RequestKind": [
+              "Succeeded"
+            ]
+          },
+          "inputs": "@{concat('Bus ', outputs('Get_Business_Row')?['body/enmax_acdncode'], '  ·  Asset ', outputs('Get_Asset_Row')?['body/enmax_acdncode'], '  ·  Unit ', outputs('Get_Unit_Row')?['body/enmax_acdncode'], '  ·  Dom ', outputs('Get_Domain_Row')?['body/enmax_acdncode'], '  ·  Sys ', outputs('Get_System_Row')?['body/enmax_acdncode'], '  ·  Kind ', outputs('Get_Kind_Row')?['body/enmax_acdncode'], '  ·  No. ????')}"
+        },
+        "Compose_TypeNoun": {
+          "type": "Compose",
+          "runAfter": {
+            "Compose_CodingSequence": [
+              "Succeeded"
+            ]
+          },
+          "inputs": "@{toLower(coalesce(triggerOutputs()?['body/enmax_acdnreservationtype@OData.Community.Display.V1.FormattedValue'], 'Drawing'))}"
+        },
         "Send_Approval_Email_To_DocControl": {
           "type": "Workflow",
           "runAfter": {
-            "Get_Requester_User": [
+            "Compose_TypeNoun": [
               "Succeeded"
             ]
           },
@@ -287,11 +332,18 @@
               "RecipientDisplayName": "Document Control",
               "ReservationId": "@{triggerOutputs()?['body/enmax_acdnreservationnumber']}",
               "RequesterDisplayName": "@{variables('RequesterDisplayName')}",
+              "RequesterEmail": "@{outputs('Get_Requester_User')?['body/internalemailaddress']}",
+              "TypeLabel": "@{outputs('Compose_TypeLabel')}",
+              "TypeNoun": "@{outputs('Compose_TypeNoun')}",
+              "SubmittedOn": "@{outputs('Compose_SubmittedOn')}",
+              "RequestKind": "@{outputs('Compose_RequestKind')}",
+              "CodingSequence": "@{outputs('Compose_CodingSequence')}",
               "CompositionPreview": "@{outputs('Compose_Preview')}",
               "Count": "@{triggerOutputs()?['body/enmax_acdndrawingcount']}",
               "Reason": "@{triggerOutputs()?['body/enmax_acdnreason']}",
               "OverrideText": "@{if(triggerOutputs()?['body/enmax_acdnoverride'], concat('Yes: ', triggerOutputs()?['body/enmax_acdnoverridereason']), 'No')}",
-              "DeepLink": "@{concat(outputs('Get_CodeApp_BaseUrl_Config')?['body/value'][0]?['enmax_acdnvalue'], '/approvals')}",
+              "DeepLink": "@{concat(outputs('Get_CodeApp_BaseUrl_Config')?['body/value'][0]?['enmax_acdnvalue'], '?target=reservation&id=', triggerOutputs()?['body/enmax_autocadreservationid'])}",
+              "ApprovalsUrl": "@{concat(outputs('Get_CodeApp_BaseUrl_Config')?['body/value'][0]?['enmax_acdnvalue'], '?target=approvals')}",
               "Cc": "",
               "CorrelationId": "@{variables('CorrelationId')}"
             }

@@ -22,9 +22,15 @@ describe("sharepointUrls", () => {
     expect(expectedPdfFileName("GG-CG-00-ECS-AST-DD-0001-001")).toBe("GG-CG-00-ECS-AST-DD-0001-001.pdf");
   });
 
-  it("indexes PDFs on standard/procedure bases or child sheets", () => {
+  it("indexes PDFs on base-only records or child sheets", () => {
     expect(recordCarriesSharePointPdf(RESERVATION_TYPE_VALUE.Drawing)).toBe(false);
     expect(recordCarriesSharePointPdf(RESERVATION_TYPE_VALUE.Drawing, undefined, { isChildSheet: true })).toBe(true);
+    expect(
+      recordCarriesSharePointPdf(RESERVATION_TYPE_VALUE.Drawing, DOCUMENT_SUBTYPE_VALUE.DrawingDocument),
+    ).toBe(true);
+    expect(
+      recordCarriesSharePointPdf(RESERVATION_TYPE_VALUE.Drawing, DOCUMENT_SUBTYPE_VALUE.Drawing),
+    ).toBe(false);
     expect(
       recordCarriesSharePointPdf(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Standard),
     ).toBe(true);
@@ -37,6 +43,17 @@ describe("sharepointUrls", () => {
     expect(
       recordCarriesSharePointPdf(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Form, { isChildSheet: true }),
     ).toBe(true);
+  });
+
+  it("resolves Drawing Document base links like Standard/Procedure (base-only)", () => {
+    const urls = resolveSharePointFileUrls({
+      reservationType: RESERVATION_TYPE_VALUE.Drawing,
+      documentSubtype: DOCUMENT_SUBTYPE_VALUE.DrawingDocument,
+      isChildSheet: false,
+      drawingDropOffUrl: "https://sp.example/drawing-document.pdf",
+      sheetDropOffUrl: "https://sp.example/should-not-use.pdf",
+    });
+    expect(urls.dropOffUrl).toBe("https://sp.example/drawing-document.pdf");
   });
 
   it("resolves standard document links from the base drawing record", () => {
@@ -112,6 +129,8 @@ describe("sharepointUrls", () => {
     const config = {
       DrawingDropOffLibraryUrl: "https://sp.example/drawing-dropoff",
       DrawingDestinationLibraryUrl: "https://sp.example/drawing-dest",
+      DocumentDropOffLibraryUrl: "https://sp.example/document-dropoff",
+      DocumentDestinationLibraryUrl: "https://sp.example/document-dest",
       StandardDocumentDropOffLibraryUrl: "https://sp.example/standard-dropoff",
       StandardDocumentDestinationLibraryUrl: "https://sp.example/standard-dest",
       ProcedureDocumentDropOffLibraryUrl: "https://sp.example/procedure-dropoff",
@@ -125,26 +144,37 @@ describe("sharepointUrls", () => {
       CheckInUploadLibraryUrl: "https://sp.example/checkin-upload",
     };
 
-    it("resolves taxonomy-specific keys per reservation type / document subtype", () => {
+    it("resolves by reservation TYPE only — Drawing pair covers Drawing Document + Drawing", () => {
+      expect(resolveLibraryUrls(RESERVATION_TYPE_VALUE.Drawing, DOCUMENT_SUBTYPE_VALUE.DrawingDocument, config)).toEqual({
+        dropOff: config.DrawingDropOffLibraryUrl,
+        destination: config.DrawingDestinationLibraryUrl,
+      });
+      expect(resolveLibraryUrls(RESERVATION_TYPE_VALUE.Drawing, DOCUMENT_SUBTYPE_VALUE.Drawing, config)).toEqual({
+        dropOff: config.DrawingDropOffLibraryUrl,
+        destination: config.DrawingDestinationLibraryUrl,
+      });
       expect(resolveLibraryUrls(RESERVATION_TYPE_VALUE.Drawing, undefined, config)).toEqual({
         dropOff: config.DrawingDropOffLibraryUrl,
         destination: config.DrawingDestinationLibraryUrl,
       });
+    });
+
+    it("resolves by reservation TYPE only — Document pair covers Standard/Procedure/Form", () => {
       expect(resolveLibraryUrls(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Standard, config)).toEqual({
-        dropOff: config.StandardDocumentDropOffLibraryUrl,
-        destination: config.StandardDocumentDestinationLibraryUrl,
+        dropOff: config.DocumentDropOffLibraryUrl,
+        destination: config.DocumentDestinationLibraryUrl,
       });
       expect(resolveLibraryUrls(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Procedure, config)).toEqual({
-        dropOff: config.ProcedureDocumentDropOffLibraryUrl,
-        destination: config.ProcedureDocumentDestinationLibraryUrl,
+        dropOff: config.DocumentDropOffLibraryUrl,
+        destination: config.DocumentDestinationLibraryUrl,
       });
       expect(resolveLibraryUrls(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Form, config)).toEqual({
-        dropOff: config.FormDocumentDropOffLibraryUrl,
-        destination: config.FormDocumentDestinationLibraryUrl,
+        dropOff: config.DocumentDropOffLibraryUrl,
+        destination: config.DocumentDestinationLibraryUrl,
       });
     });
 
-    it("falls back to legacy Drawings/Documents keys when taxonomy keys are absent", () => {
+    it("falls back to legacy Drawings/Documents keys when the type-pair key is absent", () => {
       const legacyOnly = {
         DrawingsDropOffLibraryUrl: config.DrawingsDropOffLibraryUrl,
         DrawingsDestinationLibraryUrl: config.DrawingsDestinationLibraryUrl,
@@ -158,6 +188,29 @@ describe("sharepointUrls", () => {
       expect(resolveLibraryUrls(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Standard, legacyOnly)).toEqual({
         dropOff: legacyOnly.DocumentsDropOffLibraryUrl,
         destination: legacyOnly.DocumentsDestinationLibraryUrl,
+      });
+    });
+
+    it("falls back further to the old per-subtype Document keys when type + legacy keys are both absent", () => {
+      const oldSubtypeOnly = {
+        StandardDocumentDropOffLibraryUrl: config.StandardDocumentDropOffLibraryUrl,
+        StandardDocumentDestinationLibraryUrl: config.StandardDocumentDestinationLibraryUrl,
+        ProcedureDocumentDropOffLibraryUrl: config.ProcedureDocumentDropOffLibraryUrl,
+        ProcedureDocumentDestinationLibraryUrl: config.ProcedureDocumentDestinationLibraryUrl,
+        FormDocumentDropOffLibraryUrl: config.FormDocumentDropOffLibraryUrl,
+        FormDocumentDestinationLibraryUrl: config.FormDocumentDestinationLibraryUrl,
+      };
+      expect(resolveLibraryUrls(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Standard, oldSubtypeOnly)).toEqual({
+        dropOff: oldSubtypeOnly.StandardDocumentDropOffLibraryUrl,
+        destination: oldSubtypeOnly.StandardDocumentDestinationLibraryUrl,
+      });
+      expect(resolveLibraryUrls(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Procedure, oldSubtypeOnly)).toEqual({
+        dropOff: oldSubtypeOnly.ProcedureDocumentDropOffLibraryUrl,
+        destination: oldSubtypeOnly.ProcedureDocumentDestinationLibraryUrl,
+      });
+      expect(resolveLibraryUrls(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Form, oldSubtypeOnly)).toEqual({
+        dropOff: oldSubtypeOnly.FormDocumentDropOffLibraryUrl,
+        destination: oldSubtypeOnly.FormDocumentDestinationLibraryUrl,
       });
     });
 

@@ -26,6 +26,19 @@ vi.mock("../../features/home/useHomeData", () => ({
   useHomeBroadcasts: () => ({ data: broadcastsRef.value }),
   useSequenceHealth: () => ({ data: healthRef.value, isPending: false }),
 }));
+const emptyMaps = () => ({
+  bizMap: new Map<string, string>(),
+  assetMap: new Map<string, string>(),
+  unitMap: new Map<string, string>(),
+  domainMap: new Map<string, string>(),
+  sysMap: new Map<string, string>(),
+  kindMap: new Map<string, string>(),
+});
+const compositionMapsRef: { value: ReturnType<typeof emptyMaps> } = { value: emptyMaps() };
+
+vi.mock("../../features/approvals/hooks/useCompositionLookups", () => ({
+  useCompositionLookups: () => ({ data: compositionMapsRef.value }),
+}));
 
 afterEach(() => {
   roleRef.value = "User";
@@ -35,6 +48,7 @@ afterEach(() => {
   pendingChkRef.value = 0;
   broadcastsRef.value = [];
   healthRef.value = [];
+  compositionMapsRef.value = emptyMaps();
 });
 
 test("greets the user by full name", () => {
@@ -53,6 +67,52 @@ test("status line summarizes open work", () => {
   reservationsRef.value = [{ id: "r1", reservationNumber: "RES-1", status: 1, createdOn: new Date().toISOString() }];
   renderWithProviders(<HomePage />);
   expect(screen.getByText(/1 open Check Out.*1 pending reservation/i)).toBeInTheDocument();
+});
+
+test("checkout card uses Drawings/Documents title", () => {
+  checkoutsRef.value = [{
+    checkoutId: "c1",
+    drawingNumber: "DE-9A-10-AES-AAA-DS-0001",
+    typeLabel: "Drawing",
+    checkedOutByName: "Alex",
+    status: 1,
+    daysOut: 1,
+    checkedOutOn: new Date().toISOString(),
+  }];
+  renderWithProviders(<HomePage />);
+  expect(screen.getByText(/My Checked out Drawings\/Documents/i)).toBeInTheDocument();
+  expect(screen.getByText("DE-9A-10-AES-AAA-DS-0001")).toBeInTheDocument();
+  expect(screen.getByText(/Drawing · Checked out for Alex/i)).toBeInTheDocument();
+});
+
+test("reservation card shows coding sequence, type, and reserved for — never RES-XXX", () => {
+  compositionMapsRef.value = {
+    bizMap: new Map([["biz-1", "DE"]]),
+    assetMap: new Map([["asset-1", "9A"]]),
+    unitMap: new Map([["unit-1", "10"]]),
+    domainMap: new Map([["dom-1", "AES"]]),
+    sysMap: new Map([["sys-1", "AAA"]]),
+    kindMap: new Map([["kind-1", "DS"]]),
+  };
+  reservationsRef.value = [{
+    id: "r1",
+    reservationNumber: "RES-1184",
+    status: 2,
+    createdOn: new Date().toISOString(),
+    typeLabel: "Drawing",
+    submitterDisplay: "Jordan",
+    businessId: "biz-1",
+    assetId: "asset-1",
+    unitId: "unit-1",
+    domainId: "dom-1",
+    systemId: "sys-1",
+    kindId: "kind-1",
+    issuedNumbers: "[1,2,3]",
+  }];
+  renderWithProviders(<HomePage />);
+  expect(screen.getByText("DE-9A-10-AES-AAA-DS-0001 To 0003")).toBeInTheDocument();
+  expect(screen.getByText(/Drawing · Reserved for Jordan/i)).toBeInTheDocument();
+  expect(screen.queryByText("RES-1184")).not.toBeInTheDocument();
 });
 
 test("Approver sees pending-approval attention with a Review action", () => {
