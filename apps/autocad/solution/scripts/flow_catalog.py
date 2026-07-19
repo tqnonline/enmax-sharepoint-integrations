@@ -15,6 +15,20 @@ FOLDER_TAG_PREFIX = "folderSlug:"
 SOLUTION_PROD = "enmax_autocadsln"
 SOLUTION_ADMIN = "enmax_autocadadminsln"
 
+CONNECTOR_TO_CONREF_PROD: dict[str, str] = {
+    "shared_commondataserviceforapps": "enmax_autocadconrefDataverse",
+    "shared_office365": "enmax_autocadconrefOutlook",
+    "shared_sharepointonline": "enmax_autocadconrefSharePoint",
+    "shared_teams": "enmax_autocadconrefTeams",
+}
+
+CONNECTOR_TO_CONREF_ADMIN: dict[str, str] = {
+    "shared_commondataserviceforapps": "enmax_autocadconrefADMDataverse",
+    "shared_office365": "enmax_autocadconrefADMOutlook",
+    "shared_sharepointonline": "enmax_autocadconrefADMSharePoint",
+    "shared_teams": "enmax_autocadconrefADMTeams",
+}
+
 
 def _load_yaml(path: Path) -> dict[str, Any]:
     try:
@@ -53,6 +67,13 @@ def solution_for_slug(slug: str) -> str:
     if slug in load_admin_flow_catalog():
         return SOLUTION_ADMIN
     return SOLUTION_PROD
+
+
+def connector_to_conref_for_slug(slug: str) -> dict[str, str]:
+    """Return connector → connection-reference map for the flow's owning solution."""
+    if slug in load_admin_flow_catalog():
+        return CONNECTOR_TO_CONREF_ADMIN
+    return CONNECTOR_TO_CONREF_PROD
 
 
 def flow_display_name(folder_slug: str, catalog: dict[str, dict[str, str]] | None = None) -> str:

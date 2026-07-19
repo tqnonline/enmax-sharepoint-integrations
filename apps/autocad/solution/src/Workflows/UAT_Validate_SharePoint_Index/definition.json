@@ -228,7 +228,7 @@
           },
           "inputs": {
             "host": {
-              "workflowReferenceName": "Child_Log_Flow_Exception"
+              "workflowReferenceName": "Admin_Child_Log_Flow_Exception"
             },
             "body": {
               "Origin": 1,

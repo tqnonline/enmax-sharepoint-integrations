@@ -28,10 +28,11 @@ def test_prod_catalog_excludes_uat_flows() -> None:
     assert "UAT_Validate_SharePoint_Index" not in catalog
 
 
-def test_admin_catalog_has_three_uat_flows() -> None:
+def test_admin_catalog_has_own_exception_logger_and_three_uat_flows() -> None:
     catalog = fc.load_admin_flow_catalog()
-    assert len(catalog) == 3
+    assert len(catalog) == 4
     assert set(catalog) == {
+        "Admin_Child_Log_Flow_Exception",
         "UAT_Seed_SharePoint_Test_PDFs",
         "UAT_Teardown_SharePoint_Test_PDFs",
         "UAT_Validate_SharePoint_Index",
@@ -54,6 +55,14 @@ def test_load_catalog_rejects_unknown_which() -> None:
 def test_solution_for_slug_routes_uat_flows_to_admin() -> None:
     assert fc.solution_for_slug("UAT_Seed_SharePoint_Test_PDFs") == fc.SOLUTION_ADMIN
     assert fc.solution_for_slug("Manual_Refresh_SharePoint_Index") == fc.SOLUTION_PROD
+
+
+def test_connector_to_conref_for_slug_uses_admin_refs_for_uat_flows() -> None:
+    admin = fc.connector_to_conref_for_slug("UAT_Validate_SharePoint_Index")
+    prod = fc.connector_to_conref_for_slug("Child_Log_Flow_Exception")
+    assert admin["shared_commondataserviceforapps"] == "enmax_autocadconrefADMDataverse"
+    assert admin["shared_sharepointonline"] == "enmax_autocadconrefADMSharePoint"
+    assert prod["shared_commondataserviceforapps"] == "enmax_autocadconrefDataverse"
 
 
 def test_display_name_format() -> None:

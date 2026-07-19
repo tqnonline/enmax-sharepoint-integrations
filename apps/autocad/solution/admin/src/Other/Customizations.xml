@@ -11,7 +11,40 @@
   <optionsets />
   <CustomControls />
   <EntityDataProviders />
-  <connectionreferences />
+  <connectionreferences>
+    <connectionreference connectionreferencelogicalname="enmax_autocadconrefADMDataverse">
+      <connectionreferencedisplayname>Enmax AutoCAD Admin | Connection Reference | Dataverse</connectionreferencedisplayname>
+      <connectorid>/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps</connectorid>
+      <iscustomizable>1</iscustomizable>
+      <promptingbehavior>0</promptingbehavior>
+      <statecode>0</statecode>
+      <statuscode>1</statuscode>
+    </connectionreference>
+    <connectionreference connectionreferencelogicalname="enmax_autocadconrefADMSharePoint">
+      <connectionreferencedisplayname>Enmax AutoCAD Admin | Connection Reference | SharePoint</connectionreferencedisplayname>
+      <connectorid>/providers/Microsoft.PowerApps/apis/shared_sharepointonline</connectorid>
+      <iscustomizable>1</iscustomizable>
+      <promptingbehavior>0</promptingbehavior>
+      <statecode>0</statecode>
+      <statuscode>1</statuscode>
+    </connectionreference>
+    <connectionreference connectionreferencelogicalname="enmax_autocadconrefADMOutlook">
+      <connectionreferencedisplayname>Enmax AutoCAD Admin | Connection Reference | Outlook</connectionreferencedisplayname>
+      <connectorid>/providers/Microsoft.PowerApps/apis/shared_office365</connectorid>
+      <iscustomizable>1</iscustomizable>
+      <promptingbehavior>0</promptingbehavior>
+      <statecode>0</statecode>
+      <statuscode>1</statuscode>
+    </connectionreference>
+    <connectionreference connectionreferencelogicalname="enmax_autocadconrefADMTeams">
+      <connectionreferencedisplayname>Enmax AutoCAD Admin | Connection Reference | Teams</connectionreferencedisplayname>
+      <connectorid>/providers/Microsoft.PowerApps/apis/shared_teams</connectorid>
+      <iscustomizable>1</iscustomizable>
+      <promptingbehavior>0</promptingbehavior>
+      <statecode>0</statecode>
+      <statuscode>1</statuscode>
+    </connectionreference>
+  </connectionreferences>
   <Languages>
     <Language>1033</Language>
   </Languages>

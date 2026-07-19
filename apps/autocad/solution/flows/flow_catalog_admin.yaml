@@ -3,6 +3,9 @@
 # Deploy: deploy_flows.py --catalog admin reads this file.
 
 flows:
+  Admin_Child_Log_Flow_Exception:
+    displayName: "Enmax AutoCAD Admin | Internal | Log Flow Exception"
+    description: Admin-solution copy of the durable flow exception logger used by UAT harness flows.
   UAT_Seed_SharePoint_Test_PDFs:
     displayName: "Enmax AutoCAD | On Demand | UAT Seed SharePoint Test PDFs"
     description: UAT harness to seed minimal test PDFs in SharePoint libraries.

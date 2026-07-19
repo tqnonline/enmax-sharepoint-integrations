@@ -5,7 +5,7 @@
       "shared_sharepointonline": {
         "runtimeSource": "embedded",
         "connection": {
-          "connectionReferenceLogicalName": "enmax_autocadconrefSharePoint"
+          "connectionReferenceLogicalName": "enmax_autocadconrefADMSharePoint"
         },
         "api": {
           "name": "shared_sharepointonline"
@@ -184,7 +184,7 @@
               },
               "inputs": {
                 "host": {
-                  "workflowReferenceName": "Child_Log_Flow_Exception"
+                  "workflowReferenceName": "Admin_Child_Log_Flow_Exception"
                 },
                 "body": {
                   "Origin": 1,

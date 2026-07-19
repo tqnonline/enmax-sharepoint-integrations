@@ -8,13 +8,14 @@ import json
 from pathlib import Path
 from typing import Any
 
-from flow_catalog import load_flow_catalog, load_flow_run_url_template
+from flow_catalog import load_admin_flow_catalog, load_flow_catalog, load_flow_run_url_template
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
-SKIP_WRAP = frozenset({"Child_Log_Flow_Exception"})
-RESPONSE_ACTIONS = frozenset({"Respond_to_Parent"})
 CHILD_LOGGER_SLUG = "Child_Log_Flow_Exception"
+ADMIN_CHILD_LOGGER_SLUG = "Admin_Child_Log_Flow_Exception"
+SKIP_WRAP = frozenset({CHILD_LOGGER_SLUG, ADMIN_CHILD_LOGGER_SLUG})
+RESPONSE_ACTIONS = frozenset({"Respond_to_Parent"})
 
 # result('Scope_Try_Main') is an action-result array; pick the first entry (failed scope action).
 _SCOPE_RESULTS = "result('Scope_Try_Main')"
@@ -124,7 +125,15 @@ def _sanitize_scoped_run_after(scoped: dict[str, Any], hoisted_names: set[str]) 
         action["runAfter"] = cleaned if cleaned else {}
 
 
-def repair_wrapped_scoped_run_after(definition: dict[str, Any]) -> dict[str, Any]:
+def _child_logger_slug(folder_slug: str) -> str:
+    return ADMIN_CHILD_LOGGER_SLUG if folder_slug in load_admin_flow_catalog() else CHILD_LOGGER_SLUG
+
+
+def repair_wrapped_scoped_run_after(
+    definition: dict[str, Any],
+    *,
+    child_logger_slug: str = CHILD_LOGGER_SLUG,
+) -> dict[str, Any]:
     """Fix scoped actions that still runAfter hoisted root actions (PA validation error)."""
     actions = definition.get("actions")
     if not isinstance(actions, dict) or not _already_wrapped(actions):
@@ -133,6 +142,15 @@ def repair_wrapped_scoped_run_after(definition: dict[str, Any]) -> dict[str, Any
     scope = out["actions"].get("Scope_Try_Main", {}).get("actions") or {}
     root_names = set(out["actions"].keys()) - {"Scope_Try_Main", "Scope_Catch_Failure"}
     _sanitize_scoped_run_after(scope, root_names)
+    logger = (
+        out["actions"]
+        .get("Scope_Catch_Failure", {})
+        .get("actions", {})
+        .get("Invoke_Log_Flow_Exception", {})
+    )
+    host = logger.get("inputs", {}).get("host")
+    if isinstance(host, dict):
+        host["workflowReferenceName"] = child_logger_slug
     return out
 
 
@@ -144,8 +162,9 @@ def wrap_definition(definition: dict[str, Any], *, folder_slug: str, display_nam
     actions = definition.get("actions")
     if not isinstance(actions, dict):
         return definition
+    child_logger_slug = _child_logger_slug(folder_slug)
     if _already_wrapped(actions):
-        return repair_wrapped_scoped_run_after(definition)
+        return repair_wrapped_scoped_run_after(definition, child_logger_slug=child_logger_slug)
 
     exception_meta = _infer_exception_logging(definition)
     flow_run_template = load_flow_run_url_template()
@@ -230,7 +249,7 @@ def wrap_definition(definition: dict[str, Any], *, folder_slug: str, display_nam
                     "type": "Workflow",
                     "runAfter": {"Compose_FlowRunUrl": ["Succeeded"]},
                     "inputs": {
-                        "host": {"workflowReferenceName": CHILD_LOGGER_SLUG},
+                        "host": {"workflowReferenceName": child_logger_slug},
                         "body": {
                             "Origin": 1,
                             "FlowDisplayName": "@{variables('FlowDisplayName')}",

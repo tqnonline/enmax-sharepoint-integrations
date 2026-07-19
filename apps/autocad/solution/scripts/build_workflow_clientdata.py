@@ -2,13 +2,20 @@
 """Wrap flow definition.json files with solution connection reference metadata.
 
 Reads each solution/src/Workflows/*/definition.json and writes workflow.json in
-solution export format, mapping connector keys to the enmax_autocadsln
-connection references already deployed in DEV:
+solution export format, mapping connector keys to the connection references in the
+flow's owning solution:
 
-  shared_commondataserviceforapps -> enmax_autocadconrefDataverse
-  shared_office365                -> enmax_autocadconrefOutlook
-  shared_sharepointonline         -> enmax_autocadconrefSharePoint
-  shared_teams                    -> enmax_autocadconrefTeams
+  Prod (enmax_autocadsln):
+    shared_commondataserviceforapps -> enmax_autocadconrefDataverse
+    shared_office365                -> enmax_autocadconrefOutlook
+    shared_sharepointonline         -> enmax_autocadconrefSharePoint
+    shared_teams                    -> enmax_autocadconrefTeams
+
+  Admin (enmax_autocadadminsln):
+    shared_commondataserviceforapps -> enmax_autocadconrefADMDataverse
+    shared_office365                -> enmax_autocadconrefADMOutlook
+    shared_sharepointonline         -> enmax_autocadconrefADMSharePoint
+    shared_teams                    -> enmax_autocadconrefADMTeams
 
 Also normalizes the definition so Dataverse can activate the flow:
   - injects required $connections / $authentication parameters
@@ -26,33 +33,35 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from flow_catalog import (
+    CONNECTOR_TO_CONREF_ADMIN,
+    CONNECTOR_TO_CONREF_PROD,
+    connector_to_conref_for_slug,
+    flow_display_name,
+    load_admin_flow_catalog,
+    load_flow_catalog,
+)
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 WORKFLOWS_DIR = REPO_ROOT / "solution" / "src" / "Workflows"
-
-CONNECTOR_TO_CONREF: dict[str, str] = {
-    "shared_commondataserviceforapps": "enmax_autocadconrefDataverse",
-    "shared_office365": "enmax_autocadconrefOutlook",
-    "shared_sharepointonline": "enmax_autocadconrefSharePoint",
-    "shared_teams": "enmax_autocadconrefTeams",
-}
 
 _CONN_NAME_RE = re.compile(r'"connectionName"\s*:\s*"([^"]+)"')
 _CONNECTOR_TYPES = frozenset({"OpenApiConnection", "OpenApiConnectionWebhook"})
 
 
-def _connectors_in_definition(definition: dict) -> set[str]:
+def _connectors_in_definition(definition: dict, connector_map: dict[str, str]) -> set[str]:
     raw = json.dumps(definition)
     names = set(_CONN_NAME_RE.findall(raw))
-    return {name for name in names if name in CONNECTOR_TO_CONREF}
+    return {name for name in names if name in connector_map}
 
 
-def _connection_references(connectors: set[str]) -> dict:
+def _connection_references(connectors: set[str], connector_map: dict[str, str]) -> dict:
     refs: dict = {}
     for connector in sorted(connectors):
         refs[connector] = {
             "runtimeSource": "embedded",
             "connection": {
-                "connectionReferenceLogicalName": CONNECTOR_TO_CONREF[connector],
+                "connectionReferenceLogicalName": connector_map[connector],
             },
             "api": {"name": connector},
         }
@@ -114,6 +123,12 @@ def _normalize_definition(body: dict) -> dict:
     return definition
 
 
+def _catalog_for_slug(folder_slug: str) -> dict[str, dict[str, str]]:
+    if folder_slug in load_admin_flow_catalog():
+        return load_admin_flow_catalog()
+    return load_flow_catalog()
+
+
 def wrap_flow(flow_dir: Path) -> bool:
     definition_path = flow_dir / "definition.json"
     if not definition_path.exists():
@@ -121,20 +136,24 @@ def wrap_flow(flow_dir: Path) -> bool:
 
     import build_flow_error_handling as bfe  # noqa: WPS433 — script sibling import
 
+    folder_slug = flow_dir.name
+    catalog = _catalog_for_slug(folder_slug)
+    connector_map = connector_to_conref_for_slug(folder_slug)
+
     raw = json.loads(definition_path.read_text(encoding="utf-8"))
     definition = bfe.wrap_definition(
         raw,
-        folder_slug=flow_dir.name,
-        display_name=bfe.load_flow_catalog().get(flow_dir.name, {}).get("displayName", flow_dir.name),
+        folder_slug=folder_slug,
+        display_name=flow_display_name(folder_slug, catalog),
     )
     schema_version = definition.get("schemaVersion", "1.0.0.0")
     body = {k: v for k, v in definition.items() if k != "schemaVersion"}
-    connectors = _connectors_in_definition(definition)
+    connectors = _connectors_in_definition(definition, connector_map)
 
     clientdata = {
         "schemaVersion": schema_version,
         "properties": {
-            "connectionReferences": _connection_references(connectors),
+            "connectionReferences": _connection_references(connectors, connector_map),
             "definition": _normalize_definition(body),
             "templateName": "",
         },

@@ -59,6 +59,31 @@ def test_skips_child_logger_flow() -> None:
     assert wrapped == definition
 
 
+def test_admin_flow_uses_admin_exception_logger() -> None:
+    definition = {
+        "actions": {
+            "Get_Config": {"type": "Compose", "runAfter": {}, "inputs": "x"},
+        },
+    }
+    wrapped = bfe.wrap_definition(
+        definition,
+        folder_slug="UAT_Seed_SharePoint_Test_PDFs",
+        display_name="Enmax AutoCAD | On Demand | UAT Seed SharePoint Test PDFs",
+    )
+    logger = wrapped["actions"]["Scope_Catch_Failure"]["actions"]["Invoke_Log_Flow_Exception"]
+    assert logger["inputs"]["host"]["workflowReferenceName"] == "Admin_Child_Log_Flow_Exception"
+
+
+def test_skips_admin_child_logger_flow() -> None:
+    definition = {"actions": {"Create_Exception_Record": {"type": "Compose", "runAfter": {}, "inputs": "x"}}}
+    wrapped = bfe.wrap_definition(
+        definition,
+        folder_slug="Admin_Child_Log_Flow_Exception",
+        display_name="Enmax AutoCAD Admin | Internal | Log Flow Exception",
+    )
+    assert wrapped == definition
+
+
 def test_hoists_initialize_variable_outside_try_scope() -> None:
     # PA forbids InitializeVariable inside Scope — bootstrap + hoist inits to root,
     # business actions (beyond init predecessors) go in Scope_Try_Main.
