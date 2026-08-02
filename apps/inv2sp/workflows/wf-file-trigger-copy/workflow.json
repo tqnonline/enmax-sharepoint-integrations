@@ -1,0 +1,48 @@
+{
+  "kind": "Stateful",
+  "definition": {
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {},
+    "triggers": {
+      "When_a_file_is_created": {
+        "type": "ApiConnection",
+        "recurrence": {
+          "frequency": "Minute",
+          "interval": 1
+        },
+        "splitOn": "@triggerBody()",
+        "inputs": {
+          "host": {
+            "connection": { "referenceName": "filesystem" }
+          },
+          "method": "get",
+          "path": "/datasets/default/triggers/onnewfile",
+          "queries": {
+            "folderId": "@appsetting('FILESHARE_TRIGGER_FOLDER')",
+            "includeFileContent": false,
+            "inferContentType": true
+          }
+        }
+      }
+    },
+    "actions": {
+      "Call_Engine": {
+        "type": "Workflow",
+        "description": "The trigger fires per-file (via splitOn), but the engine re-lists and re-checks the whole folder anyway (concurrency=1 on its own trigger serializes this against the scheduled/on-demand paths) - this trigger's only job is to wake the engine promptly rather than wait up to 15 minutes for the next scheduled poll.",
+        "inputs": {
+          "host": {
+            "workflow": {
+              "id": "wf-copy-invoices"
+            }
+          },
+          "body": {
+            "triggerType": "FileTrigger"
+          }
+        },
+        "runAfter": {}
+      }
+    },
+    "outputs": {}
+  }
+}

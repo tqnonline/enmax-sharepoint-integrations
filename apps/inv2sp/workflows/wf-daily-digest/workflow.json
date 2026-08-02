@@ -1,0 +1,221 @@
+{
+  "kind": "Stateful",
+  "definition": {
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {},
+    "triggers": {
+      "Recurrence": {
+        "type": "Recurrence",
+        "recurrence": {
+          "frequency": "Day",
+          "interval": 1,
+          "schedule": {
+            "hours": [7],
+            "minutes": [0]
+          },
+          "timeZone": "Mountain Standard Time"
+        }
+      }
+    },
+    "actions": {
+      "Initialize_PeriodEnd": {
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [{ "name": "PeriodEndUtc", "type": "string", "value": "@{utcNow()}" }]
+        },
+        "runAfter": {}
+      },
+      "Initialize_PeriodStart": {
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [{ "name": "PeriodStartUtc", "type": "string", "value": "@{subtractFromTime(variables('PeriodEndUtc'), 24, 'Hour')}" }]
+        },
+        "runAfter": { "Initialize_PeriodEnd": ["Succeeded"] }
+      },
+      "Initialize_Totals": {
+        "type": "InitializeVariable",
+        "description": "Workflow Definition Language has no sum()/reduce()/aggregate function (verified against the complete function reference - no such function exists in any category). Table Storage queryEntities has no server-side aggregation either. Totals are accumulated the idiomatic way: a Foreach loop incrementing these variables per row, with repetitions pinned to 1 (see Sum_RunLog_Totals) since Foreach otherwise runs iterations in parallel and shared-variable increments would race.",
+        "inputs": {
+          "variables": [
+            { "name": "TotalFilesSeen", "type": "integer", "value": 0 },
+            { "name": "TotalFilesCopied", "type": "integer", "value": 0 },
+            { "name": "TotalFilesSkipped", "type": "integer", "value": 0 },
+            { "name": "TotalFilesFailed", "type": "integer", "value": 0 },
+            { "name": "TotalFilesAbandonedThisPeriod", "type": "integer", "value": 0 }
+          ]
+        },
+        "runAfter": { "Initialize_PeriodStart": ["Succeeded"] }
+      },
+      "Query_RunLog_Period": {
+        "type": "ServiceProvider",
+        "description": "No partition restriction - RunLog's PartitionKey is monthly, and querying purely on StartTimeUtc across the whole table is simplest and cheap at this scale (max ~96 runs/day).",
+        "inputs": {
+          "parameters": {
+            "tableName": "RunLog",
+            "filter": "@{concat('StartTimeUtc ge ''', variables('PeriodStartUtc'), '''')}"
+          },
+          "serviceProviderConfiguration": {
+            "connectionName": "azureTableConnection",
+            "operationId": "queryEntities",
+            "serviceProviderId": "/serviceProviders/azureTables"
+          }
+        },
+        "runAfter": { "Initialize_Totals": ["Succeeded"] }
+      },
+      "Query_Failed_Runs_Period": {
+        "type": "ServiceProvider",
+        "description": "Separate targeted query rather than filtering the already-fetched Query_RunLog_Period results client-side (no filter() function exists) - length() of this query's own results gives the failed-run count directly.",
+        "inputs": {
+          "parameters": {
+            "tableName": "RunLog",
+            "filter": "@{concat('StartTimeUtc ge ''', variables('PeriodStartUtc'), ''' and Outcome ne ''Succeeded''')}"
+          },
+          "serviceProviderConfiguration": {
+            "connectionName": "azureTableConnection",
+            "operationId": "queryEntities",
+            "serviceProviderId": "/serviceProviders/azureTables"
+          }
+        },
+        "runAfter": { "Query_RunLog_Period": ["Succeeded"] }
+      },
+      "Sum_RunLog_Totals": {
+        "type": "Foreach",
+        "foreach": "@body('Query_RunLog_Period')?['entities']",
+        "actions": {
+          "Add_FilesSeen": {
+            "type": "IncrementVariable",
+            "inputs": { "name": "TotalFilesSeen", "value": "@items('Sum_RunLog_Totals')?['FilesSeen']" },
+            "runAfter": {}
+          },
+          "Add_FilesCopied": {
+            "type": "IncrementVariable",
+            "inputs": { "name": "TotalFilesCopied", "value": "@items('Sum_RunLog_Totals')?['FilesCopied']" },
+            "runAfter": { "Add_FilesSeen": ["Succeeded"] }
+          },
+          "Add_FilesSkipped": {
+            "type": "IncrementVariable",
+            "inputs": { "name": "TotalFilesSkipped", "value": "@items('Sum_RunLog_Totals')?['FilesSkipped']" },
+            "runAfter": { "Add_FilesCopied": ["Succeeded"] }
+          },
+          "Add_FilesFailed": {
+            "type": "IncrementVariable",
+            "inputs": { "name": "TotalFilesFailed", "value": "@items('Sum_RunLog_Totals')?['FilesFailed']" },
+            "runAfter": { "Add_FilesSkipped": ["Succeeded"] }
+          },
+          "Add_FilesAbandoned": {
+            "type": "IncrementVariable",
+            "inputs": { "name": "TotalFilesAbandonedThisPeriod", "value": "@items('Sum_RunLog_Totals')?['FilesAbandoned']" },
+            "runAfter": { "Add_FilesFailed": ["Succeeded"] }
+          }
+        },
+        "runAfter": { "Query_Failed_Runs_Period": ["Succeeded"] },
+        "runtimeConfiguration": {
+          "concurrency": { "repetitions": 1 }
+        }
+      },
+      "Query_Files_Period": {
+        "type": "ServiceProvider",
+        "description": "Full per-file detail for the CSV attachment - every file touched (copied, failed, or abandoned) in this period, regardless of current status.",
+        "inputs": {
+          "parameters": {
+            "tableName": "ProcessedFiles",
+            "filter": "@{concat('LastAttemptUtc ge ''', variables('PeriodStartUtc'), '''')}"
+          },
+          "serviceProviderConfiguration": {
+            "connectionName": "azureTableConnection",
+            "operationId": "queryEntities",
+            "serviceProviderId": "/serviceProviders/azureTables"
+          }
+        },
+        "runAfter": { "Sum_RunLog_Totals": ["Succeeded"] }
+      },
+      "Query_Abandoned_Backlog": {
+        "type": "ServiceProvider",
+        "description": "Carried forward in every digest until resolved (decision) - not time-bounded, so a failure never silently scrolls out of view after 24h.",
+        "inputs": {
+          "parameters": {
+            "tableName": "ProcessedFiles",
+            "filter": "Status eq 'Abandoned'"
+          },
+          "serviceProviderConfiguration": {
+            "connectionName": "azureTableConnection",
+            "operationId": "queryEntities",
+            "serviceProviderId": "/serviceProviders/azureTables"
+          }
+        },
+        "runAfter": { "Query_Files_Period": ["Succeeded"] }
+      },
+      "Compose_Health": {
+        "type": "Compose",
+        "inputs": "@{if(greater(length(body('Query_Abandoned_Backlog')?['entities']), 0), 'FAILED', if(greater(variables('TotalFilesFailed'), 0), 'DEGRADED', 'OK'))}",
+        "runAfter": { "Query_Abandoned_Backlog": ["Succeeded"] }
+      },
+      "Build_Abandoned_Rows_Html": {
+        "type": "Select",
+        "description": "'Select' is a Logic Apps ACTION type (per-item mapping over an array), distinct from the nonexistent select() expression function. item() (no args) is the correct per-item accessor inside a Select action. encodeXmlValue() neutralizes <, >, &, quotes before values land in HTML table cells - the language has no dedicated HTML-encode function, but XML encoding covers the same injection-relevant characters.",
+        "inputs": {
+          "from": "@body('Query_Abandoned_Backlog')?['entities']",
+          "select": "@{concat('<tr><td>', encodeXmlValue(string(item()?['FileName'])), '</td><td>', encodeXmlValue(string(item()?['SourcePath'])), '</td><td>', encodeXmlValue(string(item()?['IntendedDestinationPath'])), '</td><td>', string(item()?['AttemptCount']), '</td><td>', encodeXmlValue(string(item()?['ErrorCategory'])), '</td><td>', encodeXmlValue(string(item()?['ErrorMessage'])), '</td><td>', encodeXmlValue(string(item()?['RunId'])), '</td></tr>')}"
+        },
+        "runAfter": { "Compose_Health": ["Succeeded"] }
+      },
+      "Build_CSV_Rows": {
+        "type": "Select",
+        "description": "CSV escaping per RFC 4180 (double-quote fields, double internal quotes) PLUS CSV/formula-injection defense (security review finding, 2026-08-02): a filename or error message beginning with =, +, -, or @ would be interpreted as a formula by Excel when the recipient opens the attachment. Prefixing a single quote neutralizes this in Excel without changing the visible text, applied only to the free-text fields that can originate from outside our control (file share names, connector-echoed error text) or embed them (destination paths).",
+        "inputs": {
+          "from": "@body('Query_Files_Period')?['entities']",
+          "select": "@{concat('\"', replace(if(or(startsWith(string(item()?['FileName']), '='), startsWith(string(item()?['FileName']), '+'), startsWith(string(item()?['FileName']), '-'), startsWith(string(item()?['FileName']), '@')), concat('''', string(item()?['FileName'])), string(item()?['FileName'])), '\"', '\"\"'), '\",\"', replace(if(or(startsWith(string(item()?['SourcePath']), '='), startsWith(string(item()?['SourcePath']), '+'), startsWith(string(item()?['SourcePath']), '-'), startsWith(string(item()?['SourcePath']), '@')), concat('''', string(item()?['SourcePath'])), string(item()?['SourcePath'])), '\"', '\"\"'), '\",\"', replace(if(or(startsWith(string(item()?['DestinationUrl']), '='), startsWith(string(item()?['DestinationUrl']), '+'), startsWith(string(item()?['DestinationUrl']), '-'), startsWith(string(item()?['DestinationUrl']), '@')), concat('''', string(item()?['DestinationUrl'])), string(item()?['DestinationUrl'])), '\"', '\"\"'), '\",\"', replace(if(or(startsWith(string(item()?['IntendedDestinationPath']), '='), startsWith(string(item()?['IntendedDestinationPath']), '+'), startsWith(string(item()?['IntendedDestinationPath']), '-'), startsWith(string(item()?['IntendedDestinationPath']), '@')), concat('''', string(item()?['IntendedDestinationPath'])), string(item()?['IntendedDestinationPath'])), '\"', '\"\"'), '\",\"', item()?['Status'], '\",\"', string(item()?['AttemptCount']), '\",\"', item()?['ErrorCategory'], '\",\"', replace(if(or(startsWith(string(item()?['ErrorMessage']), '='), startsWith(string(item()?['ErrorMessage']), '+'), startsWith(string(item()?['ErrorMessage']), '-'), startsWith(string(item()?['ErrorMessage']), '@')), concat('''', string(item()?['ErrorMessage'])), string(item()?['ErrorMessage'])), '\"', '\"\"'), '\",\"', item()?['RunId'], '\",\"', item()?['TriggerType'], '\",\"', string(item()?['LastAttemptUtc']), '\"')}"
+        },
+        "runAfter": { "Build_Abandoned_Rows_Html": ["Succeeded"] }
+      },
+      "Compose_CSV_Content": {
+        "type": "Compose",
+        "inputs": "@{concat('FileName,SourcePath,DestinationUrl,IntendedDestinationPath,Status,AttemptCount,ErrorCategory,ErrorMessage,RunId,TriggerType,LastAttemptUtc', decodeUriComponent('%0D%0A'), join(body('Build_CSV_Rows'), decodeUriComponent('%0D%0A')))}",
+        "runAfter": { "Build_CSV_Rows": ["Succeeded"] }
+      },
+      "Compose_Digest_Html": {
+        "type": "Compose",
+        "description": "encodeXmlValue() applied to every dynamic value inserted into the HTML body for the same reason as Build_Abandoned_Rows_Html.",
+        "inputs": "@{concat('<html><body>', '<h2>[INV2SP] Daily Digest - ', formatDateTime(convertFromUtc(variables('PeriodEndUtc'), 'Mountain Standard Time'), 'yyyy-MM-dd'), '</h2>', '<p>Period: ', variables('PeriodStartUtc'), ' to ', variables('PeriodEndUtc'), ' (UTC) - America/Edmonton</p>', '<p><b>Health: ', outputs('Compose_Health'), '</b></p>', if(greater(length(body('Query_Abandoned_Backlog')?['entities']), 0), concat('<h3>Action required - ', string(length(body('Query_Abandoned_Backlog')?['entities'])), ' unresolved abandoned file(s)</h3>', '<table border=\"1\" cellpadding=\"4\"><tr><th>File</th><th>Source Path</th><th>Intended Destination</th><th>Attempts</th><th>Error Category</th><th>Error Message</th><th>Run Id</th></tr>', join(body('Build_Abandoned_Rows_Html'), ''), '</table>', '<p>See the attached CSV for full per-file detail. Resolve the underlying issue, then run scripts/Reset-AbandonedFiles.ps1 to re-queue for retry.</p>'), '<p>No unresolved abandoned files.</p>'), '<h3>Summary</h3>', '<ul>', '<li>Runs executed: ', string(length(body('Query_RunLog_Period')?['entities'])), ' (', string(length(body('Query_Failed_Runs_Period')?['entities'])), ' with a non-Succeeded outcome)</li>', '<li>Files seen: ', string(variables('TotalFilesSeen')), '</li>', '<li>Files copied: ', string(variables('TotalFilesCopied')), '</li>', '<li>Files skipped (already processed): ', string(variables('TotalFilesSkipped')), '</li>', '<li>Files failed (will retry): ', string(variables('TotalFilesFailed')), '</li>', '<li>Files newly abandoned this period: ', string(variables('TotalFilesAbandonedThisPeriod')), '</li>', '<li>Total unresolved abandoned backlog: ', string(length(body('Query_Abandoned_Backlog')?['entities'])), '</li>', '</ul>', '<p style=\"color:gray;font-size:small\">On-demand run: see docs/operations/runbook.md. Full per-file detail attached as CSV.</p>', '</body></html>')}",
+        "runAfter": { "Compose_CSV_Content": ["Succeeded"] }
+      },
+      "Get_Digest_Recipients": {
+        "type": "ServiceProvider",
+        "inputs": {
+          "parameters": { "secretName": "@appsetting('DIGEST_RECIPIENTS_SECRET_NAME')" },
+          "serviceProviderConfiguration": {
+            "connectionName": "keyvault",
+            "operationId": "getSecret",
+            "serviceProviderId": "/serviceProviders/keyVault"
+          }
+        },
+        "runAfter": { "Compose_Digest_Html": ["Succeeded"] },
+        "runtimeConfiguration": {
+          "secureData": { "properties": ["outputs"] }
+        }
+      },
+      "Send_Digest_Email": {
+        "type": "ApiConnection",
+        "inputs": {
+          "host": { "connection": { "referenceName": "office365" } },
+          "method": "post",
+          "path": "/v2/Mail",
+          "body": {
+            "To": "@body('Get_Digest_Recipients')?['value']",
+            "Subject": "@concat('[INV2SP][', outputs('Compose_Health'), '] AP Invoice to SharePoint Daily Digest - ', formatDateTime(convertFromUtc(variables('PeriodEndUtc'), 'Mountain Standard Time'), 'yyyy-MM-dd'), ': ', string(variables('TotalFilesCopied')), ' copied, ', string(variables('TotalFilesFailed')), ' failed, ', string(length(body('Query_Abandoned_Backlog')?['entities'])), ' abandoned (backlog)')",
+            "Body": "@outputs('Compose_Digest_Html')",
+            "Attachments": [
+              {
+                "Name": "@{concat('INV2SP-digest-', formatDateTime(convertFromUtc(variables('PeriodEndUtc'), 'Mountain Standard Time'), 'yyyyMMdd'), '.csv')}",
+                "ContentBytes": "@base64(outputs('Compose_CSV_Content'))"
+              }
+            ]
+          }
+        },
+        "runAfter": { "Get_Digest_Recipients": ["Succeeded"] }
+      }
+    },
+    "outputs": {}
+  }
+}
