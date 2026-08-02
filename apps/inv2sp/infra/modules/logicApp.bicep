@@ -41,11 +41,20 @@ param appInsightsConnectionString string
 @description('File System connection runtime URL. Empty until the connection is authorized/available.')
 param fileSystemConnectionRuntimeUrl string = ''
 
+@description('File System connection resource name (e.g. "filesystem-2" in dev, "filesystem" in prod) - needed by workflows/connections.json to build the connection resource id, distinct from the runtime URL.')
+param fileSystemConnectionName string = 'filesystem'
+
 @description('SharePoint Online connection runtime URL. Empty until OAuth is authorized.')
 param sharePointConnectionRuntimeUrl string = ''
 
+@description('SharePoint Online connection resource name - needed by workflows/connections.json.')
+param sharePointConnectionName string = 'sharepointonline'
+
 @description('Office 365 Outlook connection runtime URL. Empty until OAuth is authorized.')
 param office365ConnectionRuntimeUrl string = ''
+
+@description('Office 365 Outlook connection resource name - needed by workflows/connections.json.')
+param office365ConnectionName string = 'office365'
 
 @description('Folder on the file share that the engine watches (relative to the connection root folder). Dev/UAT = "testing folder" (with space), Prod = "APInvoices". These differ by full path, not just this folder name - see configuration-reference.md.')
 param fileShareTriggerFolder string
@@ -117,8 +126,11 @@ var baseAppSettings = [
   { name: 'WORKFLOWS_RESOURCE_GROUP_NAME', value: resourceGroup().name }
   { name: 'WORKFLOWS_LOCATION_NAME', value: location }
   { name: 'FILESYSTEM_CONNECTION_RUNTIME_URL', value: fileSystemConnectionRuntimeUrl }
+  { name: 'FILESYSTEM_CONNECTION_NAME', value: fileSystemConnectionName }
   { name: 'SHAREPOINTONLINE_CONNECTION_RUNTIME_URL', value: sharePointConnectionRuntimeUrl }
+  { name: 'SHAREPOINTONLINE_CONNECTION_NAME', value: sharePointConnectionName }
   { name: 'OFFICE365_CONNECTION_RUNTIME_URL', value: office365ConnectionRuntimeUrl }
+  { name: 'OFFICE365_CONNECTION_NAME', value: office365ConnectionName }
   { name: 'FILESHARE_TRIGGER_FOLDER', value: fileShareTriggerFolder }
   { name: 'SHAREPOINT_SITE_URL', value: sharePointSiteUrl }
   { name: 'SHAREPOINT_LIBRARY_NAME', value: sharePointLibraryName }

@@ -283,8 +283,11 @@ module logicApp 'modules/logicApp.bicep' = {
     // `if`, so a ternary still leaves a "may be null" warning. Safe-access
     // makes the null-ability explicit to the compiler instead.
     fileSystemConnectionRuntimeUrl: fileSystemConnection.?outputs.?connectionRuntimeUrl ?? ''
+    fileSystemConnectionName: fileSystemConnectionName
     sharePointConnectionRuntimeUrl: sharePointConnection.outputs.connectionRuntimeUrl
+    sharePointConnectionName: sharePointConnectionName
     office365ConnectionRuntimeUrl: office365Connection.outputs.connectionRuntimeUrl
+    office365ConnectionName: office365ConnectionName
     fileShareTriggerFolder: fileShareTriggerFolder
     sharePointSiteUrl: sharePointSiteUrl
     sharePointLibraryName: sharePointLibraryName
