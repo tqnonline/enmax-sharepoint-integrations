@@ -1,0 +1,62 @@
+name: Branch Policy
+
+# Enforces the branching model described in README.md:
+#   - main only accepts pull requests from `dev` (never from feature
+#     branches directly).
+#   - dev only accepts pull requests from conventionally-named branches
+#     (feature/*, fix/*, hotfix/*, chore/*, docs/*, refactor/*, test/*).
+#
+# This is set as a required status check on both branches' protection
+# rules (see docs/operations - branch protection is configured via the
+# GitHub API/CLI, not as code, since GitHub does not support "only allow
+# PRs from branch X" natively in branch protection rules).
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    branches:
+      - main
+      - dev
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  enforce-branch-policy:
+    name: Validate source/target branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check base and head branch combination
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="${{ github.base_ref }}"
+          HEAD="${{ github.head_ref }}"
+          echo "Base branch: $BASE"
+          echo "Head branch: $HEAD"
+
+          if [ "$BASE" = "main" ]; then
+            if [ "$HEAD" != "dev" ]; then
+              echo "::error::Pull requests into 'main' are only allowed from 'dev'. This PR is from '$HEAD'. Target 'dev' instead, then promote dev to main separately."
+              exit 1
+            fi
+            echo "OK: main <- dev"
+            exit 0
+          fi
+
+          if [ "$BASE" = "dev" ]; then
+            case "$HEAD" in
+              feature/*|fix/*|hotfix/*|chore/*|docs/*|refactor/*|test/*)
+                echo "OK: dev <- $HEAD"
+                exit 0
+                ;;
+              *)
+                echo "::error::Pull requests into 'dev' must come from a conventionally-named branch (feature/*, fix/*, hotfix/*, chore/*, docs/*, refactor/*, test/*). This PR is from '$HEAD'."
+                exit 1
+                ;;
+            esac
+          fi
+
+          echo "::error::Unexpected base branch '$BASE' - this workflow should only trigger on PRs targeting main or dev."
+          exit 1
