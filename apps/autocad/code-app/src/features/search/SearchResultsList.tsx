@@ -16,6 +16,7 @@ import {
 import type { SearchDocumentRow } from "./useSearchDocuments";
 import { preferSharePointDropOff, sharePointFileUrl } from "../sharepoint/sharepointUrls";
 import { SearchCheckoutAction } from "./SearchCheckoutAction";
+import { DocumentTypeBadge } from "../../components/DocumentTypeBadge";
 
 const STATE_COLORS: Record<string, "success" | "warning" | "danger" | "informative" | "brand" | undefined> = {
   Available: "success",
@@ -51,6 +52,9 @@ const useStyles = makeStyles({
     borderRadius: tokens.borderRadiusMedium,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     backgroundColor: tokens.colorNeutralBackground1,
+    // Native <button> defaults to system buttontext (often dark). Force theme
+    // foreground so document numbers stay legible in dark mode.
+    color: tokens.colorNeutralForeground1,
     cursor: "pointer",
     textAlign: "left",
     width: "100%",
@@ -84,6 +88,7 @@ const useStyles = makeStyles({
     fontFamily: "monospace",
     fontWeight: tokens.fontWeightSemibold,
     fontSize: tokens.fontSizeBase400,
+    color: tokens.colorNeutralForeground1,
   },
   subtitle: {
     color: tokens.colorNeutralForeground2,
@@ -92,7 +97,7 @@ const useStyles = makeStyles({
     whiteSpace: "nowrap",
   },
   meta: {
-    color: tokens.colorNeutralForeground3,
+    color: tokens.colorNeutralForeground2,
     fontSize: tokens.fontSizeBase200,
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -113,12 +118,16 @@ const useStyles = makeStyles({
     padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
     backgroundColor: tokens.colorNeutralBackground1,
+    color: tokens.colorNeutralForeground1,
   },
   footerMeta: {
     display: "flex",
     flexDirection: "column",
     gap: tokens.spacingVerticalXXS,
     minWidth: "180px",
+  },
+  footerSecondary: {
+    color: tokens.colorNeutralForeground2,
   },
   pager: {
     display: "flex",
@@ -129,7 +138,7 @@ const useStyles = makeStyles({
   empty: {
     padding: tokens.spacingVerticalXXL,
     textAlign: "center",
-    color: tokens.colorNeutralForeground3,
+    color: tokens.colorNeutralForeground2,
   },
   loading: {
     display: "flex",
@@ -206,7 +215,7 @@ export function SearchResultsList({
               <div className={styles.body}>
                 <div className={styles.titleRow}>
                   <Text className={styles.number}>{row.documentNumber}</Text>
-                  <Badge appearance="tint" color="informative" size="small">{row.typeLabel}</Badge>
+                  <DocumentTypeBadge label={row.typeLabel} />
                   <Badge appearance="tint" color={stateColor} size="small">{row.stateLabel}</Badge>
                 </div>
                 {row.statusDetail && (
@@ -248,7 +257,7 @@ export function SearchResultsList({
               {isLoading ? "Searching…" : matchingLabel(totalCount)}
             </Text>
             {!isLoading && totalCount > 0 && (
-              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+              <Text size={200} className={styles.footerSecondary}>
                 Showing {from}–{to} of {totalCount}
               </Text>
             )}
@@ -256,7 +265,7 @@ export function SearchResultsList({
           {totalPages > 1 && (
             <div className={styles.pager}>
               <Button
-                appearance="secondary"
+                appearance="outline"
                 size="small"
                 icon={<ChevronLeftRegular />}
                 disabled={page <= 0 || isLoading}
@@ -266,7 +275,7 @@ export function SearchResultsList({
               </Button>
               <Text size={200}>Page {page + 1} of {totalPages}</Text>
               <Button
-                appearance="secondary"
+                appearance="outline"
                 size="small"
                 icon={<ChevronRightRegular />}
                 iconPosition="after"

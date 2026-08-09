@@ -6,6 +6,7 @@ import type { MyCheckout } from "../myitems/useMyCheckouts";
 import type { MyReservation } from "../myitems/useMyReservations";
 import { useCompositionLookups, type CompositionMaps } from "../approvals/hooks/useCompositionLookups";
 import { formatReservationDisplay } from "../approvals/compositionUtils";
+import { DocumentTypeBadge } from "../../components/DocumentTypeBadge";
 
 type BadgeColor = "informative" | "success" | "warning" | "subtle" | "danger";
 
@@ -115,13 +116,15 @@ export function MyWorkCards({ checkouts, checkoutsLoading, reservations, reserva
           const badge = RES_BADGE[r.status] ?? { label: r.statusLabel, color: "subtle" as BadgeColor };
           const coding = reservationCodingLabel(r, compMaps);
           const forWhom = r.submitterDisplay ? `Reserved for ${r.submitterDisplay}` : null;
-          const detail = [r.typeLabel, forWhom].filter(Boolean).join(" · ");
           return (
             <div key={r.id} className={styles.row} onClick={() => navigate(`/reservations/${r.id}`)} role="button" tabIndex={0}
               onKeyDown={(e) => { if (e.key === "Enter") navigate(`/reservations/${r.id}`); }}>
               <div className={styles.body}>
                 <Text className={styles.num} title={coding}>{coding || "—"}</Text>
-                {detail && <Text className={styles.detail}>{detail}</Text>}
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: tokens.spacingHorizontalXS }}>
+                  <DocumentTypeBadge label={r.typeLabel} />
+                  {forWhom && <Text className={styles.detail}>{forWhom}</Text>}
+                </div>
               </div>
               <Badge className={styles.badge} appearance="tint" color={badge.color} shape="rounded">{badge.label}</Badge>
               {r.createdOn && <Text className={styles.meta}>{relativeTime(r.createdOn)}</Text>}
@@ -142,13 +145,15 @@ export function MyWorkCards({ checkouts, checkoutsLoading, reservations, reserva
         {topCheckouts.map((c) => {
           const badge = CHK_BADGE[c.status] ?? { label: c.statusLabel, color: "subtle" as BadgeColor };
           const forWhom = c.checkedOutByName ? `Checked out for ${c.checkedOutByName}` : null;
-          const detail = [c.typeLabel, forWhom].filter(Boolean).join(" · ");
           return (
             <div key={c.checkoutId} className={styles.row} onClick={() => navigate("/my-items?type=drawings&state=checkedout")} role="button" tabIndex={0}
               onKeyDown={(e) => { if (e.key === "Enter") navigate("/my-items?type=drawings&state=checkedout"); }}>
               <div className={styles.body}>
                 <Text className={styles.num} title={c.drawingNumber}>{c.drawingNumber || "—"}</Text>
-                {detail && <Text className={styles.detail}>{detail}</Text>}
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: tokens.spacingHorizontalXS }}>
+                  <DocumentTypeBadge label={c.typeLabel} />
+                  {forWhom && <Text className={styles.detail}>{forWhom}</Text>}
+                </div>
               </div>
               <Badge className={styles.badge} appearance="tint" color={badge.color} shape="rounded">{badge.label}</Badge>
               {c.checkedOutOn && <Text className={styles.meta}>{relativeTime(c.checkedOutOn)}</Text>}

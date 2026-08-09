@@ -63,13 +63,16 @@ namespace Enmax.AutoCAD
 
             string business, asset, unit, domain, system, kind;
             int count;
+            int? reservationType = null;
+            int? documentSubtype = null;
 
             if (reservationRef != null)
             {
                 var res = service.Retrieve(reservationRef.LogicalName, reservationRef.Id, new ColumnSet(
                     "enmax_acdndrawingcount",
                     "enmax_acdnbusiness", "enmax_acdnasset", "enmax_acdnunit",
-                    "enmax_acdndomain", "enmax_acdnsystem", "enmax_acdnkind"));
+                    "enmax_acdndomain", "enmax_acdnsystem", "enmax_acdnkind",
+                    "enmax_acdnreservationtype", "enmax_acdndocumentsubtype"));
 
                 count = context.InputParameters.Contains("Count")
                     ? (int)context.InputParameters["Count"]
@@ -87,6 +90,9 @@ namespace Enmax.AutoCAD
                     ?? GetInputString(context, "System");
                 kind = ResolveLookupCode(service, res, "enmax_acdnkind", "enmax_autocadkind")
                     ?? GetInputString(context, "Kind");
+
+                reservationType = res.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
+                documentSubtype = res.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value;
             }
             else
             {
@@ -119,16 +125,23 @@ namespace Enmax.AutoCAD
             if (count < 1 || count > MaxCount)
                 throw new InvalidPluginExecutionException("Count must be between 1 and 1000");
 
-            // Step 4 — Compose sequence key
-            string sequenceKey = $"{business.Trim().ToUpperInvariant()}-{asset.Trim().ToUpperInvariant()}-{unit.Trim().ToUpperInvariant()}-{domain.Trim().ToUpperInvariant()}-{system.Trim().ToUpperInvariant()}-{kind.Trim().ToUpperInvariant()}";
+            // Step 4 — Compose display coding + type-partitioned counter key.
+            // Displayed numbers stay BB-AA-UU-DDD-SSS-KK-NNNN (SequenceKey output = coding).
+            // Counter rows are coding|FAMILY so Drawing / Standard / Procedure / Form
+            // each have an independent NNNN sequence for the same coding.
+            string coding = $"{business.Trim().ToUpperInvariant()}-{asset.Trim().ToUpperInvariant()}-{unit.Trim().ToUpperInvariant()}-{domain.Trim().ToUpperInvariant()}-{system.Trim().ToUpperInvariant()}-{kind.Trim().ToUpperInvariant()}";
+            string family = TaxonomyConstants.ResolveNumberingFamily(reservationType, documentSubtype);
+            string counterKey = TaxonomyConstants.ComposeCounterKey(coding, family);
 
-            // Step 5 — Retrieve or auto-create number sequence row
-            Entity row = FindRow(service, sequenceKey);
+            // Step 5 — Retrieve or auto-create number sequence row (per coding + family).
+            // Drawing family dual-reads the pre-partition legacy key (coding only) and
+            // renames it in place so Drawing NNNN continues without resetting.
+            Entity row = FindOrMigrateCounterRow(service, coding, family, counterKey);
 
             if (row == null)
             {
                 var newRow = new Entity(EntityName);
-                newRow[ColSequenceKey] = sequenceKey;
+                newRow[ColSequenceKey] = counterKey;
                 newRow[ColLastIssued]  = 0;
                 newRow[ColSeedValue]   = 0;
                 newRow[ColStatus]      = new OptionSetValue(StatusHealthy);
@@ -164,9 +177,9 @@ namespace Enmax.AutoCAD
                 ConcurrencyBehavior = ConcurrencyBehavior.IfRowVersionMatches,
             });
 
-            // Step 12 — Write output parameters
+            // Step 12 — Write output parameters (SequenceKey = display coding, not counter key)
             context.OutputParameters["IssuedNumbers"]   = JsonConvert.SerializeObject(issued);
-            context.OutputParameters["SequenceKey"]     = sequenceKey;
+            context.OutputParameters["SequenceKey"]     = coding;
             context.OutputParameters["NewLastIssued"]   = proposedLastIssued;
             context.OutputParameters["Status"]          = new OptionSetValue(ComputeStatus(proposedLastIssued));
 
@@ -200,6 +213,28 @@ namespace Enmax.AutoCAD
             if (er == null) return null;
             var record = service.Retrieve(targetEntity, er.Id, new ColumnSet("enmax_acdncode"));
             return record.GetAttributeValue<string>("enmax_acdncode")?.Trim();
+        }
+
+        /// <summary>
+        /// Finds the type-partitioned counter row. For Drawing family only, if the
+        /// partitioned key is missing, adopts the legacy coding-only row (shared
+        /// pre-partition sequence) by renaming its SequenceKey to coding|DRW.
+        /// </summary>
+        private static Entity FindOrMigrateCounterRow(
+            IOrganizationService service, string coding, string family, string counterKey)
+        {
+            Entity row = FindRow(service, counterKey);
+            if (row != null) return row;
+
+            if (family != TaxonomyConstants.NumberingFamily.Drawing) return null;
+
+            Entity legacy = FindRow(service, coding);
+            if (legacy == null) return null;
+
+            var rename = new Entity(EntityName, legacy.Id);
+            rename[ColSequenceKey] = counterKey;
+            service.Update(rename);
+            return service.Retrieve(EntityName, legacy.Id, new ColumnSet(true));
         }
 
         private static Entity FindRow(IOrganizationService service, string sequenceKey)

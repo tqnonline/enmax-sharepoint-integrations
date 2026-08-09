@@ -828,7 +828,8 @@
           <IsRetrievable>0</IsRetrievable>
           <IsLocalizable>0</IsLocalizable>
           <Format></Format>
-          <MinValue>1</MinValue>
+          <!-- 0 = docs/bases only (Drawing Document / Procedure without forms); ≥1 = numbered children -->
+          <MinValue>0</MinValue>
           <MaxValue>999</MaxValue>
           <displaynames>
             <displayname description="Sheets Per Drawing" languagecode="1033" />

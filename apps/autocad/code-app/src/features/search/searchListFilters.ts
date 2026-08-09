@@ -9,7 +9,7 @@ export type { DocumentStatusSearchFilter } from "./searchDocumentStatus";
 /** Drawing search type includes drawing rows as well as document subtypes. */
 export type SearchDrawingTypeFilter = DocumentSubtypeFilter | "drawing";
 
-export type SearchTab = "drawings" | "documents" | "reservations";
+export type SearchTab = "drawings" | "documents";
 
 export type DocumentSubtypeSearchFilter = "all" | "standard" | "procedure" | "form";
 
@@ -49,7 +49,7 @@ export function tabDrawingSubtype(
   tab: SearchTab,
   subtype: DocumentSubtypeSearchFilter,
 ): SearchDrawingTypeFilter | "documents" {
-  if (tab === "reservations" || tab === "drawings") return "drawing";
+  if (tab === "drawings") return "drawing";
   if (subtype === "standard") return "standard";
   if (subtype === "procedure") return "procedure";
   if (subtype === "form") return "form";

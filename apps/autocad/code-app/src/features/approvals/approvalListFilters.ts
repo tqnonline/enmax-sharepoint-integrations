@@ -14,13 +14,14 @@ export interface ApprovalListFilters {
 
 export type ApprovalSection = "reservations" | "documents";
 
-/** All Approvals sections default to the previous 30 days through today. */
+/** All Approvals sections default to today − fromDays through today (App Config GridDefaultFromDays). */
 export function defaultApprovalListFilters(
   section: ApprovalSection = "reservations",
   now = new Date(),
+  fromDays?: number,
 ): ApprovalListFilters {
   void section;
-  const { from, to } = defaultGridDateRange(now);
+  const { from, to } = defaultGridDateRange(now, fromDays);
   return { number: "", from, to, peopleIds: [] };
 }
 

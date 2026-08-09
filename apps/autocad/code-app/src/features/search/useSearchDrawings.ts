@@ -16,7 +16,7 @@ export interface DrawingRow {
   /** WS6 taxonomy denormalized onto the record (ADR 0001). */
   enmax_acdnreservationtype?: number;
   enmax_acdndocumentsubtype?: number;
-  /** Derived label: "Drawing" | "Standard Document" | "Procedure Form". */
+  /** Derived label: "Drawing" | "Standard" | "Procedure Form". */
   typeLabel: string;
   enmax_acdnsplibraryurl: string;
   enmax_acdnspdestinationurl: string;

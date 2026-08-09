@@ -96,8 +96,18 @@ namespace Enmax.AutoCAD
             int sheetsPer = reservation.Contains("enmax_acdnsheetsperdrawing")
                 ? reservation.GetAttributeValue<int>("enmax_acdnsheetsperdrawing")
                 : 0;
-            int sheetCount = Math.Min(Math.Max(sheetsPer, 1), MaxChildItems);
-            int issuedSheetCount = createChildren ? sheetCount : 1;
+            // sheetsPer ≤ 0 → docs/bases only (singleton carrier).
+            // sheetsPer ≥ 1 on Drawing/Procedure → base document carrier AND numbered children
+            // (agreed reserve model: both ≥1 → docs + sheet/form files).
+            int sheetCount = sheetsPer <= 0 ? 0 : Math.Min(sheetsPer, MaxChildItems);
+            bool createNumberedChildren = createChildren && sheetCount > 0;
+            bool createBaseDocWithChildren = createNumberedChildren
+                && NeedsBaseDocumentWithChildren(reservation);
+            bool createSingletonCarrier = createSingletonStandardSheet
+                || (createChildren && sheetCount == 0)
+                || createBaseDocWithChildren;
+            int issuedSheetCount = (createNumberedChildren ? sheetCount : 0)
+                + (createSingletonCarrier ? 1 : 0);
 
             // ── Create drawings + sheets ─────────────────────────────────────────
             int drawingsCreated = 0;
@@ -127,20 +137,36 @@ namespace Enmax.AutoCAD
                 Guid drawingId = service.Create(drawing);
                 drawingsCreated++;
 
-                if (createChildren || createSingletonStandardSheet)
+                // Base document carrier (no -SSS) when docs-only OR docs+children.
+                if (createSingletonCarrier)
                 {
-                    int loops = createChildren ? sheetCount : 1;
-                    for (int i = 1; i <= loops; i++)
+                    var sheet = new Entity(SheetEntity)
+                    {
+                        ["enmax_acdndrawing"] = new EntityReference(DrawingEntity, drawingId),
+                        ["enmax_acdnstate"]   = new OptionSetValue(SheetStateAvailable),
+                    };
+                    if (owner != null) sheet["ownerid"] = owner;
+                    CopyLookup(reservation, sheet, "enmax_acdnreservationtype");
+                    CopyLookup(reservation, sheet, "enmax_acdndocumentsubtype");
+                    StampBaseDocumentCarrier(reservation, sheet, createBaseDocWithChildren);
+                    service.Create(sheet);
+                }
+
+                if (createNumberedChildren)
+                {
+                    for (int i = 1; i <= sheetCount; i++)
                     {
                         var sheet = new Entity(SheetEntity)
                         {
                             ["enmax_acdndrawing"]     = new EntityReference(DrawingEntity, drawingId),
                             ["enmax_acdnstate"]       = new OptionSetValue(SheetStateAvailable),
+                            ["enmax_acdnsheetnumber"] = i,
                         };
-                        if (createChildren) sheet["enmax_acdnsheetnumber"] = i;
                         if (owner != null) sheet["ownerid"] = owner;
                         CopyLookup(reservation, sheet, "enmax_acdnreservationtype");
                         CopyLookup(reservation, sheet, "enmax_acdndocumentsubtype");
+                        // Procedure New + forms: stamp children as Form for list/checkout labels.
+                        StampProcedureFormChild(reservation, sheet);
                         service.Create(sheet);
                     }
                 }
@@ -150,9 +176,9 @@ namespace Enmax.AutoCAD
         }
 
         /// <summary>
-        /// Drawing/Drawing, Document/Form, and legacy reservations with no type/subtype
-        /// set create numbered child items (-sss). Drawing/DrawingDocument and
-        /// Document/Standard and Document/Procedure are base-only.
+        /// Drawing/Drawing, Document/Form, Document/Procedure, and legacy reservations with no
+        /// type/subtype set create numbered child items (-sss) when sheetsPerDrawing ≥ 1.
+        /// Drawing/DrawingDocument and Document/Standard are base-only.
         /// </summary>
         private static bool CreatesChildItems(Entity reservation)
         {
@@ -162,14 +188,58 @@ namespace Enmax.AutoCAD
         }
 
         /// <summary>
-        /// Drawing/DrawingDocument, Standard, and Procedure get a singleton sheet carrier
-        /// (no sheet number) for checkout/check-in; Drawing and Form use numbered children.
+        /// Drawing/DrawingDocument and Standard get a singleton sheet carrier
+        /// (no sheet number) for checkout/check-in; Drawing, Procedure, and Form use numbered children when sheets ≥ 1.
         /// </summary>
         private static bool IsBaseOnlyDocument(Entity reservation)
         {
             var type = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
             var subtype = reservation.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value;
             return TaxonomyConstants.IsBaseOnlyDocument(type, subtype);
+        }
+
+        /// <summary>
+        /// Drawing (numbered) and Procedure with forms ≥ 1 also need a base document
+        /// carrier so Search/My Items show the drawing/procedure document plus children.
+        /// Form-alone Existing does not — forms attach to an existing procedure.
+        /// </summary>
+        private static bool NeedsBaseDocumentWithChildren(Entity reservation)
+        {
+            var type = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
+            var subtype = TaxonomyConstants.NormalizeDocumentSubtype(
+                type,
+                reservation.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value);
+            if (type == TaxonomyConstants.ReservationType.Drawing
+                && subtype == TaxonomyConstants.DocumentSubtype.Drawing)
+                return true;
+            if (type == TaxonomyConstants.ReservationType.Document
+                && subtype == TaxonomyConstants.DocumentSubtype.Procedure)
+                return true;
+            return false;
+        }
+
+        /// <summary>
+        /// When Drawing + sheets ≥ 1, stamp the unnumbered carrier as Drawing Document
+        /// so lists label it as the drawing document alongside numbered sheets.
+        /// </summary>
+        private static void StampBaseDocumentCarrier(
+            Entity reservation, Entity sheet, bool createBaseDocWithChildren)
+        {
+            if (!createBaseDocWithChildren) return;
+            var type = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
+            if (type != TaxonomyConstants.ReservationType.Drawing) return;
+            sheet["enmax_acdndocumentsubtype"] =
+                new OptionSetValue(TaxonomyConstants.DocumentSubtype.DrawingDocument);
+        }
+
+        private static void StampProcedureFormChild(Entity reservation, Entity sheet)
+        {
+            var type = reservation.GetAttributeValue<OptionSetValue>("enmax_acdnreservationtype")?.Value;
+            var subtype = reservation.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value;
+            if (type != TaxonomyConstants.ReservationType.Document) return;
+            if (TaxonomyConstants.NormalizeDocumentSubtype(type, subtype) != TaxonomyConstants.DocumentSubtype.Procedure)
+                return;
+            sheet["enmax_acdndocumentsubtype"] = new OptionSetValue(TaxonomyConstants.DocumentSubtype.Form);
         }
 
         private static void CopyLookup(Entity source, Entity target, string attribute)

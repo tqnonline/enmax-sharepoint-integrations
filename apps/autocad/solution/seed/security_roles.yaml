@@ -65,6 +65,8 @@ roles:
         create: basic
         read: basic
         write: basic
+      # Record journey / Activity on detail pages (Admin Audit page stays Admin UI).
+      enmax_autocadauditevent:  { read: global }
       # Reference / dimension tables — read-only for all
       enmax_autocadbusiness:    { read: global }
       enmax_autocadasset:       { read: global }
@@ -113,6 +115,8 @@ roles:
         create: basic
         read: basic
         write: basic
+      # Approval / detail history (same journey read as User).
+      enmax_autocadauditevent:  { read: global }
       enmax_autocadbusiness:    { read: global }
       enmax_autocadasset:       { read: global }
       enmax_autocadunit:        { read: global }
@@ -338,21 +342,20 @@ roles:
       enmax_autocaduserpreference: { read: global }
 
   # ---------------------------------------------------------------------------
-  # 5. Enmax AutoCAD App Owner
-  #    NOT user-facing. Assigned ONLY to the BU default team (enmax-autocad-app),
-  #    which Dataverse auto-populates with every business-unit user — so this role
-  #    is inherited by all users and MUST stay read-only and narrowly scoped.
-  #    Purpose: let the app-owner team HOLD the seeded master/reference/config/
-  #    sequence records (Dataverse requires a record's owner to have Read on the
-  #    entity). Deliberately excludes the transaction tables (reservation/drawing/
-  #    sheet/checkout) so inheriting it never widens a user's row-level visibility.
+  # 5. Enmax AutoCAD App Owner (infra ownership role — NOT a human app role)
+  #    Humans use only User / Approver / Admin. This role is assigned ONLY to the
+  #    enmax-autocad-app BU default team so SetAppOwnerPlugin can stamp shared
+  #    audit/config/ref/sequence rows to that team (Dataverse requires the owner
+  #    principal to have Read). BU users inherit the default team's roles, so this
+  #    MUST stay read-only and exclude transaction tables (reservation/drawing/
+  #    sheet/checkout). Never assign this role to people as a 4th app role.
   # ---------------------------------------------------------------------------
   - name: Enmax AutoCAD App Owner
     description: >
-      Ownership-team role for the enmax-autocad-app business-unit default team.
-      Read-only on the master, reference, configuration, and sequence tables the
-      app team owns. Scoped to exclude transaction tables because every business-
-      unit user inherits the default team's roles. Stacks on Basic User.
+      Infra ownership role for the enmax-autocad-app BU default team only.
+      Read-only on master, reference, configuration, audit, broadcast, and
+      sequence tables the team owns for SetAppOwner. Not a human-facing role —
+      people get User, Approver, or Admin only.
     privileges:
       enmax_autocadbusiness:       { read: global }
       enmax_autocadasset:          { read: global }

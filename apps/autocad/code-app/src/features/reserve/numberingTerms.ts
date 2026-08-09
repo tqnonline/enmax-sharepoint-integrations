@@ -1,10 +1,10 @@
 /**
  * EEC Generation controlled numbering — business/UI terminology (Heather).
  *
- * | Pattern                         | Drawing              | Standard Document | Procedure | Form            |
+ * | Pattern                         | Drawing              | Standard          | Procedure | Form            |
  * |---------------------------------|----------------------|-------------------|-----------|-----------------|
  * | BB-AA-UU-DDD-SSS-KK             | Numbering group      | Numbering group   | Numbering group | Numbering group |
- * | BB-AA-UU-DDD-SSS-KK-NNNN        | Drawing Number       | Standard Document | Procedure | Form (base)     |
+ * | BB-AA-UU-DDD-SSS-KK-NNNN        | Drawing Number       | Standard          | Procedure | Form (base)     |
  * | BB-AA-UU-DDD-SSS-KK-NNNN to YYYY| Drawing Number Range | —                 | —         | Form Number Range |
  * | BB-AA-UU-DDD-SSS-KK-NNNN-SSS    | Drawing Sheet        | —                 | —         | Form            |
  */
@@ -53,7 +53,7 @@ export function taxonomyTypeLabel(
   reservationType?: number | null,
   documentSubtype?: number | null,
 ): string {
-  if (isStandard(reservationType, documentSubtype)) return "Standard Document";
+  if (isStandard(reservationType, documentSubtype)) return "Standard";
   if (isProcedure(reservationType, documentSubtype)) return "Procedure";
   if (isForm(reservationType, documentSubtype)) return "Form";
   if (isDrawingDocument(reservationType, documentSubtype)) return "Drawing Document";
@@ -63,14 +63,14 @@ export function taxonomyTypeLabel(
 /**
  * Label for the base issued number (…-NNNN).
  * Drawing → Drawing Number; Drawing Document → Drawing Document (base-only,
- * mirrors Standard/Procedure); Standard → Standard Document; Procedure →
+ * mirrors Standard/Procedure); Standard → Standard; Procedure →
  * Procedure; Form → Form.
  */
 export function baseNumberLabel(
   reservationType?: number | null,
   documentSubtype?: number | null,
 ): string {
-  if (isStandard(reservationType, documentSubtype)) return "Standard Document";
+  if (isStandard(reservationType, documentSubtype)) return "Standard";
   if (isProcedure(reservationType, documentSubtype)) return "Procedure";
   if (isForm(reservationType, documentSubtype)) return "Form";
   if (isDrawingDocument(reservationType, documentSubtype)) return "Drawing Document";
@@ -102,7 +102,7 @@ export function individualItemLabel(
   reservationType?: number | null,
   documentSubtype?: number | null,
 ): string {
-  if (isStandard(reservationType, documentSubtype)) return "Standard Document";
+  if (isStandard(reservationType, documentSubtype)) return "Standard";
   if (isProcedure(reservationType, documentSubtype)) return "Procedure";
   if (isForm(reservationType, documentSubtype)) return "Form";
   if (isDrawingDocument(reservationType, documentSubtype)) return "Drawing Document";
@@ -117,7 +117,7 @@ export function individualItemLabelPlural(
   if (isProcedure(reservationType, documentSubtype)) return "Procedures";
   if (isDrawingDocument(reservationType, documentSubtype)) return "Drawing Documents";
   if (isDrawing(reservationType)) return "Drawing Sheets";
-  return "Standard Documents";
+  return "Standards";
 }
 
 /** Filter / search field label for the number text box. */
@@ -130,7 +130,7 @@ export function searchNumberFieldLabel(
 
 /** Generic search placeholder covering issued document/drawing numbers only. */
 export const GLOBAL_SEARCH_PLACEHOLDER =
-  "Search drawing documents, standard documents, procedures, forms…";
+  "Search drawing documents, standards, procedures, forms…";
 
 /** Joins composition codes into the numbering group (no NNNN suffix). */
 export function formatNumberingGroup(codes: {

@@ -27,6 +27,7 @@ import {
   type HeaderSearchTab,
 } from "../features/search/searchUrlState";
 import { GLOBAL_SEARCH_PLACEHOLDER } from "../features/reserve/numberingTerms";
+import { DocumentTypeBadge } from "../components/DocumentTypeBadge";
 import enmaxLogo from "../assets/brand/ENX_Logo_RED.svg";
 
 type BadgeColor = "success" | "warning" | "informative" | "subtle";
@@ -88,6 +89,8 @@ const useStyles = makeStyles({
   },
   searchInput: {
     width: "min(480px, 100%)",
+    // Ensure placeholder / icon contrast follows theme (native color-scheme + tokens).
+    color: tokens.colorNeutralForeground1,
   },
   dropdown: {
     position: "absolute",
@@ -343,7 +346,7 @@ export function Header() {
                         {r.documentNumber}
                       </Text>
                       <Badge appearance="tint" color={badgeColor} size="small">{r.stateLabel}</Badge>
-                      <Badge appearance="outline" size="small">{r.typeLabel}</Badge>
+                      <DocumentTypeBadge label={r.typeLabel} appearance="outline" />
                     </div>
                     {r.compositionSummary && (
                       <div className={styles.dropdownItemComp}>{r.compositionSummary}</div>

@@ -87,3 +87,25 @@ export function isCheckInEnabledForTaxonomy(
 ): boolean {
   return config[resolveCheckInKey(reservationType, documentSubtype)];
 }
+
+/** True when Check Out is enabled for at least one of Standard / Procedure / Form. */
+export function isAnyDocumentCheckoutEnabled(config: AppConfig): boolean {
+  return (
+    config.EnableStandardCheckout
+    || config.EnableProcedureCheckout
+    || config.EnableFormCheckout
+  );
+}
+
+/** True when Check Out is enabled for Drawing Number and/or Drawing Document. */
+export function isAnyDrawingCheckoutEnabled(config: AppConfig): boolean {
+  return config.EnableDrawingCheckout || config.EnableDrawingDocumentCheckout;
+}
+
+/**
+ * True when any taxonomy has Check Out enabled.
+ * Used for Approvals queues that mix Drawing + Standard/Procedure/Form.
+ */
+export function isAnyCheckoutEnabled(config: AppConfig): boolean {
+  return isAnyDrawingCheckoutEnabled(config) || isAnyDocumentCheckoutEnabled(config);
+}

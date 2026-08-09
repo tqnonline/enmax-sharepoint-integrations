@@ -19,6 +19,7 @@ import {
   Table24Regular,
 } from "@fluentui/react-icons";
 import { useNavigate, useLocation } from "react-router-dom";
+import { DocumentTypeBadge } from "../../components/DocumentTypeBadge";
 import { SheetDocumentActions } from "../checkout/components/SheetDocumentActions";
 import { DrawingActionsPanel } from "../checkout/components/DrawingActionsPanel";
 import {
@@ -237,7 +238,9 @@ export function DrawingDetailPanel({ drawing, selectedSheetId, onClose }: Drawin
             {detailPending && !detail && <Spinner size="tiny" label="Loading details…" />}
 
             <div className={styles.metaGrid}>
-              <MetaField label="Type" value={d?.typeLabel ?? drawing.typeLabel} />
+              <MetaField label="Type">
+                <DocumentTypeBadge label={d?.typeLabel ?? drawing.typeLabel} />
+              </MetaField>
               {matchedSheet ? (
                 <MetaField label="Status">
                   <SheetStatusBadge sheetState={matchedSheet.state} checkout={sheetCheckout} />

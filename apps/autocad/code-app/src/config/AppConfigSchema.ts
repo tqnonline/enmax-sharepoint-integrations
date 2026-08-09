@@ -61,6 +61,8 @@ export const AppConfigSchema = z.object({
   FooterCopyright:                z.string(),
   BroadcastFanOutCadenceMinutes:  z.number().int().min(1),
   GridPageSize:                   z.number().int().min(1).default(10),
+  // Inclusive lookback for grid From/To defaults (today − N days through today).
+  GridDefaultFromDays:            z.number().int().min(1).default(30),
   // Check In is a gated approval step by default (mirrors RequireCheckOutApproval).
   // Seed an explicit false row to auto-close check-ins without approval.
   RequireCheckInApproval:         z.boolean().default(true),

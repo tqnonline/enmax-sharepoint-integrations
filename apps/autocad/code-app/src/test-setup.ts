@@ -58,6 +58,7 @@ vi.mock("./config/useAppConfig", () => ({
     FooterCopyright: "",
     BroadcastFanOutCadenceMinutes: 60,
     GridPageSize: 10,
+    GridDefaultFromDays: 30,
     RequireCheckInApproval: false,
     RequireCheckOutApproval: false,
     ShowFinalizeButton: false,

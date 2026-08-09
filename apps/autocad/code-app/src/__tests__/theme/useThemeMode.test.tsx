@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { useThemeMode } from "../../theme/useThemeMode";
 import { enmaxDarkTheme, enmaxLightTheme } from "../../theme/brand";
 import { useUiStore } from "../../store/uiStore";
@@ -6,6 +6,8 @@ import { useUiStore } from "../../store/uiStore";
 // Reset Zustand store between tests
 beforeEach(() => {
   useUiStore.setState({ themeOverride: null, sidebarCollapsed: false });
+  document.documentElement.style.colorScheme = "";
+  delete document.documentElement.dataset.theme;
 });
 
 // Simulate OS preference by mocking window.matchMedia
@@ -38,4 +40,24 @@ test("returns light theme when themeOverride=light even if system prefers dark",
   useUiStore.setState({ themeOverride: "light" });
   const { result } = renderHook(() => useThemeMode("system"));
   expect(result.current).toEqual(enmaxLightTheme);
+});
+
+// Native form controls (Fluent Select = <select>) follow document color-scheme.
+test("sets document color-scheme and data-theme for dark mode", async () => {
+  setSystemTheme("dark");
+  renderHook(() => useThemeMode("system"));
+  await waitFor(() => {
+    expect(document.documentElement.style.colorScheme).toBe("dark");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+});
+
+test("sets document color-scheme and data-theme for light override", async () => {
+  setSystemTheme("dark");
+  useUiStore.setState({ themeOverride: "light" });
+  renderHook(() => useThemeMode("system"));
+  await waitFor(() => {
+    expect(document.documentElement.style.colorScheme).toBe("light");
+    expect(document.documentElement.dataset.theme).toBe("light");
+  });
 });

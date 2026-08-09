@@ -29,7 +29,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             TaxonomyMatrix.Find(TaxonomyConstants.ReservationType.Drawing, TaxonomyConstants.DocumentSubtype.Drawing)
                 .Label.Should().Be("Drawing");
             TaxonomyMatrix.Find(TaxonomyConstants.ReservationType.Document, TaxonomyConstants.DocumentSubtype.Standard)
-                .Label.Should().Be("Standard Document");
+                .Label.Should().Be("Standard");
             TaxonomyMatrix.Find(TaxonomyConstants.ReservationType.Document, TaxonomyConstants.DocumentSubtype.Procedure)
                 .Label.Should().Be("Procedure");
             TaxonomyMatrix.Find(TaxonomyConstants.ReservationType.Document, TaxonomyConstants.DocumentSubtype.Form)
@@ -53,15 +53,18 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         [Fact]
-        public void OnlyDrawingAndFormCreateChildrenAndAllowExistingSequence()
+        public void DrawingProcedureAndFormCreateChildren_ExistingOnlyForDrawingAndForm()
         {
             foreach (var row in TaxonomyMatrix.Rows)
             {
-                bool isChildProducing = row.DocumentSubtype == TaxonomyConstants.DocumentSubtype.Drawing
+                bool createsChildren = row.DocumentSubtype == TaxonomyConstants.DocumentSubtype.Drawing
+                    || row.DocumentSubtype == TaxonomyConstants.DocumentSubtype.Procedure
                     || row.DocumentSubtype == TaxonomyConstants.DocumentSubtype.Form;
-                row.CreatesChildren.Should().Be(isChildProducing);
-                row.ExistingAllowed.Should().Be(isChildProducing);
-                row.AppendAllowed.Should().Be(isChildProducing);
+                bool existingOrAppend = row.DocumentSubtype == TaxonomyConstants.DocumentSubtype.Drawing
+                    || row.DocumentSubtype == TaxonomyConstants.DocumentSubtype.Form;
+                row.CreatesChildren.Should().Be(createsChildren);
+                row.ExistingAllowed.Should().Be(existingOrAppend);
+                row.AppendAllowed.Should().Be(existingOrAppend);
             }
         }
 

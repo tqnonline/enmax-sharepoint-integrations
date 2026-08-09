@@ -12,14 +12,22 @@ vi.mock("../../auth/useUserRole", () => ({
   useUserRole: () => ({ role: "User", isPending: false }),
 }));
 
+const mockAppConfig = vi.hoisted(() => ({
+  GridPageSize: 10,
+  GridDefaultFromDays: 30,
+  RequireCheckInApproval: false,
+  AdminTeamId: undefined as string | undefined,
+  UserTeamId: undefined as string | undefined,
+  ApproverTeamId: undefined as string | undefined,
+  EnableDrawingCheckout: true,
+  EnableDrawingDocumentCheckout: true,
+  EnableStandardCheckout: true,
+  EnableProcedureCheckout: true,
+  EnableFormCheckout: true,
+}));
+
 vi.mock("../../config/useAppConfig", () => ({
-  useAppConfig: () => ({
-    GridPageSize: 10,
-    RequireCheckInApproval: false,
-    AdminTeamId: undefined,
-    UserTeamId: undefined,
-    ApproverTeamId: undefined,
-  }),
+  useAppConfig: () => mockAppConfig,
 }));
 
 vi.mock("../../features/approvals/hooks/useCompositionLookups", () => ({
@@ -85,7 +93,7 @@ const CHECKED_OUT_RECORD: MyRecordRow = {
   baseNumber: "GG-CG-00-ECS-AST-DD-0001",
   sheetNumber: 1,
   title: "Schematic A",
-  typeLabel: "Standard Document",
+  typeLabel: "Standard",
   statusLabel: "Checked Out",
   state: 2,
   createdOn: "",
@@ -137,13 +145,20 @@ vi.mock("../../features/myitems/useMyRecords", async () => {
   };
 });
 
-afterEach(() => { vi.clearAllMocks(); });
+afterEach(() => {
+  vi.clearAllMocks();
+  mockAppConfig.EnableDrawingCheckout = true;
+  mockAppConfig.EnableDrawingDocumentCheckout = true;
+  mockAppConfig.EnableStandardCheckout = true;
+  mockAppConfig.EnableProcedureCheckout = true;
+  mockAppConfig.EnableFormCheckout = true;
+});
 
 test("shows primary type tabs Drawings and merged documents tab", () => {
   renderWithProviders(<MyItemsPage />);
   expect(screen.getByRole("tab", { name: "Drawings" })).toBeInTheDocument();
-  expect(screen.getByRole("tab", { name: /Standard Documents, Procedures & Forms/i })).toBeInTheDocument();
-  expect(screen.queryByRole("tab", { name: /^Standard Documents$/i })).not.toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: /Standards, Procedures & Forms/i })).toBeInTheDocument();
+  expect(screen.queryByRole("tab", { name: /^Standards$/i })).not.toBeInTheDocument();
   expect(screen.queryByRole("tab", { name: /^Procedure Forms$/i })).not.toBeInTheDocument();
 });
 
@@ -189,13 +204,36 @@ test("Checked Out tab shows record data", async () => {
   await user.click(screen.getByRole("tab", { name: /Checked Out/i }));
   await waitFor(() => expect(screen.getByText("GG-CG-00-ECS-AST-DD-0001")).toBeInTheDocument());
   expect(screen.getByRole("link", { name: /Open in SharePoint/i })).toBeInTheDocument();
-  expect(screen.getByText("Standard Document")).toBeInTheDocument();
+  expect(screen.getByText("Standard")).toBeInTheDocument();
 });
 
 test("grid has no Actions column header", async () => {
   renderWithProviders(<MyItemsPage />);
   await waitFor(() => expect(screen.getByText("GG-CG-00-ECS-AST-DD-????")).toBeInTheDocument());
   expect(screen.queryByRole("columnheader", { name: "Actions" })).not.toBeInTheDocument();
+});
+
+test("hides Checked Out and Pending Approval when Standard/Procedure/Form checkout are all off", async () => {
+  const user = userEvent.setup();
+  mockAppConfig.EnableStandardCheckout = false;
+  mockAppConfig.EnableProcedureCheckout = false;
+  mockAppConfig.EnableFormCheckout = false;
+  mockAppConfig.EnableDrawingCheckout = true;
+  mockAppConfig.EnableDrawingDocumentCheckout = true;
+
+  renderWithProviders(<MyItemsPage />);
+  // Drawings tab still shows checkout states.
+  expect(screen.getByRole("tab", { name: /Checked Out/i })).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: /Pending Approval/i })).toBeInTheDocument();
+
+  await user.click(screen.getByRole("tab", { name: /Standards, Procedures & Forms/i }));
+  expect(screen.queryByRole("tab", { name: /Checked Out/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole("tab", { name: /Pending Approval/i })).not.toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: /My Reservations/i })).toBeInTheDocument();
+
+  mockAppConfig.EnableStandardCheckout = true;
+  mockAppConfig.EnableProcedureCheckout = true;
+  mockAppConfig.EnableFormCheckout = true;
 });
 
 test("state tabs show a single count badge per state (no duplicate stat strip)", async () => {

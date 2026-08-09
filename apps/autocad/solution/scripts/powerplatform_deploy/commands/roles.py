@@ -109,6 +109,10 @@ def ensure_business_unit(client: DataverseClient, name: str, logger: Any) -> str
 # App Configuration / team helpers
 # ---------------------------------------------------------------------------
 
+# Infra ownership role — assigned only to the BU default team (not to people).
+APP_OWNER_ROLE_NAME = "Enmax AutoCAD App Owner"
+
+
 def find_default_team(client: DataverseClient, bu_id: str) -> str | None:
     """Return the default owner team id for a business unit, or None."""
     data = client._get("teams", {
@@ -118,6 +122,60 @@ def find_default_team(client: DataverseClient, bu_id: str) -> str | None:
     })
     items = data.get("value", [])
     return items[0]["teamid"] if items else None
+
+
+def team_has_role(client: DataverseClient, team_id: str, role_id: str) -> bool:
+    """Return True if the team already has the given security role."""
+    data = client._get(f"teams({team_id})/teamroles_association", {
+        "$select": "roleid",
+        "$filter": f"roleid eq {role_id}",
+        "$top": "1",
+    })
+    return bool(data.get("value"))
+
+
+def assign_role_to_team(
+    client: DataverseClient,
+    team_id: str,
+    role_id: str,
+    logger: Any,
+) -> None:
+    """Idempotently associate a security role with a team (teamroles_association)."""
+    if team_has_role(client, team_id, role_id):
+        logger.info("  team %s already has role %s — skip", team_id, role_id)
+        return
+    # @odata.id must be the absolute Web API URL for the role record.
+    odata_id = f"{client._base}/roles({role_id})"
+    client._post(
+        f"teams({team_id})/teamroles_association/$ref",
+        {"@odata.id": odata_id},
+    )
+    logger.info("  assigned role %s to team %s", role_id, team_id)
+
+
+def ensure_app_owner_role_on_default_team(
+    client: DataverseClient,
+    child_bu_id: str,
+    team_id: str,
+    logger: Any,
+) -> None:
+    """Assign Enmax AutoCAD App Owner (child-BU copy) to the BU default team.
+
+    Roles are provisioned in the root BU; Dataverse mirrors them into each child
+    BU. Team association must use the child-BU role copy.
+    """
+    role = find_role(client, APP_OWNER_ROLE_NAME, child_bu_id)
+    if not role:
+        # Mirror may lag briefly after create — fall back to any copy by name.
+        role = find_role(client, APP_OWNER_ROLE_NAME)
+    if not role:
+        logger.warning(
+            "  Role '%s' not found — cannot assign to default team %s",
+            APP_OWNER_ROLE_NAME,
+            team_id,
+        )
+        return
+    assign_role_to_team(client, team_id, role["roleid"], logger)
 
 
 def find_team_by_name(client: DataverseClient, name: str) -> str | None:
@@ -425,9 +483,11 @@ def run(environment: str, dry_run: bool, verbose: bool) -> None:
 
     child_bu_id = find_business_unit(client, bu_name)
     team_id = find_default_team(client, child_bu_id) if child_bu_id else None
-    if team_id:
+    if team_id and child_bu_id:
         upsert_app_config(client, "AppOwnerTeamId", team_id)
         logger.info("  AppOwnerTeamId -> %s (default team of %s)", team_id, bu_name)
+        logger.info("Assigning infra ownership role to BU default team...")
+        ensure_app_owner_role_on_default_team(client, child_bu_id, team_id, logger)
     else:
         logger.warning("  No default team found for BU '%s' — AppOwnerTeamId not set", bu_name)
 

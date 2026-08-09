@@ -39,8 +39,8 @@ describe("searchUrlState", () => {
     expect(filters.to).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
-  it("keeps reservations tab for Search page; header search never uses RES tab", () => {
-    expect(parseSearchTab("reservations")).toBe("reservations");
+  it("ignores legacy reservations tab; header search never uses RES tab", () => {
+    expect(parseSearchTab("reservations")).toBe("drawings");
     expect(parseHeaderSearchTab("reservations")).toBe("all");
   });
 

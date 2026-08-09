@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { MyRecordRow } from "../../features/myitems/useMyRecords";
 import { applyMyRecordListFilters, defaultMyItemsListFilters } from "../../features/myitems/myItemListFilters";
 import { DOCUMENT_SUBTYPE_VALUE } from "../../features/reserve/terminology";
@@ -8,7 +8,7 @@ const baseRow: MyRecordRow = {
   id: "1",
   number: "GG-CG-00-ECS-AST-DD-0001",
   title: "Test",
-  typeLabel: "Standard Document",
+  typeLabel: "Standard",
   statusLabel: "Available",
   state: 2,
   createdOn: "2026-06-01T10:00:00Z",
@@ -87,14 +87,25 @@ describe("applyMyRecordListFilters", () => {
   });
 
   it("repairs inverted date ranges to the 30-day default window", () => {
-    const row = { ...baseRow, revisionDate: "2026-07-05T10:00:00Z", createdOn: "2026-07-05T10:00:00Z" };
-    const rows = applyMyRecordListFilters(
-      [row],
-      { number: "", from: "2026-08-10", to: "2026-07-10", documentSubtype: "all", peopleIds: [] },
-      "available",
-      (r) => r.number,
-    );
-    expect(rows).toHaveLength(1);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-09T12:00:00"));
+    try {
+      // Inside last-30-days of frozen "today" (2026-07-10 … 2026-08-09).
+      const row = {
+        ...baseRow,
+        revisionDate: "2026-07-20T10:00:00Z",
+        createdOn: "2026-07-20T10:00:00Z",
+      };
+      const rows = applyMyRecordListFilters(
+        [row],
+        { number: "", from: "2026-08-10", to: "2026-07-10", documentSubtype: "all", peopleIds: [] },
+        "available",
+        (r) => r.number,
+      );
+      expect(rows).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("filters by document subtype", () => {

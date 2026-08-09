@@ -13,6 +13,7 @@ import {
   makeStyles,
 } from "@fluentui/react-components";
 import { ArrowDownload24Regular, ArrowSortDownRegular, ArrowSortUpRegular } from "@fluentui/react-icons";
+import { DocumentTypeBadge } from "../../../components/DocumentTypeBadge";
 import { sharePointFileUrl } from "../../sharepoint/sharepointUrls";
 import { useCheckOutSheets } from "../hooks/useCheckOutSheets";
 import { CheckoutStatus } from "../api/checkoutClient";
@@ -38,7 +39,7 @@ import {
   reservationChildNounPluralLower,
 } from "../../reserve/terminology";
 
-type SortCol = "number" | "status" | "checkedOutTo" | "sharePoint";
+type SortCol = "number" | "type" | "status" | "checkedOutTo" | "sharePoint";
 type SortDir = "asc" | "desc";
 
 const useStyles = makeStyles({
@@ -139,14 +140,18 @@ function sheetSortValue(
   reservationType?: number,
   documentSubtype?: number,
 ): string {
+  const rowType = sheet.reservationType ?? reservationType;
+  const rowSubtype = sheet.documentSubtype ?? documentSubtype;
   switch (col) {
     case "number":
       return documentDisplayNumber(
         sheet.drawingNumber,
         sheet.sheetNumber,
-        reservationType,
-        documentSubtype,
+        rowType,
+        rowSubtype,
       ).toLowerCase();
+    case "type":
+      return (sheet.typeLabel || "").toLowerCase();
     case "status":
       return sheetStatusPresentation(sheet.state, sheet.checkout).label.toLowerCase();
     case "checkedOutTo":
@@ -186,7 +191,12 @@ export function ReservationDocumentSheetsGrid({
   const { RequireCheckOutApproval } = useAppConfig();
   const requireApproval = RequireCheckOutApproval ?? true;
   const { dispatchToast } = useToastController(toasterId);
-  const sheetsQuery = useReservationSheets(drawings, drawings.length > 0);
+  const sheetsQuery = useReservationSheets(
+    drawings,
+    drawings.length > 0,
+    reservationType,
+    documentSubtype,
+  );
   const checkOutSheets = useCheckOutSheets();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sortCol, setSortCol] = useState<SortCol>("number");
@@ -352,6 +362,7 @@ export function ReservationDocumentSheetsGrid({
           <tr>
             {checkoutEnabled && <th className={styles.th}>Select</th>}
             {sortableHeader("number", `${childNoun} #`)}
+            {sortableHeader("type", "Type")}
             {sortableHeader("status", "Status")}
             {checkoutEnabled && sortableHeader("checkedOutTo", "Checked Out To")}
             {sortableHeader("sharePoint", "Published File in SharePoint")}
@@ -412,11 +423,13 @@ function SheetRow({
   onToggle: (id: string, checked: boolean) => void;
   onCheckout: (id: string) => void;
 }) {
+  const rowType = sheet.reservationType ?? reservationType;
+  const rowSubtype = sheet.documentSubtype ?? documentSubtype;
   const displayNum = documentDisplayNumber(
     sheet.drawingNumber,
     sheet.sheetNumber,
-    reservationType,
-    documentSubtype,
+    rowType,
+    rowSubtype,
   );
   const fromAppend = sheet.sheetNumber != null
     && appendFirst != null
@@ -447,6 +460,9 @@ function SheetRow({
             New
           </Badge>
         )}
+      </td>
+      <td className={styles.td}>
+        <DocumentTypeBadge label={sheet.typeLabel} />
       </td>
       <td className={`${styles.td} ${styles.tdStatus}`}>
         <SheetStatusBadge sheetState={sheet.state} checkout={sheet.checkout} />

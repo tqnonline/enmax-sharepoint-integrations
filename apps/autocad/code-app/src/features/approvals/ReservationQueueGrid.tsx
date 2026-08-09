@@ -17,6 +17,7 @@ import { clientPage } from "../../components/DataGrid/clientPage";
 import type { PendingReservation } from "./hooks/usePendingReservations";
 import { formatReservationDisplay } from "./compositionUtils";
 import { usePageSize } from "../../config/usePageSize";
+import { DocumentTypeBadge } from "../../components/DocumentTypeBadge";
 
 interface Props {
   reservations: PendingReservation[];
@@ -24,9 +25,12 @@ interface Props {
   onBulkApprove?: (selected: PendingReservation[]) => void;
   emptyMessage?: string;
   allRecordsCount?: number;
+  /** Column header for the approver/decliner person column. */
+  approverColumnHeader?: string;
 }
 
-const COLUMNS: ColumnDef<PendingReservation>[] = [
+function buildColumns(approverColumnHeader: string): ColumnDef<PendingReservation>[] {
+  return [
   {
     id: "composition", header: "Drawing/Document Number",
     accessor: r => formatReservationDisplay({
@@ -86,7 +90,7 @@ const COLUMNS: ColumnDef<PendingReservation>[] = [
     accessor: r => r.typeLabel,
     sortable: true,
     width: 160,
-    cell: r => <Text>{r.typeLabel}</Text>,
+    cell: r => <DocumentTypeBadge label={r.typeLabel} />,
   },
   {
     id: "enmax_acdndrawingcount", header: "Count",
@@ -109,12 +113,23 @@ const COLUMNS: ColumnDef<PendingReservation>[] = [
     accessor: r => r.createdon,
     width: 160,
   }),
-  approvedByColumn<PendingReservation>(),
-];
+  approvedByColumn<PendingReservation>({ header: approverColumnHeader }),
+  ];
+}
 
-export function ReservationQueueGrid({ reservations, onSelect, onBulkApprove, emptyMessage, allRecordsCount }: Props) {
+export function ReservationQueueGrid({
+  reservations,
+  onSelect,
+  onBulkApprove,
+  emptyMessage,
+  allRecordsCount,
+  approverColumnHeader = "Approved By",
+}: Props) {
   const pageSize = usePageSize();
-
+  const columns = useMemo(
+    () => buildColumns(approverColumnHeader),
+    [approverColumnHeader],
+  );
   const fetcher = useCallback(
     async (params: GridFetchParams): Promise<{ rows: PendingReservation[]; totalCount: number }> =>
       clientPage(reservations, params, {
@@ -150,8 +165,8 @@ export function ReservationQueueGrid({ reservations, onSelect, onBulkApprove, em
   );
 
   const queryKey = useMemo(
-    () => ["reservation-queue", reservations.map(r => r.enmax_acdnreservationid).join(",")],
-    [reservations],
+    () => ["reservation-queue", approverColumnHeader, reservations.map(r => r.enmax_acdnreservationid).join(",")],
+    [approverColumnHeader, reservations],
   );
 
   const bulkActions = onBulkApprove
@@ -163,7 +178,7 @@ export function ReservationQueueGrid({ reservations, onSelect, onBulkApprove, em
       <EnmaxDataGrid
         queryKey={queryKey}
         fetcher={fetcher}
-        columns={COLUMNS}
+        columns={columns}
         rowKey={r => r.enmax_acdnreservationid}
         onRowClick={onSelect}
         bulkActions={bulkActions}

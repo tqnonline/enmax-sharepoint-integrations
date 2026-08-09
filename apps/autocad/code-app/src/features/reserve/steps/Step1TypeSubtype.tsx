@@ -72,18 +72,21 @@ export function Step1TypeSubtype({ onNext }: Props) {
   const isDrawing  = reservationType === "Drawing";
   const isExisting = sequenceType === "Existing";
 
+  // Drawing path is unified in the UI (no Drawing Document vs Drawing fork).
+  // Issuance subtype is resolved from sheets on submit (0 → Drawing Document).
+  const gateSubtype = isDrawing ? "Drawing" : documentSubtype;
   const typeValue = reservationType === "Drawing"
     ? RESERVATION_TYPE_VALUE.Drawing
     : reservationType === "Document"
       ? RESERVATION_TYPE_VALUE.Document
       : undefined;
-  const subtypeValue = documentSubtype ? DOCUMENT_SUBTYPE_VALUE[documentSubtype] : undefined;
+  const subtypeValue = gateSubtype ? DOCUMENT_SUBTYPE_VALUE[gateSubtype] : undefined;
 
   const existingAllowed = isExistingSequenceAllowedForTaxonomy(config, typeValue, subtypeValue);
   const newAllowed = isNewSequenceAllowedForTaxonomy(typeValue, subtypeValue);
 
   useEffect(() => {
-    if (isDrawing && documentSubtype !== "DrawingDocument" && documentSubtype !== "Drawing") {
+    if (isDrawing && documentSubtype !== "Drawing") {
       setValue("documentSubtype", "Drawing");
     }
     if (isDocument && (documentSubtype === "DrawingDocument" || documentSubtype === "Drawing")) {
@@ -97,7 +100,7 @@ export function Step1TypeSubtype({ onNext }: Props) {
   }, [existingAllowed, newAllowed, sequenceType, setValue]);
 
   const canProceed = isDrawing
-    ? documentSubtype === "DrawingDocument" || documentSubtype === "Drawing"
+    ? true
     : !!documentSubtype;
 
   async function handleNext() {
@@ -123,26 +126,6 @@ export function Step1TypeSubtype({ onNext }: Props) {
         )}
       />
 
-      {isDrawing && (
-        <div key="drawing-subtype" className={styles.panel}>
-          <Controller
-            name="documentSubtype"
-            control={control}
-            render={({ field }) => (
-              <Field label="Drawing Type" validationMessage={errors.documentSubtype?.message} required>
-                <RadioGroup
-                  value={field.value ?? ""}
-                  onChange={(_, data) => field.onChange(data.value)}
-                >
-                  <Radio value="DrawingDocument" label="Drawing Document" />
-                  <Radio value="Drawing"         label="Drawing" />
-                </RadioGroup>
-              </Field>
-            )}
-          />
-        </div>
-      )}
-
       {isDocument && (
         <div key="document-subtype" className={styles.panel}>
           <Controller
@@ -154,7 +137,7 @@ export function Step1TypeSubtype({ onNext }: Props) {
                   value={field.value ?? ""}
                   onChange={(_, data) => field.onChange(data.value)}
                 >
-                  <Radio value="Standard"  label="Standard Document" />
+                  <Radio value="Standard"  label="Standard" />
                   <Radio value="Procedure" label="Procedure" />
                   <Radio value="Form"      label="Form" />
                 </RadioGroup>

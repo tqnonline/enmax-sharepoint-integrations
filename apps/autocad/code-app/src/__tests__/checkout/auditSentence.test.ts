@@ -69,7 +69,7 @@ test("uses procedure form noun for procedure taxonomy", () => {
   expect(s).toContain("Bob allocated the procedure on");
 });
 
-test("uses standard document noun for standard taxonomy", () => {
+test("uses standard noun for standard taxonomy", () => {
   const s = formatAuditSentence(
     {
       id: "5",
@@ -86,7 +86,7 @@ test("uses standard document noun for standard taxonomy", () => {
       documentSubtype: DOCUMENT_SUBTYPE_VALUE.Standard,
     },
   );
-  expect(s).toContain("Carol finalized the standard document on");
+  expect(s).toContain("Carol finalized the standard on");
 });
 
 test("collapseDuplicateAllocated keeps a single earliest Allocated row", () => {

@@ -1,13 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Entity xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <Name LocalizedName="Drawing Number / Standard Document / Procedure" OriginalName="Drawing">enmax_autocaddrawing</Name>
+  <Name LocalizedName="Drawing Number / Standard / Procedure" OriginalName="Drawing">enmax_autocaddrawing</Name>
   <EntityInfo>
     <entity Name="enmax_autocaddrawing">
       <LocalizedNames>
-        <LocalizedName description="Drawing Number / Standard Document / Procedure" languagecode="1033" />
+        <LocalizedName description="Drawing Number / Standard / Procedure" languagecode="1033" />
       </LocalizedNames>
       <LocalizedCollectionNames>
-        <LocalizedCollectionName description="Drawing Numbers / Standard Documents / Procedures" languagecode="1033" />
+        <LocalizedCollectionName description="Drawing Numbers / Standards / Procedures" languagecode="1033" />
       </LocalizedCollectionNames>
       <attributes>
         <attribute PhysicalName="CreatedBy">
@@ -1857,9 +1857,10 @@
           <IsCustomizable>0</IsCustomizable>
           <EntityKeyAttributes>
             <AttributeName>enmax_acdnnumber</AttributeName>
+            <AttributeName>enmax_acdndocumentsubtype</AttributeName>
           </EntityKeyAttributes>
           <displaynames>
-            <displayname description="ENMAX Number" languagecode="1033" />
+            <displayname description="ENMAX Number + Document Subtype" languagecode="1033" />
           </displaynames>
         </EntityKey>
       </EntityKeys>

@@ -130,7 +130,7 @@ test("Standard: selecting an existing coding issues the next base via the reserv
   expect(searchRef.lastArgs).toMatchObject({ documentSubtype: "Standard" });
   await user.click(await screen.findByText(BASE.number));
 
-  await user.click(screen.getByRole("button", { name: /Add standard document/i }));
+  await user.click(screen.getByRole("button", { name: /Add standard/i }));
 
   await waitFor(() => expect(createMutate).toHaveBeenCalledTimes(1));
   const form = createMutate.mock.calls[0][0] as ReserveForm & { targetDrawingId?: string };
@@ -150,5 +150,5 @@ test("Standard: count input is capped by MaxRecordsPerReservation", async () => 
 
   const count = await screen.findByRole("spinbutton");
   expect(count).toHaveAttribute("max", "10");
-  expect(screen.getByText(/How many standard documents to add \(1–10\)/i)).toBeInTheDocument();
+  expect(screen.getByText(/How many standards to add \(1–10\)/i)).toBeInTheDocument();
 });

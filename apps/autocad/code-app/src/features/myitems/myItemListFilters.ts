@@ -13,13 +13,14 @@ export interface MyRecordListFilters {
   peopleIds: string[];
 }
 
-/** All My Items tabs default to the previous 30 days through today. */
+/** All My Items tabs default to today − fromDays through today (App Config GridDefaultFromDays). */
 export function defaultMyItemsListFilters(
   state: MyRecordStateFilter = "reservations",
   now = new Date(),
+  fromDays?: number,
 ): MyRecordListFilters {
   void state;
-  const { from, to } = defaultGridDateRange(now);
+  const { from, to } = defaultGridDateRange(now, fromDays);
   return { number: "", from, to, documentSubtype: "all", peopleIds: [] };
 }
 

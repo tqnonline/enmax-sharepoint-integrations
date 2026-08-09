@@ -116,7 +116,7 @@ test("hides action when document is not Available", () => {
   expect(screen.queryByRole("button", { name: /check out/i })).not.toBeInTheDocument();
 });
 
-test("hides Standard Document checkout when EnableStandardCheckout is false", () => {
+test("hides Standard checkout when EnableStandardCheckout is false", () => {
   appConfigRef.value = { ...appConfigRef.value, EnableStandardCheckout: false };
   renderWithProviders(
     <SearchCheckoutAction
@@ -124,7 +124,7 @@ test("hides Standard Document checkout when EnableStandardCheckout is false", ()
         isChildDocument: false,
         enmax_acdnreservationtype: RESERVATION_TYPE_VALUE.Document,
         enmax_acdndocumentsubtype: DOCUMENT_SUBTYPE_VALUE.Standard,
-        typeLabel: "Standard Document",
+        typeLabel: "Standard",
       })}
     />,
   );

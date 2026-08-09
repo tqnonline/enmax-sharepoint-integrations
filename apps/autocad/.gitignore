@@ -15,6 +15,14 @@ __pycache__/
 venv/
 *.egg-info/
 
+# Operator run artifacts (Heather Excel, checkpoints, preflight CSVs)
+solution/scripts/reports/
+**/~$*.xlsx
+
+# Local PAC reflection helper build outputs (source may exist; never commit bin/obj)
+solution/scripts/.pac-token-helper/bin/
+solution/scripts/.pac-token-helper/obj/
+
 # .NET / plugin
 solution/plugins/**/bin/
 solution/plugins/**/obj/

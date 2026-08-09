@@ -36,7 +36,7 @@ EXPECTED_RESERVATION_TYPE_INTS = {"Drawing": 1, "Document": 2}
 _LABEL_TO_SUBTYPE_KEY = {
     "Drawing Document": "DrawingDocument",
     "Drawing": "Drawing",
-    "Standard Document": "Standard",
+    "Standard": "Standard",
     "Procedure": "Procedure",
     "Form": "Form",
 }
@@ -82,15 +82,20 @@ def test_matrix_matches_seeded_optionset_values_and_labels() -> None:
     assert set(values_by_label.values()) - {row.document_subtype for row in TAXONOMY_MATRIX} == {0}
 
 
-def test_only_drawing_and_form_create_children_and_allow_existing_sequence() -> None:
+def test_drawing_procedure_and_form_create_children_existing_only_for_drawing_and_form() -> None:
     for row in TAXONOMY_MATRIX:
-        is_child_producing = row.document_subtype in (
+        creates_children = row.document_subtype in (
+            EXPECTED_DOCUMENT_SUBTYPE_INTS["Drawing"],
+            EXPECTED_DOCUMENT_SUBTYPE_INTS["Procedure"],
+            EXPECTED_DOCUMENT_SUBTYPE_INTS["Form"],
+        )
+        existing_or_append = row.document_subtype in (
             EXPECTED_DOCUMENT_SUBTYPE_INTS["Drawing"],
             EXPECTED_DOCUMENT_SUBTYPE_INTS["Form"],
         )
-        assert row.creates_children is is_child_producing
-        assert row.existing_allowed is is_child_producing
-        assert row.append_allowed is is_child_producing
+        assert row.creates_children is creates_children
+        assert row.existing_allowed is existing_or_append
+        assert row.append_allowed is existing_or_append
 
 
 def test_drawing_document_is_base_only_new_sequence_only_drawing_library() -> None:

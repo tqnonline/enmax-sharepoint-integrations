@@ -8,7 +8,7 @@ values:
   - value: 2
     label: Drawing
   - value: 3
-    label: Standard Document
+    label: Standard
   - value: 4
     label: Procedure
   - value: 5

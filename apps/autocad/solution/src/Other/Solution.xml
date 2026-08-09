@@ -101,6 +101,11 @@
       <RootComponent type="1" schemaName="enmax_autocaduserpreference" behavior="0" />
       <RootComponent type="1" schemaName="enmax_autocadvendor" behavior="0" />
       <RootComponent type="1" schemaName="systemuser" behavior="1" />
+      <RootComponent type="20" id="{30ae573d-f95d-f111-a826-00224802e55b}" behavior="0" />
+      <RootComponent type="20" id="{5e15fe22-f95d-f111-a826-00224802e55b}" behavior="0" />
+      <RootComponent type="20" id="{7df86829-f95d-f111-a826-00224802e55b}" behavior="0" />
+      <RootComponent type="20" id="{a5f86829-f95d-f111-a826-00224802e55b}" behavior="0" />
+      <RootComponent type="20" id="{d5d8f270-755e-f111-a826-7c1e5254cc04}" behavior="0" />
       <RootComponent type="9" schemaName="enmax_acdn_appconfigvaluetype" behavior="0" />
       <RootComponent type="9" schemaName="enmax_acdn_auditevent" behavior="0" />
       <RootComponent type="9" schemaName="enmax_acdn_auditsource" behavior="0" />

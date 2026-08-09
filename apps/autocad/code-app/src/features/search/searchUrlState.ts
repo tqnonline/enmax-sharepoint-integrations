@@ -16,7 +16,7 @@ const COMPOSITION_KEYS: (keyof CompositionFilterIds)[] = [
 
 export function parseSearchTab(raw: string | null): SearchTab {
   if (raw === "documents") return "documents";
-  if (raw === "reservations") return "reservations";
+  // Legacy ?tab=reservations bookmarks fall back to Drawings.
   return "drawings";
 }
 
@@ -57,8 +57,9 @@ function compositionFromRefCodes(
 export function filtersFromSearchParams(
   params: URLSearchParams,
   refData?: ReferenceData,
+  fromDays?: number,
 ): SearchListFilters {
-  const { from, to } = defaultGridDateRange();
+  const { from, to } = defaultGridDateRange(new Date(), fromDays);
   const subtypeRaw = params.get("subtype");
   const documentSubtype: DocumentSubtypeSearchFilter =
     subtypeRaw === "standard" || subtypeRaw === "procedure" || subtypeRaw === "form"

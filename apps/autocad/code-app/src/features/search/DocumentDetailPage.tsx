@@ -12,6 +12,7 @@ import {
   makeStyles,
 } from "@fluentui/react-components";
 import { ArrowLeftRegular, OpenRegular } from "@fluentui/react-icons";
+import { DocumentTypeBadge } from "../../components/DocumentTypeBadge";
 import { DrawingActionsPanel } from "../checkout/components/DrawingActionsPanel";
 import {
   type DrawingStateValue,
@@ -265,7 +266,7 @@ export function DocumentDetailPage() {
           )}
           {d && (
             <div className={styles.badgeRow}>
-              <Badge appearance="filled" color="brand">{d.typeLabel}</Badge>
+              <DocumentTypeBadge label={d.typeLabel} appearance="filled" size="medium" />
               {matchedSheet ? (
                 <SheetStatusBadge sheetState={matchedSheet.state} checkout={sheetCheckout} />
               ) : documentStateLabel ? (

@@ -2,6 +2,9 @@ import { describe, expect, test } from "vitest";
 import {
   isCheckInEnabledForTaxonomy,
   isCheckoutEnabledForTaxonomy,
+  isAnyCheckoutEnabled,
+  isAnyDocumentCheckoutEnabled,
+  isAnyDrawingCheckoutEnabled,
 } from "../../config/checkoutTaxonomyConfig";
 import type { AppConfig } from "../../config/AppConfigSchema";
 import {
@@ -132,5 +135,48 @@ describe("isCheckInEnabledForTaxonomy", () => {
     expect(
       isCheckInEnabledForTaxonomy(cfg, RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Form),
     ).toBe(false);
+  });
+});
+
+describe("checkout tab visibility helpers", () => {
+  test("document checkout tab needs at least one of Standard/Procedure/Form", () => {
+    expect(isAnyDocumentCheckoutEnabled(config({
+      EnableStandardCheckout: false,
+      EnableProcedureCheckout: false,
+      EnableFormCheckout: false,
+    }))).toBe(false);
+    expect(isAnyDocumentCheckoutEnabled(config({
+      EnableStandardCheckout: false,
+      EnableProcedureCheckout: true,
+      EnableFormCheckout: false,
+    }))).toBe(true);
+  });
+
+  test("drawing checkout tab needs Drawing or Drawing Document", () => {
+    expect(isAnyDrawingCheckoutEnabled(config({
+      EnableDrawingCheckout: false,
+      EnableDrawingDocumentCheckout: false,
+    }))).toBe(false);
+    expect(isAnyDrawingCheckoutEnabled(config({
+      EnableDrawingCheckout: false,
+      EnableDrawingDocumentCheckout: true,
+    }))).toBe(true);
+  });
+
+  test("approvals checkout tab is visible when any taxonomy checkout is on", () => {
+    expect(isAnyCheckoutEnabled(config({
+      EnableDrawingCheckout: false,
+      EnableDrawingDocumentCheckout: false,
+      EnableStandardCheckout: false,
+      EnableProcedureCheckout: false,
+      EnableFormCheckout: false,
+    }))).toBe(false);
+    expect(isAnyCheckoutEnabled(config({
+      EnableDrawingCheckout: false,
+      EnableDrawingDocumentCheckout: false,
+      EnableStandardCheckout: false,
+      EnableProcedureCheckout: false,
+      EnableFormCheckout: true,
+    }))).toBe(true);
   });
 });

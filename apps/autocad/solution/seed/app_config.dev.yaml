@@ -11,21 +11,21 @@ rows:
   - key: DrawingDestinationLibraryUrl
     value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
   - key: DocumentDropOffLibraryUrl
-    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+    value: https://enmaxcorp.sharepoint.com/sites/EECDocumentControl/DropoffLibrary
   - key: DocumentDestinationLibraryUrl
-    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+    value: https://enmaxcorp.sharepoint.com/sites/EECDocumentControl/A
   - key: StandardDocumentDropOffLibraryUrl
-    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+    value: https://enmaxcorp.sharepoint.com/sites/EECDocumentControl/DropoffLibrary
   - key: StandardDocumentDestinationLibraryUrl
-    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+    value: https://enmaxcorp.sharepoint.com/sites/EECDocumentControl/A
   - key: ProcedureDocumentDropOffLibraryUrl
-    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+    value: https://enmaxcorp.sharepoint.com/sites/EECDocumentControl/DropoffLibrary
   - key: ProcedureDocumentDestinationLibraryUrl
-    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+    value: https://enmaxcorp.sharepoint.com/sites/EECDocumentControl/A
   - key: FormDocumentDropOffLibraryUrl
-    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+    value: https://enmaxcorp.sharepoint.com/sites/EECDocumentControl/DropoffLibrary
   - key: FormDocumentDestinationLibraryUrl
-    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+    value: https://enmaxcorp.sharepoint.com/sites/EECDocumentControl/A
   - key: SharePointIndexerLogFolderPath
     value: Shared Documents/Enmax AutoCAD/Indexer Logs
   - key: CodeAppBaseUrl

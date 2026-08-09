@@ -19,7 +19,7 @@ export interface CheckinRow {
   sheetId: string;
   drawingNumber: string;
   documentDisplayNumber: string;
-  /** Derived "Drawing" | "Standard Document" | "Procedure Form" from the record. */
+  /** Derived "Drawing" | "Standard" | "Procedure Form" from the record. */
   typeLabel: string;
   businessDisplay: string;
   assetDisplay: string;

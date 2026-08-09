@@ -82,7 +82,8 @@ test("checkout card uses Drawings/Documents title", () => {
   renderWithProviders(<HomePage />);
   expect(screen.getByText(/My Checked out Drawings\/Documents/i)).toBeInTheDocument();
   expect(screen.getByText("DE-9A-10-AES-AAA-DS-0001")).toBeInTheDocument();
-  expect(screen.getByText(/Drawing · Checked out for Alex/i)).toBeInTheDocument();
+  expect(screen.getByText("Drawing")).toBeInTheDocument();
+  expect(screen.getByText(/Checked out for Alex/i)).toBeInTheDocument();
 });
 
 test("reservation card shows coding sequence, type, and reserved for — never RES-XXX", () => {
@@ -111,7 +112,8 @@ test("reservation card shows coding sequence, type, and reserved for — never R
   }];
   renderWithProviders(<HomePage />);
   expect(screen.getByText("DE-9A-10-AES-AAA-DS-0001 To 0003")).toBeInTheDocument();
-  expect(screen.getByText(/Drawing · Reserved for Jordan/i)).toBeInTheDocument();
+  expect(screen.getByText("Drawing")).toBeInTheDocument();
+  expect(screen.getByText(/Reserved for Jordan/i)).toBeInTheDocument();
   expect(screen.queryByText("RES-1184")).not.toBeInTheDocument();
 });
 

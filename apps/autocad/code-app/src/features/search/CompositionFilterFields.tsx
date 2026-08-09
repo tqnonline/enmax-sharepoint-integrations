@@ -53,7 +53,7 @@ export function CompositionFilterFields({ refData, value, onChange }: Props) {
 
   return (
     <div>
-      <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: tokens.spacingVerticalXS }}>
+      <Text size={200} style={{ color: tokens.colorNeutralForeground2, marginBottom: tokens.spacingVerticalXS }}>
         {NUMBERING_GROUP_LABEL} ({NUMBERING_GROUP_PATTERN})
       </Text>
       <div className={styles.row} role="group" aria-label={NUMBERING_GROUP_LABEL}>

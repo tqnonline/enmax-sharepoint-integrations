@@ -26,6 +26,7 @@ import {
   type MyRecordStateFilter,
   type MyRecordListFilters,
 } from "./useMyRecords";
+import { DocumentTypeBadge } from "../../components/DocumentTypeBadge";
 import { useCurrentUser } from "../../auth/useCurrentUser";
 import { useCompositionLookups, type CompositionMaps } from "../approvals/hooks/useCompositionLookups";
 import { formatReservationDisplay } from "../approvals/compositionUtils";
@@ -50,12 +51,20 @@ import {
   type MyRecordTabFilter,
 } from "../reserve/taxonomyFilters";
 import type { GridQueryFilterDraft } from "../../components/DataGrid/GridQueryFilterBar";
+import { useAppConfig } from "../../config/useAppConfig";
+import { useGridDefaultFromDays } from "../../config/useGridDefaultFromDays";
+import {
+  isAnyDocumentCheckoutEnabled,
+  isAnyDrawingCheckoutEnabled,
+} from "../../config/checkoutTaxonomyConfig";
 
 const TOASTER_ID = "my-items-toaster";
 
+const CHECKOUT_STATE_TABS = new Set<MyRecordStateFilter>(["checkedout", "pendingapproval"]);
+
 const TYPE_TABS: { value: MyRecordTabFilter; label: string; url: string }[] = [
   { value: "drawing",   label: "Drawings",                                      url: "drawings" },
-  { value: "documents", label: "Standard Documents, Procedures & Forms",        url: "documents" },
+  { value: "documents", label: "Standards, Procedures & Forms",        url: "documents" },
 ];
 
 const STATE_TABS: { value: MyRecordStateFilter; label: string; url: string }[] = [
@@ -67,7 +76,7 @@ const STATE_TABS: { value: MyRecordStateFilter; label: string; url: string }[] =
 
 const DOCUMENT_TYPE_OPTIONS: { value: DocumentSubtypeFilter; label: string }[] = [
   { value: "all",       label: "All Types" },
-  { value: "standard",  label: "Standard Document" },
+  { value: "standard",  label: "Standard" },
   { value: "procedure", label: "Procedure" },
   { value: "form",      label: "Form" },
 ];
@@ -113,11 +122,14 @@ function buildMyItemsFilters(
   tab: MyRecordTabFilter,
   state: MyRecordStateFilter,
   subtype: DocumentSubtypeFilter,
+  fromDays?: number,
 ): MyRecordListFilters {
-  const defaults = defaultMyItemsListFilters(state);
+  const defaults = defaultMyItemsListFilters(state, new Date(), fromDays);
   const { from, to } = normalizeGridDateRange(
     defaults.from,
     defaults.to,
+    new Date(),
+    fromDays,
   );
   return {
     number: "",
@@ -132,12 +144,17 @@ function initialFilterDraft(
   tab: MyRecordTabFilter,
   state: MyRecordStateFilter,
   subtype: DocumentSubtypeFilter,
+  fromDays?: number,
 ): GridQueryFilterDraft & { documentSubtype: DocumentSubtypeFilter; peopleIds: string[] } {
-  return buildMyItemsFilters(tab, state, subtype);
+  return buildMyItemsFilters(tab, state, subtype, fromDays);
 }
 
-function resetFiltersForTab(tab: MyRecordTabFilter, state: MyRecordStateFilter): MyRecordListFilters {
-  return buildMyItemsFilters(tab, state, "all");
+function resetFiltersForTab(
+  tab: MyRecordTabFilter,
+  state: MyRecordStateFilter,
+  fromDays?: number,
+): MyRecordListFilters {
+  return buildMyItemsFilters(tab, state, "all", fromDays);
 }
 
 /** Person filter is omitted on My Reservations — rows are always the logged-in user. */
@@ -217,6 +234,8 @@ export function MyItemsPage() {
   const { data: user }    = useCurrentUser();
   const userId            = user?.id ?? "";
   const { data: compMaps } = useCompositionLookups();
+  const appConfig = useAppConfig();
+  const fromDays = useGridDefaultFromDays();
   const { dispatchToast } = useToastController(TOASTER_ID);
 
   const activeTab  = parseTabParam(searchParams.get("type"));
@@ -224,6 +243,17 @@ export function MyItemsPage() {
   const activeSubtype = parseSubtypeParam(searchParams.get("subtype"));
   const [panelDrawing, setPanelDrawing] = useState<DrawingRow | null>(null);
   const [panelSheetId, setPanelSheetId] = useState<string | undefined>(undefined);
+
+  const checkoutStatesVisible = activeTab === "documents"
+    ? isAnyDocumentCheckoutEnabled(appConfig)
+    : isAnyDrawingCheckoutEnabled(appConfig);
+
+  const visibleStateTabs = useMemo(
+    () => STATE_TABS.filter(
+      (s) => checkoutStatesVisible || !CHECKOUT_STATE_TABS.has(s.value),
+    ),
+    [checkoutStatesVisible],
+  );
 
   const routeKey = `${activeTab}:${activeState}:${activeSubtype}`;
   const prevRouteKey = useRef(routeKey);
@@ -233,6 +263,7 @@ export function MyItemsPage() {
       parseTabParam(searchParams.get("type")),
       parseStateParam(searchParams.get("state")),
       parseSubtypeParam(searchParams.get("subtype")),
+      fromDays,
     ),
   );
   const [appliedFilters, setAppliedFilters] = useState<MyRecordListFilters>(() =>
@@ -240,6 +271,7 @@ export function MyItemsPage() {
       parseTabParam(searchParams.get("type")),
       parseStateParam(searchParams.get("state")),
       parseSubtypeParam(searchParams.get("subtype")),
+      fromDays,
     ),
   );
 
@@ -247,10 +279,10 @@ export function MyItemsPage() {
   useEffect(() => {
     if (prevRouteKey.current === routeKey) return;
     prevRouteKey.current = routeKey;
-    const reset = buildMyItemsFilters(activeTab, activeState, activeSubtype);
+    const reset = buildMyItemsFilters(activeTab, activeState, activeSubtype, fromDays);
     setFilterDraft(reset);
     setAppliedFilters(reset);
-  }, [routeKey, activeTab, activeState, activeSubtype]);
+  }, [routeKey, activeTab, activeState, activeSubtype, fromDays]);
 
   const dataTypeFilter = effectiveTypeFilter(activeTab, appliedFilters.documentSubtype);
 
@@ -309,8 +341,15 @@ export function MyItemsPage() {
     setSearchParams(next, { replace: true });
   }, [setSearchParams]);
 
+  // Deep links / type-tab switches must not land on hidden checkout states.
+  useEffect(() => {
+    if (checkoutStatesVisible) return;
+    if (!CHECKOUT_STATE_TABS.has(activeState)) return;
+    setTabParams(activeTab, "reservations", activeSubtype);
+  }, [checkoutStatesVisible, activeState, activeTab, activeSubtype, setTabParams]);
+
   function handleQuery() {
-    const { from, to } = normalizeGridDateRange(filterDraft.from, filterDraft.to);
+    const { from, to } = normalizeGridDateRange(filterDraft.from, filterDraft.to, new Date(), fromDays);
     if (!from || !to) {
       dispatchToast(
         <Toast><ToastTitle>From And To Dates Are Required To Run A Query.</ToastTitle></Toast>,
@@ -342,7 +381,7 @@ export function MyItemsPage() {
 
   function handleClear() {
     const cleared = {
-      ...resetFiltersForTab(activeTab, activeState),
+      ...resetFiltersForTab(activeTab, activeState, fromDays),
       documentSubtype: "all" as DocumentSubtypeFilter,
     };
     setFilterDraft(cleared);
@@ -352,7 +391,7 @@ export function MyItemsPage() {
     }
     dispatchToast(
       <Toast>
-        <ToastTitle>Filters cleared — showing the last 30 days.</ToastTitle>
+        <ToastTitle>Filters cleared — showing the last {fromDays} days.</ToastTitle>
       </Toast>,
       { intent: "info" },
     );
@@ -383,7 +422,7 @@ export function MyItemsPage() {
         accessor: r => r.typeLabel,
         sortable: true,
         width: 160,
-        cell: r => <Text>{r.typeLabel}</Text>,
+        cell: r => <DocumentTypeBadge label={r.typeLabel} />,
       },
       {
         id: "statusLabel", header: "Status",
@@ -490,10 +529,16 @@ export function MyItemsPage() {
         selectedValue={activeTab}
         onTabSelect={(_, d) => {
           const tab = d.value as MyRecordTabFilter;
-          const reset = resetFiltersForTab(tab, activeState);
+          const nextCheckoutVisible = tab === "documents"
+            ? isAnyDocumentCheckoutEnabled(appConfig)
+            : isAnyDrawingCheckoutEnabled(appConfig);
+          const nextState = (!nextCheckoutVisible && CHECKOUT_STATE_TABS.has(activeState))
+            ? "reservations"
+            : activeState;
+          const reset = resetFiltersForTab(tab, nextState, fromDays);
           setFilterDraft({ ...reset, documentSubtype: "all" });
           setAppliedFilters(reset);
-          setTabParams(tab, activeState, "all");
+          setTabParams(tab, nextState, "all");
         }}
       >
         {TYPE_TABS.map(t => (
@@ -505,13 +550,13 @@ export function MyItemsPage() {
         selectedValue={activeState}
         onTabSelect={(_, d) => {
           const state = d.value as MyRecordStateFilter;
-          const reset = resetFiltersForTab(activeTab, state);
+          const reset = resetFiltersForTab(activeTab, state, fromDays);
           setFilterDraft({ ...reset, documentSubtype: filterDraft.documentSubtype });
           setAppliedFilters(reset);
           setTabParams(activeTab, state, filterDraft.documentSubtype);
         }}
       >
-        {STATE_TABS.map(s => {
+        {visibleStateTabs.map(s => {
           const count = counts?.[s.value];
           return (
             <Tab key={s.value} value={s.value}>

@@ -45,6 +45,9 @@ import {
 } from "./approvalListFilters";
 import { GridQueryFilterBar } from "../../components/DataGrid";
 import { normalizeGridDateRange } from "../../lib/gridListFilters";
+import { useAppConfig } from "../../config/useAppConfig";
+import { useGridDefaultFromDays } from "../../config/useGridDefaultFromDays";
+import { isAnyCheckoutEnabled } from "../../config/checkoutTaxonomyConfig";
 
 const TOASTER_ID = "approvals-toaster";
 
@@ -123,11 +126,17 @@ const useStyles = makeStyles({
 
 export function ApprovalsPage() {
   const styles = useStyles();
+  const appConfig = useAppConfig();
+  const fromDays = useGridDefaultFromDays();
+  const checkoutTabVisible = isAnyCheckoutEnabled(appConfig);
   const [searchParams] = useSearchParams();
   const initialSection = parseSection(searchParams);
   const [activeSection, setActiveSection] = useState<SectionValue>(initialSection);
   const [reservationTab, setReservationTab] = useState<ReservationTab>(() => parseReservationTab(searchParams));
-  const [documentTab, setDocumentTab] = useState<DocumentTab>(() => parseDocumentTab(searchParams));
+  const [documentTab, setDocumentTab] = useState<DocumentTab>(() => {
+    const parsed = parseDocumentTab(searchParams);
+    return checkoutTabVisible ? parsed : "checkin";
+  });
   const [selectedReservation, setSelectedReservation] = useState<PendingReservation | null>(null);
   const [bulkApproveList, setBulkApproveList]   = useState<PendingReservation[]>([]);
   const [bulkDialogOpen, setBulkDialogOpen]     = useState(false);
@@ -137,8 +146,14 @@ export function ApprovalsPage() {
   const [bulkCheckoutProgress, setBulkCheckoutProgress] = useState<{ current: number; total: number } | null>(null);
   const [bulkCheckoutResult, setBulkCheckoutResult] = useState<BulkActionResult>(null);
 
-  const initialFilters = useMemo(() => defaultApprovalListFilters(initialSection), [initialSection]);
-  const defaultFilters = useMemo(() => defaultApprovalListFilters(), []);
+  const initialFilters = useMemo(
+    () => defaultApprovalListFilters(initialSection, new Date(), fromDays),
+    [initialSection, fromDays],
+  );
+  const defaultFilters = useMemo(
+    () => defaultApprovalListFilters("reservations", new Date(), fromDays),
+    [fromDays],
+  );
   const [filterDraft, setFilterDraft] = useState(() => ({
     number: initialFilters.number,
     from: initialFilters.from,
@@ -164,12 +179,15 @@ export function ApprovalsPage() {
     const section = data.value as SectionValue;
     setActiveSection(section);
     setSelectedReservation(null);
-    const defaults = defaultApprovalListFilters(section);
+    const defaults = defaultApprovalListFilters(section, new Date(), fromDays);
     setFilterDraft(defaults);
     setAppliedFilters(defaults);
-    if (section === "documents") setDocumentTab("checkout");
+    if (section === "documents") setDocumentTab(checkoutTabVisible ? "checkout" : "checkin");
     if (section === "reservations") setReservationTab("pending");
   }
+
+  const resolvedDocumentTab: DocumentTab =
+    !checkoutTabVisible && documentTab === "checkout" ? "checkin" : documentTab;
 
   function handleReservationTabChange(_: unknown, data: { value: unknown }) {
     setReservationTab(data.value as ReservationTab);
@@ -207,7 +225,7 @@ export function ApprovalsPage() {
   );
 
   function handleQuery() {
-    const { from, to } = normalizeGridDateRange(filterDraft.from, filterDraft.to);
+    const { from, to } = normalizeGridDateRange(filterDraft.from, filterDraft.to, new Date(), fromDays);
     setAppliedFilters({
       number: filterDraft.number,
       from,
@@ -413,6 +431,7 @@ export function ApprovalsPage() {
                 onSelect={(r) => setSelectedReservation(r)}
                 emptyMessage={EMPTY_MESSAGES[reservationTab]}
                 allRecordsCount={allReservationCount}
+                approverColumnHeader={reservationTab === "rejected" ? "Rejected By" : "Approved By"}
                 onBulkApprove={isPendingReservationTab
                   ? (list) => { setBulkApproveList(list); setBulkDialogOpen(true); }
                   : undefined
@@ -460,18 +479,20 @@ export function ApprovalsPage() {
             <>
               <TabList
                 className={styles.nestedTabs}
-                selectedValue={documentTab}
+                selectedValue={resolvedDocumentTab}
                 onTabSelect={handleDocumentTabChange}
                 size="small"
               >
-                <Tab value="checkout">
-                  Check Out Requests
-                  {checkoutRequestRows.length > 0 && (
-                    <CounterBadge count={checkoutRequestRows.length} color="danger" size="small" style={{ marginLeft: "6px" }} />
-                  )}
-                </Tab>
+                {checkoutTabVisible && (
+                  <Tab value="checkout">
+                    Check Out Requests
+                    {checkoutRequestRows.length > 0 && (
+                      <CounterBadge count={checkoutRequestRows.length} color="danger" size="small" style={{ marginLeft: "6px" }} />
+                    )}
+                  </Tab>
+                )}
                 <Tab value="checkin">
-                  Check In Validation
+                  Check In Requests
                   {checkinValidationRows.length > 0 && (
                     <CounterBadge count={checkinValidationRows.length} color="important" size="small" style={{ marginLeft: "6px" }} />
                   )}
@@ -480,7 +501,7 @@ export function ApprovalsPage() {
 
               {filterBar}
 
-              {documentTab === "checkout" ? (
+              {resolvedDocumentTab === "checkout" ? (
                 <CheckoutRequestQueueGrid
                   requests={checkoutRequestRows}
                   allRecordsCount={allCheckoutRequestRows.length}

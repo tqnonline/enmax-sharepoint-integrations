@@ -21,6 +21,7 @@ import { buildAuditFilter, type AppliedFilters } from "./auditFilter";
 import { logDataverseError } from "../../components/DataGrid/dataverseError";
 import { formatGridDateTime } from "../../lib/formatDateTime";
 import { defaultGridDateRange } from "../../lib/dateRangeDefaults";
+import { useGridDefaultFromDays } from "../../config/useGridDefaultFromDays";
 
 const EVENTS: Record<number, string> = {
   0: "None",
@@ -127,8 +128,8 @@ type AuditFilterDraft = GridQueryFilterDraft & {
   peopleIds: string[];
 };
 
-function defaultAuditDraft(): AuditFilterDraft {
-  const { from, to } = defaultGridDateRange();
+function defaultAuditDraft(fromDays?: number): AuditFilterDraft {
+  const { from, to } = defaultGridDateRange(new Date(), fromDays);
   return {
     number: "",
     from,
@@ -156,9 +157,10 @@ export function AuditPage() {
   const styles = useStyles();
   const { role } = useUserRole();
   const isAdmin = role === "Admin";
+  const fromDays = useGridDefaultFromDays();
 
-  const [filterDraft, setFilterDraft] = useState(defaultAuditDraft);
-  const [applied, setApplied] = useState<AppliedFilters>(() => draftToApplied(defaultAuditDraft()));
+  const [filterDraft, setFilterDraft] = useState(() => defaultAuditDraft(fromDays));
+  const [applied, setApplied] = useState<AppliedFilters>(() => draftToApplied(defaultAuditDraft(fromDays)));
 
   const auditQueryKey = useMemo(
     () => [
@@ -222,7 +224,7 @@ export function AuditPage() {
   }
 
   function clearFilters() {
-    const cleared = defaultAuditDraft();
+    const cleared = defaultAuditDraft(fromDays);
     setFilterDraft(cleared);
     setApplied(draftToApplied(cleared));
   }

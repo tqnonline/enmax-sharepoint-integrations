@@ -52,7 +52,7 @@ TAXONOMY_MATRIX: tuple[TaxonomyMatrixRow, ...] = (
     TaxonomyMatrixRow(
         reservation_type=2,
         document_subtype=3,
-        label="Standard Document",
+        label="Standard",
         creates_children=False,
         base_pdf=True,
         library_pair="Document",
@@ -64,7 +64,7 @@ TAXONOMY_MATRIX: tuple[TaxonomyMatrixRow, ...] = (
         reservation_type=2,
         document_subtype=4,
         label="Procedure",
-        creates_children=False,
+        creates_children=True,
         base_pdf=True,
         library_pair="Document",
         existing_allowed=False,

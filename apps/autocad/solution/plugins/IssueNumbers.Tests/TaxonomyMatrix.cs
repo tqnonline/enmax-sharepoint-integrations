@@ -64,7 +64,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             {
                 ReservationType = 2,
                 DocumentSubtype = 3,
-                Label = "Standard Document",
+                Label = "Standard",
                 CreatesChildren = false,
                 BasePdf = true,
                 LibraryPair = LibraryPair.Document,
@@ -77,7 +77,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
                 ReservationType = 2,
                 DocumentSubtype = 4,
                 Label = "Procedure",
-                CreatesChildren = false,
+                CreatesChildren = true,
                 BasePdf = true,
                 LibraryPair = LibraryPair.Document,
                 ExistingAllowed = false,

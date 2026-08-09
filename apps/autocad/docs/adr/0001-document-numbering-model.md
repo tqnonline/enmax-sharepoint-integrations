@@ -1,9 +1,10 @@
 # ADR 0001 - EEC Generation document numbering model
 
-- Status: Accepted
+- Status: Accepted (amended 2026-08-04 — type-partitioned NNNN)
 - Date: 2026-07-06
 - Plan: `specs` branch `docs/superpowers/plans/2026-07-06-plan-14-eec-generation-doc-management.md`
 - Supersedes/aligns: plans 01-13 (numbering was Drawing-only)
+- Amendment: decision §3 reversed from type-agnostic shared sequence to type-partitioned counters (`coding|FAMILY`); drawing AK is composite (number + documentsubtype). See `solution/scripts/migrate_type_partitioned_number_ak.py`.
 
 ## Context
 
@@ -19,12 +20,12 @@ The system was built to reserve and issue **Drawing** numbers only. The business
 ## Decision
 
 1. **Taxonomy.** A reservation has a **Type** (`Drawing` | `Document`); a `Document` has a **Subtype** (`Standard` | `Procedure` | `Form`).
-   - `Drawing` -> base `BB-AA-UU-DDD-SSS-KK-nnnn` with 1..N **Drawing Documents** (`-sss`).
+   - `Drawing` / `Drawing Document` -> base `BB-AA-UU-DDD-SSS-KK-nnnn`; Drawing Document is base-only PDF; Drawing may have 1..N **Drawing documents** (`-sss`).
    - `Document/Standard` -> base only (a single Standard Document; no children).
-   - `Document/Procedure` -> base only (a single Procedure; no children — same shape as Standard).
-   - `Document/Form` -> base with 1..N **Forms** (`-sss`). Historical Procedure-with-forms records migrate to Form.
+   - `Document/Procedure` -> base Procedure number; when forms/sheets ≥ 1, issuance also creates Form children (`-sss`) stamped as subtype Form (5). A Procedure with zero forms is base-only.
+   - `Document/Form` -> Existing-only append of 1..N **Forms** (`-sss`) onto an existing Form (or Procedure-hosted Form) base. Historical Procedure-with-forms records migrate to Form where appropriate.
 2. **Number format.** Base = `BB-AA-UU-DDD-SSS-KK-nnnn` (`nnnn` = 4 digits, 1..9999). Child = base + `-sss` (`sss` = 3 digits, hard cap 999, default 1). "Sheet" is retired as a user-facing label.
-3. **Base sequence is type-agnostic per coding.** For a given 6-segment coding, `nnnn` is one shared sequence (existing `enmax_autocadnumbersequence`), so a base number belongs to exactly one reservation regardless of Type. No Type partition in the sequence key.
+3. **Base sequence is type-partitioned per coding.** For a given 6-segment coding, `nnnn` is independent per numbering family — Drawing (`DRW`, shared by Drawing Document + Drawing), Standard (`STD`), Procedure (`PRC`), Form (`FRM`). Counter rows in `enmax_autocadnumbersequence` use key `{coding}|{FAMILY}`; displayed `SequenceKey` / `enmax_acdnnumber` remain `{coding}-{nnnn}` (no family token in the user-facing number). The drawing alternate key is composite (`enmax_acdnnumber` + `enmax_acdndocumentsubtype`) so the same coding+NNNN may exist across families. Legacy Drawing counters (coding-only keys) are dual-read and renamed to `coding|DRW` on first Drawing issuance after cutover.
 4. **No combination constraints.** The six dropdowns are independent - all active values, no cascade, no Approved BB-AA / Asset-Unit / System-scope checks. The Approved BB-AA (`enmax_autocadbusinessasset`) and Asset-Unit (`enmax_autocadassetunit`) combination tables are **removed from the solution schema** (2026-07-08); existing environments must run `migrate_drop_combination_tables.py` before solution import. `enmax_autocadsystemscope` is retained as an empty optional admin surface.
 5. **Single issuance path.** The Dataverse custom action + plug-in (`enmax_acdnIssueNumbers`) is the sole authoritative issuer, preserving the optimistic-lock concurrency guard and the mandatory N-parallel-calls -> N-distinct-numbers test (**Rule 14**). The legacy `On_Reservation_Approved_Issue_Drawings` Cloud Flow is retired/aligned.
 6. **Keep Dataverse schema names; relabel displays.** `enmax_autocadsheet` / `enmax_autocadreservation` schema names are unchanged (renaming would break relationships, forms, generated services, plugins). Display names follow Heather's controlled-numbering vocabulary:
@@ -33,8 +34,8 @@ The system was built to reserve and issue **Drawing** numbers only. The business
    |---------|---------|-------------------|-----------|------|
    | `BB-AA-UU-DDD-SSS-KK` | Drawing/Document **Numbering group** | Numbering group | Numbering group | Numbering group |
    | `BB-AA-UU-DDD-SSS-KK-NNNN` | **Drawing Number** | **Standard Document** | **Procedure** | Form (base) |
-   | `BB-AA-UU-DDD-SSS-KK-NNNN to YYYY` | **Drawing Number range** | — | — | **Form Number range** |
-   | `BB-AA-UU-DDD-SSS-KK-NNNN-SSS` | **Drawing document** | — | — | **Form** |
+   | `BB-AA-UU-DDD-SSS-KK-NNNN to YYYY` | **Drawing Number range** | — | **Procedure range** | **Form Number range** |
+   | `BB-AA-UU-DDD-SSS-KK-NNNN-SSS` | **Drawing document** | — | **Form** (child of Procedure when forms ≥ 1) | **Form** |
 
    Entity display names: `enmax_autocadreservation` = "Drawing/Document Reservation"; `enmax_autocaddrawing` (base item) = "Drawing Number / Standard Document / Procedure / Form"; `enmax_autocadsheet` (child item) = "Drawing document / Form". The `enmax_autocaddrawing` table is the base container for a Drawing Number, a Standard Document, a Procedure, **or** a Form base; `enmax_autocadsheet` is the child container for Drawing documents and Forms. Client terminology is centralized in `apps/code-app/src/features/reserve/numberingTerms.ts`. No separate Document/Procedure/Form tables are introduced.
 7. **Gated Check Out + Check In submission info.** Check Out requires approval before the drop-off working window opens; Check In captures mandatory Submission Information and drops the revision number (SharePoint version history is the revision trail).
@@ -51,6 +52,6 @@ The system was built to reserve and issue **Drawing** numbers only. The business
 
 ## Alternatives considered
 
-- **Type-partitioned sequences** (per-Type `nnnn`): rejected - the business treats a base number as "either a document or a drawing", so a shared per-coding sequence matches intent and keeps a base globally unique.
+- **Type-agnostic shared sequence** (one `nnnn` per coding across all types): rejected after cutover — Procedures were continuing Drawing counters (e.g. Drawing used 0001–0006, Procedure started at 0007). Business requires NNNN uniqueness *within* each parent type (Drawing / Standard / Procedure), not across them.
 - **Generalized config-driven scheme engine** (arbitrary per-type segment definitions): deferred - more power than the four known types need today; revisit if a new format cannot be expressed by the current base + `-sss` model.
 - **Issuance via Power Automate** (fully low-code): rejected by **Rule 14** - a non-transactional flow cannot guarantee unique numbers under concurrency.

@@ -58,7 +58,7 @@ export const TAXONOMY_MATRIX: readonly TaxonomyMatrixRow[] = [
   {
     reservationType: 2,
     documentSubtype: 3,
-    label: "Standard Document",
+    label: "Standard",
     createsChildren: false,
     basePdf: true,
     libraryPair: "Document",
@@ -70,7 +70,7 @@ export const TAXONOMY_MATRIX: readonly TaxonomyMatrixRow[] = [
     reservationType: 2,
     documentSubtype: 4,
     label: "Procedure",
-    createsChildren: false,
+    createsChildren: true,
     basePdf: true,
     libraryPair: "Document",
     existingAllowed: false,

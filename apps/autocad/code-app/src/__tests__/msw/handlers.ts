@@ -25,6 +25,7 @@ export const VALID_CONFIG: AppConfig = {
   FooterCopyright: "© 2026 ENMAX Corporation",
   BroadcastFanOutCadenceMinutes: 60,
   GridPageSize: 10,
+  GridDefaultFromDays: 30,
   EnableDrawingCheckout: true,
   EnableDrawingCheckIn: true,
   EnableProcedureCheckout: true,

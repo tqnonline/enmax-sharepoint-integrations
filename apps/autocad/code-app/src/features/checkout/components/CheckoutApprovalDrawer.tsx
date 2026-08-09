@@ -20,6 +20,7 @@ import {
   PersonAvailable24Regular,
 } from "@fluentui/react-icons";
 import { useApproveCheckout } from "../hooks/useApproveCheckout";
+import { DocumentTypeBadge } from "../../../components/DocumentTypeBadge";
 
 const useStyles = makeStyles({
   body: {
@@ -63,7 +64,7 @@ const useStyles = makeStyles({
 interface Props {
   checkoutId: string;
   drawingNumber: string;
-  /** "Drawing" | "Standard Document" | "Procedure Form" — used in field label + copy. */
+  /** "Drawing" | "Standard" | "Procedure Form" — used in field label + copy. */
   typeLabel?: string;
   requestedByName: string;
 }
@@ -132,7 +133,11 @@ export function CheckoutApprovalDrawer({ checkoutId, drawingNumber, typeLabel = 
         <DrawerBody>
           <div className={styles.body}>
             <div className={styles.field}>
-              <span className={styles.label}>{typeLabel}</span>
+              <span className={styles.label}>Type</span>
+              <DocumentTypeBadge label={typeLabel} />
+            </div>
+            <div className={styles.field}>
+              <span className={styles.label}>Number</span>
               <Text weight="semibold" style={{ fontFamily: "monospace" }}>{drawingNumber || "—"}</Text>
             </div>
             <div className={styles.field}>

@@ -15,7 +15,7 @@ describe("taxonomyMatrix", () => {
     expect(taxonomyMatrixRow(RESERVATION_TYPE_VALUE.Drawing, DOCUMENT_SUBTYPE_VALUE.Drawing)?.label)
       .toBe("Drawing");
     expect(taxonomyMatrixRow(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Standard)?.label)
-      .toBe("Standard Document");
+      .toBe("Standard");
     expect(taxonomyMatrixRow(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Procedure)?.label)
       .toBe("Procedure");
     expect(taxonomyMatrixRow(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Form)?.label)
@@ -32,13 +32,16 @@ describe("taxonomyMatrix", () => {
     }
   });
 
-  it("marks only Drawing and Form as child-producing / existing-sequence-eligible", () => {
+  it("marks Drawing, Procedure, and Form as child-producing; Existing/append only for Drawing and Form", () => {
     for (const row of TAXONOMY_MATRIX) {
-      const isChildProducing = row.documentSubtype === DOCUMENT_SUBTYPE_VALUE.Drawing
+      const createsChildren = row.documentSubtype === DOCUMENT_SUBTYPE_VALUE.Drawing
+        || row.documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure
         || row.documentSubtype === DOCUMENT_SUBTYPE_VALUE.Form;
-      expect(row.createsChildren).toBe(isChildProducing);
-      expect(row.existingAllowed).toBe(isChildProducing);
-      expect(row.appendAllowed).toBe(isChildProducing);
+      const existingOrAppend = row.documentSubtype === DOCUMENT_SUBTYPE_VALUE.Drawing
+        || row.documentSubtype === DOCUMENT_SUBTYPE_VALUE.Form;
+      expect(row.createsChildren).toBe(createsChildren);
+      expect(row.existingAllowed).toBe(existingOrAppend);
+      expect(row.appendAllowed).toBe(existingOrAppend);
     }
   });
 

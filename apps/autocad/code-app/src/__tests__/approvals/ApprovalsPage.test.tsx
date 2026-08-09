@@ -16,14 +16,22 @@ vi.mock("../../auth/useUserRole", () => ({
   useUserRole: () => ({ role: mockRole.value, isPending: false }),
 }));
 
+const mockAppConfig = vi.hoisted(() => ({
+  GridPageSize: 10,
+  GridDefaultFromDays: 30,
+  RequireCheckInApproval: false,
+  AdminTeamId: undefined as string | undefined,
+  UserTeamId: undefined as string | undefined,
+  ApproverTeamId: undefined as string | undefined,
+  EnableDrawingCheckout: true,
+  EnableDrawingDocumentCheckout: true,
+  EnableStandardCheckout: true,
+  EnableProcedureCheckout: true,
+  EnableFormCheckout: true,
+}));
+
 vi.mock("../../config/useAppConfig", () => ({
-  useAppConfig: () => ({
-    GridPageSize: 10,
-    RequireCheckInApproval: false,
-    AdminTeamId: undefined,
-    UserTeamId: undefined,
-    ApproverTeamId: undefined,
-  }),
+  useAppConfig: () => mockAppConfig,
 }));
 
 vi.mock("../../features/approvals/hooks/useApproveReservation", () => ({
@@ -81,6 +89,14 @@ vi.mock("../../features/approvals/hooks/usePendingReservations", () => ({
   usePendingReservations: () => ({ data: PENDING_ROWS, isPending: false, isError: false }),
 }));
 
+vi.mock("../../features/approvals/hooks/usePendingApprovals", () => ({
+  usePendingApprovals: () => ({
+    rows: [],
+    isPending: false,
+    isError: false,
+  }),
+}));
+
 const server = setupServer(
   http.post("*/enmax_autocadreservations*enmax_acdnApproveReservation*", () =>
     HttpResponse.json({ ReservationId: "res-001", NewStatus: 2 }),
@@ -89,7 +105,16 @@ const server = setupServer(
 
 beforeAll(() => server.listen({ onUnhandledRequest: "bypass" }));
 afterAll(() => server.close());
-afterEach(() => { server.resetHandlers(); mockRole.value = "Admin"; mockMutateAsync.mockClear(); });
+afterEach(() => {
+  server.resetHandlers();
+  mockRole.value = "Admin";
+  mockMutateAsync.mockClear();
+  mockAppConfig.EnableDrawingCheckout = true;
+  mockAppConfig.EnableDrawingDocumentCheckout = true;
+  mockAppConfig.EnableStandardCheckout = true;
+  mockAppConfig.EnableProcedureCheckout = true;
+  mockAppConfig.EnableFormCheckout = true;
+});
 
 // Test 10 — Approvals queue hides for User role
 test("ApprovalsPage is not rendered for User role — RequireRole redirects", () => {
@@ -181,4 +206,25 @@ test("multi-select does NOT show a 'Bulk decline' or 'Decline selected' button �
 
   expect(screen.queryByRole("button", { name: /Decline selected/i })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /Bulk decline/i })).not.toBeInTheDocument();
+});
+
+test("hides Check Out Requests tab when every taxonomy checkout flag is off", async () => {
+  const user = userEvent.setup();
+  mockAppConfig.EnableDrawingCheckout = false;
+  mockAppConfig.EnableDrawingDocumentCheckout = false;
+  mockAppConfig.EnableStandardCheckout = false;
+  mockAppConfig.EnableProcedureCheckout = false;
+  mockAppConfig.EnableFormCheckout = false;
+
+  renderWithProviders(<ApprovalsPage />);
+  await user.click(screen.getByRole("tab", { name: /Drawings, Documents, Procedures/i }));
+
+  expect(screen.queryByRole("tab", { name: /Check Out Requests/i })).not.toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: /Check In Requests/i })).toBeInTheDocument();
+
+  mockAppConfig.EnableDrawingCheckout = true;
+  mockAppConfig.EnableDrawingDocumentCheckout = true;
+  mockAppConfig.EnableStandardCheckout = true;
+  mockAppConfig.EnableProcedureCheckout = true;
+  mockAppConfig.EnableFormCheckout = true;
 });

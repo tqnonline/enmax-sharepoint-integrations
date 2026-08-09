@@ -16,9 +16,9 @@ export const DOCUMENT_SUBTYPE_VALUE = {
 } as const;
 
 export interface ReserveTerminology {
-  /** Human label for the reservation type, e.g. "Drawing", "Standard Document". */
+  /** Human label for the reservation type, e.g. "Drawing", "Standard". */
   typeLabel: string;
-  /** Singular base noun, e.g. "drawing", "standard document", "procedure". */
+  /** Singular base noun, e.g. "drawing", "standard", "procedure". */
   baseNoun: string;
   /** Plural base noun, e.g. "drawings". */
   baseNounPlural: string;
@@ -33,9 +33,9 @@ export interface ReserveTerminology {
  * docs/drawing-document-subtype-CONTRACT.md).
  * - Drawing Document → single base-only Drawing Document (no numbered children)
  * - Drawing          → base Drawing Number + child Drawing sheets (-SSS)
- * - Standard         → single Standard Document (no children)
- * - Procedure        → single Procedure (no children)
- * - Form             → Form Number range + child Forms (-SSS)
+ * - Standard         → single Standard (no children)
+ * - Procedure        → Procedure bases + optional Form children (-SSS) when sheets ≥ 1
+ * - Form             → Form Number range + child Forms (-SSS); Existing-only
  */
 export function reserveTerminology(
   reservationType: ReserveForm["reservationType"],
@@ -49,8 +49,8 @@ export function reserveTerminology(
   if (reservationType === "Document" && documentSubtype === "Standard") {
     return {
       typeLabel: taxonomyTypeLabel(type, subtype),
-      baseNoun: "standard document",
-      baseNounPlural: "standard documents",
+      baseNoun: "standard",
+      baseNounPlural: "standards",
       childNoun: null,
       createsChildren: false,
     };
@@ -60,8 +60,8 @@ export function reserveTerminology(
       typeLabel: taxonomyTypeLabel(type, subtype),
       baseNoun: "procedure",
       baseNounPlural: "procedures",
-      childNoun: null,
-      createsChildren: false,
+      childNoun: "Form",
+      createsChildren: true,
     };
   }
   if (reservationType === "Document" && documentSubtype === "Form") {
@@ -124,7 +124,7 @@ export function reservationTypeDisplayLabel(
 
 /**
  * Plural label for the base-record section on a reservation (the enmax_autocaddrawing
- * rows). Drawing -> "Drawings", Standard -> "Documents", Procedure -> "Procedures", Form -> "Forms".
+ * rows). Drawing -> "Drawings", Standard -> "Standards", Procedure -> "Procedures", Form -> "Forms".
  */
 export function reservationRecordsLabel(
   reservationType?: number | null,
@@ -133,7 +133,7 @@ export function reservationRecordsLabel(
   if (reservationType === RESERVATION_TYPE_VALUE.Document) {
     if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure) return "Procedures";
     if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Form) return "Forms";
-    return "Documents";
+    return "Standards";
   }
   return "Drawings";
 }
@@ -191,11 +191,10 @@ export function isBaseOnlyDocument(
   ) {
     return true;
   }
+  // Standard stays base-only. Procedure may carry Form children when sheets ≥ 1
+  // at issuance; list UIs still treat Procedure hosts as showing child forms.
   return reservationType === RESERVATION_TYPE_VALUE.Document
-    && (
-      documentSubtype === DOCUMENT_SUBTYPE_VALUE.Standard
-      || documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure
-    );
+    && documentSubtype === DOCUMENT_SUBTYPE_VALUE.Standard;
 }
 
 export function reservationHasChildItems(
@@ -204,7 +203,8 @@ export function reservationHasChildItems(
 ): boolean {
   if (isBaseOnlyDocument(reservationType, documentSubtype)) return false;
   if (reservationType === RESERVATION_TYPE_VALUE.Document) {
-    return documentSubtype === DOCUMENT_SUBTYPE_VALUE.Form;
+    return documentSubtype === DOCUMENT_SUBTYPE_VALUE.Form
+      || documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure;
   }
   // Drawing (numbered) + legacy null subtype: children.
   return documentSubtype !== DOCUMENT_SUBTYPE_VALUE.DrawingDocument;
@@ -219,11 +219,11 @@ export function checkoutBulkLabel(
 ): string {
   const verb = requireApproval ? "Request Check Out" : "Check Out";
   if (reservationType === RESERVATION_TYPE_VALUE.Document) {
-    if (
-      documentSubtype === DOCUMENT_SUBTYPE_VALUE.Standard
-      || documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure
-    ) {
-      return requireApproval ? "Request Check Out — All Documents" : "Check Out All Documents";
+    if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Standard) {
+      return requireApproval ? "Request Check Out — All Standards" : "Check Out All Standards";
+    }
+    if (documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure) {
+      return requireApproval ? "Request Check Out — All Procedures" : "Check Out All Procedures";
     }
   }
   const plural = reservationChildNounPlural(reservationType, documentSubtype);

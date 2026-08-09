@@ -129,7 +129,7 @@ export function StepAddToExisting({ onBack }: Props) {
       count:    clampedCount,
       sheetsPerDrawing: 1,
       sequenceType: "Existing",
-      reason: `Add standard document(s) to existing coding ${selected.number}`,
+      reason: `Add standard(s) to existing coding ${selected.number}`,
     };
     const created = await createNext.mutateAsync(form);
     navigate(`/reserve/success?id=${created.id}&ref=${encodeURIComponent(created.number)}`);
@@ -200,7 +200,7 @@ export function StepAddToExisting({ onBack }: Props) {
               />
             </Field>
           ) : (
-            <Field label={`How many standard documents to add (1–${maxCount})`}>
+            <Field label={`How many standards to add (1–${maxCount})`}>
               <Input
                 className={styles.countInput}
                 type="number"
@@ -237,7 +237,7 @@ export function StepAddToExisting({ onBack }: Props) {
         >
           {submitting
             ? "Submitting…"
-            : term.createsChildren ? `Add ${term.childNoun}s` : "Add standard document(s)"}
+            : term.createsChildren ? `Add ${term.childNoun}s` : "Add standard(s)"}
         </Button>
       </div>
     </div>

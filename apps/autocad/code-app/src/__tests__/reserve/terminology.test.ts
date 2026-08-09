@@ -42,18 +42,18 @@ describe("reserveTerminology", () => {
     expect(term.typeLabel).toBe("Drawing");
   });
 
-  it("Standard and Procedure are base-only with no child noun", () => {
+  it("Standard is base-only; Procedure may carry Form children", () => {
     expect(reserveTerminology("Document", "Standard")).toMatchObject({
-      typeLabel: "Standard Document",
-      baseNoun: "standard document",
+      typeLabel: "Standard",
+      baseNoun: "standard",
       childNoun: null,
       createsChildren: false,
     });
     expect(reserveTerminology("Document", "Procedure")).toMatchObject({
       typeLabel: "Procedure",
       baseNoun: "procedure",
-      childNoun: null,
-      createsChildren: false,
+      childNoun: "Form",
+      createsChildren: true,
     });
   });
 
@@ -75,21 +75,21 @@ describe("reservationRecordsLabel", () => {
   });
 
   it("labels each Document subtype distinctly", () => {
-    expect(reservationRecordsLabel(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Standard)).toBe("Documents");
+    expect(reservationRecordsLabel(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Standard)).toBe("Standards");
     expect(reservationRecordsLabel(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Procedure)).toBe("Procedures");
     expect(reservationRecordsLabel(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Form)).toBe("Forms");
   });
 });
 
 describe("reservationHasChildItems", () => {
-  it("is false for base-only subtypes (Drawing Document, Standard, Procedure)", () => {
+  it("is false for base-only subtypes (Drawing Document, Standard)", () => {
     expect(reservationHasChildItems(RESERVATION_TYPE_VALUE.Drawing, DOCUMENT_SUBTYPE_VALUE.DrawingDocument)).toBe(false);
     expect(reservationHasChildItems(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Standard)).toBe(false);
-    expect(reservationHasChildItems(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Procedure)).toBe(false);
   });
 
-  it("is true for child-producing subtypes (Drawing, Form)", () => {
+  it("is true for child-producing subtypes (Drawing, Procedure, Form)", () => {
     expect(reservationHasChildItems(RESERVATION_TYPE_VALUE.Drawing, DOCUMENT_SUBTYPE_VALUE.Drawing)).toBe(true);
+    expect(reservationHasChildItems(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Procedure)).toBe(true);
     expect(reservationHasChildItems(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Form)).toBe(true);
   });
 });
@@ -103,11 +103,11 @@ describe("reservationChildNoun helpers", () => {
 });
 
 describe("checkoutBulkLabel", () => {
-  it("uses the All Documents label for Standard/Procedure", () => {
+  it("uses Standards / Procedures bulk labels", () => {
     expect(checkoutBulkLabel(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Standard, undefined, true))
-      .toBe("Request Check Out — All Documents");
+      .toBe("Request Check Out — All Standards");
     expect(checkoutBulkLabel(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Procedure, undefined, false))
-      .toBe("Check Out All Documents");
+      .toBe("Check Out All Procedures");
   });
 
   it("uses the pluralized child noun for Drawing sheets / Drawing Document / Form", () => {

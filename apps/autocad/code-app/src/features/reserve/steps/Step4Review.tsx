@@ -11,6 +11,8 @@ import type { ReserveForm } from "../schema";
 import type { ReferenceData } from "../hooks/useReferenceData";
 import { SEQUENCE_TOOLTIP } from "../hooks/usePreviewNumber";
 import { reserveTerminology } from "../terminology";
+import { showsReserveChildQuantity } from "../resolveReserveSubmit";
+import { DocumentTypeBadge } from "../../../components/DocumentTypeBadge";
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -123,6 +125,7 @@ export function Step4Review({ refData, onBack, onSubmit, isSubmitting }: Props) 
   const kind     = refData.kinds.find((k) => k.id === form.kind);
 
   const term = reserveTerminology(form.reservationType, form.documentSubtype);
+  const showChildren = showsReserveChildQuantity(form.reservationType, form.documentSubtype);
 
   const segments: SegProps[] = [
     { label: "BUS",   code: business?.code ?? "??"  },
@@ -152,7 +155,7 @@ export function Step4Review({ refData, onBack, onSubmit, isSubmitting }: Props) 
       {/* Detail grid */}
       <div className={styles.details}>
         <span className={styles.label}>Type</span>
-        <span>{term.typeLabel}</span>
+        <DocumentTypeBadge label={term.typeLabel} />
 
         <span className={styles.label}>Business</span>
         <span>{business?.code} — {business?.name}</span>
@@ -175,12 +178,14 @@ export function Step4Review({ refData, onBack, onSubmit, isSubmitting }: Props) 
         <span className={styles.label}>{capitalize(term.baseNounPlural)}</span>
         <span>{form.count}</span>
 
-        {term.createsChildren && (
+        {showChildren && (
           <>
             <span className={styles.label}>
-              {term.baseNoun === "drawing number"
-                ? "No of Sheet per Drawing"
-                : `${term.childNoun}s / ${term.baseNoun}`}
+              {form.reservationType === "Document" && form.documentSubtype === "Procedure"
+                ? "Forms per procedure"
+                : form.reservationType === "Drawing"
+                  ? "No of Sheet per Drawing"
+                  : `${term.childNoun}s / ${term.baseNoun}`}
             </span>
             <span>{form.sheetsPerDrawing}</span>
           </>

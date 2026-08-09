@@ -38,6 +38,10 @@ from powerplatform_deploy.commands.roles import (
     find_root_business_unit,
     replace_privileges,
     upsert_app_config,
+    assign_role_to_team,
+    ensure_app_owner_role_on_default_team,
+    team_has_role,
+    APP_OWNER_ROLE_NAME,
 )
 from powerplatform_deploy.client import DataverseClient
 
@@ -392,9 +396,13 @@ class TestLeastPrivilegeTargets:
         assert "enmax_autocadnumbersequence" not in user_privs, (
             "User must NOT have enmax_autocadnumbersequence"
         )
-        # User: auditevent deleted
-        assert "enmax_autocadauditevent" not in user_privs, (
-            "User must NOT have enmax_autocadauditevent"
+        # User: audit journey on detail pages (Admin Audit page stays Admin UI)
+        assert user_privs["enmax_autocadauditevent"] == {"read": "global"}, (
+            f"User auditevent must be {{read: global}}, got: {user_privs.get('enmax_autocadauditevent')}"
+        )
+        # Approver: same journey read
+        assert approver_privs["enmax_autocadauditevent"] == {"read": "global"}, (
+            f"Approver auditevent must be {{read: global}}, got: {approver_privs.get('enmax_autocadauditevent')}"
         )
         # User: reservation has no assign
         assert "assign" not in user_privs["enmax_autocadreservation"], (
@@ -557,3 +565,58 @@ class TestUpsertAppConfigDedupes:
         assert mock_patch.call_args[0][1] == {"enmax_acdnvalue": "team-new"}
         mock_delete.assert_called_once()
         assert empty_id in mock_delete.call_args[0][0]
+
+
+# ---------------------------------------------------------------------------
+# Test 11: assign App Owner role to default team (idempotent)
+# ---------------------------------------------------------------------------
+
+class TestEnsureAppOwnerRoleOnDefaultTeam:
+    """Default team must receive the infra ownership role for SetAppOwner creates."""
+
+    def test_assigns_when_missing(self):
+        client = _make_client()
+        client._base = "https://org.crm.dynamics.com/api/data/v9.2"
+        logger = MagicMock()
+
+        def get_side_effect(path, params=None):
+            if path.startswith("roles"):
+                return {"value": [{"roleid": "role-child", "name": APP_OWNER_ROLE_NAME}]}
+            if "teamroles_association" in path and not path.endswith("/$ref"):
+                return {"value": []}
+            return {"value": []}
+
+        with (
+            patch.object(client, "_get", side_effect=get_side_effect),
+            patch.object(client, "_post", return_value=_mock_response(204)) as mock_post,
+        ):
+            ensure_app_owner_role_on_default_team(
+                client, "child-bu", "team-default", logger
+            )
+
+        mock_post.assert_called_once()
+        path, body = mock_post.call_args[0]
+        assert path == "teams(team-default)/teamroles_association/$ref"
+        assert body["@odata.id"].endswith("/roles(role-child)")
+
+    def test_skips_when_already_assigned(self):
+        client = _make_client()
+        client._base = "https://org.crm.dynamics.com/api/data/v9.2"
+        logger = MagicMock()
+
+        def get_side_effect(path, params=None):
+            if path.startswith("roles"):
+                return {"value": [{"roleid": "role-child", "name": APP_OWNER_ROLE_NAME}]}
+            if "teamroles_association" in path:
+                return {"value": [{"roleid": "role-child"}]}
+            return {"value": []}
+
+        with (
+            patch.object(client, "_get", side_effect=get_side_effect),
+            patch.object(client, "_post") as mock_post,
+        ):
+            ensure_app_owner_role_on_default_team(
+                client, "child-bu", "team-default", logger
+            )
+
+        mock_post.assert_not_called()

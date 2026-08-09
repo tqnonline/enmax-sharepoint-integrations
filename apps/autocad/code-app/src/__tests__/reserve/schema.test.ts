@@ -38,6 +38,16 @@ test("rejects reason shorter than 10 characters", () => {
 // Combination override removed (ADR 0001 #4): the six segments are independent,
 // so there is no override/justification path in the schema anymore.
 
+test("accepts sheetsPerDrawing of 0 (docs-only path)", () => {
+  const result = reserveSchema.safeParse({ ...VALID_BASE, sheetsPerDrawing: 0 });
+  expect(result.success).toBe(true);
+});
+
+test("rejects negative sheetsPerDrawing", () => {
+  const result = reserveSchema.safeParse({ ...VALID_BASE, sheetsPerDrawing: -1 });
+  expect(result.success).toBe(false);
+});
+
 test("accepts a valid Drawing reservation", () => {
   const result = reserveSchema.safeParse(VALID_BASE);
   expect(result.success).toBe(true);

@@ -25,9 +25,19 @@ describe("grid filter contract — shared defaults", () => {
     expect(isDefaultGridDateRange(from, to, FIXED_NOW)).toBe(true);
   });
 
+  it("defaultGridDateRange respects fromDays override (App Config GridDefaultFromDays)", () => {
+    vi.setSystemTime(FIXED_NOW);
+    const { from, to } = defaultGridDateRange(FIXED_NOW, 7);
+    expect(from).toBe(isoDateDaysAgo(7, FIXED_NOW));
+    expect(to).toBe(isoDateToday(FIXED_NOW));
+    expect(isDefaultGridDateRange(from, to, FIXED_NOW, 7)).toBe(true);
+    expect(isDefaultGridDateRange(from, to, FIXED_NOW, 30)).toBe(false);
+  });
+
   it("defaultGridListDateFilters matches defaultGridDateRange", () => {
     vi.setSystemTime(FIXED_NOW);
     expect(defaultGridListDateFilters(FIXED_NOW)).toEqual(defaultGridDateRange(FIXED_NOW));
+    expect(defaultGridListDateFilters(FIXED_NOW, 14)).toEqual(defaultGridDateRange(FIXED_NOW, 14));
   });
 });
 

@@ -28,6 +28,7 @@ import { useApprovalAudit } from "./hooks/useApprovalAudit";
 import { DeclineDialog } from "./DeclineDialog";
 import { useCurrentUser } from "../../auth/useCurrentUser";
 import { buildDeepLinkUrl } from "../../lib/deeplink/deeplinkTargets";
+import { DocumentTypeBadge } from "../../components/DocumentTypeBadge";
 
 function formatAuditLabel(event: number, formatted: string): string {
   const map: Record<number, string> = { 1: "Submitted", 3: "Approval Granted", 4: "Approval Denied" };
@@ -236,7 +237,7 @@ export function ReservationDetailPanel({ reservation, onClose, readonly = false,
 
               <div className={styles.field}>
                 <span className={styles.label}>Type</span>
-                <span>{reservation.typeLabel}</span>
+                <DocumentTypeBadge label={reservation.typeLabel} />
               </div>
               <div className={styles.field}>
                 <span className={styles.label}>Issued Number</span>

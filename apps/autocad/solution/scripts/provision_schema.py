@@ -381,7 +381,7 @@ TABLE_DEFS: list[dict] = [
             _str_attr("enmax_acdnReservationId", "Reservation ID", 100, primary=True,
                       autonumber="RES-{SEQNUM:00000}"),
             _int_attr("enmax_acdnDrawingCount", "Drawing Count", required=True, min_val=1, max_val=100),
-            _int_attr("enmax_acdnSheetsPerDrawing", "Sheets Per Drawing", required=True, min_val=1, max_val=999),
+            _int_attr("enmax_acdnSheetsPerDrawing", "Sheets Per Drawing", required=True, min_val=0, max_val=999),
             _choice_attr("enmax_acdnSequenceType", "Sequence Type", "enmax_acdn_sequencetype", required=True),
             _memo_attr("enmax_acdnReason", "Reason For Reservation", 2000, required=True),
             _bool_attr("enmax_acdnOverride", "Soft Validation Override", default=False),
@@ -676,8 +676,10 @@ ALTERNATE_KEY_DEFS: list[dict] = [
     {
         "table": "enmax_autocaddrawing",
         "schema": "enmax_acdnnumber_ak",
-        "display": "ENMAX Number",
-        "columns": ["enmax_acdnnumber"],
+        "display": "ENMAX Number + Document Subtype",
+        # Type-partitioned NNNN (ADR 0001 §3): same coding+NNNN may exist across
+        # Drawing / Standard / Procedure / Form; uniqueness is per subtype.
+        "columns": ["enmax_acdnnumber", "enmax_acdndocumentsubtype"],
     },
     {
         "table": "enmax_autocadsheet",

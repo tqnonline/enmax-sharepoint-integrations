@@ -26,7 +26,7 @@ namespace Enmax.AutoCAD
             /// <summary>Type Document. Base-only.</summary>
             public const int Standard = 3;
 
-            /// <summary>Type Document. Base-only.</summary>
+            /// <summary>Type Document. Procedure bases + optional Form children (-SSS) when sheets ≥ 1.</summary>
             public const int Procedure = 4;
 
             /// <summary>Type Document. Numbered children, Existing sequence only.</summary>
@@ -50,13 +50,55 @@ namespace Enmax.AutoCAD
             return documentSubtype;
         }
 
-        /// <summary>Drawing Document / Standard / Procedure carry the PDF on the base record.</summary>
+        /// <summary>
+        /// Numbering-family token for partitioning the NNNN counter (ADR 0001 amended).
+        /// Displayed numbers stay BB-AA-UU-DDD-SSS-KK-NNNN; the counter row key is coding|FAMILY.
+        /// Drawing Document and Drawing share DRW; Standard/Procedure/Form each have their own.
+        /// </summary>
+        public static class NumberingFamily
+        {
+            public const string Drawing = "DRW";
+            public const string Standard = "STD";
+            public const string Procedure = "PRC";
+            public const string Form = "FRM";
+        }
+
+        /// <summary>
+        /// Resolves the NNNN counter family for a reservation type/subtype.
+        /// Null/legacy defaults to Drawing (historical Drawing-only issuance).
+        /// </summary>
+        public static string ResolveNumberingFamily(int? reservationType, int? documentSubtype)
+        {
+            var subtype = NormalizeDocumentSubtype(reservationType, documentSubtype);
+
+            if (reservationType == ReservationType.Document)
+            {
+                if (subtype == DocumentSubtype.Standard) return NumberingFamily.Standard;
+                if (subtype == DocumentSubtype.Procedure) return NumberingFamily.Procedure;
+                if (subtype == DocumentSubtype.Form) return NumberingFamily.Form;
+                return NumberingFamily.Standard;
+            }
+
+            return NumberingFamily.Drawing;
+        }
+
+        /// <summary>
+        /// Counter row key: {coding}|{family}. Display SequenceKey / drawing numbers use coding only.
+        /// </summary>
+        public static string ComposeCounterKey(string coding, string family)
+        {
+            if (string.IsNullOrWhiteSpace(coding)) return coding;
+            if (string.IsNullOrWhiteSpace(family)) return coding.Trim().ToUpperInvariant();
+            return $"{coding.Trim().ToUpperInvariant()}|{family.Trim().ToUpperInvariant()}";
+        }
+
+        /// <summary>Drawing Document / Standard carry the PDF on the base record (singleton sheet).</summary>
         public static bool IsBaseOnlyDocument(int? reservationType, int? documentSubtype)
         {
             var subtype = NormalizeDocumentSubtype(reservationType, documentSubtype);
 
             if (reservationType == ReservationType.Document)
-                return subtype == DocumentSubtype.Standard || subtype == DocumentSubtype.Procedure;
+                return subtype == DocumentSubtype.Standard;
 
             if (reservationType == ReservationType.Drawing)
                 return subtype == DocumentSubtype.DrawingDocument;
@@ -64,13 +106,16 @@ namespace Enmax.AutoCAD
             return false;
         }
 
-        /// <summary>Drawing (numbered) and Form produce -SSS children; legacy null type defaults to children.</summary>
+        /// <summary>
+        /// Drawing (numbered), Procedure, and Form produce -SSS children; legacy null type defaults to children.
+        /// Procedure with sheetsPerDrawing=0 still issues bases only (singleton carrier) at issuance time.
+        /// </summary>
         public static bool CreatesChildItems(int? reservationType, int? documentSubtype)
         {
             var subtype = NormalizeDocumentSubtype(reservationType, documentSubtype);
 
             if (reservationType == ReservationType.Document)
-                return subtype == DocumentSubtype.Form;
+                return subtype == DocumentSubtype.Form || subtype == DocumentSubtype.Procedure;
 
             if (reservationType == ReservationType.Drawing)
                 return subtype != DocumentSubtype.DrawingDocument;

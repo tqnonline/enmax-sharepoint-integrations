@@ -95,6 +95,18 @@ class DataverseClient:
             raise RuntimeError(f"POST {path} -> {resp.status_code}: {resp.text}")
         return resp
 
+    def _patch(self, path: str, body: dict) -> requests.Response:
+        resp = self._session.patch(f"{self._base}/{path}", json=body)
+        if not resp.ok:
+            raise RuntimeError(f"PATCH {path} -> {resp.status_code}: {resp.text}")
+        return resp
+
+    def _delete(self, path: str) -> requests.Response:
+        resp = self._session.delete(f"{self._base}/{path}")
+        if not resp.ok:
+            raise RuntimeError(f"DELETE {path} -> {resp.status_code}: {resp.text}")
+        return resp
+
     # ------------------------------------------------------------------
     # Business Unit
     # ------------------------------------------------------------------
@@ -345,6 +357,33 @@ def main() -> int:
         _provision_role(client, role_def, bu_id)
 
     print(f"\n{len(roles)} security role(s) provisioned successfully.")
+
+    # BU default team must hold the infra ownership role so SetAppOwner creates
+    # (audit/config/ref) pass Dataverse's owner Read check. Humans stay on
+    # User / Approver / Admin only.
+    from powerplatform_deploy.commands.roles import (  # noqa: PLC0415
+        ensure_app_owner_role_on_default_team,
+        find_default_team,
+        upsert_app_config,
+    )
+
+    child_bu_id = client.find_business_unit(bu_name)
+    team_id = find_default_team(client, child_bu_id) if child_bu_id else None
+    if team_id and child_bu_id:
+        upsert_app_config(client, "AppOwnerTeamId", team_id)
+        print(f"  AppOwnerTeamId -> {team_id} (default team of {bu_name})")
+        print("Assigning infra ownership role to BU default team...")
+
+        class _PrintLogger:
+            def info(self, msg, *args):
+                print(msg % args if args else msg)
+            def warning(self, msg, *args):
+                print("WARNING:", msg % args if args else msg)
+
+        ensure_app_owner_role_on_default_team(client, child_bu_id, team_id, _PrintLogger())
+    else:
+        print(f"  WARNING: No default team for BU '{bu_name}' — AppOwnerTeamId / ownership role skipped")
+
     return 0
 
 

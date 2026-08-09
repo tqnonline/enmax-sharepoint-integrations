@@ -7,6 +7,7 @@ import { EnmaxDataGrid, GridQueryFilterBar, dateTimeColumn } from "../../compone
 import type { ColumnDef, GridFetchParams } from "../../components/DataGrid";
 import { clientPage } from "../../components/DataGrid/clientPage";
 import { usePageSize } from "../../config/usePageSize";
+import { useGridDefaultFromDays } from "../../config/useGridDefaultFromDays";
 import { defaultGridDateRange } from "../../lib/dateRangeDefaults";
 import { applyBroadcastListFilters } from "./broadcastListFilters";
 import type { Enmax_autocadbroadcasts } from "../../generated/models/Enmax_autocadbroadcastsModel";
@@ -32,20 +33,21 @@ const SEV_COLOR: Record<string, "informative" | "warning" | "danger"> = {
   info: "informative", warning: "warning", error: "danger", success: "informative",
 };
 
-function initialFilters() {
-  const { from, to } = defaultGridDateRange();
+function initialFilters(fromDays?: number) {
+  const { from, to } = defaultGridDateRange(new Date(), fromDays);
   return { number: "", from, to };
 }
 
 export function BroadcastsPage() {
   const styles = useStyles();
   const pageSize = usePageSize();
+  const fromDays = useGridDefaultFromDays();
   const broadcastsQ = useBroadcasts();
   const [editorOpen, setEditorOpen] = useState(false);
   const [selected, setSelected] = useState<Enmax_autocadbroadcasts | null>(null);
 
-  const [filterDraft, setFilterDraft] = useState(initialFilters);
-  const [appliedFilters, setAppliedFilters] = useState(initialFilters);
+  const [filterDraft, setFilterDraft] = useState(() => initialFilters(fromDays));
+  const [appliedFilters, setAppliedFilters] = useState(() => initialFilters(fromDays));
 
   const rows = broadcastsQ.data ?? [];
 
@@ -98,7 +100,7 @@ export function BroadcastsPage() {
   }
 
   function handleClear() {
-    const cleared = initialFilters();
+    const cleared = initialFilters(fromDays);
     setFilterDraft(cleared);
     setAppliedFilters(cleared);
   }

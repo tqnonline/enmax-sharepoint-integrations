@@ -74,8 +74,9 @@ afterEach(() => {
 
 test("shows drawing documents tab and composition filters", async () => {
   renderWithProviders(<SearchPage />);
-  expect(screen.getByRole("tab", { name: /Drawings \(Drawing Documents\)/i })).toBeInTheDocument();
-  expect(screen.getByRole("tab", { name: /Standard Documents, Procedures & Forms/i })).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: /^Drawings$/i })).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: /Standards, Procedures, Forms/i })).toBeInTheDocument();
+  expect(screen.queryByRole("tab", { name: /^Reservations$/i })).not.toBeInTheDocument();
   expect(screen.getByLabelText(/Business/i)).toBeInTheDocument();
   await waitFor(() => expect(screen.getByText("1 matching document")).toBeInTheDocument());
 });
@@ -109,7 +110,7 @@ test("shows status filter on drawings tab", async () => {
 test("documents tab shows type filter", async () => {
   const user = userEvent.setup();
   renderWithProviders(<SearchPage />);
-  await user.click(screen.getByRole("tab", { name: /Standard Documents, Procedures & Forms/i }));
+  await user.click(screen.getByRole("tab", { name: /Standards, Procedures, Forms/i }));
   expect(screen.getByLabelText(/Filter by document type/i)).toBeInTheDocument();
   expect(screen.getByLabelText(/Filter by document status/i)).toBeInTheDocument();
 });

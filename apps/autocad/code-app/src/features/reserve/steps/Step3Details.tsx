@@ -9,6 +9,7 @@ import {
 } from "@fluentui/react-components";
 import type { ReserveForm } from "../schema";
 import { reserveTerminology } from "../terminology";
+import { showsReserveChildQuantity } from "../resolveReserveSubmit";
 
 const useStyles = makeStyles({
   row: { display: "flex", gap: tokens.spacingHorizontalM },
@@ -24,14 +25,32 @@ interface Props {
   onBack: () => void;
 }
 
+function childQuantityLabel(
+  reservationType: ReserveForm["reservationType"],
+  documentSubtype: ReserveForm["documentSubtype"],
+  maxSheets: number,
+): string {
+  if (reservationType === "Document" && documentSubtype === "Procedure") {
+    return `Forms per procedure (0–${maxSheets})`;
+  }
+  if (reservationType === "Drawing") {
+    return `No of Sheet per Drawing (0–${maxSheets})`;
+  }
+  const term = reserveTerminology(reservationType, documentSubtype);
+  return `${capitalize(term.childNoun ?? "item")}s per ${term.baseNoun} (0–${maxSheets})`;
+}
+
 export function Step3Details({ maxCount, maxSheets, onNext, onBack }: Props) {
   const styles = useStyles();
   const { control, watch, formState: { errors }, trigger } = useFormContext<ReserveForm>();
 
-  const term = reserveTerminology(watch("reservationType"), watch("documentSubtype"));
+  const reservationType = watch("reservationType");
+  const documentSubtype = watch("documentSubtype");
+  const term = reserveTerminology(reservationType, documentSubtype);
+  const showChildren = showsReserveChildQuantity(reservationType, documentSubtype);
 
   async function handleNext() {
-    const fields: Array<keyof ReserveForm> = term.createsChildren
+    const fields: Array<keyof ReserveForm> = showChildren
       ? ["count", "sheetsPerDrawing", "reason"]
       : ["count", "reason"];
     const ok = await trigger(fields);
@@ -63,25 +82,20 @@ export function Step3Details({ maxCount, maxSheets, onNext, onBack }: Props) {
             )}
           />
         </div>
-        {/* Standard documents are base-only (ADR 0001 #1) — no child-count field. */}
-        {term.createsChildren && (
+        {showChildren && (
           <div className={styles.half}>
             <Controller
               name="sheetsPerDrawing"
               control={control}
               render={({ field }) => (
                 <Field
-                  label={
-                    term.baseNoun === "drawing number"
-                      ? `No of Sheet per Drawing (1–${maxSheets})`
-                      : `${capitalize(term.childNoun!)}s per ${term.baseNoun} (1–${maxSheets})`
-                  }
+                  label={childQuantityLabel(reservationType, documentSubtype, maxSheets)}
                   validationMessage={errors.sheetsPerDrawing?.message}
                   required
                 >
                   <Input
                     type="number"
-                    min={1}
+                    min={0}
                     max={maxSheets}
                     {...field}
                     value={String(field.value ?? "")}

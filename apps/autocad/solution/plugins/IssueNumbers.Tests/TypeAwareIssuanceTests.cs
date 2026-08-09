@@ -13,7 +13,8 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
 {
     /// <summary>
     /// Type-aware issuance (docs/drawing-document-subtype-CONTRACT.md): Drawing/DrawingDocument,
-    /// Document/Standard, and Document/Procedure are base-only; Drawing/Drawing, Document/Form,
+    /// Document/Standard is base-only; Document/Procedure creates Form children when sheets ≥ 1;
+    /// Drawing/Drawing, Document/Form create numbered children. Drawing/DrawingDocument is base-only.
     /// and legacy/null-type reservations create child items. Child count is hard-capped at 999.
     /// Complements the golden tests, which pin the unchanged Drawing output contract.
     /// </summary>
@@ -109,7 +110,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         [Fact]
-        public void CreateDrawings_DrawingSubtype_CreatesChildItems()
+        public void CreateDrawings_DrawingSubtype_CreatesBaseDocAndChildSheets()
         {
             var (ctx, pluginCtx) = BuildCreateDrawingsContext(
                 new[] { 3 }, TypeDrawing, SubtypeDrawing, sheetsPer: 4);
@@ -117,7 +118,16 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             ctx.ExecutePluginWith<CreateDrawingsPlugin>(pluginCtx);
 
             CountDrawings(ctx).Should().Be(1);
-            CountSheets(ctx).Should().Be(4, because: "Drawing/Drawing (subtype 2) creates numbered child items");
+            CountSheets(ctx).Should().Be(5, because: "Drawing docs + 4 numbered sheets");
+            var sheets = ctx.CreateQuery(SheetEntity).ToList();
+            sheets.Count(s => !s.Contains("enmax_acdnsheetnumber")).Should().Be(1,
+                because: "one unnumbered Drawing Document carrier");
+            sheets.Count(s => s.Contains("enmax_acdnsheetnumber")).Should().Be(4);
+            var baseDoc = sheets.Single(s => !s.Contains("enmax_acdnsheetnumber"));
+            baseDoc.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value
+                .Should().Be(SubtypeDrawingDocument);
+            var drawing = ctx.CreateQuery(DrawingEntity).Single();
+            drawing.GetAttributeValue<int>("enmax_acdnsheetcount").Should().Be(5);
         }
 
         [Fact]
@@ -137,7 +147,21 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         [Fact]
-        public void CreateDrawings_ProcedureDocument_CreatesSingletonSheet()
+        public void CreateDrawings_ProcedureDocument_SheetsZero_CreatesSingletonSheet()
+        {
+            var (ctx, pluginCtx) = BuildCreateDrawingsContext(
+                new[] { 7 }, TypeDocument, SubtypeProcedure, sheetsPer: 0);
+
+            ctx.ExecutePluginWith<CreateDrawingsPlugin>(pluginCtx);
+
+            CountDrawings(ctx).Should().Be(1);
+            CountSheets(ctx).Should().Be(1, because: "Procedure with forms=0 uses a singleton carrier");
+            var sheet = ctx.CreateQuery(SheetEntity).Single();
+            sheet.Contains("enmax_acdnsheetnumber").Should().BeFalse("singleton Procedure sheet stores no numeric suffix");
+        }
+
+        [Fact]
+        public void CreateDrawings_ProcedureDocument_SheetsPositive_CreatesProcedureBaseAndFormChildren()
         {
             var (ctx, pluginCtx) = BuildCreateDrawingsContext(
                 new[] { 7 }, TypeDocument, SubtypeProcedure, sheetsPer: 2);
@@ -145,9 +169,16 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             ctx.ExecutePluginWith<CreateDrawingsPlugin>(pluginCtx);
 
             CountDrawings(ctx).Should().Be(1);
-            CountSheets(ctx).Should().Be(1, because: "Procedure is base-only like Standard");
-            var sheet = ctx.CreateQuery(SheetEntity).Single();
-            sheet.Contains("enmax_acdnsheetnumber").Should().BeFalse("singleton Procedure sheet stores no numeric suffix");
+            CountSheets(ctx).Should().Be(3, because: "Procedure base doc + 2 Form children");
+            var sheets = ctx.CreateQuery(SheetEntity).ToList();
+            var baseDoc = sheets.Single(s => !s.Contains("enmax_acdnsheetnumber"));
+            baseDoc.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value
+                .Should().Be(SubtypeProcedure);
+            foreach (var sheet in sheets.Where(s => s.Contains("enmax_acdnsheetnumber")))
+            {
+                sheet.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value
+                    .Should().Be(SubtypeForm);
+            }
         }
 
         [Fact]
@@ -274,7 +305,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         [Fact]
-        public void AutoCreate_DrawingSubtype_CreatesChildItems()
+        public void AutoCreate_DrawingSubtype_CreatesBaseDocAndChildSheets()
         {
             var (ctx, pluginCtx) = BuildAutoCreateContext(
                 new[] { 3 }, TypeDrawing, SubtypeDrawing, sheetsPer: 4);
@@ -282,7 +313,12 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             ctx.ExecutePluginWith<AutoCreateDrawingsPlugin>(pluginCtx);
 
             CountDrawings(ctx).Should().Be(1);
-            CountSheets(ctx).Should().Be(4, because: "Drawing/Drawing (subtype 2) creates numbered child items");
+            CountSheets(ctx).Should().Be(5, because: "Drawing docs + 4 numbered sheets");
+            var sheets = ctx.CreateQuery(SheetEntity).ToList();
+            sheets.Count(s => !s.Contains("enmax_acdnsheetnumber")).Should().Be(1);
+            sheets.Single(s => !s.Contains("enmax_acdnsheetnumber"))
+                .GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value
+                .Should().Be(SubtypeDrawingDocument);
         }
 
         [Fact]
@@ -302,7 +338,21 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
         }
 
         [Fact]
-        public void AutoCreate_ProcedureDocument_CreatesSingletonSheet()
+        public void AutoCreate_ProcedureDocument_SheetsZero_CreatesSingletonSheet()
+        {
+            var (ctx, pluginCtx) = BuildAutoCreateContext(
+                new[] { 5 }, TypeDocument, SubtypeProcedure, sheetsPer: 0);
+
+            ctx.ExecutePluginWith<AutoCreateDrawingsPlugin>(pluginCtx);
+
+            CountDrawings(ctx).Should().Be(1);
+            CountSheets(ctx).Should().Be(1, because: "Procedure with forms=0 uses a singleton carrier");
+            var sheet = ctx.CreateQuery(SheetEntity).Single();
+            sheet.Contains("enmax_acdnsheetnumber").Should().BeFalse();
+        }
+
+        [Fact]
+        public void AutoCreate_ProcedureDocument_SheetsPositive_CreatesProcedureBaseAndFormChildren()
         {
             var (ctx, pluginCtx) = BuildAutoCreateContext(
                 new[] { 5 }, TypeDocument, SubtypeProcedure, sheetsPer: 2);
@@ -310,9 +360,16 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
             ctx.ExecutePluginWith<AutoCreateDrawingsPlugin>(pluginCtx);
 
             CountDrawings(ctx).Should().Be(1);
-            CountSheets(ctx).Should().Be(1, because: "Procedure is base-only like Standard");
-            var sheet = ctx.CreateQuery(SheetEntity).Single();
-            sheet.Contains("enmax_acdnsheetnumber").Should().BeFalse();
+            CountSheets(ctx).Should().Be(3, because: "Procedure base + 2 Form children");
+            var sheets = ctx.CreateQuery(SheetEntity).ToList();
+            sheets.Single(s => !s.Contains("enmax_acdnsheetnumber"))
+                .GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value
+                .Should().Be(SubtypeProcedure);
+            foreach (var sheet in sheets.Where(s => s.Contains("enmax_acdnsheetnumber")))
+            {
+                sheet.GetAttributeValue<OptionSetValue>("enmax_acdndocumentsubtype")?.Value
+                    .Should().Be(SubtypeForm);
+            }
         }
 
         [Fact]

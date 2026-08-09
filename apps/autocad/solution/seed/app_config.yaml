@@ -87,7 +87,7 @@ rows:
   - key: StandardDocumentKindCodes
     value: ""
     value_type: String
-    description: Comma-separated Kind codes classified as Standard Document (indexer only; empty = none configured).
+    description: Comma-separated Kind codes classified as Standard (indexer only; empty = none configured).
   - key: ProcedureDocumentKindCodes
     value: ""
     value_type: String
@@ -95,11 +95,11 @@ rows:
   - key: StandardDocumentDropOffLibraryUrl
     value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
     value_type: String
-    description: LEGACY FALLBACK (cutover) — prefer DocumentDropOffLibraryUrl; Standard Document drop-off URL.
+    description: LEGACY FALLBACK (cutover) — prefer DocumentDropOffLibraryUrl; Standard drop-off URL.
   - key: StandardDocumentDestinationLibraryUrl
     value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
     value_type: String
-    description: LEGACY FALLBACK (cutover) — prefer DocumentDestinationLibraryUrl; Standard Document destination URL.
+    description: LEGACY FALLBACK (cutover) — prefer DocumentDestinationLibraryUrl; Standard destination URL.
   - key: ProcedureDocumentDropOffLibraryUrl
     value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
     value_type: String
@@ -200,6 +200,10 @@ rows:
     value: "10"
     value_type: Integer
     description: Number of rows per page in all Code App grids and lists. Increase for power users, decrease for low-bandwidth environments.
+  - key: GridDefaultFromDays
+    value: "30"
+    value_type: Integer
+    description: Default From-date lookback in days for Code App grid filters (From = today − N, To = today). Used by Search, My Reservations, Approvals, Audit, and Broadcasts.
   - key: EnableDrawingCheckout
     value: "true"
     value_type: Boolean
@@ -231,11 +235,11 @@ rows:
   - key: EnableStandardCheckout
     value: "true"
     value_type: Boolean
-    description: When true, Check Out is available for Standard Document reservations. Set false to hide/disable checkout for standard documents only.
+    description: When true, Check Out is available for Standard reservations. Set false to hide/disable checkout for standards only.
   - key: EnableStandardCheckIn
     value: "true"
     value_type: Boolean
-    description: When true, Check In is available for Standard Document reservations. Set false to hide/disable check-in for standard documents only.
+    description: When true, Check In is available for Standard reservations. Set false to hide/disable check-in for standards only.
   - key: EnableFormCheckout
     value: "true"
     value_type: Boolean

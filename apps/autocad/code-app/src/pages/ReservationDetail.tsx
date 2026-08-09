@@ -43,6 +43,7 @@ import {
 } from "@fluentui/react-icons";
 import { useReservationDetail, type DrawingDetail } from "../features/approvals/hooks/useReservationDetail";
 import { NUMBERING_GROUP_LABEL } from "../features/reserve/numberingTerms";
+import { DocumentTypeBadge } from "../components/DocumentTypeBadge";
 import { formatNumberRange, formatAppendDisplay, formatReservationDisplay } from "../features/approvals/compositionUtils";
 import { useCancelReservation } from "../features/myitems/useMyReservations";
 import { useRetryIssueNumbers } from "../features/approvals/hooks/useRetryIssueNumbers";
@@ -594,7 +595,7 @@ export default function ReservationDetail() {
             </div>
             <div className={styles.headerMetaCol}>
               <span className={styles.metaLabel}>Type</span>
-              <Text size={300} weight="semibold">{res.typeLabel}</Text>
+              <DocumentTypeBadge label={res.typeLabel} />
             </div>
             <div className={styles.headerMetaCol}>
               <span className={styles.metaLabel}>Count</span>

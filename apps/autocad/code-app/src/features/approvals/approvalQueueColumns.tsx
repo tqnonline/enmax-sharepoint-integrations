@@ -6,6 +6,7 @@ import {
   dateTimeColumn,
 } from "../../components/DataGrid";
 import type { ColumnDef } from "../../components/DataGrid";
+import { DocumentTypeBadge } from "../../components/DocumentTypeBadge";
 import { CheckoutStatus } from "../checkout/api/checkoutClient";
 import { CheckoutApprovalDrawer } from "../checkout/components/CheckoutApprovalDrawer";
 import { ValidationDrawer } from "../checkout/components/ValidationDrawer";
@@ -80,6 +81,7 @@ export function checkoutRequestColumns(): ColumnDef<CheckinRow>[] {
       accessor: (r) => r.typeLabel,
       sortable: true,
       width: 150,
+      cell: (r) => <DocumentTypeBadge label={r.typeLabel} />,
     },
     submittedByColumn<CheckinRow>({ width: 160 }),
     dateTimeColumn<CheckinRow>({
@@ -118,6 +120,7 @@ export function checkinValidationColumns(): ColumnDef<CheckinRow>[] {
       accessor: (r) => r.typeLabel,
       sortable: true,
       width: 140,
+      cell: (r) => <DocumentTypeBadge label={r.typeLabel} />,
     },
     submittedByColumn<CheckinRow>({ width: 160 }),
     {

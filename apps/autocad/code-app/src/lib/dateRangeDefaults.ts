@@ -18,11 +18,18 @@ export function isoDateToday(now = new Date()): string {
   return localIsoDate(now);
 }
 
+/** Schema/seed default when App Config `GridDefaultFromDays` is absent. */
 export const GRID_DEFAULT_FROM_DAYS = 30;
 
-export function defaultGridDateRange(now = new Date()): { from: string; to: string } {
+export function defaultGridDateRange(
+  now = new Date(),
+  fromDays: number = GRID_DEFAULT_FROM_DAYS,
+): { from: string; to: string } {
+  const days = Number.isFinite(fromDays) && fromDays >= 1
+    ? Math.floor(fromDays)
+    : GRID_DEFAULT_FROM_DAYS;
   return {
-    from: isoDateDaysAgo(GRID_DEFAULT_FROM_DAYS, now),
+    from: isoDateDaysAgo(days, now),
     to: isoDateToday(now),
   };
 }

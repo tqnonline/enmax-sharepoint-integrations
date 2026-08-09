@@ -32,7 +32,16 @@ vi.mock("../../auth/useUserRole", () => ({
   useUserRole: () => ({ role: mockRole.value, isPending: false }),
 }));
 vi.mock("../../config/useAppConfig", () => ({
-  useAppConfig: () => ({ GridPageSize: 10, RequireCheckInApproval: false }),
+  useAppConfig: () => ({
+    GridPageSize: 10,
+    GridDefaultFromDays: 30,
+    RequireCheckInApproval: false,
+    EnableDrawingCheckout: true,
+    EnableDrawingDocumentCheckout: true,
+    EnableStandardCheckout: true,
+    EnableProcedureCheckout: true,
+    EnableFormCheckout: true,
+  }),
 }));
 vi.mock("../../features/approvals/hooks/useCompositionLookups", () => ({
   useCompositionLookups: () => ({

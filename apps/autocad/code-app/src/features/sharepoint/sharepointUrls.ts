@@ -9,7 +9,8 @@ import { SHEET_STATE_AWAITING_VALIDATION } from "../approvals/hooks/useDrawingSh
 
 /**
  * Heather model: indexed SharePoint PDFs exist only on
- * - Drawing Document / Standard / Procedure: `BB-AA-UU-DDD-SSS-KK-NNNN.pdf` (base record)
+ * - Drawing Document / Standard: `BB-AA-UU-DDD-SSS-KK-NNNN.pdf` (base record)
+ * - Procedure: base PDF when forms=0; Form children use `-SSS.pdf` when forms ≥ 1
  * - Drawing / Form: `BB-AA-UU-DDD-SSS-KK-NNNN-SSS.pdf` (child sheet)
  */
 export function recordCarriesSharePointPdf(
@@ -18,6 +19,13 @@ export function recordCarriesSharePointPdf(
   opts?: { isChildSheet?: boolean },
 ): boolean {
   if (isBaseOnlyDocument(reservationType, documentSubtype)) return true;
+  // Procedure hosts keep a base PDF (forms=0 path) and may also have Form children.
+  if (
+    reservationType === RESERVATION_TYPE_VALUE.Document
+    && documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure
+  ) {
+    return true;
+  }
   return !!opts?.isChildSheet;
 }
 
@@ -42,7 +50,14 @@ export function resolveSharePointFileUrls(input: {
     return { dropOffUrl: "", destinationUrl: "" };
   }
 
-  if (isBaseOnlyDocument(input.reservationType, input.documentSubtype)) {
+  const useBaseUrls = isBaseOnlyDocument(input.reservationType, input.documentSubtype)
+    || (
+      !input.isChildSheet
+      && input.reservationType === RESERVATION_TYPE_VALUE.Document
+      && input.documentSubtype === DOCUMENT_SUBTYPE_VALUE.Procedure
+    );
+
+  if (useBaseUrls) {
     return {
       dropOffUrl: input.drawingDropOffUrl?.trim() ?? "",
       destinationUrl: input.drawingDestinationUrl?.trim() ?? "",

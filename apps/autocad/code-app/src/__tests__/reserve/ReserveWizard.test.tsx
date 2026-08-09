@@ -67,7 +67,7 @@ type U = ReturnType<typeof userEvent.setup>;
 async function chooseTypeAndAdvance(user: U, subtype?: "Standard" | "Procedure" | "Form") {
   if (subtype) {
     await user.click(await screen.findByRole("radio", { name: /^Document$/i }));
-    const subtypeLabel = subtype === "Standard" ? "Standard Document" : subtype;
+    const subtypeLabel = subtype === "Standard" ? "Standard" : subtype;
     await user.click(await screen.findByRole("radio", { name: new RegExp(`^${subtypeLabel}$`, "i") }));
   }
   await user.click(await screen.findByRole("button", { name: /Next: Coding sequence/i }));
@@ -88,6 +88,115 @@ beforeEach(() => {
     success: true,
     data: { enmax_autocadreservationid: "res-id-001", enmax_acdnreservationid: "RES-00001" },
   });
+});
+
+// Agreed model — Drawing has no Drawing Type fork; sheets 0 → Drawing Document
+test("Drawing step 1 has no Drawing Type fork", async () => {
+  const user = userEvent.setup();
+  renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
+
+  expect(await screen.findByRole("radio", { name: /^Drawing$/i })).toBeInTheDocument();
+  expect(screen.queryByText(/Drawing Type/i)).not.toBeInTheDocument();
+  expect(screen.queryByRole("radio", { name: /^Drawing Document$/i })).not.toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: /Next: Coding sequence/i }));
+  await waitFor(() => expect(screen.getByLabelText("Business")).toBeInTheDocument());
+});
+
+test("Drawing sheets=0 submits as Drawing Document (subtype 1)", async () => {
+  mockCreate.mockClear();
+  const user = userEvent.setup();
+  renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
+
+  await chooseTypeAndAdvance(user);
+  await fillComposition(user);
+  await user.click(screen.getByRole("button", { name: /Next: Details/i }));
+
+  await waitFor(() => expect(screen.getByLabelText(/Number of drawing numbers/i)).toBeInTheDocument());
+  const sheets = screen.getByLabelText(/Sheet per Drawing|sheets per drawing/i);
+  await user.clear(sheets);
+  await user.type(sheets, "0");
+  await user.type(screen.getByLabelText(/Reason For Reservation/i), "drawing docs only path");
+  await user.click(screen.getByRole("button", { name: /Next: Review/i }));
+
+  await waitFor(() => expect(screen.getByRole("button", { name: /Submit reservation/i })).toBeInTheDocument());
+  await user.click(screen.getByRole("button", { name: /Submit reservation/i }));
+
+  await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
+  const body = mockCreate.mock.calls[0][0] as Record<string, unknown>;
+  expect(body.enmax_acdnreservationtype).toBe(1);
+  expect(body.enmax_acdndocumentsubtype).toBe(1); // Drawing Document
+  expect(body.enmax_acdnsheetsperdrawing).toBe(0);
+});
+
+test("Drawing sheets≥1 submits as Drawing (subtype 2) with sheet count", async () => {
+  mockCreate.mockClear();
+  const user = userEvent.setup();
+  renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
+
+  await chooseTypeAndAdvance(user);
+  await fillComposition(user);
+  await user.click(screen.getByRole("button", { name: /Next: Details/i }));
+
+  await waitFor(() => expect(screen.getByLabelText(/Number of drawing numbers/i)).toBeInTheDocument());
+  const countInput = screen.getByLabelText(/Number of drawing numbers/i);
+  await user.clear(countInput);
+  await user.type(countInput, "2");
+  const sheets = screen.getByLabelText(/Sheet per Drawing|sheets per drawing/i);
+  await user.clear(sheets);
+  await user.type(sheets, "3");
+  await user.type(screen.getByLabelText(/Reason For Reservation/i), "docs and sheet files together");
+  await user.click(screen.getByRole("button", { name: /Next: Review/i }));
+  await waitFor(() => expect(screen.getByRole("button", { name: /Submit reservation/i })).toBeInTheDocument());
+  await user.click(screen.getByRole("button", { name: /Submit reservation/i }));
+
+  await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
+  const body = mockCreate.mock.calls[0][0] as Record<string, unknown>;
+  expect(body.enmax_acdnreservationtype).toBe(1);
+  expect(body.enmax_acdndocumentsubtype).toBe(2);
+  expect(body.enmax_acdndrawingcount).toBe(2);
+  expect(body.enmax_acdnsheetsperdrawing).toBe(3);
+});
+
+test("Procedure New shows forms-per-procedure (0 allowed) and submits subtype Procedure", async () => {
+  mockCreate.mockClear();
+  const user = userEvent.setup();
+  renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
+
+  await chooseTypeAndAdvance(user, "Procedure");
+  await fillComposition(user);
+  await user.click(screen.getByRole("button", { name: /Next: Details/i }));
+
+  await waitFor(() => expect(screen.getByLabelText(/Number of procedures/i)).toBeInTheDocument());
+  expect(screen.getByLabelText(/Forms per procedure/i)).toBeInTheDocument();
+
+  const forms = screen.getByLabelText(/Forms per procedure/i);
+  await user.clear(forms);
+  await user.type(forms, "2");
+  await user.type(screen.getByLabelText(/Reason For Reservation/i), "procedure with forms together");
+  await user.click(screen.getByRole("button", { name: /Next: Review/i }));
+  await waitFor(() => expect(screen.getByRole("button", { name: /Submit reservation/i })).toBeInTheDocument());
+  await user.click(screen.getByRole("button", { name: /Submit reservation/i }));
+
+  await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
+  const body = mockCreate.mock.calls[0][0] as Record<string, unknown>;
+  expect(body.enmax_acdnreservationtype).toBe(2);
+  expect(body.enmax_acdndocumentsubtype).toBe(4);
+  expect(body.enmax_acdnsheetsperdrawing).toBe(2);
+});
+
+test("Form alone forces Add to existing (New disabled)", async () => {
+  const user = userEvent.setup();
+  renderWithProviders(<ReserveWizard />, { initialPath: "/reserve" });
+
+  await user.click(await screen.findByRole("radio", { name: /^Document$/i }));
+  await user.click(await screen.findByRole("radio", { name: /^Form$/i }));
+
+  const newRadio = screen.getByRole("radio", { name: /Reserve new/i });
+  const existingRadio = screen.getByRole("radio", { name: /Add to existing/i });
+  expect(newRadio).toBeDisabled();
+  expect(existingRadio).not.toBeDisabled();
+  expect(existingRadio).toBeChecked();
 });
 
 // Test 7 — Submit calls Dataverse create with mapped columns
@@ -148,17 +257,17 @@ test("Document/Standard reservation hides child count and sends type=2, subtype=
   await user.click(screen.getByRole("button", { name: /Next: Details/i }));
 
   // Count label is type-aware; the child-count field is absent for Standard (base-only).
-  await waitFor(() => expect(screen.getByLabelText(/Number of standard documents/i)).toBeInTheDocument());
-  expect(screen.queryByLabelText(/per standard document/i)).not.toBeInTheDocument();
+  await waitFor(() => expect(screen.getByLabelText(/Number of standards/i)).toBeInTheDocument());
+  expect(screen.queryByLabelText(/per standard/i)).not.toBeInTheDocument();
 
-  const countInput = screen.getByLabelText(/Number of standard documents/i);
+  const countInput = screen.getByLabelText(/Number of standards/i);
   await user.clear(countInput);
-  await user.type(countInput, "1");  await user.type(screen.getByLabelText(/Reason For Reservation/i), "standard document reservation test");
+  await user.type(countInput, "1");  await user.type(screen.getByLabelText(/Reason For Reservation/i), "standard reservation test");
   await user.click(screen.getByRole("button", { name: /Next: Review/i }));
 
   await waitFor(() => expect(screen.getByRole("button", { name: /Submit reservation/i })).toBeInTheDocument());
   // Review shows the type and omits the child-count row.
-  expect(screen.getByText("Standard Document")).toBeInTheDocument();
+  expect(screen.getByText("Standard")).toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: /Submit reservation/i }));
 
   await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
@@ -176,9 +285,9 @@ test("Standard: details step uses MaxRecordsPerReservation as count ceiling", as
   await user.click(screen.getByRole("button", { name: /Next: Details/i }));
 
   await waitFor(() =>
-    expect(screen.getByLabelText(/Number of standard documents \(1–10\)/i)).toBeInTheDocument(),
+    expect(screen.getByLabelText(/Number of standards \(1–10\)/i)).toBeInTheDocument(),
   );
-  const countInput = screen.getByLabelText(/Number of standard documents \(1–10\)/i);
+  const countInput = screen.getByLabelText(/Number of standards \(1–10\)/i);
   expect(countInput).toHaveAttribute("max", "10");
 });
 

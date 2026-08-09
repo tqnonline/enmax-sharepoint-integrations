@@ -86,7 +86,7 @@ describe("documentDisplayNumber", () => {
     ).toBe("GG-CG-00-ECS-AST-DD-0001-007");
   });
 
-  it("keeps standard and procedure display at the base number", () => {
+  it("keeps Standard at the base number; Procedure forms use -SSS like Drawing", () => {
     expect(
       documentDisplayNumber(
         "GG-CG-00-ECS-AST-DD-0001",
@@ -102,6 +102,6 @@ describe("documentDisplayNumber", () => {
         RESERVATION_TYPE_VALUE.Document,
         DOCUMENT_SUBTYPE_VALUE.Procedure,
       ),
-    ).toBe("GG-CG-00-ECS-AST-DD-0001");
+    ).toBe("GG-CG-00-ECS-AST-DD-0001-007");
   });
 });

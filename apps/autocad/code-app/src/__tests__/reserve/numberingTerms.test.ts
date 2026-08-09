@@ -26,7 +26,7 @@ describe("numberingTerms", () => {
     expect(taxonomyTypeLabel(RESERVATION_TYPE_VALUE.Drawing)).toBe("Drawing");
     expect(
       taxonomyTypeLabel(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Standard),
-    ).toBe("Standard Document");
+    ).toBe("Standard");
     expect(
       taxonomyTypeLabel(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Procedure),
     ).toBe("Procedure");
@@ -39,7 +39,7 @@ describe("numberingTerms", () => {
     expect(baseNumberLabel(RESERVATION_TYPE_VALUE.Drawing)).toBe("Drawing Number");
     expect(
       baseNumberLabel(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Standard),
-    ).toBe("Standard Document");
+    ).toBe("Standard");
     expect(numberRangeLabel(RESERVATION_TYPE_VALUE.Drawing)).toBe("Drawing Number Range");
     expect(
       numberRangeLabel(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Form),
@@ -60,7 +60,7 @@ describe("numberingTerms", () => {
     ).toBe("Drawing Document");
     expect(
       individualItemLabel(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Standard),
-    ).toBe("Standard Document");
+    ).toBe("Standard");
     expect(
       individualItemLabel(RESERVATION_TYPE_VALUE.Document, DOCUMENT_SUBTYPE_VALUE.Procedure),
     ).toBe("Procedure");
@@ -74,9 +74,9 @@ describe("numberingTerms", () => {
     ).toBe("Forms");
   });
 
-  it("marks Standard and Procedure as base-only; Form creates children", () => {
+  it("marks Standard as base-only; Procedure and Form create children", () => {
     expect(reserveTerminology("Document", "Standard").createsChildren).toBe(false);
-    expect(reserveTerminology("Document", "Procedure").createsChildren).toBe(false);
+    expect(reserveTerminology("Document", "Procedure").createsChildren).toBe(true);
     expect(reserveTerminology("Document", "Form").createsChildren).toBe(true);
     expect(reserveTerminology("Drawing", undefined).createsChildren).toBe(true);
   });

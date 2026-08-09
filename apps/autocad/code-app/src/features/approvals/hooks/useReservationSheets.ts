@@ -6,6 +6,7 @@ import {
   CHECKOUT_STATUS_LABELS,
   CheckoutStatus,
 } from "../../checkout/api/checkoutClient";
+import { reservationTypeDisplayLabel } from "../../reserve/terminology";
 import type { SheetDetail } from "./useDrawingSheets";
 import type { SheetCheckoutInfo } from "./useSheetCheckouts";
 
@@ -18,6 +19,9 @@ const OPEN_STATUSES = new Set<number>([
 export interface ReservationSheetRow extends SheetDetail {
   drawingId: string;
   drawingNumber?: string;
+  reservationType?: number;
+  documentSubtype?: number;
+  typeLabel: string;
   checkout?: SheetCheckoutInfo;
 }
 
@@ -51,6 +55,8 @@ function pickCheckout(rows: Record<string, unknown>[]): SheetCheckoutInfo | unde
 
 async function fetchReservationSheets(
   drawings: { id: string; number?: string }[],
+  reservationType?: number,
+  documentSubtype?: number,
 ): Promise<ReservationSheetRow[]> {
   const valid = drawings.filter((d) => isGuid(d.id));
   if (valid.length === 0) return [];
@@ -68,6 +74,8 @@ async function fetchReservationSheets(
       "enmax_acdnpresentindropoff",
       "enmax_acdnpresentindestination",
       "enmax_acdnstate",
+      "enmax_acdnreservationtype",
+      "enmax_acdndocumentsubtype",
       "createdon",
     ],
     orderBy: ["enmax_acdnsheetnumber asc"],
@@ -81,7 +89,14 @@ async function fetchReservationSheets(
 
   const drawingNumberById = new Map(valid.map((d) => [d.id, d.number]));
   const sheets: ReservationSheetRow[] = (sheetsResult.data ?? []).map((s) => {
-    const drawingId = (s as { _enmax_acdndrawing_value?: string })._enmax_acdndrawing_value ?? "";
+    const raw = s as {
+      _enmax_acdndrawing_value?: string;
+      enmax_acdnreservationtype?: number;
+      enmax_acdndocumentsubtype?: number;
+    };
+    const drawingId = raw._enmax_acdndrawing_value ?? "";
+    const sheetType = raw.enmax_acdnreservationtype ?? reservationType;
+    const sheetSubtype = raw.enmax_acdndocumentsubtype ?? documentSubtype;
     return {
       id: s.enmax_autocadsheetid,
       drawingId,
@@ -94,6 +109,9 @@ async function fetchReservationSheets(
       presentInDestination: s.enmax_acdnpresentindestination,
       state: s.enmax_acdnstate,
       createdOn: s.createdon,
+      reservationType: sheetType,
+      documentSubtype: sheetSubtype,
+      typeLabel: reservationTypeDisplayLabel(sheetType, sheetSubtype),
     };
   });
 
@@ -146,11 +164,13 @@ async function fetchReservationSheets(
 export function useReservationSheets(
   drawings: { id: string; number?: string }[],
   enabled: boolean,
+  reservationType?: number,
+  documentSubtype?: number,
 ) {
   const key = drawings.map((d) => d.id).sort().join(",");
   return useQuery({
-    queryKey: ["reservation-sheets", key],
-    queryFn: () => fetchReservationSheets(drawings),
+    queryKey: ["reservation-sheets", key, reservationType, documentSubtype],
+    queryFn: () => fetchReservationSheets(drawings, reservationType, documentSubtype),
     enabled: enabled && drawings.length > 0,
     staleTime: 30_000,
     throwOnError: false,

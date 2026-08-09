@@ -22,6 +22,7 @@ import { useReferenceData } from "./hooks/useReferenceData";
 import { useCreateReservation } from "./hooks/useCreateReservation";
 import { useAppConfig } from "../../config/useAppConfig";
 import { formatNumberingGroup } from "./numberingTerms";
+import { resolveReserveSubmitForm } from "./resolveReserveSubmit";
 import type { ReferenceData } from "./hooks/useReferenceData";
 
 function codingSequenceFromForm(values: ReserveForm, refData: ReferenceData | undefined): string {
@@ -189,7 +190,7 @@ export function ReserveWizard() {
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
   async function handleSubmit() {
-    const values = methods.getValues();
+    const values = resolveReserveSubmitForm(methods.getValues());
     try {
       const result = await createMutation.mutateAsync(values);
       const coding = codingSequenceFromForm(values, refDataQuery.data);
