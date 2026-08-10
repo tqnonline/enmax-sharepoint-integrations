@@ -89,6 +89,10 @@ export const AppConfigSchema = z.object({
   // Drawing Document is New-only (docs/drawing-document-subtype-CONTRACT.md) —
   // Existing sequence append is disallowed regardless of admin overrides.
   AllowDrawingDocumentExistingSequence: z.boolean().default(false),
+  // Header environment chip (Rule 15). "Production" / "Prod" / blank → hidden;
+  // any other value (e.g. Sandbox, DEV, UAT) is shown uppercased. Defaults to
+  // Production so a missing row never paints a sandbox badge on prod.
+  EnvironmentBadge: z.string().default("Production"),
 });
 
 export type AppConfig = z.infer<typeof AppConfigSchema>;

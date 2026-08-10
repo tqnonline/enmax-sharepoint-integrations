@@ -74,6 +74,7 @@ vi.mock("./config/useAppConfig", () => ({
     EnableFormCheckout: true,
     EnableFormCheckIn: true,
     AllowDrawingDocumentExistingSequence: false,
+    EnvironmentBadge: "Sandbox",
   }),
 }));
 

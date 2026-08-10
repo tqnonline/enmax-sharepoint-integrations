@@ -72,7 +72,7 @@ def _upsert_multiple_request(
         url,
         json={"Targets": targets},
         headers=odata_headers(token),
-        timeout=300,
+        timeout=600,
     )
 
 

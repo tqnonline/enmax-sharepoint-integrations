@@ -13,7 +13,9 @@ import time
 from typing import Any
 
 DEV_HOST = "nrg-enmax-dev.crm3.dynamics.com"
-PROD_HOSTS = frozenset({"nrg-enmax.crm3.dynamics.com"})
+# Live PAC profile ENMAX-EEC-PROD → nrg-enmaxenergy-prod; keep legacy alias if present.
+PROD_HOST = "nrg-enmaxenergy-prod.crm3.dynamics.com"
+PROD_HOSTS = frozenset({PROD_HOST, "nrg-enmax.crm3.dynamics.com"})
 
 
 class GateError(Exception):
@@ -70,6 +72,28 @@ def require_dev_confirm(url: str, *, confirm_dev: bool, action: str) -> str:
             f"ERROR: pass --confirm-dev to {action} on ENMAX DEV"
         )
     return host
+
+
+def require_apply_confirm(
+    url: str,
+    *,
+    confirm_dev: bool,
+    confirm_prod: bool,
+    action: str,
+) -> str:
+    """Allow Dev (--confirm-dev) or known Prod (--confirm-prod); refuse all others."""
+    host = host_from_url(url)
+    if host == DEV_HOST:
+        return require_dev_confirm(url, confirm_dev=confirm_dev, action=action)
+    if host in PROD_HOSTS:
+        if not confirm_prod:
+            raise GateError(
+                f"ERROR: pass --confirm-prod to {action} on ENMAX PROD ({host})"
+            )
+        return host
+    raise GateError(
+        f"ERROR: {action} gated to {DEV_HOST} or {PROD_HOST}; got {host}"
+    )
 
 
 def log_event(event: str, **fields: Any) -> None:

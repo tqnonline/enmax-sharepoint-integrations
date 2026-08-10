@@ -28,6 +28,7 @@ import {
 } from "../features/search/searchUrlState";
 import { GLOBAL_SEARCH_PLACEHOLDER } from "../features/reserve/numberingTerms";
 import { DocumentTypeBadge } from "../components/DocumentTypeBadge";
+import { EnvironmentBadge } from "../components/EnvironmentBadge";
 import enmaxLogo from "../assets/brand/ENX_Logo_RED.svg";
 
 type BadgeColor = "success" | "warning" | "informative" | "subtle";
@@ -280,6 +281,7 @@ export function Header() {
         </Tooltip>
         <img src={enmaxLogo} alt="ENMAX" className={styles.logo} />
         <Text className={styles.title}>EEC Generation Document Management system</Text>
+        <EnvironmentBadge />
       </div>
 
       <div className={styles.searchArea} ref={wrapperRef}>

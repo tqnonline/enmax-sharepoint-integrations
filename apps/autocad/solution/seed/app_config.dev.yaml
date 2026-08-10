@@ -28,6 +28,8 @@ rows:
     value: https://enmaxcorp.sharepoint.com/sites/EECDocumentControl/A
   - key: SharePointIndexerLogFolderPath
     value: Shared Documents/Enmax AutoCAD/Indexer Logs
+  - key: EnvironmentBadge
+    value: Sandbox
   - key: CodeAppBaseUrl
     # Full play URL to the DEV Code App (env id + app id from apps/code-app/power.config.json).
     # No trailing slash / no query / no hash — flows append a deep-link query string

@@ -28,6 +28,8 @@ rows:
     value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
   - key: SharePointIndexerLogFolderPath
     value: Shared Documents/Enmax AutoCAD/Indexer Logs
+  - key: EnvironmentBadge
+    value: Sandbox
   - key: CodeAppBaseUrl
     # Full play URL to the UAT Code App (no trailing slash / no query / no hash). Flows append a
     # deep-link query string (?target=reservation&id={id}, ?target=approvals&...) that

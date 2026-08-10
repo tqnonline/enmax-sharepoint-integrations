@@ -13,9 +13,11 @@ sys.path.insert(0, str(SCRIPTS))
 
 from dv_cli_common import (  # noqa: E402
     DEV_HOST,
+    PROD_HOST,
     GateError,
     host_from_url,
     log_event,
+    require_apply_confirm,
     require_dev_confirm,
 )
 
@@ -59,6 +61,37 @@ def test_require_dev_confirm_wrong_host_raises() -> None:
         )
     assert DEV_HOST in excinfo.value.message
     assert "nrg-enmax.crm3.dynamics.com" in excinfo.value.message
+
+
+def test_require_apply_confirm_prod_ok() -> None:
+    host = require_apply_confirm(
+        f"https://{PROD_HOST}",
+        confirm_dev=False,
+        confirm_prod=True,
+        action="apply",
+    )
+    assert host == PROD_HOST
+
+
+def test_require_apply_confirm_prod_missing_flag() -> None:
+    with pytest.raises(GateError) as excinfo:
+        require_apply_confirm(
+            f"https://{PROD_HOST}",
+            confirm_dev=False,
+            confirm_prod=False,
+            action="apply",
+        )
+    assert "--confirm-prod" in excinfo.value.message
+
+
+def test_require_apply_confirm_dev_still_works() -> None:
+    host = require_apply_confirm(
+        f"https://{DEV_HOST}",
+        confirm_dev=True,
+        confirm_prod=False,
+        action="apply",
+    )
+    assert host == DEV_HOST
 
 
 def test_gate_error_has_message_attr() -> None:

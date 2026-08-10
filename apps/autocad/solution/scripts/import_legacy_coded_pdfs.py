@@ -30,7 +30,7 @@ from dv_cli_common import (  # noqa: E402
     GateError,
     TokenHolder,
     odata_headers,
-    require_dev_confirm,
+    require_apply_confirm,
     resolve_dataverse_url,
 )
 from dv_upsert_batch import (  # noqa: E402
@@ -579,6 +579,11 @@ def main() -> int:
     )
     parser.add_argument("--environment", default="dev")
     parser.add_argument("--confirm-dev", action="store_true")
+    parser.add_argument(
+        "--confirm-prod",
+        action="store_true",
+        help="Required for --apply against ENMAX Prod (nrg-enmaxenergy-prod).",
+    )
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument(
         "--batch-scale",
@@ -663,7 +668,12 @@ def main() -> int:
 
         if args.apply:
             try:
-                require_dev_confirm(base, confirm_dev=args.confirm_dev, action="apply")
+                require_apply_confirm(
+                    base,
+                    confirm_dev=args.confirm_dev,
+                    confirm_prod=args.confirm_prod,
+                    action="apply",
+                )
             except GateError as exc:
                 print(exc.message, file=sys.stderr)
                 return 1

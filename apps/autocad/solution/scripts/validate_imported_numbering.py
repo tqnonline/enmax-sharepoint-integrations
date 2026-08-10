@@ -24,7 +24,7 @@ import requests
 REPO = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from dv_cli_common import GateError, odata_headers, require_dev_confirm  # noqa: E402
+from dv_cli_common import GateError, odata_headers, require_apply_confirm  # noqa: E402
 from seed import _load_env_local, _require_env, acquire_token  # noqa: E402
 
 API = "api/data/v9.2"
@@ -452,12 +452,22 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--auth", default="azcli")
     parser.add_argument("--confirm-dev", action="store_true")
+    parser.add_argument(
+        "--confirm-prod",
+        action="store_true",
+        help="Required when validating against ENMAX Prod.",
+    )
     parser.add_argument("--skip-form", action="store_true")
     args = parser.parse_args()
 
     base = _require_env("DATAVERSE_URL").rstrip("/")
     try:
-        require_dev_confirm(base, confirm_dev=args.confirm_dev, action="validate")
+        require_apply_confirm(
+            base,
+            confirm_dev=args.confirm_dev,
+            confirm_prod=args.confirm_prod,
+            action="validate",
+        )
     except GateError as exc:
         print(exc.message, file=sys.stderr)
         return 2

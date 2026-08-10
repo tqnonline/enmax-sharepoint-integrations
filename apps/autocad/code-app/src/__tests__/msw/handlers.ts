@@ -32,6 +32,7 @@ export const VALID_CONFIG: AppConfig = {
   EnableProcedureCheckIn: true,
   EnableStandardCheckout: true,
   EnableStandardCheckIn: true,
+  EnvironmentBadge: "Production",
 };
 
 function configToRows(cfg: AppConfig) {

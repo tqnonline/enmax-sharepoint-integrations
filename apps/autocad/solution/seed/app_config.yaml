@@ -164,6 +164,13 @@ rows:
     value: "#F7DB9C"
     value_type: String
     description: Marzipan — accent / highlight colour.
+  - key: EnvironmentBadge
+    value: Production
+    value_type: String
+    description: >-
+      Code App header environment chip. Use Production (or Prod / blank) to hide
+      the badge on the live org. Non-production overlays set Sandbox (or DEV/UAT).
+      Read only via App Configuration — never from process environment variables.
   - key: DefaultTheme
     value: system
     value_type: String
