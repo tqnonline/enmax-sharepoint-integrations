@@ -1,0 +1,206 @@
+{
+  "kind": "Stateful",
+  "definition": {
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {},
+    "triggers": {
+      "manual": {
+        "type": "Request",
+        "kind": "Http",
+        "inputs": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "reportType": {
+                "type": "string"
+              },
+              "periodLabel": {
+                "type": "string"
+              },
+              "health": {
+                "type": "string",
+                "enum": [
+                  "OK",
+                  "DEGRADED",
+                  "FAILED"
+                ]
+              },
+              "filesSeen": {
+                "type": "integer"
+              },
+              "filesCopied": {
+                "type": "integer"
+              },
+              "filesSkipped": {
+                "type": "integer"
+              },
+              "filesFailed": {
+                "type": "integer"
+              },
+              "filesAbandonedThisPeriod": {
+                "type": "integer"
+              },
+              "runsExecuted": {
+                "type": "integer"
+              },
+              "runsWithIssues": {
+                "type": "integer"
+              },
+              "abandonedBacklog": {
+                "type": "array"
+              },
+              "csvContent": {
+                "type": "string"
+              },
+              "csvFileName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "reportType",
+              "periodLabel",
+              "health",
+              "filesSeen",
+              "filesCopied",
+              "filesSkipped",
+              "filesFailed",
+              "filesAbandonedThisPeriod",
+              "abandonedBacklog",
+              "csvContent",
+              "csvFileName"
+            ]
+          }
+        }
+      }
+    },
+    "actions": {
+      "Compose_HealthColor": {
+        "type": "Compose",
+        "description": "Business-ready badge color: green=all clear, amber=temporary issues (auto-retrying), red=needs finance/accounting attention. Kept as a single source of truth here (not duplicated per caller) so both the scheduled daily digest and the immediate on-demand digest always render identically.",
+        "inputs": "@if(equals(triggerBody()?['health'], 'FAILED'), '#C0392B', if(equals(triggerBody()?['health'], 'DEGRADED'), '#B45309', '#1A7F37'))",
+        "runAfter": {}
+      },
+      "Compose_HealthLabel": {
+        "type": "Compose",
+        "inputs": "@if(equals(triggerBody()?['health'], 'FAILED'), 'Action Required', if(equals(triggerBody()?['health'], 'DEGRADED'), 'Some Issues - Auto-Retrying', 'All Clear'))",
+        "runAfter": {
+          "Compose_HealthColor": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Compose_SummaryMessage": {
+        "type": "Compose",
+        "description": "Deliberately non-technical language (finance/accounting audience, not IT) - decision, 2026-08-10. Failure category names (ErrorCategory) still appear in the detail table/CSV for anyone who does need the technical detail.",
+        "inputs": "@if(equals(triggerBody()?['health'], 'FAILED'), 'One or more invoices could not be filed to SharePoint and need your attention. Please review the details below - if you need help, contact the Service Desk using the details at the bottom of this email.', if(equals(triggerBody()?['health'], 'DEGRADED'), 'Most invoices were filed to SharePoint successfully. A small number hit a temporary issue and will be retried automatically - no action is needed unless this keeps happening.', 'All invoices detected in this run were filed to SharePoint successfully. No action is needed.'))",
+        "runAfter": {
+          "Compose_HealthLabel": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Build_Abandoned_Rows_Html": {
+        "type": "Select",
+        "description": "'Select' is a Logic Apps ACTION type (per-item mapping over an array), distinct from the nonexistent select() expression function. encodeXmlValue() neutralizes <, >, &, quotes before values land in HTML table cells.",
+        "inputs": {
+          "from": "@triggerBody()?['abandonedBacklog']",
+          "select": "@{concat('<tr><td style=\"padding:8px;border-bottom:1px solid #eeeeee;font-size:12px;color:#333333;\">', encodeXmlValue(string(item()?['FileName'])), '</td><td style=\"padding:8px;border-bottom:1px solid #eeeeee;font-size:12px;color:#333333;\">', encodeXmlValue(string(item()?['ErrorCategory'])), '</td><td style=\"padding:8px;border-bottom:1px solid #eeeeee;font-size:12px;color:#333333;\">', string(item()?['AttemptCount']), '</td><td style=\"padding:8px;border-bottom:1px solid #eeeeee;font-size:12px;color:#333333;\">', encodeXmlValue(string(item()?['RunId'])), '</td></tr>')}"
+        },
+        "runAfter": {
+          "Compose_SummaryMessage": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Compose_ActionRequiredSection": {
+        "type": "Compose",
+        "inputs": "@{if(greater(length(triggerBody()?['abandonedBacklog']), 0), concat('<tr><td style=\"padding:0 32px 8px 32px;\">','<h2 style=\"font-size:14px;color:#C0392B;margin:16px 0 8px 0;\">Needs your attention (', string(length(triggerBody()?['abandonedBacklog'])), ' invoice(s))</h2>','<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"border:1px solid #eeeeee;\">','<tr style=\"background-color:#fbeeee;\"><th style=\"padding:8px;text-align:left;font-size:12px;color:#555555;\">File</th>','<th style=\"padding:8px;text-align:left;font-size:12px;color:#555555;\">Reason</th>','<th style=\"padding:8px;text-align:left;font-size:12px;color:#555555;\">Attempts</th>','<th style=\"padding:8px;text-align:left;font-size:12px;color:#555555;\">Run Reference</th></tr>',join(body('Build_Abandoned_Rows_Html'), ''),'</table>','<p style=\"font-size:12px;color:#666666;margin-top:8px;\">Full detail for every invoice above is in the attached CSV. If you need help, contact the Service Desk (see below).</p>','</td></tr>'), '')}",
+        "runAfter": {
+          "Build_Abandoned_Rows_Html": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Compose_Digest_Html": {
+        "type": "Compose",
+        "description": "Full branded, business-ready email template (decision, 2026-08-10 - user request: proper ENMAX branding, header/footer, non-technical language for finance/accounting recipients, and a clear escalation path). Table-based layout with only inline styles - required for reliable rendering in desktop Outlook, which does not support <style> blocks or modern CSS reliably. Single source of truth: both wf-daily-digest (scheduled) and wf-run-digest (immediate, per on-demand run) call this same workflow, so both always render identically.",
+        "inputs": "@{concat('<html><body style=\"margin:0;padding:0;background-color:#f4f4f4;font-family:Arial,Helvetica,sans-serif;\">','<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color:#f4f4f4;padding:24px 0;\"><tr><td align=\"center\">','<table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color:#ffffff;\">','<tr><td style=\"background-color:#E31837;padding:24px 32px;\">','<span style=\"color:#ffffff;font-size:24px;font-weight:bold;letter-spacing:1px;\">ENMAX</span>','<div style=\"color:#ffffff;font-size:13px;margin-top:4px;\">AP Invoice to SharePoint Integration</div>','</td></tr>','<tr><td style=\"padding:24px 32px 8px 32px;\">','<h1 style=\"margin:0;font-size:18px;color:#222222;\">', encodeXmlValue(string(triggerBody()?['reportType'])), '</h1>','<p style=\"margin:4px 0 16px 0;font-size:13px;color:#666666;\">', encodeXmlValue(string(triggerBody()?['periodLabel'])), '</p>','<span style=\"display:inline-block;padding:6px 14px;border-radius:14px;font-size:13px;font-weight:bold;color:#ffffff;background-color:', outputs('Compose_HealthColor'), ';\">', outputs('Compose_HealthLabel'), '</span>','</td></tr>','<tr><td style=\"padding:8px 32px 16px 32px;\">','<p style=\"font-size:14px;color:#333333;line-height:1.6;margin:0 0 16px 0;\">', outputs('Compose_SummaryMessage'), '</p>','<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">','<tr><td style=\"padding:8px 0;border-bottom:1px solid #eeeeee;font-size:13px;color:#555555;\">Invoices detected</td><td style=\"padding:8px 0;border-bottom:1px solid #eeeeee;font-size:13px;color:#222222;text-align:right;font-weight:bold;\">', string(triggerBody()?['filesSeen']), '</td></tr>','<tr><td style=\"padding:8px 0;border-bottom:1px solid #eeeeee;font-size:13px;color:#555555;\">Filed to SharePoint successfully</td><td style=\"padding:8px 0;border-bottom:1px solid #eeeeee;font-size:13px;color:#1A7F37;text-align:right;font-weight:bold;\">', string(triggerBody()?['filesCopied']), '</td></tr>','<tr><td style=\"padding:8px 0;border-bottom:1px solid #eeeeee;font-size:13px;color:#555555;\">Already on file (no action needed)</td><td style=\"padding:8px 0;border-bottom:1px solid #eeeeee;font-size:13px;color:#222222;text-align:right;font-weight:bold;\">', string(triggerBody()?['filesSkipped']), '</td></tr>','<tr><td style=\"padding:8px 0;border-bottom:1px solid #eeeeee;font-size:13px;color:#555555;\">Temporarily unable to file (retrying automatically)</td><td style=\"padding:8px 0;border-bottom:1px solid #eeeeee;font-size:13px;color:#B45309;text-align:right;font-weight:bold;\">', string(triggerBody()?['filesFailed']), '</td></tr>','<tr><td style=\"padding:8px 0;font-size:13px;color:#555555;\">Needs your attention</td><td style=\"padding:8px 0;font-size:13px;color:#C0392B;text-align:right;font-weight:bold;\">', string(length(triggerBody()?['abandonedBacklog'])), '</td></tr>','</table>','</td></tr>',outputs('Compose_ActionRequiredSection'),'<tr><td style=\"background-color:#f8f8f8;padding:20px 32px;border-top:1px solid #eeeeee;\">','<p style=\"margin:0 0 8px 0;font-size:12px;color:#888888;\">Need help or have a question about an invoice referenced above? Raise a ticket with the Service Desk:</p>','<p style=\"margin:0 0 12px 0;font-size:13px;color:#222222;\"><strong>', appsetting('SUPPORT_CONTACT_EMAIL'), '</strong><br/>Subject: ', appsetting('SUPPORT_CONTACT_SUBJECT'), '</p>','<p style=\"margin:0;font-size:11px;color:#aaaaaa;\">This is an automated message from the ENMAX AP Invoice to SharePoint Integration. Full detail for every invoice referenced above is attached as a CSV.</p>','</td></tr>','</table></td></tr></table></body></html>')}",
+        "runAfter": {
+          "Compose_ActionRequiredSection": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Get_Digest_Recipients": {
+        "type": "ServiceProvider",
+        "inputs": {
+          "parameters": {
+            "secretName": "@appsetting('DIGEST_RECIPIENTS_SECRET_NAME')"
+          },
+          "serviceProviderConfiguration": {
+            "connectionName": "keyvault",
+            "operationId": "getSecret",
+            "serviceProviderId": "/serviceProviders/keyVault"
+          }
+        },
+        "runAfter": {
+          "Compose_Digest_Html": [
+            "Succeeded"
+          ]
+        },
+        "runtimeConfiguration": {
+          "secureData": {
+            "properties": [
+              "outputs"
+            ]
+          }
+        }
+      },
+      "Send_Digest_Email": {
+        "type": "ApiConnection",
+        "inputs": {
+          "host": {
+            "connection": {
+              "referenceName": "office365"
+            }
+          },
+          "method": "post",
+          "path": "/v2/Mail",
+          "body": {
+            "To": "@body('Get_Digest_Recipients')?['value']",
+            "Subject": "@concat('[INV2SP][', triggerBody()?['health'], '] ', triggerBody()?['reportType'], ' - ', string(triggerBody()?['filesCopied']), ' filed, ', string(triggerBody()?['filesFailed']), ' retrying, ', string(length(triggerBody()?['abandonedBacklog'])), ' need attention')",
+            "Body": "@outputs('Compose_Digest_Html')",
+            "Attachments": [
+              {
+                "Name": "@triggerBody()?['csvFileName']",
+                "ContentBytes": "@base64(triggerBody()?['csvContent'])"
+              }
+            ]
+          }
+        },
+        "runAfter": {
+          "Get_Digest_Recipients": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Response": {
+        "type": "Response",
+        "kind": "Http",
+        "inputs": {
+          "statusCode": 200,
+          "body": {
+            "sent": true
+          }
+        },
+        "runAfter": {
+          "Send_Digest_Email": [
+            "Succeeded"
+          ]
+        }
+      }
+    },
+    "outputs": {}
+  }
+}

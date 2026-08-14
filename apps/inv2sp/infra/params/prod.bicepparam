@@ -109,4 +109,13 @@ param maxAttempts = 3
 param alertCooldownMinutes = 60
 param digestScheduleTime = '07:00'
 param digestTimeZone = 'America/Edmonton'
-param deadmanThresholdHours = 2
+param deadmanThresholdHours = 6
+
+// Kill-switch gates - see dev.bicepparam for full rationale. Stay false
+// until Invoke-OnDemandRun.ps1 has validated the engine end-to-end in
+// prod and both office365/sharepointonline connections are authorized.
+param scheduledTriggerEnabled = false
+
+// Digest email footer escalation contact - see dev.bicepparam.
+param supportContactEmail = 'servicedesk@enmax.com'
+param supportContactSubject = 'AP Invoices to SharePoint Integration Services'

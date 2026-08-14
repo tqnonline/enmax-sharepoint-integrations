@@ -35,8 +35,13 @@ param tags object = {}
 @description('Alert recipient email addresses (technical distribution list) - literal values, read from Key Vault secret alertEmailTo by the calling script before this module runs.')
 param alertRecipients array
 
-@description('Hours of no successful run before the dead-man\'s-switch alert fires.')
-param deadmanThresholdHours int = 2
+@description('Hours of no successful run before the dead-man\'s-switch alert fires. Must resolve to a valid Microsoft.Insights/metricAlerts windowSize (PT1H, PT6H, PT12H, or P1D) - Azure Monitor does not accept arbitrary hour values.')
+@allowed([
+  1
+  6
+  12
+])
+param deadmanThresholdHours int = 6
 
 @description('Environment short name used in alert naming, e.g. T or P.')
 param environmentSuffix string
@@ -109,7 +114,7 @@ resource triggerFailuresAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
   location: 'global'
   tags: tags
   properties: {
-    description: 'Fires when any workflow trigger fails - typically indicates the gateway or file share is unreachable, meaning the workflow never starts and cannot self-report.'
+    description: 'Fires when any workflow trigger fails - typically indicates the gateway or file share is unreachable, meaning the workflow never starts and cannot self-report. Split by workflowName (decision, 2026-08-11 - user request: business-friendly alerts should say which workflow failed) so Azure Monitor creates one alert instance per affected workflow and the fired notification names it directly, instead of one generic site-wide alert with no indication of which workflow is actually failing. Azure Monitor does not expose a per-action dimension on this metric at all (confirmed via az monitor metrics list-definitions) - only workflowName is available, so "which action failed" is not achievable via this native alert; the workflow name plus the fired time is enough to go straight to that workflow\'s own run history.'
     severity: 1
     enabled: true
     scopes: [
@@ -128,6 +133,13 @@ resource triggerFailuresAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
           threshold: 0
           timeAggregation: 'Total'
           criterionType: 'StaticThresholdCriterion'
+          dimensions: [
+            {
+              name: 'workflowName'
+              operator: 'Include'
+              values: ['*']
+            }
+          ]
         }
       ]
     }
@@ -145,7 +157,7 @@ resource runFailuresAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
   location: 'global'
   tags: tags
   properties: {
-    description: 'Backstop for in-workflow error handling - fires on any run-level (not per-file) failure within the window, across any workflow hosted on this site.'
+    description: 'Backstop for in-workflow error handling - fires on any run-level (not per-file) failure within the window. Split by workflowName - see triggerFailuresAlert above for full rationale (same decision, same limitation: no per-action dimension exists on this metric).'
     severity: 2
     enabled: true
     scopes: [
@@ -164,6 +176,13 @@ resource runFailuresAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
           threshold: 0
           timeAggregation: 'Total'
           criterionType: 'StaticThresholdCriterion'
+          dimensions: [
+            {
+              name: 'workflowName'
+              operator: 'Include'
+              values: ['*']
+            }
+          ]
         }
       ]
     }

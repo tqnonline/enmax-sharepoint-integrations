@@ -1,0 +1,6 @@
+{
+  "maxFileSizeMB": {
+    "type": "int",
+    "value": 30
+  }
+}

@@ -22,10 +22,20 @@
             "properties": {
               "triggerType": {
                 "type": "string",
-                "enum": ["Scheduled", "FileTrigger", "OnDemand"]
+                "enum": [
+                  "Scheduled",
+                  "FileTrigger",
+                  "OnDemand"
+                ]
+              },
+              "triggeringWorkflow": {
+                "type": "string",
+                "description": "Actual caller workflow name (workflow().name from the caller, e.g. 'wf-scheduled-copy'/'wf-ondemand-copy') - added 2026-08-11, user request: CSV/audit trail should show which WORKFLOW copied each file, not just the generic triggerType enum. Optional (not in 'required') so this trigger schema stays backward compatible if a future caller omits it - all writes below use coalesce(..., 'Unknown') as the fallback."
               }
             },
-            "required": ["triggerType"]
+            "required": [
+              "triggerType"
+            ]
           }
         },
         "operationOptions": "None",
@@ -41,7 +51,11 @@
         "type": "InitializeVariable",
         "inputs": {
           "variables": [
-            { "name": "RunId", "type": "string", "value": "@{guid()}" }
+            {
+              "name": "RunId",
+              "type": "string",
+              "value": "@{guid()}"
+            }
           ]
         },
         "runAfter": {}
@@ -50,46 +64,112 @@
         "type": "InitializeVariable",
         "inputs": {
           "variables": [
-            { "name": "StartTimeUtc", "type": "string", "value": "@{utcNow()}" }
+            {
+              "name": "StartTimeUtc",
+              "type": "string",
+              "value": "@{utcNow()}"
+            }
           ]
         },
-        "runAfter": { "Initialize_RunId": ["Succeeded"] }
+        "runAfter": {
+          "Initialize_RunId": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Initialize_TriggeringWorkflow": {
+        "type": "InitializeVariable",
+        "description": "Captured once per run (constant for the whole run, not per-file) - see the trigger schema description for rationale. coalesce() falls back to 'Unknown' if a caller doesn't send it, so this never blocks the run even if a future caller forgets the field.",
+        "inputs": {
+          "variables": [
+            {
+              "name": "TriggeringWorkflow",
+              "type": "string",
+              "value": "@{coalesce(triggerBody()?['triggeringWorkflow'], 'Unknown')}"
+            }
+          ]
+        },
+        "runAfter": {
+          "Initialize_StartTime": [
+            "Succeeded"
+          ]
+        }
       },
       "Initialize_Counters": {
         "type": "InitializeVariable",
         "inputs": {
           "variables": [
-            { "name": "FilesSeen", "type": "integer", "value": 0 },
-            { "name": "FilesCopied", "type": "integer", "value": 0 },
-            { "name": "FilesSkipped", "type": "integer", "value": 0 },
-            { "name": "FilesFailed", "type": "integer", "value": 0 },
-            { "name": "FilesAbandoned", "type": "integer", "value": 0 }
+            {
+              "name": "FilesSeen",
+              "type": "integer",
+              "value": 0
+            },
+            {
+              "name": "FilesCopied",
+              "type": "integer",
+              "value": 0
+            },
+            {
+              "name": "FilesSkipped",
+              "type": "integer",
+              "value": 0
+            },
+            {
+              "name": "FilesFailed",
+              "type": "integer",
+              "value": 0
+            },
+            {
+              "name": "FilesAbandoned",
+              "type": "integer",
+              "value": 0
+            }
           ]
         },
-        "runAfter": { "Initialize_StartTime": ["Succeeded"] }
+        "runAfter": {
+          "Initialize_TriggeringWorkflow": [
+            "Succeeded"
+          ]
+        }
       },
       "Initialize_AbandonedThisRun": {
         "type": "InitializeVariable",
         "inputs": {
           "variables": [
-            { "name": "AbandonedFilesThisRun", "type": "array", "value": [] },
-            { "name": "NewlyFailedFilesThisRun", "type": "array", "value": [] }
+            {
+              "name": "AbandonedFilesThisRun",
+              "type": "array",
+              "value": []
+            },
+            {
+              "name": "NewlyFailedFilesThisRun",
+              "type": "array",
+              "value": []
+            }
           ]
         },
-        "runAfter": { "Initialize_Counters": ["Succeeded"] }
+        "runAfter": {
+          "Initialize_Counters": [
+            "Succeeded"
+          ]
+        }
       },
       "List_Files_In_Folder": {
         "type": "ApiConnection",
+        "description": "No runtimeConfiguration.paginationPolicy (real bug, found live 2026-08-03, removed): this connector's ListFolder operation returns a raw array (confirmed against the real Swagger spec, PLAN.md evidence log), not the {value:[...], nextLink} shape Logic Apps' pagination handling requires. Requesting pagination against a non-paginated response fails every single call - not just when the folder has many files - with 'InvalidPageResponse: response is missing a property value of type array'. This silently masked whether the engine could ever list a folder at all, since a downstream fix (accepting Skipped in later runAfter conditions) let the run complete 'successfully' with 0 files regardless of the real folder contents.",
         "inputs": {
           "host": {
-            "connection": { "referenceName": "filesystem" }
+            "connection": {
+              "referenceName": "filesystem"
+            }
           },
           "method": "get",
           "path": "/datasets/default/folders/@{encodeURIComponent(appsetting('FILESHARE_TRIGGER_FOLDER'))}"
         },
-        "runAfter": { "Initialize_AbandonedThisRun": ["Succeeded"] },
-        "runtimeConfiguration": {
-          "paginationPolicy": { "minimumItemCount": 1000 }
+        "runAfter": {
+          "Initialize_AbandonedThisRun": [
+            "Succeeded"
+          ]
         }
       },
       "For_Each_File": {
@@ -98,19 +178,30 @@
         "actions": {
           "Increment_FilesSeen": {
             "type": "IncrementVariable",
-            "inputs": { "name": "FilesSeen", "value": 1 },
+            "inputs": {
+              "name": "FilesSeen",
+              "value": 1
+            },
             "runAfter": {}
           },
           "Compose_PartitionKey": {
             "type": "Compose",
             "inputs": "@formatDateTime(items('For_Each_File')?['LastModified'], 'yyyyMM')",
-            "runAfter": { "Increment_FilesSeen": ["Succeeded"] }
+            "runAfter": {
+              "Increment_FilesSeen": [
+                "Succeeded"
+              ]
+            }
           },
           "Compose_DedupKey": {
             "type": "Compose",
             "description": "Deterministic dedup key. NOTE: Workflow Definition Language has no hash/crypto function (verified against the full function reference - no Cryptography category exists). Uses base64() of the concatenated identity tuple instead, made Table-RowKey-safe by replacing '+' and '/' (base64's only characters disallowed in an Azure Table RowKey). This is reversible (unlike a true hash) which is a debugging advantage, not a weakness, for this dedup use case - we need determinism and uniqueness, not irreversibility.",
             "inputs": "@replace(replace(base64(concat(toLower(items('For_Each_File')?['Path']), '|', items('For_Each_File')?['Name'], '|', string(items('For_Each_File')?['LastModified']), '|', string(items('For_Each_File')?['Size']))), '/', '_'), '+', '-')",
-            "runAfter": { "Compose_PartitionKey": ["Succeeded"] }
+            "runAfter": {
+              "Compose_PartitionKey": [
+                "Succeeded"
+              ]
+            }
           },
           "Query_Existing_Record": {
             "type": "ServiceProvider",
@@ -125,81 +216,98 @@
                 "serviceProviderId": "/serviceProviders/azureTables"
               }
             },
-            "runAfter": { "Compose_DedupKey": ["Succeeded"] }
+            "runAfter": {
+              "Compose_DedupKey": [
+                "Succeeded"
+              ]
+            }
           },
           "Compose_ExistingStatus": {
             "type": "Compose",
             "description": "Correctness fix (review finding, 2026-08-02): this was previously an InitializeVariable placed inside a Foreach loop. Logic Apps variables are workflow-instance-scoped, not per-iteration - Microsoft's own guidance is that a variable must be initialized exactly once, at the top level, never inside a repeating action. Re-initializing on iteration 2+ is undefined/invalid. Compose has no such restriction since it produces a fresh per-iteration output, not a mutable variable.",
             "inputs": "@{if(greater(length(body('Query_Existing_Record')?['entities']), 0), first(body('Query_Existing_Record')?['entities'])?['Status'], 'New')}",
-            "runAfter": { "Query_Existing_Record": ["Succeeded"] }
+            "runAfter": {
+              "Query_Existing_Record": [
+                "Succeeded"
+              ]
+            }
           },
           "Compose_ExistingAttemptCount": {
             "type": "Compose",
-            "inputs": "@{if(greater(length(body('Query_Existing_Record')?['entities']), 0), first(body('Query_Existing_Record')?['entities'])?['AttemptCount'], 0)}",
-            "runAfter": { "Compose_ExistingStatus": ["Succeeded"] }
+            "inputs": "@if(greater(length(body('Query_Existing_Record')?['entities']), 0), first(body('Query_Existing_Record')?['entities'])?['AttemptCount'], 0)",
+            "runAfter": {
+              "Compose_ExistingStatus": [
+                "Succeeded"
+              ]
+            }
           },
-          "Already_Terminal": {
+          "Is_Folder": {
             "type": "If",
+            "description": "Real bug (found live, 2026-08-10): List_Files_In_Folder's response can include subfolders (IsFolder: true) alongside files - confirmed live, a folder named 'New folder' existed in the dev trigger folder. The engine had no folder check at all, so it attempted Get_File_Content (GetFileContentByPath) on the folder entry, which fails with 403 Forbidden (not retryable - a folder will never successfully return file content). This is not an error condition - folders are an expected, legitimate reality of a file system folder, not a data quality problem - so it counts as FilesSkipped (same bucket as already-terminal items), not FilesFailed/FilesAbandoned, and is not written to ProcessedFiles at all (there is nothing meaningful to track per-folder).",
             "expression": {
-              "or": [
-                { "equals": ["@outputs('Compose_ExistingStatus')", "Succeeded"] },
-                { "equals": ["@outputs('Compose_ExistingStatus')", "Abandoned"] }
+              "equals": [
+                "@items('For_Each_File')?['IsFolder']",
+                true
               ]
             },
             "actions": {
-              "Increment_FilesSkipped_Terminal": {
+              "Increment_FilesSkipped_Folder": {
                 "type": "IncrementVariable",
-                "inputs": { "name": "FilesSkipped", "value": 1 },
+                "inputs": {
+                  "name": "FilesSkipped",
+                  "value": 1
+                },
                 "runAfter": {}
               }
             },
             "else": {
               "actions": {
-                "Validate_File": {
-                  "type": "Compose",
-                  "description": "Pre-flight validation. Neither check is retryable - an invalid name or oversized file will never succeed on retry, so these classify straight to Abandoned via a dedicated branch below rather than attempting a copy at all.",
-                  "inputs": {
-                    "isTooLarge": "@greater(items('For_Each_File')?['Size'], mul(parameters('maxFileSizeMB'), 1048576))",
-                    "hasIllegalName": "@not(equals(items('For_Each_File')?['Name'], replace(replace(replace(replace(replace(replace(replace(replace(items('For_Each_File')?['Name'], '<', ''), '>', ''), ':', ''), '\"', ''), '/', ''), '\\', ''), '|', ''), '?', ''), '*', ''))"
-                  },
-                  "runAfter": {}
-                },
-                "Check_Validation": {
+                "Already_Terminal": {
                   "type": "If",
-                  "description": "Correctness fix (review finding, 2026-08-02): previously used a Terminate action for invalid files, which stops the ENTIRE workflow instance (all remaining files in this run), not just the current file. Restructured so an invalid file is recorded as Abandoned directly and the loop continues to the next file - no Scope, no Terminate, no retry-count logic needed since the outcome is immediately terminal.",
                   "expression": {
                     "or": [
-                      { "equals": ["@outputs('Validate_File')?['isTooLarge']", true] },
-                      { "equals": ["@outputs('Validate_File')?['hasIllegalName']", true] }
+                      {
+                        "equals": [
+                          "@outputs('Compose_ExistingStatus')",
+                          "Succeeded"
+                        ]
+                      },
+                      {
+                        "equals": [
+                          "@outputs('Compose_ExistingStatus')",
+                          "Abandoned"
+                        ]
+                      }
                     ]
                   },
                   "actions": {
-                    "Compose_InvalidCategory": {
-                      "type": "Compose",
-                      "inputs": "@if(outputs('Validate_File')?['isTooLarge'], 'FileTooLarge', 'InvalidFileName')",
+                    "Increment_FilesSkipped_Terminal": {
+                      "type": "IncrementVariable",
+                      "inputs": {
+                        "name": "FilesSkipped",
+                        "value": 1
+                      },
                       "runAfter": {}
                     },
-                    "Upsert_Abandoned_Invalid": {
+                    "Upsert_FileRunEvent_Skipped": {
                       "type": "ServiceProvider",
+                      "description": "Per-file, per-run audit event (decision, 2026-08-11 - user request: durable record of which run identified/ingested which file, kept indefinitely). ProcessedFiles only ever stores a file's CURRENT status (upserted in place), so it has no way to represent a Skipped occurrence at all - this table is additive, purely for traceability and for wf-daily-digest's 'Already on file' count, and never read by wf-copy-invoices itself.",
                       "inputs": {
                         "parameters": {
-                          "tableName": "ProcessedFiles",
+                          "tableName": "FileRunEvents",
                           "entity": {
-                            "PartitionKey": "@outputs('Compose_PartitionKey')",
-                            "RowKey": "@outputs('Compose_DedupKey')",
-                            "SourcePath": "@items('For_Each_File')?['Path']",
-                            "FileName": "@items('For_Each_File')?['Name']",
-                            "DestinationUrl": "",
-                            "IntendedDestinationPath": "@concat(appsetting('SHAREPOINT_TARGET_FOLDER'), '/', items('For_Each_File')?['Name'])",
-                            "Status": "Abandoned",
-                            "AttemptCount": 1,
-                            "ErrorCategory": "@outputs('Compose_InvalidCategory')",
-                            "ErrorMessage": "@concat('Pre-flight validation failed: ', outputs('Compose_InvalidCategory'), ' (not retryable)')",
-                            "FirstSeenUtc": "@variables('StartTimeUtc')",
-                            "LastAttemptUtc": "@utcNow()",
-                            "CompletedUtc": "@utcNow()",
+                            "PartitionKey": "@formatDateTime(variables('StartTimeUtc'), 'yyyyMM')",
+                            "RowKey": "@concat(variables('RunId'), '_', outputs('Compose_DedupKey'))",
                             "RunId": "@variables('RunId')",
-                            "TriggerType": "@triggerBody()?['triggerType']"
+                            "DedupKey": "@outputs('Compose_DedupKey')",
+                            "FileName": "@items('For_Each_File')?['Name']",
+                            "SourcePath": "@items('For_Each_File')?['Path']",
+                            "Outcome": "Skipped",
+                            "TriggerType": "@triggerBody()?['triggerType']",
+                            "TriggeredByWorkflow": "@variables('TriggeringWorkflow')",
+                            "EventTimeUtc": "@utcNow()",
+                            "AttemptCount": "@outputs('Compose_ExistingAttemptCount')",
+                            "ErrorCategory": ""
                           }
                         },
                         "serviceProviderConfiguration": {
@@ -208,129 +316,50 @@
                           "serviceProviderId": "/serviceProviders/azureTables"
                         }
                       },
-                      "runAfter": { "Compose_InvalidCategory": ["Succeeded"] }
-                    },
-                    "Increment_FilesAbandoned_Invalid": {
-                      "type": "IncrementVariable",
-                      "inputs": { "name": "FilesAbandoned", "value": 1 },
-                      "runAfter": { "Upsert_Abandoned_Invalid": ["Succeeded"] }
-                    },
-                    "Append_AbandonedThisRun_Invalid": {
-                      "type": "AppendToArrayVariable",
-                      "inputs": {
-                        "name": "AbandonedFilesThisRun",
-                        "value": {
-                          "fileName": "@items('For_Each_File')?['Name']",
-                          "sourcePath": "@items('For_Each_File')?['Path']",
-                          "errorCategory": "@outputs('Compose_InvalidCategory')",
-                          "attemptCount": 1
-                        }
-                      },
-                      "runAfter": { "Increment_FilesAbandoned_Invalid": ["Succeeded"] }
+                      "runAfter": {
+                        "Increment_FilesSkipped_Terminal": [
+                          "Succeeded"
+                        ]
+                      }
                     }
                   },
                   "else": {
                     "actions": {
-                      "Attempt_Copy_Scope": {
-                        "type": "Scope",
-                        "actions": {
-                          "Get_File_Content": {
-                            "type": "ApiConnection",
-                            "inputs": {
-                              "host": { "connection": { "referenceName": "filesystem" } },
-                              "method": "get",
-                              "path": "/datasets/default/GetFileContentByPath",
-                              "queries": {
-                                "path": "@items('For_Each_File')?['Path']",
-                                "inferContentType": true
-                              }
-                            },
-                            "runAfter": {},
-                            "runtimeConfiguration": {
-                              "secureData": { "properties": ["outputs"] }
-                            }
-                          },
-                          "Check_SharePoint_Existing": {
-                            "type": "ApiConnection",
-                            "inputs": {
-                              "host": { "connection": { "referenceName": "sharepointonline" } },
-                              "method": "get",
-                              "path": "/datasets/@{encodeURIComponent(encodeURIComponent(appsetting('SHAREPOINT_SITE_URL')))}/GetFileByPath",
-                              "queries": {
-                                "path": "@concat(appsetting('SHAREPOINT_TARGET_FOLDER'), '/', items('For_Each_File')?['Name'])"
-                              }
-                            },
-                            "runAfter": { "Get_File_Content": ["Succeeded"] },
-                            "runtimeConfiguration": {
-                              "secureData": { "properties": ["outputs"] }
-                            }
-                          },
-                          "Already_In_SharePoint": {
-                            "type": "If",
-                            "expression": {
-                              "equals": ["@actions('Check_SharePoint_Existing')?['status']", "Succeeded"]
-                            },
-                            "actions": {
-                              "Record_Already_Uploaded": {
-                                "type": "Compose",
-                                "description": "Second guard: the file is already in SharePoint even though our own state said otherwise (state store was reset/lost). Self-heals the ProcessedFiles record to Succeeded rather than re-uploading.",
-                                "inputs": "noted-already-exists",
-                                "runAfter": {}
-                              }
-                            },
-                            "else": {
-                              "actions": {
-                                "Create_File": {
-                                  "type": "ApiConnection",
-                                  "inputs": {
-                                    "host": { "connection": { "referenceName": "sharepointonline" } },
-                                    "method": "post",
-                                    "path": "/datasets/@{encodeURIComponent(encodeURIComponent(appsetting('SHAREPOINT_SITE_URL')))}/files",
-                                    "queries": {
-                                      "folderPath": "@appsetting('SHAREPOINT_TARGET_FOLDER')",
-                                      "name": "@items('For_Each_File')?['Name']"
-                                    },
-                                    "body": "@body('Get_File_Content')"
-                                  },
-                                  "runAfter": {},
-                                  "runtimeConfiguration": {
-                                    "secureData": { "properties": ["inputs"] }
-                                  }
-                                },
-                                "Patch_Content_Type": {
-                                  "type": "ApiConnection",
-                                  "inputs": {
-                                    "host": { "connection": { "referenceName": "sharepointonline" } },
-                                    "method": "patch",
-                                    "path": "/datasets/@{encodeURIComponent(encodeURIComponent(appsetting('SHAREPOINT_SITE_URL')))}/tables/@{encodeURIComponent(appsetting('SHAREPOINT_LIBRARY_NAME'))}/items/@{encodeURIComponent(body('Create_File')?['ItemId'])}/patchfileitem",
-                                    "body": {
-                                      "ContentType": "@appsetting('SHAREPOINT_CONTENT_TYPE')",
-                                      "ContentTypeId": "@appsetting('SHAREPOINT_CONTENT_TYPE_ID')"
-                                    }
-                                  },
-                                  "runAfter": { "Create_File": ["Succeeded"] },
-                                  "runtimeConfiguration": {
-                                    "secureData": { "properties": ["inputs", "outputs"] }
-                                  }
-                                }
-                              }
-                            },
-                            "runAfter": { "Check_SharePoint_Existing": ["Succeeded", "Failed"] }
-                          }
+                      "Validate_File": {
+                        "type": "Compose",
+                        "description": "Pre-flight validation. Neither check is retryable - an invalid name or oversized file will never succeed on retry, so these classify straight to Abandoned via a dedicated branch below rather than attempting a copy at all. hasIllegalName real bug (found live, 2026-08-10): the replace() chain had only 8 nested calls for the 9 illegal characters (< > : \" / \\ | ? *) - the final '*' pair was dangling as extra, invalid arguments to the outer equals() instead of wrapped in its own replace(), so this Compose action failed outright on every single item (masked until now - the source folder was empty in every prior test). Fixed: 9 nested replace() calls, one per character.",
+                        "inputs": {
+                          "isTooLarge": "@greater(items('For_Each_File')?['Size'], mul(parameters('maxFileSizeMB'), 1048576))",
+                          "hasIllegalName": "@not(equals(items('For_Each_File')?['Name'], replace(replace(replace(replace(replace(replace(replace(replace(replace(items('For_Each_File')?['Name'], '<', ''), '>', ''), ':', ''), '\"', ''), '/', ''), '\\', ''), '|', ''), '?', ''), '*', '')))"
                         },
                         "runAfter": {}
                       },
-                      "On_Copy_Success": {
+                      "Check_Validation": {
                         "type": "If",
-                        "description": "Correctness fix, round 2 (review finding M1, 2026-08-02): checking the Scope's own aggregate status (actions('Attempt_Copy_Scope')?['status']) was itself wrong - Check_SharePoint_Existing is EXPECTED to fail (404) for every genuinely new file, which is the common case, and that expected/handled failure makes the Scope's own aggregate status 'Failed' even when the subsequent Create_File+Patch_Content_Type succeed. Fixed by checking the two actual terminal actions' own individual statuses directly instead of the ambiguous scope aggregate: either the file already existed (Check_SharePoint_Existing itself succeeded) or the upload path completed (Patch_Content_Type succeeded). This is unambiguous regardless of Logic Apps' scope-status-inheritance rules. Attempt_Copy_Scope is retained only as a grouping container so Compose_ErrorCategory below can dump its full string representation for classification - its own status field is no longer used for the success/failure decision.",
+                        "description": "Correctness fix (review finding, 2026-08-02): previously used a Terminate action for invalid files, which stops the ENTIRE workflow instance (all remaining files in this run), not just the current file. Restructured so an invalid file is recorded as Abandoned directly and the loop continues to the next file - no Scope, no Terminate, no retry-count logic needed since the outcome is immediately terminal.",
                         "expression": {
                           "or": [
-                            { "equals": ["@actions('Check_SharePoint_Existing')?['status']", "Succeeded"] },
-                            { "equals": ["@actions('Patch_Content_Type')?['status']", "Succeeded"] }
+                            {
+                              "equals": [
+                                "@outputs('Validate_File')?['isTooLarge']",
+                                true
+                              ]
+                            },
+                            {
+                              "equals": [
+                                "@outputs('Validate_File')?['hasIllegalName']",
+                                true
+                              ]
+                            }
                           ]
                         },
                         "actions": {
-                          "Upsert_Succeeded": {
+                          "Compose_InvalidCategory": {
+                            "type": "Compose",
+                            "inputs": "@if(outputs('Validate_File')?['isTooLarge'], 'FileTooLarge', 'InvalidFileName')",
+                            "runAfter": {}
+                          },
+                          "Upsert_Abandoned_Invalid": {
                             "type": "ServiceProvider",
                             "inputs": {
                               "parameters": {
@@ -340,17 +369,18 @@
                                   "RowKey": "@outputs('Compose_DedupKey')",
                                   "SourcePath": "@items('For_Each_File')?['Path']",
                                   "FileName": "@items('For_Each_File')?['Name']",
-                                  "DestinationUrl": "@concat(appsetting('SHAREPOINT_SITE_URL'), appsetting('SHAREPOINT_TARGET_FOLDER'), '/', items('For_Each_File')?['Name'])",
+                                  "DestinationUrl": "",
                                   "IntendedDestinationPath": "@concat(appsetting('SHAREPOINT_TARGET_FOLDER'), '/', items('For_Each_File')?['Name'])",
-                                  "Status": "Succeeded",
-                                  "AttemptCount": "@add(outputs('Compose_ExistingAttemptCount'), 1)",
-                                  "ErrorCategory": "",
-                                  "ErrorMessage": "",
+                                  "Status": "Abandoned",
+                                  "AttemptCount": 1,
+                                  "ErrorCategory": "@outputs('Compose_InvalidCategory')",
+                                  "ErrorMessage": "@concat('Pre-flight validation failed: ', outputs('Compose_InvalidCategory'), ' (not retryable)')",
                                   "FirstSeenUtc": "@variables('StartTimeUtc')",
                                   "LastAttemptUtc": "@utcNow()",
                                   "CompletedUtc": "@utcNow()",
                                   "RunId": "@variables('RunId')",
-                                  "TriggerType": "@triggerBody()?['triggerType']"
+                                  "TriggerType": "@triggerBody()?['triggerType']",
+                                  "TriggeredByWorkflow": "@variables('TriggeringWorkflow')"
                                 }
                               },
                               "serviceProviderConfiguration": {
@@ -359,87 +389,208 @@
                                 "serviceProviderId": "/serviceProviders/azureTables"
                               }
                             },
-                            "runAfter": {}
+                            "runAfter": {
+                              "Compose_InvalidCategory": [
+                                "Succeeded"
+                              ]
+                            }
                           },
-                          "Increment_FilesCopied": {
+                          "Increment_FilesAbandoned_Invalid": {
                             "type": "IncrementVariable",
-                            "inputs": { "name": "FilesCopied", "value": 1 },
-                            "runAfter": { "Upsert_Succeeded": ["Succeeded"] }
+                            "inputs": {
+                              "name": "FilesAbandoned",
+                              "value": 1
+                            },
+                            "runAfter": {
+                              "Upsert_Abandoned_Invalid": [
+                                "Succeeded"
+                              ]
+                            }
+                          },
+                          "Upsert_FileRunEvent_AbandonedInvalid": {
+                            "type": "ServiceProvider",
+                            "description": "Per-file, per-run audit event - see Upsert_FileRunEvent_Skipped for rationale.",
+                            "inputs": {
+                              "parameters": {
+                                "tableName": "FileRunEvents",
+                                "entity": {
+                                  "PartitionKey": "@formatDateTime(variables('StartTimeUtc'), 'yyyyMM')",
+                                  "RowKey": "@concat(variables('RunId'), '_', outputs('Compose_DedupKey'))",
+                                  "RunId": "@variables('RunId')",
+                                  "DedupKey": "@outputs('Compose_DedupKey')",
+                                  "FileName": "@items('For_Each_File')?['Name']",
+                                  "SourcePath": "@items('For_Each_File')?['Path']",
+                                  "Outcome": "Abandoned",
+                                  "TriggerType": "@triggerBody()?['triggerType']",
+                                  "TriggeredByWorkflow": "@variables('TriggeringWorkflow')",
+                                  "EventTimeUtc": "@utcNow()",
+                                  "AttemptCount": 1,
+                                  "ErrorCategory": "@outputs('Compose_InvalidCategory')"
+                                }
+                              },
+                              "serviceProviderConfiguration": {
+                                "connectionName": "azureTableConnection",
+                                "operationId": "upsertEntity",
+                                "serviceProviderId": "/serviceProviders/azureTables"
+                              }
+                            },
+                            "runAfter": {
+                              "Increment_FilesAbandoned_Invalid": [
+                                "Succeeded"
+                              ]
+                            }
+                          },
+                          "Append_AbandonedThisRun_Invalid": {
+                            "type": "AppendToArrayVariable",
+                            "inputs": {
+                              "name": "AbandonedFilesThisRun",
+                              "value": {
+                                "fileName": "@items('For_Each_File')?['Name']",
+                                "sourcePath": "@items('For_Each_File')?['Path']",
+                                "errorCategory": "@outputs('Compose_InvalidCategory')",
+                                "attemptCount": 1
+                              }
+
+                            },
+                            "runAfter": {
+                              "Upsert_FileRunEvent_AbandonedInvalid": [
+                                "Succeeded"
+                              ]
+                            }
                           }
                         },
                         "else": {
                           "actions": {
-                            "Compose_ErrorCategory": {
-                              "type": "Compose",
-                              "description": "Error classification v1 - deliberately simple, HTTP-status-driven. Expected to be refined once real production error patterns are observed (see docs/design/error-taxonomy.md). Not a shortcut: a wrong-but-labeled category is far more useful in the digest than an unclassified stack trace.",
-                              "inputs": "@{if(contains(string(actions('Attempt_Copy_Scope')), '401'), 'AuthExpired', if(contains(string(actions('Attempt_Copy_Scope')), '403'), 'PermissionDenied', if(or(contains(string(actions('Attempt_Copy_Scope')), '502'), contains(string(actions('Attempt_Copy_Scope')), '503'), contains(string(actions('Attempt_Copy_Scope')), '504')), 'GatewayUnavailable', if(contains(string(actions('Attempt_Copy_Scope')), '404'), 'SourcePathNotFound', if(contains(string(actions('Attempt_Copy_Scope')), '409'), 'NameConflict', if(contains(string(actions('Attempt_Copy_Scope')), '423'), 'FileLocked', if(or(contains(string(actions('Attempt_Copy_Scope')), '429'), contains(string(actions('Attempt_Copy_Scope')), '500')), 'Transient', 'Unclassified')))))))}"
-                            },
-                            "runAfter": {}
-                          },
-                          "Compose_NewAttemptCount": {
-                            "type": "Compose",
-                            "inputs": "@add(outputs('Compose_ExistingAttemptCount'), 1)",
-                            "runAfter": { "Compose_ErrorCategory": ["Succeeded"] }
-                          },
-                          "Is_Attempts_Exhausted": {
-                            "type": "If",
-                            "expression": {
-                              "greaterOrEquals": ["@outputs('Compose_NewAttemptCount')", "@int(appsetting('MAX_ATTEMPTS'))"]
-                            },
-                            "actions": {
-                              "Upsert_Abandoned": {
-                                "type": "ServiceProvider",
-                                "inputs": {
-                                  "parameters": {
-                                    "tableName": "ProcessedFiles",
-                                    "entity": {
-                                      "PartitionKey": "@outputs('Compose_PartitionKey')",
-                                      "RowKey": "@outputs('Compose_DedupKey')",
-                                      "SourcePath": "@items('For_Each_File')?['Path']",
-                                      "FileName": "@items('For_Each_File')?['Name']",
-                                      "DestinationUrl": "",
-                                      "IntendedDestinationPath": "@concat(appsetting('SHAREPOINT_TARGET_FOLDER'), '/', items('For_Each_File')?['Name'])",
-                                      "Status": "Abandoned",
-                                      "AttemptCount": "@outputs('Compose_NewAttemptCount')",
-                                      "ErrorCategory": "@outputs('Compose_ErrorCategory')",
-                                      "ErrorMessage": "@take(string(actions('Attempt_Copy_Scope')), 4000)",
-                                      "FirstSeenUtc": "@variables('StartTimeUtc')",
-                                      "LastAttemptUtc": "@utcNow()",
-                                      "CompletedUtc": "@utcNow()",
-                                      "RunId": "@variables('RunId')",
-                                      "TriggerType": "@triggerBody()?['triggerType']"
+                            "Attempt_Copy_Scope": {
+                              "type": "Scope",
+                              "actions": {
+                                "Get_File_Content": {
+                                  "type": "ApiConnection",
+                                  "inputs": {
+                                    "host": {
+                                      "connection": {
+                                        "referenceName": "filesystem"
+                                      }
+                                    },
+                                    "method": "get",
+                                    "path": "/datasets/default/GetFileContentByPath",
+                                    "queries": {
+                                      "path": "@items('For_Each_File')?['Path']",
+                                      "inferContentType": true
                                     }
                                   },
-                                  "serviceProviderConfiguration": {
-                                    "connectionName": "azureTableConnection",
-                                    "operationId": "upsertEntity",
-                                    "serviceProviderId": "/serviceProviders/azureTables"
+                                  "runAfter": {},
+                                  "runtimeConfiguration": {
+                                    "secureData": {
+                                      "properties": [
+                                        "outputs"
+                                      ]
+                                    }
                                   }
                                 },
-                                "runAfter": {}
-                              },
-                              "Increment_FilesAbandoned": {
-                                "type": "IncrementVariable",
-                                "inputs": { "name": "FilesAbandoned", "value": 1 },
-                                "runAfter": { "Upsert_Abandoned": ["Succeeded"] }
-                              },
-                              "Append_AbandonedThisRun": {
-                                "type": "AppendToArrayVariable",
-                                "inputs": {
-                                  "name": "AbandonedFilesThisRun",
-                                  "value": {
-                                    "fileName": "@items('For_Each_File')?['Name']",
-                                    "sourcePath": "@items('For_Each_File')?['Path']",
-                                    "errorCategory": "@outputs('Compose_ErrorCategory')",
-                                    "attemptCount": "@outputs('Compose_NewAttemptCount')"
+                                "Check_SharePoint_Existing": {
+                                  "type": "ApiConnection",
+                                  "inputs": {
+                                    "host": {
+                                      "connection": {
+                                        "referenceName": "sharepointonline"
+                                      }
+                                    },
+                                    "method": "get",
+                                    "path": "/datasets/@{encodeURIComponent(encodeURIComponent(appsetting('SHAREPOINT_SITE_URL')))}/GetFileByPath",
+                                    "queries": {
+                                      "path": "@concat(appsetting('SHAREPOINT_TARGET_FOLDER'), '/', items('For_Each_File')?['Name'])"
+                                    }
+                                  },
+                                  "runAfter": {
+                                    "Get_File_Content": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "runtimeConfiguration": {
+                                    "secureData": {
+                                      "properties": [
+                                        "outputs"
+                                      ]
+                                    }
                                   }
                                 },
-                                "runAfter": { "Increment_FilesAbandoned": ["Succeeded"] }
-                              }
+                                "Already_In_SharePoint": {
+                                  "type": "If",
+                                  "expression": {
+                                    "equals": [
+                                      "@actions('Check_SharePoint_Existing')?['status']",
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "actions": {
+                                    "Record_Already_Uploaded": {
+                                      "type": "Compose",
+                                      "description": "Second guard: the file is already in SharePoint even though our own state said otherwise (state store was reset/lost). Self-heals the ProcessedFiles record to Succeeded rather than re-uploading.",
+                                      "inputs": "noted-already-exists",
+                                      "runAfter": {}
+                                    }
+                                  },
+                                  "else": {
+                                    "actions": {
+                                      "Create_File": {
+                                        "type": "ApiConnection",
+                                        "inputs": {
+                                          "host": {
+                                            "connection": {
+                                              "referenceName": "sharepointonline"
+                                            }
+                                          },
+                                          "method": "post",
+                                          "path": "/datasets/@{encodeURIComponent(encodeURIComponent(appsetting('SHAREPOINT_SITE_URL')))}/files",
+                                          "queries": {
+                                            "folderPath": "@appsetting('SHAREPOINT_TARGET_FOLDER')",
+                                            "name": "@items('For_Each_File')?['Name']"
+                                          },
+                                          "body": "@body('Get_File_Content')"
+                                        },
+                                        "runAfter": {},
+                                        "runtimeConfiguration": {
+                                          "secureData": {
+                                            "properties": [
+                                              "inputs"
+                                            ]
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "runAfter": {
+                                    "Check_SharePoint_Existing": [
+                                      "Succeeded",
+                                      "Failed"
+                                    ]
+                                  }
+                                }
+                              },
+                              "runAfter": {}
                             },
-                            "else": {
+                            "On_Copy_Success": {
+                              "type": "If",
+                              "description": "Correctness fix, round 2 (2026-08-02): checking the Scope's own aggregate status was wrong - Check_SharePoint_Existing is EXPECTED to fail (404) for every genuinely new file, and that expected/handled failure makes the Scope's own aggregate status Failed even when Create_File succeeds. Fixed by checking the two actual terminal actions' own individual statuses directly. Updated 2026-08-10: Patch_Content_Type removed entirely (user decision) after repeated SharePoint 400 errors ('The passed-in field \"ContentType\"/\"ContentTypeId\" could not be found') that could not be resolved without further investigation into this library's actual PatchFileItem field schema - now checks Create_File's own status instead. Attempt_Copy_Scope is retained as a grouping container so Compose_ErrorCategory below can dump its full string representation for classification - its own status field is not used for the success/failure decision.",
+                              "expression": {
+                                "or": [
+                                  {
+                                    "equals": [
+                                      "@actions('Check_SharePoint_Existing')?['status']",
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  {
+                                    "equals": [
+                                      "@actions('Create_File')?['status']",
+                                      "Succeeded"
+                                    ]
+                                  }
+                                ]
+                              },
                               "actions": {
-                                "Upsert_Failed": {
+                                "Upsert_Succeeded": {
                                   "type": "ServiceProvider",
                                   "inputs": {
                                     "parameters": {
@@ -449,17 +600,18 @@
                                         "RowKey": "@outputs('Compose_DedupKey')",
                                         "SourcePath": "@items('For_Each_File')?['Path']",
                                         "FileName": "@items('For_Each_File')?['Name']",
-                                        "DestinationUrl": "",
+                                        "DestinationUrl": "@concat(appsetting('SHAREPOINT_SITE_URL'), appsetting('SHAREPOINT_TARGET_FOLDER'), '/', items('For_Each_File')?['Name'])",
                                         "IntendedDestinationPath": "@concat(appsetting('SHAREPOINT_TARGET_FOLDER'), '/', items('For_Each_File')?['Name'])",
-                                        "Status": "Failed",
-                                        "AttemptCount": "@outputs('Compose_NewAttemptCount')",
-                                        "ErrorCategory": "@outputs('Compose_ErrorCategory')",
-                                        "ErrorMessage": "@take(string(actions('Attempt_Copy_Scope')), 4000)",
+                                        "Status": "Succeeded",
+                                        "AttemptCount": "@add(outputs('Compose_ExistingAttemptCount'), 1)",
+                                        "ErrorCategory": "",
+                                        "ErrorMessage": "",
                                         "FirstSeenUtc": "@variables('StartTimeUtc')",
                                         "LastAttemptUtc": "@utcNow()",
-                                        "CompletedUtc": "",
+                                        "CompletedUtc": "@utcNow()",
                                         "RunId": "@variables('RunId')",
-                                        "TriggerType": "@triggerBody()?['triggerType']"
+                                        "TriggerType": "@triggerBody()?['triggerType']",
+                                        "TriggeredByWorkflow": "@variables('TriggeringWorkflow')"
                                       }
                                     },
                                     "serviceProviderConfiguration": {
@@ -470,53 +622,330 @@
                                   },
                                   "runAfter": {}
                                 },
-                                "Increment_FilesFailed": {
+                                "Increment_FilesCopied": {
                                   "type": "IncrementVariable",
-                                  "inputs": { "name": "FilesFailed", "value": 1 },
-                                  "runAfter": { "Upsert_Failed": ["Succeeded"] }
-                                },
-                                "Append_NewlyFailedThisRun": {
-                                  "type": "If",
-                                  "description": "Alert suppression (decision: state-transition only): only append to the alert-worthy list on the FIRST failure of this file, not on repeat failures already reflected in a prior digest. Checks the pre-attempt status captured by Compose_ExistingStatus (a fresh per-iteration Compose output, not a mutable variable - see the fix note on that action).",
-                                  "expression": {
-                                    "equals": ["@outputs('Compose_ExistingStatus')", "New"]
+                                  "inputs": {
+                                    "name": "FilesCopied",
+                                    "value": 1
                                   },
-                                  "actions": {
-                                    "Append_NewlyFailed": {
-                                      "type": "AppendToArrayVariable",
-                                      "inputs": {
-                                        "name": "NewlyFailedFilesThisRun",
-                                        "value": {
-                                          "fileName": "@items('For_Each_File')?['Name']",
-                                          "sourcePath": "@items('For_Each_File')?['Path']",
-                                          "errorCategory": "@outputs('Compose_ErrorCategory')",
-                                          "attemptCount": "@outputs('Compose_NewAttemptCount')"
-                                        }
-                                      },
-                                      "runAfter": {}
+                                  "runAfter": {
+                                    "Upsert_Succeeded": [
+                                      "Succeeded"
+                                    ]
+                                  }
+                                },
+                                "Upsert_FileRunEvent_Copied": {
+                                  "type": "ServiceProvider",
+                                  "description": "Per-file, per-run audit event - see Upsert_FileRunEvent_Skipped for rationale.",
+                                  "inputs": {
+                                    "parameters": {
+                                      "tableName": "FileRunEvents",
+                                      "entity": {
+                                        "PartitionKey": "@formatDateTime(variables('StartTimeUtc'), 'yyyyMM')",
+                                        "RowKey": "@concat(variables('RunId'), '_', outputs('Compose_DedupKey'))",
+                                        "RunId": "@variables('RunId')",
+                                        "DedupKey": "@outputs('Compose_DedupKey')",
+                                        "FileName": "@items('For_Each_File')?['Name']",
+                                        "SourcePath": "@items('For_Each_File')?['Path']",
+                                        "Outcome": "Copied",
+                                        "TriggerType": "@triggerBody()?['triggerType']",
+                                        "TriggeredByWorkflow": "@variables('TriggeringWorkflow')",
+                                        "EventTimeUtc": "@utcNow()",
+                                        "AttemptCount": "@add(outputs('Compose_ExistingAttemptCount'), 1)",
+                                        "ErrorCategory": ""
+                                      }
+                                    },
+                                    "serviceProviderConfiguration": {
+                                      "connectionName": "azureTableConnection",
+                                      "operationId": "upsertEntity",
+                                      "serviceProviderId": "/serviceProviders/azureTables"
                                     }
                                   },
-                                  "runAfter": { "Increment_FilesFailed": ["Succeeded"] }
+                                  "runAfter": {
+                                    "Increment_FilesCopied": [
+                                      "Succeeded"
+                                    ]
+                                  }
                                 }
+                              },
+                              "else": {
+                                "actions": {
+                                  "Compose_ErrorCategory": {
+                                    "type": "Compose",
+                                    "description": "Error classification v1 - deliberately simple, HTTP-status-driven. Expected to be refined once real production error patterns are observed (see docs/design/error-taxonomy.md). Not a shortcut: a wrong-but-labeled category is far more useful in the digest than an unclassified stack trace.",
+                                    "inputs": "@{if(contains(string(actions('Attempt_Copy_Scope')), '401'), 'AuthExpired', if(contains(string(actions('Attempt_Copy_Scope')), '403'), 'PermissionDenied', if(or(contains(string(actions('Attempt_Copy_Scope')), '502'), contains(string(actions('Attempt_Copy_Scope')), '503'), contains(string(actions('Attempt_Copy_Scope')), '504')), 'GatewayUnavailable', if(contains(string(actions('Attempt_Copy_Scope')), '404'), 'SourcePathNotFound', if(contains(string(actions('Attempt_Copy_Scope')), '409'), 'NameConflict', if(contains(string(actions('Attempt_Copy_Scope')), '423'), 'FileLocked', if(or(contains(string(actions('Attempt_Copy_Scope')), '429'), contains(string(actions('Attempt_Copy_Scope')), '500')), 'Transient', 'Unclassified')))))))}",
+                                    "runAfter": {}
+                                  },
+                                  "Compose_NewAttemptCount": {
+                                    "type": "Compose",
+                                    "inputs": "@add(outputs('Compose_ExistingAttemptCount'), 1)",
+                                    "runAfter": {
+                                      "Compose_ErrorCategory": [
+                                        "Succeeded"
+                                      ]
+                                    }
+                                  },
+                                  "Is_Attempts_Exhausted": {
+                                    "type": "If",
+                                    "expression": {
+                                      "greaterOrEquals": [
+                                        "@outputs('Compose_NewAttemptCount')",
+                                        "@int(appsetting('MAX_ATTEMPTS'))"
+                                      ]
+                                    },
+                                    "actions": {
+                                      "Upsert_Abandoned": {
+                                        "type": "ServiceProvider",
+                                        "inputs": {
+                                          "parameters": {
+                                            "tableName": "ProcessedFiles",
+                                            "entity": {
+                                              "PartitionKey": "@outputs('Compose_PartitionKey')",
+                                              "RowKey": "@outputs('Compose_DedupKey')",
+                                              "SourcePath": "@items('For_Each_File')?['Path']",
+                                              "FileName": "@items('For_Each_File')?['Name']",
+                                              "DestinationUrl": "",
+                                              "IntendedDestinationPath": "@concat(appsetting('SHAREPOINT_TARGET_FOLDER'), '/', items('For_Each_File')?['Name'])",
+                                              "Status": "Abandoned",
+                                              "AttemptCount": "@outputs('Compose_NewAttemptCount')",
+                                              "ErrorCategory": "@outputs('Compose_ErrorCategory')",
+                                              "ErrorMessage": "@take(string(actions('Attempt_Copy_Scope')), 4000)",
+                                              "FirstSeenUtc": "@variables('StartTimeUtc')",
+                                              "LastAttemptUtc": "@utcNow()",
+                                              "CompletedUtc": "@utcNow()",
+                                              "RunId": "@variables('RunId')",
+                                              "TriggerType": "@triggerBody()?['triggerType']",
+                                              "TriggeredByWorkflow": "@variables('TriggeringWorkflow')"
+                                            }
+                                          },
+                                          "serviceProviderConfiguration": {
+                                            "connectionName": "azureTableConnection",
+                                            "operationId": "upsertEntity",
+                                            "serviceProviderId": "/serviceProviders/azureTables"
+                                          }
+                                        },
+                                        "runAfter": {}
+                                      },
+                                      "Increment_FilesAbandoned": {
+                                        "type": "IncrementVariable",
+                                        "inputs": {
+                                          "name": "FilesAbandoned",
+                                          "value": 1
+                                        },
+                                        "runAfter": {
+                                          "Upsert_Abandoned": [
+                                            "Succeeded"
+                                          ]
+                                        }
+                                      },
+                                      "Upsert_FileRunEvent_Abandoned": {
+                                        "type": "ServiceProvider",
+                                        "description": "Per-file, per-run audit event - see Upsert_FileRunEvent_Skipped for rationale.",
+                                        "inputs": {
+                                          "parameters": {
+                                            "tableName": "FileRunEvents",
+                                            "entity": {
+                                              "PartitionKey": "@formatDateTime(variables('StartTimeUtc'), 'yyyyMM')",
+                                              "RowKey": "@concat(variables('RunId'), '_', outputs('Compose_DedupKey'))",
+                                              "RunId": "@variables('RunId')",
+                                              "DedupKey": "@outputs('Compose_DedupKey')",
+                                              "FileName": "@items('For_Each_File')?['Name']",
+                                              "SourcePath": "@items('For_Each_File')?['Path']",
+                                              "Outcome": "Abandoned",
+                                              "TriggerType": "@triggerBody()?['triggerType']",
+                                              "TriggeredByWorkflow": "@variables('TriggeringWorkflow')",
+                                              "EventTimeUtc": "@utcNow()",
+                                              "AttemptCount": "@outputs('Compose_NewAttemptCount')",
+                                              "ErrorCategory": "@outputs('Compose_ErrorCategory')"
+                                            }
+                                          },
+                                          "serviceProviderConfiguration": {
+                                            "connectionName": "azureTableConnection",
+                                            "operationId": "upsertEntity",
+                                            "serviceProviderId": "/serviceProviders/azureTables"
+                                          }
+                                        },
+                                        "runAfter": {
+                                          "Increment_FilesAbandoned": [
+                                            "Succeeded"
+                                          ]
+                                        }
+                                      },
+                                      "Append_AbandonedThisRun": {
+                                        "type": "AppendToArrayVariable",
+                                        "inputs": {
+                                          "name": "AbandonedFilesThisRun",
+                                          "value": {
+                                            "fileName": "@items('For_Each_File')?['Name']",
+                                            "sourcePath": "@items('For_Each_File')?['Path']",
+                                            "errorCategory": "@outputs('Compose_ErrorCategory')",
+                                            "attemptCount": "@outputs('Compose_NewAttemptCount')"
+                                          }
+                                        },
+                                        "runAfter": {
+                                          "Upsert_FileRunEvent_Abandoned": [
+                                            "Succeeded"
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    "else": {
+                                      "actions": {
+                                        "Upsert_Failed": {
+                                          "type": "ServiceProvider",
+                                          "inputs": {
+                                            "parameters": {
+                                              "tableName": "ProcessedFiles",
+                                              "entity": {
+                                                "PartitionKey": "@outputs('Compose_PartitionKey')",
+                                                "RowKey": "@outputs('Compose_DedupKey')",
+                                                "SourcePath": "@items('For_Each_File')?['Path']",
+                                                "FileName": "@items('For_Each_File')?['Name']",
+                                                "DestinationUrl": "",
+                                                "IntendedDestinationPath": "@concat(appsetting('SHAREPOINT_TARGET_FOLDER'), '/', items('For_Each_File')?['Name'])",
+                                                "Status": "Failed",
+                                                "AttemptCount": "@outputs('Compose_NewAttemptCount')",
+                                                "ErrorCategory": "@outputs('Compose_ErrorCategory')",
+                                                "ErrorMessage": "@take(string(actions('Attempt_Copy_Scope')), 4000)",
+                                                "FirstSeenUtc": "@variables('StartTimeUtc')",
+                                                "LastAttemptUtc": "@utcNow()",
+                                                "CompletedUtc": "",
+                                                "RunId": "@variables('RunId')",
+                                                "TriggerType": "@triggerBody()?['triggerType']",
+                                                "TriggeredByWorkflow": "@variables('TriggeringWorkflow')"
+                                              }
+                                            },
+                                            "serviceProviderConfiguration": {
+                                              "connectionName": "azureTableConnection",
+                                              "operationId": "upsertEntity",
+                                              "serviceProviderId": "/serviceProviders/azureTables"
+                                            }
+                                          },
+                                          "runAfter": {}
+                                        },
+                                        "Increment_FilesFailed": {
+                                          "type": "IncrementVariable",
+                                          "inputs": {
+                                            "name": "FilesFailed",
+                                            "value": 1
+                                          },
+                                          "runAfter": {
+                                            "Upsert_Failed": [
+                                              "Succeeded"
+                                            ]
+                                          }
+                                        },
+                                        "Upsert_FileRunEvent_Failed": {
+                                          "type": "ServiceProvider",
+                                          "description": "Per-file, per-run audit event - see Upsert_FileRunEvent_Skipped for rationale.",
+                                          "inputs": {
+                                            "parameters": {
+                                              "tableName": "FileRunEvents",
+                                              "entity": {
+                                                "PartitionKey": "@formatDateTime(variables('StartTimeUtc'), 'yyyyMM')",
+                                                "RowKey": "@concat(variables('RunId'), '_', outputs('Compose_DedupKey'))",
+                                                "RunId": "@variables('RunId')",
+                                                "DedupKey": "@outputs('Compose_DedupKey')",
+                                                "FileName": "@items('For_Each_File')?['Name']",
+                                                "SourcePath": "@items('For_Each_File')?['Path']",
+                                                "Outcome": "Failed",
+                                                "TriggerType": "@triggerBody()?['triggerType']",
+                                                "TriggeredByWorkflow": "@variables('TriggeringWorkflow')",
+                                                "EventTimeUtc": "@utcNow()",
+                                                "AttemptCount": "@outputs('Compose_NewAttemptCount')",
+                                                "ErrorCategory": "@outputs('Compose_ErrorCategory')"
+                                              }
+                                            },
+                                            "serviceProviderConfiguration": {
+                                              "connectionName": "azureTableConnection",
+                                              "operationId": "upsertEntity",
+                                              "serviceProviderId": "/serviceProviders/azureTables"
+                                            }
+                                          },
+                                          "runAfter": {
+                                            "Increment_FilesFailed": [
+                                              "Succeeded"
+                                            ]
+                                          }
+                                        },
+                                        "Append_NewlyFailedThisRun": {
+                                          "type": "If",
+                                          "description": "Alert suppression (decision: state-transition only): only append to the alert-worthy list on the FIRST failure of this file, not on repeat failures already reflected in a prior digest. Checks the pre-attempt status captured by Compose_ExistingStatus (a fresh per-iteration Compose output, not a mutable variable - see the fix note on that action).",
+                                          "expression": {
+                                            "equals": [
+                                              "@outputs('Compose_ExistingStatus')",
+                                              "New"
+                                            ]
+                                          },
+                                          "actions": {
+                                            "Append_NewlyFailed": {
+                                              "type": "AppendToArrayVariable",
+                                              "inputs": {
+                                                "name": "NewlyFailedFilesThisRun",
+                                                "value": {
+                                                  "fileName": "@items('For_Each_File')?['Name']",
+                                                  "sourcePath": "@items('For_Each_File')?['Path']",
+                                                  "errorCategory": "@outputs('Compose_ErrorCategory')",
+                                                  "attemptCount": "@outputs('Compose_NewAttemptCount')"
+                                                }
+                                              },
+                                              "runAfter": {}
+                                            }
+                                          },
+                                          "runAfter": {
+                                            "Upsert_FileRunEvent_Failed": [
+                                              "Succeeded"
+                                            ]
+                                          }
+                                        }
+                                      }
+                                    },
+                                    "runAfter": {
+                                      "Compose_NewAttemptCount": [
+                                        "Succeeded"
+                                      ]
+                                    }
+                                  }
+                                }
+                              },
+                              "runAfter": {
+                                "Attempt_Copy_Scope": [
+                                  "Succeeded",
+                                  "Failed",
+                                  "TimedOut"
+                                ]
                               }
-                            },
-                            "runAfter": { "Compose_NewAttemptCount": ["Succeeded"] }
+                            }
                           }
                         },
-                        "runAfter": { "Attempt_Copy_Scope": ["Succeeded", "Failed", "TimedOut"] }
+                        "runAfter": {
+                          "Validate_File": [
+                            "Succeeded"
+                          ]
+                        }
                       }
                     }
                   },
-                  "runAfter": { "Validate_File": ["Succeeded"] }
+                  "runAfter": {}
                 }
               }
             },
-            "runAfter": { "Compose_ExistingAttemptCount": ["Succeeded"] }
+            "runAfter": {
+              "Compose_ExistingAttemptCount": [
+                "Succeeded"
+              ]
+            }
           }
         },
-        "runAfter": { "List_Files_In_Folder": ["Succeeded"] },
+        "runAfter": {
+          "List_Files_In_Folder": [
+            "Succeeded"
+          ]
+        },
         "runtimeConfiguration": {
-          "concurrency": { "repetitions": 1 }
+          "concurrency": {
+            "repetitions": 1
+          }
         }
       },
       "Upsert_RunLog": {
@@ -529,6 +958,7 @@
               "RowKey": "@variables('RunId')",
               "RunId": "@variables('RunId')",
               "TriggerType": "@triggerBody()?['triggerType']",
+              "TriggeredByWorkflow": "@variables('TriggeringWorkflow')",
               "StartTimeUtc": "@variables('StartTimeUtc')",
               "EndTimeUtc": "@utcNow()",
               "FilesSeen": "@variables('FilesSeen')",
@@ -545,7 +975,14 @@
             "serviceProviderId": "/serviceProviders/azureTables"
           }
         },
-        "runAfter": { "For_Each_File": ["Succeeded", "Failed", "TimedOut"] }
+        "runAfter": {
+          "For_Each_File": [
+            "Succeeded",
+            "Failed",
+            "Skipped",
+            "TimedOut"
+          ]
+        }
       },
       "Compose_HasAlertWorthyActivity": {
         "type": "Compose",
@@ -553,14 +990,31 @@
           "hasAbandoned": "@greater(length(variables('AbandonedFilesThisRun')), 0)",
           "hasNewlyFailed": "@greater(length(variables('NewlyFailedFilesThisRun')), 0)"
         },
-        "runAfter": { "Upsert_RunLog": ["Succeeded", "Failed", "TimedOut"] }
+        "runAfter": {
+          "Upsert_RunLog": [
+            "Succeeded",
+            "Failed",
+            "Skipped",
+            "TimedOut"
+          ]
+        }
       },
       "Should_Send_Immediate_Alert": {
         "type": "If",
         "expression": {
           "or": [
-            { "equals": ["@outputs('Compose_HasAlertWorthyActivity')?['hasAbandoned']", true] },
-            { "equals": ["@outputs('Compose_HasAlertWorthyActivity')?['hasNewlyFailed']", true] }
+            {
+              "equals": [
+                "@outputs('Compose_HasAlertWorthyActivity')?['hasAbandoned']",
+                true
+              ]
+            },
+            {
+              "equals": [
+                "@outputs('Compose_HasAlertWorthyActivity')?['hasNewlyFailed']",
+                true
+              ]
+            }
           ]
         },
         "actions": {
@@ -582,24 +1036,39 @@
           },
           "Compose_CooldownExpired": {
             "type": "Compose",
-            "inputs": "@{or(equals(length(body('Query_AlertState')?['entities']), 0), greaterOrEquals(div(sub(ticks(utcNow()), ticks(first(body('Query_AlertState')?['entities'])?['LastAlertUtc'])), 600000000), int(appsetting('ALERT_COOLDOWN_MINUTES'))))}",
-            "runAfter": { "Query_AlertState": ["Succeeded"] }
+            "description": "Fixed alongside the Compose_ExistingAttemptCount bug (same root cause, found live, 2026-08-10): was wrapped in @{...}, stringifying this boolean result. Compose_ShouldSend consumes this output directly as a boolean via or(...), and Send_If_Not_Suppressed's own expression compares Compose_ShouldSend's output against the bare boolean literal true - a stringified 'true'/'false' would never equal true, silently breaking alert-sending. Not yet exercised live (no abandoned/failed files in testing so far), but the same class of bug, fixed proactively rather than waiting to hit it in production.",
+            "inputs": "@or(equals(length(body('Query_AlertState')?['entities']), 0), greaterOrEquals(div(sub(ticks(utcNow()), ticks(first(body('Query_AlertState')?['entities'])?['LastAlertUtc'])), 600000000), int(appsetting('ALERT_COOLDOWN_MINUTES'))))",
+            "runAfter": {
+              "Query_AlertState": [
+                "Succeeded"
+              ]
+            }
           },
           "Compose_ShouldSend": {
             "type": "Compose",
-            "inputs": "@{or(equals(outputs('Compose_HasAlertWorthyActivity')?['hasAbandoned'], true), outputs('Compose_CooldownExpired'))}",
-            "runAfter": { "Compose_CooldownExpired": ["Succeeded"] }
+            "description": "Same @{...} stringification bug as Compose_CooldownExpired just above - fixed together.",
+            "inputs": "@or(equals(outputs('Compose_HasAlertWorthyActivity')?['hasAbandoned'], true), outputs('Compose_CooldownExpired'))",
+            "runAfter": {
+              "Compose_CooldownExpired": [
+                "Succeeded"
+              ]
+            }
           },
           "Send_If_Not_Suppressed": {
             "type": "If",
             "expression": {
-              "equals": ["@outputs('Compose_ShouldSend')", true]
+              "equals": [
+                "@outputs('Compose_ShouldSend')",
+                true
+              ]
             },
             "actions": {
               "Get_Alert_Recipients": {
                 "type": "ServiceProvider",
                 "inputs": {
-                  "parameters": { "secretName": "@appsetting('ALERT_RECIPIENTS_SECRET_NAME')" },
+                  "parameters": {
+                    "secretName": "@appsetting('ALERT_RECIPIENTS_SECRET_NAME')"
+                  },
                   "serviceProviderConfiguration": {
                     "connectionName": "keyvault",
                     "operationId": "getSecret",
@@ -608,19 +1077,31 @@
                 },
                 "runAfter": {},
                 "runtimeConfiguration": {
-                  "secureData": { "properties": ["outputs"] }
+                  "secureData": {
+                    "properties": [
+                      "outputs"
+                    ]
+                  }
                 }
               },
               "Compose_Alert_Body": {
                 "type": "Compose",
                 "description": "encodeXmlValue() neutralizes <, >, &, single/double quotes in dynamic values before they land in HTML - the language has no dedicated HTML-encode function, but XML encoding covers the same injection-relevant characters.",
                 "inputs": "<html><body><h2>[INV2SP] Immediate failure alert - @{encodeXmlValue(variables('RunId'))}</h2><p>Run started @{variables('StartTimeUtc')}, trigger: @{encodeXmlValue(triggerBody()?['triggerType'])}</p>@{if(greater(length(variables('AbandonedFilesThisRun')), 0), concat('<h3>Abandoned (manual intervention required)</h3><pre>', encodeXmlValue(string(variables('AbandonedFilesThisRun'))), '</pre>'), '')}@{if(greater(length(variables('NewlyFailedFilesThisRun')), 0), concat('<h3>Newly failed (will retry automatically)</h3><pre>', encodeXmlValue(string(variables('NewlyFailedFilesThisRun'))), '</pre>'), '')}</body></html>",
-                "runAfter": { "Get_Alert_Recipients": ["Succeeded"] }
+                "runAfter": {
+                  "Get_Alert_Recipients": [
+                    "Succeeded"
+                  ]
+                }
               },
               "Send_Alert_Email": {
                 "type": "ApiConnection",
                 "inputs": {
-                  "host": { "connection": { "referenceName": "office365" } },
+                  "host": {
+                    "connection": {
+                      "referenceName": "office365"
+                    }
+                  },
                   "method": "post",
                   "path": "/v2/Mail",
                   "body": {
@@ -629,7 +1110,11 @@
                     "Body": "@outputs('Compose_Alert_Body')"
                   }
                 },
-                "runAfter": { "Compose_Alert_Body": ["Succeeded"] }
+                "runAfter": {
+                  "Compose_Alert_Body": [
+                    "Succeeded"
+                  ]
+                }
               },
               "Upsert_AlertState": {
                 "type": "ServiceProvider",
@@ -649,17 +1134,34 @@
                     "serviceProviderId": "/serviceProviders/azureTables"
                   }
                 },
-                "runAfter": { "Send_Alert_Email": ["Succeeded"] }
+                "runAfter": {
+                  "Send_Alert_Email": [
+                    "Succeeded"
+                  ]
+                }
               }
             },
-            "runAfter": { "Compose_ShouldSend": ["Succeeded"] }
+            "runAfter": {
+              "Compose_ShouldSend": [
+                "Succeeded"
+              ]
+            }
           }
         },
-        "runAfter": { "Compose_HasAlertWorthyActivity": ["Succeeded"] }
+        "runAfter": {
+          "Compose_HasAlertWorthyActivity": [
+            "Succeeded",
+            "Failed",
+            "Skipped",
+            "TimedOut"
+          ]
+        }
       },
       "Response": {
         "type": "Response",
         "kind": "Http",
+        "description": "operationOptions: asynchronous is required, not optional (deploy-time schema error, 2026-08-03: 'concurrency control is not supported when the workflow contains actions of type response without the operationOptions flag set to asynchronous' - manual trigger above sets runtimeConfiguration.concurrency.runs=1). Safe for all current callers: every caller (wf-scheduled-copy, wf-ondemand-copy - wf-file-trigger-copy removed 2026-08-10, business confirmed the 15-min scheduled poll plus on-demand runs are sufficient) invokes this workflow via the built-in Workflow action (Call_Engine), which transparently polls an asynchronous response to completion and surfaces it as if synchronous - not a raw HTTP action that would need its own polling logic.",
+        "operationOptions": "asynchronous",
         "inputs": {
           "statusCode": 200,
           "body": {
@@ -672,7 +1174,14 @@
             "filesAbandoned": "@variables('FilesAbandoned')"
           }
         },
-        "runAfter": { "Should_Send_Immediate_Alert": ["Succeeded", "Failed", "Skipped", "TimedOut"] }
+        "runAfter": {
+          "Should_Send_Immediate_Alert": [
+            "Succeeded",
+            "Failed",
+            "Skipped",
+            "TimedOut"
+          ]
+        }
       }
     },
     "outputs": {}

@@ -29,10 +29,16 @@ jobs:
     steps:
       - name: Check base and head branch combination
         shell: bash
+        env:
+          # Passed via env, not interpolated directly into the script body -
+          # github.head_ref/base_ref are attacker-controllable (a PR author
+          # picks their own branch name) and splicing them straight into
+          # inline script source is a script-injection vector (found by
+          # actionlint).
+          BASE: ${{ github.base_ref }}
+          HEAD: ${{ github.head_ref }}
         run: |
           set -euo pipefail
-          BASE="${{ github.base_ref }}"
-          HEAD="${{ github.head_ref }}"
           echo "Base branch: $BASE"
           echo "Head branch: $HEAD"
 

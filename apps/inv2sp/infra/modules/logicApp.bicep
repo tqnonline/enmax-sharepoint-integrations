@@ -31,7 +31,7 @@ param planId string
 @secure()
 param storageConnectionString string
 
-@description('Separate storage connection string reference for the in-app azureTables service provider connector (ProcessedFiles/RunLog/AlertState). Same account, kept as a distinct app setting name from AzureWebJobsStorage by convention.')
+@description('Separate storage connection string reference for the in-app azureTables service provider connector (ProcessedFiles/RunLog/AlertState/FileRunEvents). Same account, kept as a distinct app setting name from AzureWebJobsStorage by convention.')
 @secure()
 param tablesConnectionString string
 
@@ -56,7 +56,7 @@ param office365ConnectionRuntimeUrl string = ''
 @description('Office 365 Outlook connection resource name - needed by workflows/connections.json.')
 param office365ConnectionName string = 'office365'
 
-@description('Folder on the file share that the engine watches (relative to the connection root folder). Dev/UAT = "testing folder" (with space), Prod = "APInvoices". These differ by full path, not just this folder name - see configuration-reference.md.')
+@description('Folder on the file share that the engine watches (relative to the connection root folder). Dev/UAT = "LogicAppTest" (changed 2026-08-10, was "testing folder"), Prod = "APInvoices". These differ by full path, not just this folder name - see configuration-reference.md.')
 param fileShareTriggerFolder string
 
 @description('Target SharePoint site URL.')
@@ -91,6 +91,15 @@ param digestScheduleTime string = '07:00'
 
 @description('IANA-ish timezone name as accepted by Logic Apps Recurrence trigger.')
 param digestTimeZone string = 'America/Edmonton'
+
+@description('Kill-switch gate for wf-scheduled-copy (decision, 2026-08-03 - see PLAN.md section 17.7/17 addendum): the documented per-workflow Standard Logic App enable/disable management API could not be made to work reliably, so the trigger workflows themselves check this app setting and no-op if not exactly \'true\'. Defaults to false so a fresh deploy is safe-by-default; flip via `az functionapp config appsettings set` only after a validated on-demand run.')
+param scheduledTriggerEnabled bool = false
+
+@description('Email address for the digest footer escalation path (decision, 2026-08-10 - user request: business-ready digest emails with a clear support contact for finance/accounting recipients). Ticket-based escalation, not a distribution list.')
+param supportContactEmail string = 'servicedesk@enmax.com'
+
+@description('Subject line finance/accounting users should use when emailing supportContactEmail, so tickets route correctly.')
+param supportContactSubject string = 'AP Invoices to SharePoint Integration Services'
 
 @description('Existing subnet resource id for VNet integration. Empty string = property omitted entirely (see header note).')
 param virtualNetworkSubnetId string = ''
@@ -147,6 +156,9 @@ var baseAppSettings = [
   { name: 'ALERT_COOLDOWN_MINUTES', value: string(alertCooldownMinutes) }
   { name: 'DIGEST_SCHEDULE_TIME', value: digestScheduleTime }
   { name: 'DIGEST_TIMEZONE', value: digestTimeZone }
+  { name: 'SCHEDULED_TRIGGER_ENABLED', value: string(scheduledTriggerEnabled) }
+  { name: 'SUPPORT_CONTACT_EMAIL', value: supportContactEmail }
+  { name: 'SUPPORT_CONTACT_SUBJECT', value: supportContactSubject }
 ]
 
 var vnetAppSettings = enableHardening ? [
@@ -196,6 +208,20 @@ resource logicApp 'Microsoft.Web/sites@2023-12-01' = {
         use32BitWorkerProcess: false
         netFrameworkVersion: 'v6.0'
         ipSecurityRestrictions: effectiveIpSecurityRestrictions
+        // false (not the Azure default of true once VNet-integrated) -
+        // decision, 2026-08-03: dev's VNet integration was already
+        // manually configured with Route All ON, which routes ALL
+        // outbound traffic (including the filesystem connector's calls
+        // to the on-premises data gateway's Azure Relay endpoint, a
+        // public/non-RFC1918 destination) through the VNet. Without
+        // confirmed NAT/egress for that traffic inside this VNet, the
+        // gateway connection cannot be reached. Route All off lets
+        // non-RFC1918 traffic bypass the VNet and go direct to
+        // internet, restoring gateway connectivity, while calls to
+        // actual VNet-joined/private-endpoint resources are unaffected
+        // (those are routed by RFC1918 destination regardless of this
+        // flag - see Microsoft's own regional VNet integration docs).
+        vnetRouteAllEnabled: false
         appSettings: concat(baseAppSettings, vnetAppSettings)
       }
     },

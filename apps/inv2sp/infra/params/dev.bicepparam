@@ -61,15 +61,23 @@ param fileShareRootFolder = '' // unused - adopt mode
 param fileShareUsername = '' // unused - adopt mode
 param fileSharePassword = '' // unused - adopt mode
 
-// Verified: \\dcna30v004\AP_Invoice_LogicApp_Integration\testing folder
-// (lowercase, single space - confirmed 2026-08-01). This corrects the LIVE
-// dev misconfiguration (was previously set to "APInvoices", which is the
-// PRODUCTION folder name, against the dev share root where that path does
-// not exist - likely root cause of prior connectivity troubleshooting).
-param fileShareTriggerFolder = 'testing folder'
+// Changed to \\dcna30v004\AP_Invoice_LogicApp_Integration\LogicAppTest
+// (decision, 2026-08-10 - user request, replaces the earlier "testing
+// folder" value confirmed 2026-08-01). That earlier value itself
+// corrected a LIVE dev misconfiguration (was previously "APInvoices",
+// the PRODUCTION folder name, against the dev share root where that
+// path does not exist - likely root cause of prior connectivity
+// troubleshooting).
+param fileShareTriggerFolder = 'LogicAppTest'
 
-// Adopts the existing, working, already-authorized connection.
-param sharePointConnectionMode = 'adopt'
+// Recreated fresh as V2 (decision reversed 2026-08-03 - see
+// sharePointOnline.bicep module header). The prior "adopt" mode adopted an
+// existing V1-kind connection that cannot support the accessPolicy grant
+// the Standard Logic App's managed identity needs at runtime
+// (ManagedServiceIdentity auth in connections.json requires V2). User
+// approved deleting the V1 connection and recreating it as V2, accepting a
+// one-time re-authorization step in the portal post-deploy.
+param sharePointConnectionMode = 'create'
 param sharePointConnectionName = 'sharepointonline'
 
 // Corrects the LIVE dev misconfiguration (was pointed at the retired
@@ -78,7 +86,7 @@ param sharePointSiteUrl = 'https://enmaxcorp.sharepoint.com/sites/AP'
 param sharePointLibraryName = 'Documents'
 param sharePointContentType = 'Enmax Document'
 param sharePointContentTypeId = '0x010100C5939496BD3E0F4287FA702FBCF7C0BE'
-param sharePointTargetFolder = '/Shared Documents/AP'
+param sharePointTargetFolder = '/Shared Documents'
 
 param office365ConnectionName = 'office365'
 
@@ -92,4 +100,19 @@ param maxAttempts = 3
 param alertCooldownMinutes = 60
 param digestScheduleTime = '07:00'
 param digestTimeZone = 'America/Edmonton'
-param deadmanThresholdHours = 2
+param deadmanThresholdHours = 6
+
+// Kill-switch gates (decision, 2026-08-03 - PLAN.md section 17.7/17
+// addendum): stay false until Invoke-OnDemandRun.ps1 has validated the
+// engine end-to-end and both office365/sharepointonline connections are
+// authorized. Flip via
+//   az functionapp config appsettings set --settings SCHEDULED_TRIGGER_ENABLED=true
+// (or the corresponding Enable-Triggers.ps1 call) - not by editing this
+// file and redeploying, which would be a much slower/heavier path for
+// what should be a fast, low-ceremony go-live toggle.
+param scheduledTriggerEnabled = false
+
+// Digest email footer escalation contact (decision, 2026-08-10 - user
+// provided). Ticket-based escalation, not a distribution list.
+param supportContactEmail = 'servicedesk@enmax.com'
+param supportContactSubject = 'AP Invoices to SharePoint Integration Services'

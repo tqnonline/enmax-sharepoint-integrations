@@ -103,7 +103,7 @@ param fileShareUsername string = ''
 @secure()
 param fileSharePassword string = ''
 
-@description('Folder the engine watches, relative to the connection root folder. Dev/UAT = "testing folder" (with a space - verified), Prod = "APInvoices". These are genuinely different values per environment with no shared derivation.')
+@description('Folder the engine watches, relative to the connection root folder. Dev/UAT = "LogicAppTest" (changed 2026-08-10, was "testing folder"), Prod = "APInvoices". These are genuinely different values per environment with no shared derivation.')
 param fileShareTriggerFolder string
 
 // ---------------------------------------------------------------------------
@@ -135,7 +135,21 @@ param maxAttempts int = 3
 param alertCooldownMinutes int = 60
 param digestScheduleTime string = '07:00'
 param digestTimeZone string = 'America/Edmonton'
-param deadmanThresholdHours int = 2
+
+@description('Kill-switch gate for wf-scheduled-copy - see logicApp.bicep for full rationale. Default false (safe on a fresh deploy); flip only after a validated on-demand run. (wf-file-trigger-copy removed 2026-08-10, business confirmed the 15-min scheduled poll plus on-demand runs are sufficient - the matching FILE_TRIGGER_ENABLED gate/param removed alongside it.)')
+param scheduledTriggerEnabled bool = false
+
+@description('Digest email footer escalation contact - see logicApp.bicep for full rationale.')
+param supportContactEmail string = 'servicedesk@enmax.com'
+param supportContactSubject string = 'AP Invoices to SharePoint Integration Services'
+
+@description('Hours of no successful run before the dead-man\'s-switch alert fires. Must resolve to a valid Microsoft.Insights/metricAlerts windowSize (PT1H, PT6H, or PT12H).')
+@allowed([
+  1
+  6
+  12
+])
+param deadmanThresholdHours int = 6
 
 // ============================================================================
 // Naming
@@ -190,7 +204,7 @@ var keyVaultName = deployKeyVault ? naming.outputs.keyVaultName : existingKeyVau
 var keyVaultUri = 'https://${toLower(keyVaultName)}${environment().suffixes.keyvaultDns}/'
 
 // ============================================================================
-// Storage (+ ProcessedFiles / RunLog / AlertState tables)
+// Storage (+ ProcessedFiles / RunLog / AlertState / FileRunEvents tables)
 // ============================================================================
 module storage 'modules/storage.bicep' = {
   name: 'storage'
@@ -300,6 +314,9 @@ module logicApp 'modules/logicApp.bicep' = {
     alertCooldownMinutes: alertCooldownMinutes
     digestScheduleTime: digestScheduleTime
     digestTimeZone: digestTimeZone
+    scheduledTriggerEnabled: scheduledTriggerEnabled
+    supportContactEmail: supportContactEmail
+    supportContactSubject: supportContactSubject
     virtualNetworkSubnetId: virtualNetworkSubnetId
     enableHardening: enableHardening
     allowedIpRanges: allowedIpRanges
@@ -323,11 +340,26 @@ module keyVaultAccessPolicy 'modules/keyVaultAccessPolicy.bicep' = {
 
 // ============================================================================
 // API connection access policies for the Logic App managed identity -
-// removes connection keys entirely (ADR-0013). Safe for both adopted and
-// newly created connections; plain Microsoft.Web write, no elevated
-// permission required.
+// removes connection keys entirely (ADR-0013). Plain Microsoft.Web write,
+// no elevated permission required for newly-created connections.
+//
+// fileSystemAccessPolicy: only runs when fileSystemConnectionMode=='create'
+// (this module owns the connection's full lifecycle) - NOT for 'adopt'.
+// Finding, 2026-08-03: attempting to add a second accessPolicy entry
+// (this module always computes a deterministic guid()-based resource name)
+// against dev's adopted, gateway-linked 'filesystem-2' connection fails
+// with a persistent RP-side "InternalServerError" - reproduced 3x, not
+// transient. Direct REST inspection confirmed the connection already has a
+// working accessPolicy for the Logic App's current managed identity
+// (literal name "LA-ENMAX-COR-UW2-INV2SP-T", granted out-of-band, likely
+// via an earlier manual/portal step) - the functional requirement is
+// already met, so the redundant create attempt only hits a gateway-linked
+// connection limitation for no benefit. Consistent with fileSystem.bicep's
+// own adoptExisting=true rationale (gateway lives in a subscription/RG we
+// do not control - ADR-0003/0039): adopted means we do not manage this
+// connection's state, accessPolicy included.
 // ============================================================================
-module fileSystemAccessPolicy 'modules/connections/accessPolicy.bicep' = if (fileSystemConnectionMode != 'skip') {
+module fileSystemAccessPolicy 'modules/connections/accessPolicy.bicep' = if (fileSystemConnectionMode == 'create') {
   name: 'fileSystemAccessPolicy'
   params: {
     connectionName: fileSystemConnectionName
@@ -434,7 +466,7 @@ module privateEndpointTable 'modules/privateEndpoint.bicep' = if (deployPrivateE
 
 // ============================================================================
 // RBAC (prod only, once RBAC Administrator has been granted - see rbac.bicep
-// header). Coupled to enableHardening by design (ADR-0014).
+// header). Coupled to enableHardening by design (ADR-0015).
 // ============================================================================
 module rbac 'modules/rbac.bicep' = if (enableHardening) {
   name: 'rbac'

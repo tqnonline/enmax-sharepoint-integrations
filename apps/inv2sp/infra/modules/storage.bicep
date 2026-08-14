@@ -1,8 +1,9 @@
 // ============================================================================
 // Storage account module
 // ----------------------------------------------------------------------------
-// Hosts: Logic App Standard runtime content share, and the 3 state tables
-// used by the workflow engine (ProcessedFiles, RunLog, AlertState).
+// Hosts: Logic App Standard runtime content share, and the 4 state tables
+// used by the workflow engine (ProcessedFiles, RunLog, AlertState,
+// FileRunEvents).
 //
 // IMPORTANT correction (security review, 2026-08-01): allowSharedKeyAccess
 // is NEVER disabled by this module, regardless of enableHardening. Logic
@@ -15,7 +16,7 @@
 // was wrong and has been corrected.
 //
 // enableHardening now controls ONLY network-level posture (public access +
-// firewall default action). Our OWN application data (the 3 state tables)
+// firewall default action). Our OWN application data (the 4 state tables)
 // gets a genuinely least-privilege path once enableHardening=true: the
 // Logic App managed identity is granted Storage Table Data Contributor
 // ONLY (rbac.bicep) - not Blob or Queue, which this design does not use
@@ -43,6 +44,7 @@ var tableNames = [
   'ProcessedFiles'
   'RunLog'
   'AlertState'
+  'FileRunEvents'
 ]
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {

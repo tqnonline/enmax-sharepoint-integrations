@@ -6,14 +6,28 @@
 // Outlook connector, which only supports delegated OAuth. Both connections
 // are authorized by signing in as the same account (ADR-0011/0012).
 //
-// adoptExisting=true (dev): the connection already exists and is Connected,
-// authorized as rakmol@enmax.com. We do not recreate it - re-authorizing a
-// working connection has no benefit and forces an unnecessary manual step.
+// adoptExisting: ALWAYS false in practice now, both environments (decision
+// reversed 2026-08-03 - see below). This still supports true for
+// completeness/future use, but is not currently exercised by either
+// .bicepparam file.
 //
-// adoptExisting=false (prod): creates the connection fresh. It deploys in
-// an unauthenticated state and MUST be authorized interactively in the
-// portal by the M365 service account before first use (see
-// docs/prerequisites item M2 - this cannot be automated).
+// kind: 'V2' is required, not optional - see office365.bicep for the full
+// rationale (ManagedServiceIdentity auth in connections.json requires
+// accessPolicy support, which only V2-kind connections provide).
+//
+// Original decision (2026-06-xx, superseded): dev's sharepointonline
+// connection already existed as Connected/authorized (rakmol@enmax.com),
+// so adoptExisting=true avoided an unnecessary re-authorization step.
+// Reversed 2026-08-03: live deployment against dev failed with
+// "InvalidApiConnectionAccessPolicy... Access policies are not supported in
+// 'V1' api connection 'sharepointonline'. Only 'V2' connections support
+// access policies" - the adopted connection was V1-kind (predates the
+// accessPolicy mechanism entirely) and cannot be retrofitted in place
+// (kind is immutable). Without an accessPolicy, the Standard Logic App's
+// managed identity cannot invoke this connector at runtime at all, so
+// adopting the V1 connection as-is was a hard blocker, not a convenience
+// trade-off. User approved deleting the V1 connection and recreating fresh
+// as V2 in dev, accepting the one-time re-authorization cost.
 // ============================================================================
 
 @description('Connection resource name.')
@@ -25,7 +39,7 @@ param location string
 @description('Resource tags.')
 param tags object = {}
 
-@description('When true, do not create/modify the connection - only reference the existing one by name (dev adopts-as-is).')
+@description('When true, do not create/modify the connection - only reference the existing one by name. Not currently used by either environment - see module header.')
 param adoptExisting bool = false
 
 resource existingConnection 'Microsoft.Web/connections@2016-06-01' existing = if (adoptExisting) {
@@ -35,6 +49,7 @@ resource existingConnection 'Microsoft.Web/connections@2016-06-01' existing = if
 resource newConnection 'Microsoft.Web/connections@2016-06-01' = if (!adoptExisting) {
   name: connectionName
   location: location
+  kind: 'V2'
   tags: tags
   properties: {
     displayName: '${connectionName}-svc'

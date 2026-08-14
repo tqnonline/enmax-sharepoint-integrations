@@ -14,17 +14,34 @@
       }
     },
     "actions": {
-      "Call_Engine": {
-        "type": "Workflow",
-        "inputs": {
-          "host": {
-            "workflow": {
-              "id": "wf-copy-invoices"
-            }
-          },
-          "body": {
-            "triggerType": "Scheduled"
+      "Check_Trigger_Enabled": {
+        "type": "If",
+        "description": "App-setting kill-switch (2026-08-03, PLAN.md 17.7): the platform's per-workflow enable/disable API doesn't work reliably here, so this trigger always stays platform-Enabled but the engine only runs when SCHEDULED_TRIGGER_ENABLED is (case-insensitively) 'true'. toLower() handles both casings in use: Bicep's string(bool) -> 'True'/'False', az logicapp config appsettings set -> lowercase. Missing setting = disabled (safe-by-default). NOTE (2026-08-10): a prior, longer version of this description exceeded the 1024-char action-description limit (ActionDescriptionTooLong), which silently kept this workflow on an old pre-gate version with no gate at all - keep this description well under 1024 chars.",
+        "expression": {
+          "equals": [
+            "@toLower(coalesce(appsetting('SCHEDULED_TRIGGER_ENABLED'), 'false'))",
+            "true"
+          ]
+        },
+        "actions": {
+          "Call_Engine": {
+            "type": "Workflow",
+            "inputs": {
+              "host": {
+                "workflow": {
+                  "id": "wf-copy-invoices"
+                }
+              },
+              "body": {
+                "triggerType": "Scheduled",
+                "triggeringWorkflow": "@{workflow().name}"
+              }
+            },
+            "runAfter": {}
           }
+        },
+        "else": {
+          "actions": {}
         },
         "runAfter": {}
       }

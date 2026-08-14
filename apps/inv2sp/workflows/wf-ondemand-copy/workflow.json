@@ -23,10 +23,32 @@
             }
           },
           "body": {
-            "triggerType": "OnDemand"
+            "triggerType": "OnDemand",
+            "triggeringWorkflow": "@{workflow().name}"
           }
         },
         "runAfter": {}
+      },
+      "Call_Run_Digest": {
+        "type": "Workflow",
+        "description": "Sends an immediate digest email for this specific on-demand run (decision, 2026-08-10 - user request: 'daily digest should be sent if the on-demand flow is run, immediately, for that run itself', not the rolling 24h window the scheduled digest uses). Runs regardless of Call_Engine's own outcome - wf-copy-invoices' Initialize_RunId is its first action, so a RunId exists even if a later step fails, and finance/accounting should still learn about a failed run immediately rather than only in tomorrow's scheduled digest.",
+        "inputs": {
+          "host": {
+            "workflow": {
+              "id": "wf-run-digest"
+            }
+          },
+          "body": {
+            "runId": "@body('Call_Engine')?['runId']"
+          }
+        },
+        "runAfter": {
+          "Call_Engine": [
+            "Succeeded",
+            "Failed",
+            "TimedOut"
+          ]
+        }
       },
       "Response": {
         "type": "Response",
@@ -35,7 +57,14 @@
           "statusCode": 200,
           "body": "@body('Call_Engine')"
         },
-        "runAfter": { "Call_Engine": ["Succeeded", "Failed", "TimedOut"] }
+        "runAfter": {
+          "Call_Run_Digest": [
+            "Succeeded",
+            "Failed",
+            "TimedOut",
+            "Skipped"
+          ]
+        }
       }
     },
     "outputs": {}
