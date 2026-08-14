@@ -49,7 +49,10 @@ digest.
 
 ## Consequences
 
-- Not yet visually confirmed by a human in an actual inbox as of this
-  writing — verified at the data/pipeline level only. DEGRADED/FAILED
-  template variants not yet exercised with a genuine failure/abandonment.
-  See [`../operations/known-issues.md`](../operations/known-issues.md).
+- **Visually confirmed by the user in an actual inbox (2026-08) — branding
+  approved.** OK and DEGRADED health-badge variants have both been seen
+  live (the DEGRADED variant via a real "48 filed, 32 retrying" digest
+  screenshot during the count-reconciliation investigation, see
+  ADR-0023); the FAILED (red, "Action Required") variant has not yet been
+  exercised with a genuine abandoned file — see
+  [`../operations/known-issues.md`](../operations/known-issues.md).

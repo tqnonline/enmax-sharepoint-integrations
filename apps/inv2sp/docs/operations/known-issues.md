@@ -29,14 +29,6 @@ checklist). None of this can be verified live until the ticket resolves.
 
 ## Design gaps, not yet resolved
 
-### No reconciliation between `ProcessedFiles` and live SharePoint state
-If a file is deleted from SharePoint after being marked `Succeeded` in
-`ProcessedFiles`, the engine has no mechanism to detect this — dedup is
-one-way. The file will never be re-copied, even though it's genuinely
-missing from the destination. Not yet decided whether periodic
-reconciliation is worth building, or whether this risk is accepted as-is.
-See [ADR-0003](../decisions/0003-dedup-state-external-table.md).
-
 ### Source share grows without bound
 Files are never deleted or archived from the source share after a
 successful copy ([ADR-0003](../decisions/0003-dedup-state-external-table.md)).
@@ -77,12 +69,9 @@ fully mask a field in a live response.
 
 ## Not yet exercised / confirmed
 
-- The branded digest email has been verified live at the data/pipeline
-  level (correct numbers, correct CSV, correct send) but **not yet
-  visually confirmed by a human in an actual inbox**.
-- The DEGRADED/FAILED digest health-badge template variants have not yet
-  been exercised with a genuine failure or abandoned file — only the OK
-  (all-clear) variant has been seen live.
+- The DEGRADED digest health-badge variant has been seen live; the FAILED
+  (red, "Action Required") variant has not yet been exercised with a
+  genuine abandoned file.
 
 ## Process items, not decisions
 
@@ -98,8 +87,8 @@ fully mask a field in a live response.
   secrets have a fixed expiry) — the OIDC/federated-credential path this
   project deliberately did not choose would not have needed this at all
   (see ADR-0033).
-- A reviewer/security pass on the Phase 4 branch before it merges to
-  `dev`.
+- A reviewer/security pass on Phase 4/5 work (merged to `dev` via PR #7,
+  2026-08-14) — not yet done.
 - The sibling prototype repo (`tqnonline/enmax-apinvoice-integration`)
   should probably be archived to prevent future collision/confusion — a
   recommendation noted, not yet actioned.

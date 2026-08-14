@@ -33,10 +33,11 @@ after a successful copy — they remain on the share exactly as found.
   practical effect on digest metrics (mitigated by ADR-0023's distinct-file
   accounting, but the underlying share itself is not pruned by this
   integration).
-- **Open design gap, not yet resolved:** `ProcessedFiles` has no
-  reconciliation against actual SharePoint state. If a file is deleted from
-  SharePoint after being marked `Succeeded`, the engine has no mechanism to
-  detect this and will never re-copy it. Flagged, pending a decision on
-  whether periodic reconciliation is needed.
+- **Decided (2026-08): periodic reconciliation against live SharePoint
+  state is not needed.** If a file is deleted from SharePoint after being
+  marked `Succeeded` in `ProcessedFiles`, the engine will not detect this
+  or re-copy it — dedup remains one-way, by explicit choice, not an
+  oversight. Reopen this only if a real operational need for
+  reconciliation surfaces later.
 - Pruning the share itself (if ever desired) is a business-owned process,
   explicitly out of scope for this integration.

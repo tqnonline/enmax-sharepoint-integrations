@@ -47,11 +47,7 @@ session log, not a permanent team artifact).
 - **Prod SharePoint target folder** — the exact path was never successfully
   confirmed (message garbled in transit, see ADR-0030). Do not deploy prod
   against the original assumed path without re-confirming.
-- **`ProcessedFiles` vs. live SharePoint reconciliation gap** — if a file is
-  deleted from SharePoint after being marked `Succeeded`, the engine never
-  re-detects it (one-way dedup, no periodic reconciliation). Flagged, not
-  yet resolved — see [`../operations/known-issues.md`](../operations/known-issues.md).
-- **Digest email visual confirmation** — branding has been verified live at
-  the data/pipeline level, not yet visually confirmed by a human in an
-  actual inbox; DEGRADED/FAILED template variants not yet exercised with a
-  genuine failure.
+- **Prod deployment pipeline** — cannot run yet, SPN not provisioned (see
+  ADR-0033 and [`../operations/known-issues.md`](../operations/known-issues.md)).
+- **FAILED digest health-badge variant** — not yet exercised with a genuine
+  abandoned file (OK and DEGRADED have both been seen live).
