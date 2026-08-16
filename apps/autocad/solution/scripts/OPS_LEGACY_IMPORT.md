@@ -107,10 +107,6 @@ Heather workbooks land under `--report-dir` (gitignored). Open the workbook’s 
 
 Validation reservations remain until the next transaction purge. Safe on Dev.
 
-## Pac token helper
-
-`solution/scripts/.pac-token-helper/` is optional local tooling. **Never commit** `bin/` or `obj/` (gitignored). Keep `uv.lock` with `pyproject.toml` for reproducible `uv sync`.
-
 ## SharePoint DropOff casing
 
 `solution/seed/app_config.dev.yaml` uses `EECDocumentControl/DropoffLibrary` (lowercase **off**) vs GEN-POC `DropOffLibrary`. Before blaming upload/index bugs, confirm the live library URL character-for-character in SharePoint admin / browser address bar and align App Config if needed.
