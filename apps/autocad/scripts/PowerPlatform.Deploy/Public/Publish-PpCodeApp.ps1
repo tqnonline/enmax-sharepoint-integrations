@@ -24,6 +24,19 @@ function Publish-PpCodeApp {
     .PARAMETER Environment
       The environment name matching a .env.<Environment> file, e.g. 'dev', 'uat'.
 
+    .PARAMETER PushMethod
+      'npx' (default): push via `npx power-apps push` using SP_* env vars for
+      non-interactive auth when present, else the active interactive/user
+      session. Cannot own Code Apps with a Service Principal in this tenant.
+
+      'pac': push via `pac code push`, using whatever `pac auth` profile is
+      already active/selected in the current process - this function does
+      NOT authenticate pac itself for this path. Use this from CI after
+      selecting a service-account (ROPC) `pac auth` profile, since SPNs
+      cannot own Code Apps here (see apps/autocad/scripts/push-codeapp-uat.ps1
+      and docs/cicd.md). power.config.json is still written first exactly as
+      in the 'npx' path, so `pac code push` has a valid target to push to.
+
     .EXAMPLE
       Publish-PpCodeApp -Environment dev
 
@@ -35,9 +48,16 @@ function Publish-PpCodeApp {
       Shows what would happen without writing files, running npm, or pushing.
       Safe for dry-run validation in CI pipelines.
 
+    .EXAMPLE
+      Publish-PpCodeApp -Environment prod -PushMethod pac
+
+      Writes power.config.json and builds as usual, then pushes with
+      `pac code push` instead of `npx power-apps push`. Caller must have
+      already run `pac auth create`/`pac auth select` for the identity that
+      should own the push (a service account, not an SPN).
+
     .NOTES
       Requires Node.js and npm available on PATH.
-      Code App push always uses `npx power-apps push` (npm Power Apps CLI).
       Credentials are read from code-app\.env.<Environment> with a git-worktree
       fallback to the main repo checkout (see Get-PpEnvConfig), unless
       -PacProfileName is used (user auth + APP_ID).
@@ -51,7 +71,10 @@ function Publish-PpCodeApp {
         [string]$PacProfileName,
 
         [string]$AppId = $env:APP_ID,
-        [string]$AppDisplayName = 'EEC Generation Document Management system'
+        [string]$AppDisplayName = 'EEC Generation Document Management system',
+
+        [ValidateSet('npx', 'pac')]
+        [string]$PushMethod = 'npx'
     )
 
     if ($PacProfileName) {
@@ -92,9 +115,15 @@ function Publish-PpCodeApp {
         Invoke-PpNpm -WorkingDir $codeApp -Arguments @('run', 'build')
         Assert-PpExitCode -Operation 'npm run build'
 
-        Write-PpLog "Pushing to Power Apps (npx power-apps push)..."
-        Invoke-PpPowerAppsPush -WorkingDir $codeApp -Cfg $cfg
-        Assert-PpExitCode -Operation 'power-apps push'
+        if ($PushMethod -eq 'pac') {
+            Write-PpLog "Pushing to Power Apps (pac code push)..."
+            Invoke-PpPacCodePush -WorkingDir $codeApp
+            Assert-PpExitCode -Operation 'pac code push'
+        } else {
+            Write-PpLog "Pushing to Power Apps (npx power-apps push)..."
+            Invoke-PpPowerAppsPush -WorkingDir $codeApp -Cfg $cfg
+            Assert-PpExitCode -Operation 'power-apps push'
+        }
 
         Write-PpLog "Done! Open app at:"
         Write-PpLog "  https://apps.powerapps.com/play/e/$($cfg['ENVIRONMENT_ID'])/app/$($cfg['APP_ID'])"
@@ -172,13 +201,33 @@ function Invoke-PpNpm {
     finally { Pop-Location }
 }
 
+function Invoke-PpPacCodePush {
+    <#
+    .SYNOPSIS Thin, mockable wrapper around `pac code push`. Seam for Pester mocking.
+    .DESCRIPTION
+      Used only when -PushMethod pac is selected. Does NOT authenticate pac -
+      the caller must already have selected the intended `pac auth` profile
+      (a service account / ROPC profile in CI, since SPNs cannot own Code
+      Apps in this tenant - never an SPN profile here). Relies on
+      power.config.json already being written to $WorkingDir by the caller.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$WorkingDir
+    )
+    Push-Location $WorkingDir
+    try   { & pac code push }
+    finally { Pop-Location }
+}
+
 function Invoke-PpPowerAppsPush {
     <#
     .SYNOPSIS Thin, mockable wrapper around the Code App push CLI. Seam for Pester mocking.
     .DESCRIPTION
-      Always uses `npx power-apps push` (npm Power Apps CLI). Never `pac code push`:
-      pac's Code App script is missing/broken on macOS ("Could not find the PowerApps
-      CLI script"), and in this tenant pac's ownership check rejects the deploy SP.
+      Used when -PushMethod npx (the default). Never `pac code push` for this
+      path: pac's Code App script is missing/broken on macOS ("Could not find
+      the PowerApps CLI script"), and in this tenant pac's ownership check
+      rejects an SPN. See Invoke-PpPacCodePush for the CI service-account path.
 
       When $Cfg has ClientId/ClientSecret/TenantId (CI / .env.<env>), those are exported
       as SP_* for non-interactive SP auth. When pushing via -PacProfileName (user auth),

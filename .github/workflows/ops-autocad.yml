@@ -76,12 +76,15 @@ jobs:
           profile-name: svc-ops-${{ inputs.environment }}
 
       - if: inputs.operation == 'dev-finish'
-        name: dev-finish - npm build + pac code push
-        working-directory: apps/autocad/code-app
+        name: dev-finish - push Code App (Publish-PpCodeApp -PushMethod pac, service account)
+        working-directory: apps/autocad
+        shell: pwsh
+        env:
+          APP_ID: ${{ secrets.AUTOCAD_APP_ID }}
+          APP_DISPLAY_NAME: ${{ secrets.AUTOCAD_APP_DISPLAY_NAME }}
         run: |
-          npm ci
-          npm run build
-          pac code push
+          Import-Module ./scripts/PowerPlatform.Deploy/PowerPlatform.Deploy.psd1 -Force
+          Publish-PpCodeApp -Environment ${{ inputs.environment }} -PacProfileName svc-ops-${{ inputs.environment }} -AppId $env:APP_ID -AppDisplayName $env:APP_DISPLAY_NAME -PushMethod pac
 
       # ── Cloud flows (never in CD - see docs/MIGRATION_PLAN.md) ─────────
       - if: inputs.operation == 'deploy-flows'

@@ -150,8 +150,70 @@ Describe 'Publish-PpCodeApp — normal run (mocked)' {
     }
 }
 
-Describe 'Publish-PpCodeApp — power.config content (Get-PpCodeAppConfig)' {
+Describe 'Publish-PpCodeApp — -PushMethod pac (service-account CI path)' {
 
+    # WHY: SPNs cannot own Code Apps in this tenant (see
+    # apps/autocad/scripts/push-codeapp-uat.ps1 and docs/cicd.md) - CI must push
+    # via `pac code push` under a service-account auth profile instead of
+    # `npx power-apps push`. This describes the contract that keeps the two
+    # push paths from silently drifting: -PushMethod pac must still write
+    # power.config.json and build exactly like the default path, but call
+    # Invoke-PpPacCodePush instead of Invoke-PpPowerAppsPush - and never both.
+
+    BeforeAll {
+        $script:FakeCfg4 = @{
+            Url               = 'https://dev.crm.dynamics.com'
+            ClientId          = 'fake-client-id'
+            ClientSecret      = 'fake-secret'
+            TenantId          = 'fake-tenant'
+            APP_ID            = 'app-abc-123'
+            APP_DISPLAY_NAME  = 'Enmax AutoCAD Dev'
+            ENVIRONMENT_ID    = 'env-def-456'
+        }
+
+        Mock -ModuleName PowerPlatform.Deploy Get-PpEnvConfig     { return $script:FakeCfg4 }
+        Mock -ModuleName PowerPlatform.Deploy Connect-PpDataverse {}
+        Mock -ModuleName PowerPlatform.Deploy Assert-PpExitCode   {}
+        Mock -ModuleName PowerPlatform.Deploy Invoke-PpNpm             {}
+        Mock -ModuleName PowerPlatform.Deploy Invoke-PpPacCodePush     {}
+        Mock -ModuleName PowerPlatform.Deploy Invoke-PpPowerAppsPush   {}
+        Mock -ModuleName PowerPlatform.Deploy Set-Content         {}
+    }
+
+    It 'calls Invoke-PpPacCodePush, not Invoke-PpPowerAppsPush' {
+        Publish-PpCodeApp -Environment dev -PushMethod pac
+
+        Should -Invoke Invoke-PpPacCodePush   -ModuleName PowerPlatform.Deploy -Times 1
+        Should -Invoke Invoke-PpPowerAppsPush -ModuleName PowerPlatform.Deploy -Times 0
+    }
+
+    It 'still writes power.config.json before pushing (pac code push has no config of its own)' {
+        # WHY: `pac code push` reads power.config.json from the working directory -
+        # it does not accept appId/environmentId as arguments. Skipping the config
+        # write would leave CI pushing against whatever config.json (if any)
+        # happened to be on disk already.
+        Publish-PpCodeApp -Environment dev -PushMethod pac
+
+        Should -Invoke Set-Content -ModuleName PowerPlatform.Deploy -Times 1
+    }
+
+    It 'still runs npm build before pushing' {
+        Publish-PpCodeApp -Environment dev -PushMethod pac
+
+        Should -Invoke Invoke-PpNpm -ModuleName PowerPlatform.Deploy -ParameterFilter {
+            $Arguments -contains 'run' -and $Arguments -contains 'build'
+        }
+    }
+
+    It 'defaults to npx when -PushMethod is not specified' {
+        Publish-PpCodeApp -Environment dev
+
+        Should -Invoke Invoke-PpPowerAppsPush -ModuleName PowerPlatform.Deploy -Times 1
+        Should -Invoke Invoke-PpPacCodePush   -ModuleName PowerPlatform.Deploy -Times 0
+    }
+}
+
+Describe 'Publish-PpCodeApp — power.config content (Get-PpCodeAppConfig)' {
     # WHY: The dataSources map is consumed by the Power Apps runtime to resolve
     # Dataverse entity bindings. A missing or misnamed key causes silent binding
     # failures in the deployed app (the affected list/grid shows no data but no error).

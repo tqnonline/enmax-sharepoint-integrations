@@ -108,8 +108,28 @@ jobs:
         run: python -m powerplatform_deploy.cli roles --environment ${{ inputs.environment-name }}
 
       # ── Step 7: Code App push - service account (ROPC), NOT the SPN ────
+      # Publish-PpCodeApp -PushMethod pac writes power.config.json (pac code
+      # push has no config of its own - see Publish-PpCodeApp.ps1) and runs
+      # npm build again (idempotent; the earlier build above is just a fast
+      # fail-fast check before the slower Dataverse steps run).
+      #
+      # `secrets.*` is not permitted directly inside a step `if:` on this job
+      # shape (actionlint: "context secrets is not allowed here") - resolve it
+      # to a step output first instead.
+      - name: Determine whether Code App push can run
+        id: push-check
+        shell: bash
+        env:
+          HAS_SVC_USERNAME: ${{ secrets.AUTOCAD_SVC_USERNAME }}
+        run: |
+          if [ "${{ inputs.push-code-app }}" = "true" ] && [ -n "$HAS_SVC_USERNAME" ]; then
+            echo "can-push=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "can-push=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: pac auth (service account, ROPC) for Code App push
-        if: inputs.push-code-app && secrets.AUTOCAD_SVC_USERNAME != ''
+        if: steps.push-check.outputs.can-push == 'true'
         uses: ./.github/actions/pac-auth-service-account
         with:
           environment-url: ${{ secrets.AUTOCAD_DATAVERSE_URL }}
@@ -117,13 +137,25 @@ jobs:
           password: ${{ secrets.AUTOCAD_SVC_PASSWORD }}
           profile-name: svc-${{ inputs.environment-name }}
 
-      - name: 7. Push Code App (pac code push, service account)
-        if: inputs.push-code-app && secrets.AUTOCAD_SVC_USERNAME != ''
-        working-directory: apps/autocad/code-app
-        run: pac code push
+      - name: 7. Push Code App (Publish-PpCodeApp -PushMethod pac, service account)
+        if: steps.push-check.outputs.can-push == 'true'
+        working-directory: apps/autocad
+        shell: pwsh
+        env:
+          APP_ID: ${{ secrets.AUTOCAD_APP_ID }}
+          APP_DISPLAY_NAME: ${{ secrets.AUTOCAD_APP_DISPLAY_NAME }}
+        run: |
+          Import-Module ./scripts/PowerPlatform.Deploy/PowerPlatform.Deploy.psd1 -Force
+          # -PacProfileName selects the already-active service-account profile
+          # (set by the step above) instead of Connect-PpDataverse re-authing
+          # with the SPN - Get-PpPacOrgWho then reads Url/EnvironmentId from
+          # THAT profile. Assert-PpUserPacAuth (inside Connect-PpDataverse)
+          # throws if the active profile turns out to be an SPN, so this path
+          # cannot silently fall back to the SPN identity.
+          Publish-PpCodeApp -Environment ${{ inputs.environment-name }} -PacProfileName svc-${{ inputs.environment-name }} -AppId $env:APP_ID -AppDisplayName $env:APP_DISPLAY_NAME -PushMethod pac
 
       - name: 7. Code App push SKIPPED - manual step required
-        if: "!inputs.push-code-app || secrets.AUTOCAD_SVC_USERNAME == ''"
+        if: steps.push-check.outputs.can-push == 'false'
         shell: bash
         run: |
           echo "::warning::Code App push was skipped (push-code-app=false or AUTOCAD_SVC_* secrets not set for this environment)."
