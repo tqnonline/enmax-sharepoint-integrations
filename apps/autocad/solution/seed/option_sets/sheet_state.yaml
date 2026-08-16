@@ -1,0 +1,17 @@
+schema_name: enmax_acdn_sheetstate
+display_name: Sheet State
+values:
+  - value: 0
+    label: None
+  - value: 1
+    label: Pending Initial Upload
+  - value: 2
+    label: Available
+  - value: 3
+    label: Checked Out
+  - value: 4
+    label: Awaiting Validation
+  - value: 5
+    label: Obsolete
+  - value: 6
+    label: Void

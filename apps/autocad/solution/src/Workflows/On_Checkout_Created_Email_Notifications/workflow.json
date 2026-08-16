@@ -1,0 +1,382 @@
+{
+  "schemaVersion": "1.0.0.0",
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "enmax_autocadconrefDataverse"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
+      "triggers": {
+        "When_Checkout_Created": {
+          "type": "OpenApiConnectionWebhook",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "SubscribeWebhookTrigger",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "subscriptionRequest/message": 1,
+              "subscriptionRequest/entityname": "enmax_autocadcheckout",
+              "subscriptionRequest/scope": 4,
+              "subscriptionRequest/filterexpression": "enmax_acdnstatus eq 1 or enmax_acdnstatus eq 6"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "metadata": {
+            "description": "Immediate checkout (Open) or gated checkout request (Requested)."
+          }
+        }
+      },
+      "actions": {
+        "Initialize_CorrelationId": {
+          "type": "InitializeVariable",
+          "runAfter": {},
+          "inputs": {
+            "variables": [
+              {
+                "name": "CorrelationId",
+                "type": "string",
+                "value": "@{coalesce(triggerBody()?['CorrelationId'], guid())}"
+              }
+            ]
+          }
+        },
+        "Initialize_FlowDisplayName": {
+          "type": "InitializeVariable",
+          "runAfter": {
+            "Initialize_CorrelationId": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "variables": [
+              {
+                "name": "FlowDisplayName",
+                "type": "string",
+                "value": "Enmax AutoCAD | On Create of Checkout | Send Notification Emails"
+              }
+            ]
+          }
+        },
+        "Initialize_FlowRunUrlTemplate": {
+          "type": "InitializeVariable",
+          "runAfter": {
+            "Initialize_FlowDisplayName": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "variables": [
+              {
+                "name": "FlowRunUrlTemplate",
+                "type": "string",
+                "value": "https://make.powerautomate.com/environments/{environmentId}/flows/{flowId}/runs/{runId}"
+              }
+            ]
+          }
+        },
+        "Scope_Try_Main": {
+          "type": "Scope",
+          "runAfter": {
+            "Initialize_FlowRunUrlTemplate": [
+              "Succeeded"
+            ]
+          },
+          "actions": {
+            "Get_App_Config": {
+              "type": "OpenApiConnection",
+              "runAfter": {},
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "ListRecords",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "enmax_autocadappconfigs",
+                  "$filter": "enmax_acdnkey eq 'DocControlEmailAddress'",
+                  "$top": 1
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Get_CodeApp_BaseUrl_Config": {
+              "type": "OpenApiConnection",
+              "runAfter": {
+                "Get_App_Config": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "ListRecords",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "enmax_autocadappconfigs",
+                  "$filter": "enmax_acdnkey eq 'CodeAppBaseUrl'",
+                  "$top": 1
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Get_Drawing": {
+              "type": "OpenApiConnection",
+              "runAfter": {
+                "Get_CodeApp_BaseUrl_Config": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "GetItem",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "enmax_autocaddrawings",
+                  "recordId": "@{triggerOutputs()?['body/_enmax_acdndrawing_value']}"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Get_Reservation": {
+              "type": "OpenApiConnection",
+              "runAfter": {
+                "Get_Drawing": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "GetItem",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "enmax_autocadreservations",
+                  "recordId": "@{outputs('Get_Drawing')?['body/_enmax_acdnreservation_value']}"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Get_Reservation_Creator": {
+              "type": "OpenApiConnection",
+              "runAfter": {
+                "Get_Reservation": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "GetItem",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "systemusers",
+                  "recordId": "@{outputs('Get_Reservation')?['body/_createdby_value']}"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Compose_DocControl": {
+              "type": "Compose",
+              "runAfter": {
+                "Get_Reservation_Creator": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@{outputs('Get_App_Config')?['body/value'][0]?['enmax_acdnvalue']}"
+            },
+            "Compose_CodeApp_BaseUrl": {
+              "type": "Compose",
+              "runAfter": {
+                "Get_Reservation_Creator": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@{outputs('Get_CodeApp_BaseUrl_Config')?['body/value'][0]?['enmax_acdnvalue']}"
+            },
+            "Compose_ReservationDeepLink": {
+              "type": "Compose",
+              "runAfter": {
+                "Compose_CodeApp_BaseUrl": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@{concat(outputs('Compose_CodeApp_BaseUrl'), '?target=reservation&id=', outputs('Get_Reservation')?['body/enmax_autocadreservationid'])}"
+            },
+            "Compose_Document_Number": {
+              "type": "Compose",
+              "runAfter": {
+                "Get_Reservation_Creator": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@{coalesce(outputs('Get_Drawing')?['body/enmax_acdnnumber'], triggerOutputs()?['body/enmax_acdnname'])}"
+            },
+            "Route_By_Status": {
+              "type": "Switch",
+              "runAfter": {
+                "Compose_DocControl": [
+                  "Succeeded"
+                ],
+                "Compose_CodeApp_BaseUrl": [
+                  "Succeeded"
+                ],
+                "Compose_ReservationDeepLink": [
+                  "Succeeded"
+                ],
+                "Compose_Document_Number": [
+                  "Succeeded"
+                ]
+              },
+              "expression": "@triggerOutputs()?['body/enmax_acdnstatus']",
+              "cases": {
+                "Requested": {
+                  "case": 6,
+                  "actions": {
+                    "Email_DocControl_Checkout_Approval": {
+                      "type": "Workflow",
+                      "inputs": {
+                        "host": {
+                          "workflowReferenceName": "Child_Send_System_Email"
+                        },
+                        "body": {
+                          "To": "@{outputs('Compose_DocControl')}",
+                          "Cc": "",
+                          "Subject": "Check-out approval needed for @{outputs('Compose_Document_Number')} requested by @{triggerOutputs()?['body/_enmax_acdncheckedoutby_value@OData.Community.Display.V1.FormattedValue']}.",
+                          "BodyHtml": "<div style=\"margin:0;padding:24px 0;background:#f4f4f4;font-family:'Segoe UI',Arial,sans-serif;color:#1a1a1a;\"><div style=\"max-width:600px;margin:0 auto;background:#ffffff;border-radius:10px;overflow:hidden;border:1px solid #e6e6e6;\"><div style=\"background:#E1393E;padding:22px 32px;\"><img src=\"cid:enmax_logo_white.png\" width=\"140\" height=\"65\" alt=\"ENMAX\" style=\"display:block;border:0;outline:none;text-decoration:none;\" /><div style=\"color:#ffffff;font-size:12px;letter-spacing:0.5px;opacity:0.92;margin-top:3px;\">EEC Generation Document Management</div></div><div style=\"padding:28px 32px;\"><h2 style=\"margin:0 0 10px;font-size:18px;\">Check-out approval needed</h2><p style=\"margin:0 0 8px;font-size:14px;line-height:1.5;color:#333;\">A team member has requested to check out a controlled document. Review the request and approve it so they can download and revise the file.</p><table style=\"width:100%;border-collapse:collapse;margin:16px 0 4px;font-size:14px;\"><tr><td style=\"padding:6px 0;color:#666;width:160px;vertical-align:top;\">Document</td><td style=\"padding:6px 0;font-weight:600;\">@{replace(replace(outputs('Compose_Document_Number'), '<', '&lt;'), '>', '&gt;')}</td></tr><tr><td style=\"padding:6px 0;color:#666;vertical-align:top;\">Requested by</td><td style=\"padding:6px 0;\">@{replace(replace(triggerOutputs()?['body/_enmax_acdncheckedoutby_value@OData.Community.Display.V1.FormattedValue'], '<', '&lt;'), '>', '&gt;')}</td></tr><tr><td style=\"padding:6px 0;color:#666;vertical-align:top;\">Reservation owner</td><td style=\"padding:6px 0;\">@{replace(replace(outputs('Get_Reservation_Creator')?['body/fullname'], '<', '&lt;'), '>', '&gt;')} (@{outputs('Get_Reservation_Creator')?['body/internalemailaddress']})</td></tr><tr><td style=\"padding:6px 0;color:#666;vertical-align:top;\">Status</td><td style=\"padding:6px 0;color:#E1393E;font-weight:600;\">Awaiting your approval</td></tr></table><div style=\"margin:24px 0 4px;\"><a href=\"@{outputs('Compose_CodeApp_BaseUrl')}?target=approvals&amp;section=documents&amp;tab=checkout\" style=\"display:inline-block;background:#E1393E;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;font-size:14px;\">Review check-out request</a></div><p style=\"margin:14px 0 0;font-size:12px;color:#888;line-height:1.5;\">After approval, the requester uploads the revised PDF to the drop-off library and then submits Check In for validation.</p></div><div style=\"padding:16px 32px;background:#faf0f0;border-top:1px solid #eee;font-size:12px;color:#777;\">Automated message from a no-reply mailbox &mdash; please don't reply. Use the button above or open the EEC Generation Document Management app to take action.</div></div></div>"
+                        }
+                      }
+                    }
+                  }
+                },
+                "Open": {
+                  "case": 1,
+                  "actions": {
+                    "Email_Creator_Checked_Out": {
+                      "type": "Workflow",
+                      "inputs": {
+                        "host": {
+                          "workflowReferenceName": "Child_Send_System_Email"
+                        },
+                        "body": {
+                          "To": "@{outputs('Get_Reservation_Creator')?['body/internalemailaddress']}",
+                          "Cc": "@{outputs('Compose_DocControl')}",
+                          "Subject": "@{outputs('Compose_Document_Number')} is now checked out to @{triggerOutputs()?['body/_enmax_acdncheckedoutby_value@OData.Community.Display.V1.FormattedValue']}.",
+                          "BodyHtml": "<div style=\"margin:0;padding:24px 0;background:#f4f4f4;font-family:'Segoe UI',Arial,sans-serif;color:#1a1a1a;\"><div style=\"max-width:600px;margin:0 auto;background:#ffffff;border-radius:10px;overflow:hidden;border:1px solid #e6e6e6;\"><div style=\"background:#E1393E;padding:22px 32px;\"><img src=\"cid:enmax_logo_white.png\" width=\"140\" height=\"65\" alt=\"ENMAX\" style=\"display:block;border:0;outline:none;text-decoration:none;\" /><div style=\"color:#ffffff;font-size:12px;letter-spacing:0.5px;opacity:0.92;margin-top:3px;\">EEC Generation Document Management</div></div><div style=\"padding:28px 32px;\"><h2 style=\"margin:0 0 10px;font-size:18px;\">Your document is checked out</h2><p style=\"margin:0 0 8px;font-size:14px;line-height:1.5;color:#333;\">Your check-out request was approved. The document below is now checked out to you and ready to revise.</p><table style=\"width:100%;border-collapse:collapse;margin:16px 0 4px;font-size:14px;\"><tr><td style=\"padding:6px 0;color:#666;width:160px;vertical-align:top;\">Document</td><td style=\"padding:6px 0;font-weight:600;\">@{outputs('Compose_Document_Number')}</td></tr><tr><td style=\"padding:6px 0;color:#666;vertical-align:top;\">Status</td><td style=\"padding:6px 0;color:#107C10;font-weight:600;\">Checked out to you</td></tr></table><p style=\"margin:18px 0 6px;font-size:14px;font-weight:600;\">Next steps</p><ol style=\"margin:0;padding-left:20px;font-size:14px;line-height:1.7;color:#333;\"><li>Download the current file and make your revisions.</li><li>Upload the revised PDF to the drop-off library.</li><li>Submit <strong>Check In</strong> from the app so Document Control can validate it.</li></ol><div style=\"margin:24px 0 4px;\"><a href=\"@{outputs('Compose_ReservationDeepLink')}\" style=\"display:inline-block;background:#E1393E;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;font-size:14px;\">Open reservation</a></div></div><div style=\"padding:16px 32px;background:#faf0f0;border-top:1px solid #eee;font-size:12px;color:#777;\">Automated message from a no-reply mailbox &mdash; please don't reply. Use the button above or open the EEC Generation Document Management app to take action.</div></div></div>"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "default": {
+                "actions": {}
+              }
+            }
+          }
+        },
+        "Scope_Catch_Failure": {
+          "type": "Scope",
+          "runAfter": {
+            "Scope_Try_Main": [
+              "Failed",
+              "TimedOut"
+            ]
+          },
+          "actions": {
+            "Compose_Error_Context": {
+              "type": "Compose",
+              "runAfter": {},
+              "inputs": {
+                "failedAction": "@{coalesce(first(result('Scope_Try_Main'))?['name'], 'Scope_Try_Main')}",
+                "errorMessage": "@{coalesce(first(result('Scope_Try_Main'))?['error']?['message'], 'Flow failed')}",
+                "errorCode": "@{coalesce(first(result('Scope_Try_Main'))?['error']?['code'], 'FlowFailed')}",
+                "errorDetail": "@{string(result('Scope_Try_Main'))}"
+              }
+            },
+            "Compose_FlowRunUrl": {
+              "type": "Compose",
+              "runAfter": {
+                "Compose_Error_Context": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@{replace(replace(replace(variables('FlowRunUrlTemplate'), '{environmentId}', coalesce(workflow()?['tags']?['environmentName'], '')), '{flowId}', coalesce(workflow()?['name'], '')), '{runId}', coalesce(workflow()?['run']?['name'], ''))}"
+            },
+            "Invoke_Log_Flow_Exception": {
+              "type": "Workflow",
+              "runAfter": {
+                "Compose_FlowRunUrl": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
+                  "workflowReferenceName": "Child_Log_Flow_Exception"
+                },
+                "body": {
+                  "Origin": 1,
+                  "FlowDisplayName": "@{variables('FlowDisplayName')}",
+                  "FailedAction": "@{outputs('Compose_Error_Context')?['failedAction']}",
+                  "ErrorMessage": "@{outputs('Compose_Error_Context')?['errorMessage']}",
+                  "ErrorCode": "@{outputs('Compose_Error_Context')?['errorCode']}",
+                  "ErrorDetail": "@{outputs('Compose_Error_Context')?['errorDetail']}",
+                  "FlowRunId": "@{workflow()?['run']?['name']}",
+                  "FlowRunUrl": "@{outputs('Compose_FlowRunUrl')}",
+                  "CorrelationId": "@{variables('CorrelationId')}",
+                  "SubjectTable": "enmax_autocadcheckout",
+                  "SubjectId": "@{triggerOutputs()?['body/enmax_autocadcheckoutid']}",
+                  "Severity": 2
+                }
+              }
+            },
+            "Terminate_Failed": {
+              "type": "Terminate",
+              "runAfter": {
+                "Invoke_Log_Flow_Exception": [
+                  "Succeeded",
+                  "Failed",
+                  "Skipped",
+                  "TimedOut"
+                ]
+              },
+              "inputs": {
+                "runStatus": "Failed",
+                "runError": {
+                  "code": "@{outputs('Compose_Error_Context')?['errorCode']}",
+                  "message": "@{outputs('Compose_Error_Context')?['errorMessage']}"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "templateName": ""
+  }
+}

@@ -1,0 +1,17 @@
+schema_name: enmax_acdn_checkoutstatus
+display_name: Checkout Status
+values:
+  - value: 0
+    label: None
+  - value: 1
+    label: Open
+  - value: 2
+    label: Awaiting Validation
+  - value: 3
+    label: Closed Approved
+  - value: 4
+    label: Closed Declined
+  - value: 5
+    label: Closed Forced
+  - value: 6
+    label: Requested

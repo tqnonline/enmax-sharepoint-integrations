@@ -1,0 +1,48 @@
+table: enmax_autocadrecordphase
+natural_key_columns:
+- code
+rows:
+- code: IFC
+  display_name: Issued for Construction
+  status: 1
+  sort_order: 10
+- code: IFD
+  display_name: Issued for Decommissioning
+  status: 1
+  sort_order: 20
+- code: IFR
+  display_name: Issued for Review
+  status: 1
+  sort_order: 30
+- code: IFI
+  display_name: Issued for Implementation
+  status: 1
+  sort_order: 40
+- code: Information
+  display_name: Information
+  status: 1
+  sort_order: 50
+- code: Record
+  display_name: Record
+  status: 1
+  sort_order: 60
+- code: As Built
+  display_name: As Built
+  status: 1
+  sort_order: 70
+- code: Inactive
+  display_name: Inactive
+  status: 1
+  sort_order: 80
+- code: Obsolete
+  display_name: Obsolete
+  status: 1
+  sort_order: 90
+- code: Void
+  display_name: Void
+  status: 1
+  sort_order: 100
+- code: XXX
+  display_name: XXX
+  status: 1
+  sort_order: 110

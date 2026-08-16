@@ -1,0 +1,269 @@
+table: enmax_autocadappconfig
+natural_key_columns: [key]
+rows:
+  - key: SharedMailboxAddress
+    value: "{{ APP_CONFIG_SHARED_MAILBOX | default('EEC_PwrPlat_Svc@enmax.com') }}"
+    value_type: String
+    description: Outbound mailbox for Power Automate flows (DEV/UAT uses EEC_PwrPlat_Svc@enmax.com). Send-As on this mailbox. NO-REPLY — email copy must not invite replies.
+  - key: DocControlEmailAddress
+    value: GWE-DocControl@enmax.com
+    value_type: String
+    description: Document Control mailbox. Approval emails are sent TO this address; creator-facing checkout/check-in emails CC this address.
+  - key: CodeAppBaseUrl
+    value: "{{ CODE_APP_BASE_URL | default('https://apps.powerapps.com/play/e/REPLACE_ENVIRONMENT_ID/app/REPLACE_APP_ID') }}"
+    value_type: String
+    description: >-
+      Full play URL of the published Code App up to and including the app id
+      (https://apps.powerapps.com/play/e/{environmentId}/app/{appId}) — NO trailing
+      slash, NO query, NO hash. Notification flows append a deep-link query string
+      (e.g. ?target=reservation&id={id}, ?target=approvals&section=documents&tab=checkout)
+      which the app resolves on boot via DeepLinkBootstrap. Hash routes are NOT used
+      in links: the Power Apps player drops the URL fragment on launch. This row is the
+      single place the per-environment env/app GUIDs are managed for flows; the Code App
+      itself derives them at runtime from getContext(). Do not encode the apps.powerapps.com.mcas.ms
+      Defender-for-Cloud-Apps proxy host here — MCAS rewrites transparently and preserves the query.
+      Must be set per environment (dev/uat/prod overlay or CODE_APP_BASE_URL); the base default is
+      an obvious placeholder so a missing override fails loudly instead of producing a broken link.
+  - key: FlowRunUrlTemplate
+    value: "https://make.powerautomate.com/environments/{environmentId}/flows/{flowId}/runs/{runId}"
+    value_type: String
+    description: Template for deep links to Power Automate run history. Placeholders environmentId, flowId, runId are replaced at runtime.
+  - key: SingleAdminMode
+    value: "false"
+    value_type: Boolean
+    description: When true, only one admin may perform write operations at a time. Dev/UAT leave false.
+  - key: ReleaseRequiresReason
+    value: "true"
+    value_type: Boolean
+    description: When true, enmax_acdnReleaseDrawing requires a non-empty Reason (min 10 chars) to release an unused reserved number.
+  - key: MaxRecordsPerReservation
+    value: "10"
+    value_type: Integer
+    description: Maximum number of records (drawings or documents) that can be reserved in a single reservation.
+  - key: MaxSheetsPerDrawing
+    value: "50"
+    value_type: Integer
+    description: Maximum number of sheets a single Drawing may have.
+  - key: DefaultSheetsPerDrawing
+    value: "1"
+    value_type: Integer
+    description: Default sheet count when a new Drawing is created.
+  - key: StaleCheckoutMonths
+    value: "3,6,12"
+    value_type: String
+    description: Comma-separated month thresholds for stale-checkout reminder notifications.
+  - key: ApproverTeamName
+    value: ENMAX AutoCAD Approvers
+    value_type: String
+    description: Dataverse team name holding the Approver role. Must exist before approvals work.
+  - key: AdminTeamName
+    value: ENMAX AutoCAD Admins
+    value_type: String
+    description: Dataverse team name holding the Admin role.
+  - key: SharePointSiteUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC
+    value_type: String
+    description: DEV/UAT SharePoint site (GEN-POC). Production uses separate Drawings and Documents sites.
+  - key: CheckInUploadLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+    value_type: String
+    description: Legacy fallback drop-off library URL when taxonomy-specific keys are unset.
+  - key: DrawingDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+    value_type: String
+    description: Drawing taxonomy drop-off (read/write) library base URL.
+  - key: DrawingDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+    value_type: String
+    description: Drawing taxonomy destination (read-only) library base URL.
+  - key: DocumentDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+    value_type: String
+    description: Document taxonomy (Standard/Procedure/Form) drop-off (read/write) library base URL.
+  - key: DocumentDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+    value_type: String
+    description: Document taxonomy (Standard/Procedure/Form) destination (read-only) library base URL.
+  - key: StandardDocumentKindCodes
+    value: ""
+    value_type: String
+    description: Comma-separated Kind codes classified as Standard (indexer only; empty = none configured).
+  - key: ProcedureDocumentKindCodes
+    value: ""
+    value_type: String
+    description: Comma-separated Kind codes classified as Procedure (indexer only; empty = none configured).
+  - key: StandardDocumentDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+    value_type: String
+    description: LEGACY FALLBACK (cutover) — prefer DocumentDropOffLibraryUrl; Standard drop-off URL.
+  - key: StandardDocumentDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+    value_type: String
+    description: LEGACY FALLBACK (cutover) — prefer DocumentDestinationLibraryUrl; Standard destination URL.
+  - key: ProcedureDocumentDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+    value_type: String
+    description: LEGACY FALLBACK (cutover) — prefer DocumentDropOffLibraryUrl; Procedure drop-off URL.
+  - key: ProcedureDocumentDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+    value_type: String
+    description: LEGACY FALLBACK (cutover) — prefer DocumentDestinationLibraryUrl; Procedure destination URL.
+  - key: FormDocumentDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+    value_type: String
+    description: LEGACY FALLBACK (cutover) — prefer DocumentDropOffLibraryUrl; Form drop-off URL.
+  - key: FormDocumentDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+    value_type: String
+    description: LEGACY FALLBACK (cutover) — prefer DocumentDestinationLibraryUrl; Form destination URL.
+  - key: DrawingDocumentSPContentTypeName
+    value: Generation Drawing Information
+    value_type: String
+    description: SharePoint content type display name used by the indexer (shared across environments).
+  - key: DrawingDocumentSPContentTypeId
+    value: "0x010100C5939496BD3E0F4287FA702FBCF7C0BE01"
+    value_type: String
+    description: SharePoint content type ID used to filter indexer scans (shared across environments).
+  - key: SharePointIndexerLogFolderPath
+    value: Shared Documents/Enmax AutoCAD/Indexer Logs
+    value_type: String
+    description: Server-relative folder path for indexer CSV run logs (same site as destination libraries). Override per environment via overlay.
+  - key: SharePointIndexerMaxCsvRows
+    value: "5000"
+    value_type: Integer
+    description: Maximum detail rows written to an indexer CSV before truncation/summary split.
+  - key: SharePointIndexerIncrementalHours
+    value: "1"
+    value_type: Integer
+    description: Lookback window in hours for the incremental SharePoint indexer.
+  - key: SharePointRecordTypeMap
+    value: '{"Drawing Number":"Drawing","Drawing Document":"DrawingDocument","Standard Document":"Standard","Procedure":"Procedure","Form":"Form"}'
+    value_type: String
+    description: JSON map of SharePoint Record Type choice labels to stub Taxonomy (DrawingDocument/Drawing/Standard/Procedure/Form). Used by the indexer when Kind CSVs do not classify an orphan.
+  - key: RequireCheckInApproval
+    value: "true"
+    value_type: Boolean
+    description: When true, check-in stays Awaiting Validation until an Approver/Admin validates. Seed false to auto-close.
+  # AppOwnerTeamId / AdminTeamId / ApproverTeamId / UserTeamId are NOT seeded.
+  # Seed used to write Guid.Empty placeholders, which duplicated the live rows
+  # written by roles provisioning and could make SetAppOwnerPlugin stamp ownerid=Guid.Empty.
+  # Those keys are filled only by pp-deploy roles / sync_team_app_config (PROVISIONED_KEYS).
+  - key: BusinessUnitName
+    value: Enmax AutoCAD
+    value_type: String
+    description: Dataverse Business Unit that owns the solution records.
+  - key: BrandPrimary
+    value: "#E1393E"
+    value_type: String
+    description: Cinnabar red — primary brand colour used in Code App header and CTAs.
+  - key: BrandSecondary
+    value: "#0F487A"
+    value_type: String
+    description: Chathams Blue — secondary brand colour.
+  - key: BrandAccent
+    value: "#F7DB9C"
+    value_type: String
+    description: Marzipan — accent / highlight colour.
+  - key: EnvironmentBadge
+    value: Production
+    value_type: String
+    description: >-
+      Code App header environment chip. Use Production (or Prod / blank) to hide
+      the badge on the live org. Non-production overlays set Sandbox (or DEV/UAT).
+      Read only via App Configuration — never from process environment variables.
+  - key: DefaultTheme
+    value: system
+    value_type: String
+    description: Code App colour scheme default. One of 'light', 'dark', 'system'.
+  - key: EnableTelemetry
+    value: "true"
+    value_type: Boolean
+    description: Enable Application Insights telemetry from the Code App.
+  - key: MaintenanceBannerTitle
+    value: Scheduled Maintenance
+    value_type: String
+    description: Title shown in the maintenance banner when active. Leave blank to suppress the banner.
+  - key: MaintenanceBannerBody
+    value: The drawing numbering system is temporarily unavailable. Please try again later.
+    value_type: String
+    description: Body copy for the maintenance banner. Must NOT invite replies — system uses a no-reply mailbox.
+  - key: MaintenanceBannerSeverity
+    value: Warning
+    value_type: String
+    description: Severity level of the maintenance banner. One of Info, Warning, Critical.
+  - key: FooterDisclaimer
+    value: This system manages official ENMAX engineering drawing numbers. All reservations are subject to review.
+    value_type: String
+    description: Disclaimer text shown in the Code App footer.
+  - key: FooterCopyright
+    value: "\xA9 ENMAX Corporation. All rights reserved."
+    value_type: String
+    description: Copyright line shown in the Code App footer.
+  - key: BroadcastFanOutCadenceMinutes
+    value: "60"
+    value_type: Integer
+    description: How often (minutes) the broadcast fan-out Power Automate flow runs.
+  - key: GridPageSize
+    value: "10"
+    value_type: Integer
+    description: Number of rows per page in all Code App grids and lists. Increase for power users, decrease for low-bandwidth environments.
+  - key: GridDefaultFromDays
+    value: "30"
+    value_type: Integer
+    description: Default From-date lookback in days for Code App grid filters (From = today − N, To = today). Used by Search, My Reservations, Approvals, Audit, and Broadcasts.
+  - key: EnableDrawingCheckout
+    value: "true"
+    value_type: Boolean
+    description: When true, Check Out is available for Drawing reservations. Set false to hide/disable checkout for drawings only.
+  - key: EnableDrawingCheckIn
+    value: "true"
+    value_type: Boolean
+    description: When true, Check In is available for Drawing reservations. Set false to hide/disable check-in for drawings only.
+  - key: EnableDrawingDocumentCheckout
+    value: "true"
+    value_type: Boolean
+    description: When true, Check Out is available for Drawing Document reservations. Set false to hide/disable checkout for Drawing Documents only.
+  - key: EnableDrawingDocumentCheckIn
+    value: "true"
+    value_type: Boolean
+    description: When true, Check In is available for Drawing Document reservations. Set false to hide/disable check-in for Drawing Documents only.
+  - key: AllowDrawingDocumentExistingSequence
+    value: "false"
+    value_type: Boolean
+    description: Drawing Document is New-sequence-only (docs/drawing-document-subtype-CONTRACT.md); leave false. Existing-sequence append is not supported for this subtype.
+  - key: EnableProcedureCheckout
+    value: "true"
+    value_type: Boolean
+    description: When true, Check Out is available for Procedure reservations. Set false to hide/disable checkout for procedures only.
+  - key: EnableProcedureCheckIn
+    value: "true"
+    value_type: Boolean
+    description: When true, Check In is available for Procedure reservations. Set false to hide/disable check-in for procedures only.
+  - key: EnableStandardCheckout
+    value: "true"
+    value_type: Boolean
+    description: When true, Check Out is available for Standard reservations. Set false to hide/disable checkout for standards only.
+  - key: EnableStandardCheckIn
+    value: "true"
+    value_type: Boolean
+    description: When true, Check In is available for Standard reservations. Set false to hide/disable check-in for standards only.
+  - key: EnableFormCheckout
+    value: "true"
+    value_type: Boolean
+    description: When true, Check Out is available for Form reservations. Set false to hide/disable checkout for forms only.
+  - key: EnableFormCheckIn
+    value: "true"
+    value_type: Boolean
+    description: When true, Check In is available for Form reservations. Set false to hide/disable check-in for forms only.
+  - key: RequireCheckOutApproval
+    value: "true"
+    value_type: Boolean
+    description: When true, Check Out is a gated action — a user request creates a checkout in the 'Requested' state and an Approver/Admin must approve it before the drawing is checked out and drop-off upload is enabled. Mandatory per governance; leave true.
+  - key: ShowFinalizeButton
+    value: "false"
+    value_type: Boolean
+    description: When true, the Finalize action is shown on the drawing/document actions panel. Hidden by default per requirement #14 — set true per environment to expose it.
+  - key: ShowObsoleteButton
+    value: "false"
+    value_type: Boolean
+    description: When true, the Mark Obsolete action is shown on the drawing/document actions panel (Admins only). Hidden by default per requirement #14 — set true per environment to expose it.

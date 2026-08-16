@@ -1,0 +1,9 @@
+schema_name: enmax_acdn_reservationtype
+display_name: Reservation Type
+values:
+  - value: 0
+    label: None
+  - value: 1
+    label: Drawing
+  - value: 2
+    label: Document

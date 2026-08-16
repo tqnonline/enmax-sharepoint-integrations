@@ -1,0 +1,6 @@
+table: enmax_autocadsystemscope
+natural_key_columns:
+- system_code
+- scope_type
+- scope_value
+rows: []

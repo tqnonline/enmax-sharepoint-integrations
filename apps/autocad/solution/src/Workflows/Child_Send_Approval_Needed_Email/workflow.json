@@ -1,0 +1,370 @@
+{
+  "schemaVersion": "1.0.0.0",
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "enmax_autocadconrefDataverse"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      },
+      "shared_office365": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "enmax_autocadconrefOutlook"
+        },
+        "api": {
+          "name": "shared_office365"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "Button",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "RecipientEmail": {
+                  "type": "string"
+                },
+                "RecipientDisplayName": {
+                  "type": "string"
+                },
+                "ReservationId": {
+                  "type": "string"
+                },
+                "RequesterDisplayName": {
+                  "type": "string"
+                },
+                "RequesterEmail": {
+                  "type": "string"
+                },
+                "TypeLabel": {
+                  "type": "string"
+                },
+                "TypeNoun": {
+                  "type": "string"
+                },
+                "SubmittedOn": {
+                  "type": "string"
+                },
+                "RequestKind": {
+                  "type": "string"
+                },
+                "CodingSequence": {
+                  "type": "string"
+                },
+                "CompositionPreview": {
+                  "type": "string"
+                },
+                "Count": {
+                  "type": "string"
+                },
+                "Reason": {
+                  "type": "string"
+                },
+                "OverrideText": {
+                  "type": "string"
+                },
+                "DeepLink": {
+                  "type": "string"
+                },
+                "ApprovalsUrl": {
+                  "type": "string"
+                },
+                "Cc": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "RecipientEmail",
+                "ReservationId"
+              ]
+            }
+          }
+        }
+      },
+      "actions": {
+        "Initialize_CorrelationId": {
+          "type": "InitializeVariable",
+          "runAfter": {},
+          "inputs": {
+            "variables": [
+              {
+                "name": "CorrelationId",
+                "type": "string",
+                "value": "@{coalesce(triggerBody()?['CorrelationId'], guid())}"
+              }
+            ]
+          }
+        },
+        "Initialize_FlowDisplayName": {
+          "type": "InitializeVariable",
+          "runAfter": {
+            "Initialize_CorrelationId": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "variables": [
+              {
+                "name": "FlowDisplayName",
+                "type": "string",
+                "value": "Enmax AutoCAD | Internal | Send Reservation Approval Needed Email"
+              }
+            ]
+          }
+        },
+        "Initialize_FlowRunUrlTemplate": {
+          "type": "InitializeVariable",
+          "runAfter": {
+            "Initialize_FlowDisplayName": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "variables": [
+              {
+                "name": "FlowRunUrlTemplate",
+                "type": "string",
+                "value": "https://make.powerautomate.com/environments/{environmentId}/flows/{flowId}/runs/{runId}"
+              }
+            ]
+          }
+        },
+        "Scope_Try_Main": {
+          "type": "Scope",
+          "runAfter": {
+            "Initialize_FlowRunUrlTemplate": [
+              "Succeeded"
+            ]
+          },
+          "actions": {
+            "Get_Template": {
+              "type": "OpenApiConnection",
+              "runAfter": {},
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "ListRecords",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "webresourceset",
+                  "$filter": "name eq 'enmax_approval_needed'",
+                  "$top": 1
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Substitute_Template": {
+              "type": "Compose",
+              "runAfter": {
+                "Get_Template": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@{replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(base64ToString(outputs('Get_Template')?['body/value'][0]?['content']), '{{ReservationId}}', coalesce(triggerBody()?['ReservationId'], '')), '{{RequesterDisplayName}}', replace(replace(coalesce(triggerBody()?['RequesterDisplayName'], ''), '<', '&lt;'), '>', '&gt;')), '{{CompositionPreview}}', replace(replace(coalesce(triggerBody()?['CompositionPreview'], ''), '<', '&lt;'), '>', '&gt;')), '{{Count}}', coalesce(triggerBody()?['Count'], '')), '{{Reason}}', replace(replace(coalesce(triggerBody()?['Reason'], ''), '<', '&lt;'), '>', '&gt;')), '{{OverrideText}}', replace(replace(coalesce(triggerBody()?['OverrideText'], ''), '<', '&lt;'), '>', '&gt;')), '{{DeepLink}}', coalesce(triggerBody()?['DeepLink'], '')), '{{ApprovalsUrl}}', coalesce(triggerBody()?['ApprovalsUrl'], coalesce(triggerBody()?['DeepLink'], ''))), '{{RequesterEmail}}', replace(replace(coalesce(triggerBody()?['RequesterEmail'], ''), '<', '&lt;'), '>', '&gt;')), '{{TypeLabel}}', replace(replace(coalesce(triggerBody()?['TypeLabel'], ''), '<', '&lt;'), '>', '&gt;')), '{{SubmittedOn}}', coalesce(triggerBody()?['SubmittedOn'], '')), '{{RequestKind}}', coalesce(triggerBody()?['RequestKind'], '')), '{{CodingSequence}}', replace(replace(coalesce(triggerBody()?['CodingSequence'], ''), '<', '&lt;'), '>', '&gt;'))}"
+            },
+            "Get_Shared_Mailbox": {
+              "type": "OpenApiConnection",
+              "runAfter": {
+                "Substitute_Template": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "ListRecords",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "enmax_autocadappconfigs",
+                  "$filter": "enmax_acdnkey eq 'SharedMailboxAddress'",
+                  "$top": 1
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Get_Logo": {
+              "type": "OpenApiConnection",
+              "runAfter": {
+                "Get_Shared_Mailbox": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "ListRecords",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "webresourceset",
+                  "$filter": "name eq 'enmax_logo_white'",
+                  "$top": 1
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Send_Email": {
+              "type": "OpenApiConnection",
+              "runAfter": {
+                "Get_Logo": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_office365",
+                  "operationId": "SendEmailV2",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+                },
+                "parameters": {
+                  "emailMessage/To": "@{triggerBody()?['RecipientEmail']}",
+                  "emailMessage/Cc": "@{coalesce(triggerBody()?['Cc'], '')}",
+                  "emailMessage/Subject": "Approval needed for new @{coalesce(triggerBody()?['TypeNoun'], 'drawing')} reservation for @{triggerBody()?['CompositionPreview']} from @{triggerBody()?['RequesterDisplayName']}.",
+                  "emailMessage/Body": "@{outputs('Substitute_Template')}",
+                  "emailMessage/Importance": "Normal",
+                  "emailMessage/Attachments": [
+                    {
+                      "Name": "enmax_logo_white.png",
+                      "ContentBytes": "@{outputs('Get_Logo')?['body/value'][0]?['content']}"
+                    }
+                  ]
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "retryPolicy": {
+                "type": "fixed",
+                "count": 1,
+                "interval": "PT30S"
+              }
+            }
+          }
+        },
+        "Scope_Catch_Failure": {
+          "type": "Scope",
+          "runAfter": {
+            "Scope_Try_Main": [
+              "Failed",
+              "TimedOut"
+            ]
+          },
+          "actions": {
+            "Compose_Error_Context": {
+              "type": "Compose",
+              "runAfter": {},
+              "inputs": {
+                "failedAction": "@{coalesce(first(result('Scope_Try_Main'))?['name'], 'Scope_Try_Main')}",
+                "errorMessage": "@{coalesce(first(result('Scope_Try_Main'))?['error']?['message'], 'Flow failed')}",
+                "errorCode": "@{coalesce(first(result('Scope_Try_Main'))?['error']?['code'], 'FlowFailed')}",
+                "errorDetail": "@{string(result('Scope_Try_Main'))}"
+              }
+            },
+            "Compose_FlowRunUrl": {
+              "type": "Compose",
+              "runAfter": {
+                "Compose_Error_Context": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@{replace(replace(replace(variables('FlowRunUrlTemplate'), '{environmentId}', coalesce(workflow()?['tags']?['environmentName'], '')), '{flowId}', coalesce(workflow()?['name'], '')), '{runId}', coalesce(workflow()?['run']?['name'], ''))}"
+            },
+            "Invoke_Log_Flow_Exception": {
+              "type": "Workflow",
+              "runAfter": {
+                "Compose_FlowRunUrl": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
+                  "workflowReferenceName": "Child_Log_Flow_Exception"
+                },
+                "body": {
+                  "Origin": 1,
+                  "FlowDisplayName": "@{variables('FlowDisplayName')}",
+                  "FailedAction": "@{outputs('Compose_Error_Context')?['failedAction']}",
+                  "ErrorMessage": "@{outputs('Compose_Error_Context')?['errorMessage']}",
+                  "ErrorCode": "@{outputs('Compose_Error_Context')?['errorCode']}",
+                  "ErrorDetail": "@{outputs('Compose_Error_Context')?['errorDetail']}",
+                  "FlowRunId": "@{workflow()?['run']?['name']}",
+                  "FlowRunUrl": "@{outputs('Compose_FlowRunUrl')}",
+                  "CorrelationId": "@{variables('CorrelationId')}",
+                  "SubjectTable": "",
+                  "SubjectId": "",
+                  "Severity": 2
+                }
+              }
+            },
+            "Terminate_Failed": {
+              "type": "Terminate",
+              "runAfter": {
+                "Invoke_Log_Flow_Exception": [
+                  "Succeeded",
+                  "Failed",
+                  "Skipped",
+                  "TimedOut"
+                ]
+              },
+              "inputs": {
+                "runStatus": "Failed",
+                "runError": {
+                  "code": "@{outputs('Compose_Error_Context')?['errorCode']}",
+                  "message": "@{outputs('Compose_Error_Context')?['errorMessage']}"
+                }
+              }
+            }
+          }
+        },
+        "Respond_to_Parent": {
+          "type": "Response",
+          "kind": "PowerApp",
+          "runAfter": {
+            "Scope_Try_Main": [
+              "Succeeded",
+              "Failed",
+              "TimedOut",
+              "Skipped"
+            ]
+          },
+          "inputs": {
+            "statusCode": 200,
+            "body": {
+              "ok": true
+            },
+            "schema": {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "templateName": ""
+  }
+}

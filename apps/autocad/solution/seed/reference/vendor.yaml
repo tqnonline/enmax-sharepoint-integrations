@@ -1,0 +1,5224 @@
+table: enmax_autocadvendor
+natural_key_columns:
+- code
+rows:
+- code: 2G Energietechnik
+  display_name: 2G Energietechnik
+  status: 1
+  sort_order: 10
+- code: 3 Phase Power
+  display_name: 3 Phase Power
+  status: 1
+  sort_order: 20
+- code: 3M Scotchlok Terminals
+  display_name: 3M Scotchlok Terminals
+  status: 1
+  sort_order: 30
+- code: AB Quality
+  display_name: AB Quality
+  status: 1
+  sort_order: 40
+- code: Abacus Datagraphics
+  display_name: Abacus Datagraphics
+  status: 1
+  sort_order: 50
+- code: ABB
+  display_name: ABB
+  status: 1
+  sort_order: 60
+- code: ABB-Koontz Wagner
+  display_name: ABB-Koontz Wagner
+  status: 1
+  sort_order: 70
+- code: ABS Quality Evaluations
+  display_name: ABS Quality Evaluations
+  status: 1
+  sort_order: 80
+- code: ABSA
+  display_name: ABSA
+  status: 1
+  sort_order: 90
+- code: ABSA-Flextech
+  display_name: ABSA-Flextech
+  status: 1
+  sort_order: 100
+- code: ABZ Valves & Controls
+  display_name: ABZ Valves & Controls
+  status: 1
+  sort_order: 110
+- code: AC Fire Pump Systems
+  display_name: AC Fire Pump Systems
+  status: 1
+  sort_order: 120
+- code: AC Fire Pump Systems-ITT Industries
+  display_name: AC Fire Pump Systems-ITT Industries
+  status: 1
+  sort_order: 130
+- code: Accent Sales & Service
+  display_name: Accent Sales & Service
+  status: 1
+  sort_order: 140
+- code: Accurate
+  display_name: Accurate
+  status: 1
+  sort_order: 150
+- code: Accutherm
+  display_name: Accutherm
+  status: 1
+  sort_order: 160
+- code: Accuweld
+  display_name: Accuweld
+  status: 1
+  sort_order: 170
+- code: Aco Container Systems
+  display_name: Aco Container Systems
+  status: 1
+  sort_order: 180
+- code: Acumen Steel
+  display_name: Acumen Steel
+  status: 1
+  sort_order: 190
+- code: Acuren
+  display_name: Acuren
+  status: 1
+  sort_order: 200
+- code: AD Williams-Enercon
+  display_name: AD Williams-Enercon
+  status: 1
+  sort_order: 210
+- code: ADC Telecommunications
+  display_name: ADC Telecommunications
+  status: 1
+  sort_order: 220
+- code: Advanced AG & Industrial
+  display_name: Advanced AG & Industrial
+  status: 1
+  sort_order: 230
+- code: Aerofin
+  display_name: Aerofin
+  status: 1
+  sort_order: 240
+- code: Aerovent
+  display_name: Aerovent
+  status: 1
+  sort_order: 250
+- code: Aerzen Canada
+  display_name: Aerzen Canada
+  status: 1
+  sort_order: 260
+- code: Aerzener Maschinenfabrik GMBH
+  display_name: Aerzener Maschinenfabrik GMBH
+  status: 1
+  sort_order: 270
+- code: AGAT Laboratories
+  display_name: AGAT Laboratories
+  status: 1
+  sort_order: 280
+- code: AGF
+  display_name: AGF
+  status: 1
+  sort_order: 290
+- code: AGI Specialty Valves
+  display_name: AGI Specialty Valves
+  status: 1
+  sort_order: 300
+- code: AGI-Envirotank
+  display_name: AGI-Envirotank
+  status: 1
+  sort_order: 310
+- code: AGRA Monenco
+  display_name: AGRA Monenco
+  status: 1
+  sort_order: 320
+- code: Air System Products
+  display_name: Air System Products
+  status: 1
+  sort_order: 330
+- code: Aircom Instrumentation
+  display_name: Aircom Instrumentation
+  status: 1
+  sort_order: 340
+- code: Airtech Vacuum
+  display_name: Airtech Vacuum
+  status: 1
+  sort_order: 350
+- code: Alberta Environment
+  display_name: Alberta Environment
+  status: 1
+  sort_order: 360
+- code: Alberta Environmental Protection
+  display_name: Alberta Environmental Protection
+  status: 1
+  sort_order: 370
+- code: Alberta Governor Service
+  display_name: Alberta Governor Service
+  status: 1
+  sort_order: 380
+- code: Alberta Lighting Protection
+  display_name: Alberta Lighting Protection
+  status: 1
+  sort_order: 390
+- code: ALFA
+  display_name: ALFA
+  status: 1
+  sort_order: 400
+- code: Alfa Laval
+  display_name: Alfa Laval
+  status: 1
+  sort_order: 410
+- code: Alfa Standard
+  display_name: Alfa Standard
+  status: 1
+  sort_order: 420
+- code: Allen Bradley
+  display_name: Allen Bradley
+  status: 1
+  sort_order: 430
+- code: Allen Bradley-Rockwell Automation
+  display_name: Allen Bradley-Rockwell Automation
+  status: 1
+  sort_order: 440
+- code: Alloy Engineering
+  display_name: Alloy Engineering
+  status: 1
+  sort_order: 450
+- code: Alpine Glass
+  display_name: Alpine Glass
+  status: 1
+  sort_order: 460
+- code: Altair
+  display_name: Altair
+  status: 1
+  sort_order: 470
+- code: Altalink
+  display_name: Altalink
+  status: 1
+  sort_order: 480
+- code: Altalink-SNC Lavalin
+  display_name: Altalink-SNC Lavalin
+  status: 1
+  sort_order: 490
+- code: AM Structural Engineering
+  display_name: AM Structural Engineering
+  status: 1
+  sort_order: 500
+- code: Amalgamated Instrument
+  display_name: Amalgamated Instrument
+  status: 1
+  sort_order: 510
+- code: Amarillo Gear Company
+  display_name: Amarillo Gear Company
+  status: 1
+  sort_order: 520
+- code: AMEC
+  display_name: AMEC
+  status: 1
+  sort_order: 530
+- code: AMEC-Utility Engineering
+  display_name: AMEC-Utility Engineering
+  status: 1
+  sort_order: 540
+- code: Amelco Electric
+  display_name: Amelco Electric
+  status: 1
+  sort_order: 550
+- code: Amercoat
+  display_name: Amercoat
+  status: 1
+  sort_order: 560
+- code: American AVK
+  display_name: American AVK
+  status: 1
+  sort_order: 570
+- code: American BOA
+  display_name: American BOA
+  status: 1
+  sort_order: 580
+- code: American Fire
+  display_name: American Fire
+  status: 1
+  sort_order: 590
+- code: American Fire Technologies
+  display_name: American Fire Technologies
+  status: 1
+  sort_order: 600
+- code: American Standard
+  display_name: American Standard
+  status: 1
+  sort_order: 610
+- code: American Superconductor
+  display_name: American Superconductor
+  status: 1
+  sort_order: 620
+- code: American Welding Society
+  display_name: American Welding Society
+  status: 1
+  sort_order: 630
+- code: Ameritrol
+  display_name: Ameritrol
+  status: 1
+  sort_order: 640
+- code: Ametek
+  display_name: Ametek
+  status: 1
+  sort_order: 650
+- code: Ametek-UPS Cad
+  display_name: Ametek-UPS Cad
+  status: 1
+  sort_order: 660
+- code: Amico
+  display_name: Amico
+  status: 1
+  sort_order: 670
+- code: Amico-Naamm
+  display_name: Amico-Naamm
+  status: 1
+  sort_order: 680
+- code: AMPED Consulting Ltd.
+  display_name: AMPED Consulting Ltd.
+  status: 1
+  sort_order: 690
+- code: AMSC
+  display_name: AMSC
+  status: 1
+  sort_order: 700
+- code: Anderson Greenwood Crosby
+  display_name: Anderson Greenwood Crosby
+  status: 1
+  sort_order: 710
+- code: Anderson Separator
+  display_name: Anderson Separator
+  status: 1
+  sort_order: 720
+- code: Anderson Separator-Clark-Reliance
+  display_name: Anderson Separator-Clark-Reliance
+  status: 1
+  sort_order: 730
+- code: Anderson Water Systems
+  display_name: Anderson Water Systems
+  status: 1
+  sort_order: 740
+- code: Anvil International
+  display_name: Anvil International
+  status: 1
+  sort_order: 750
+- code: APC
+  display_name: APC
+  status: 1
+  sort_order: 760
+- code: Apollo
+  display_name: Apollo
+  status: 1
+  sort_order: 770
+- code: Apollo Sheet Metal
+  display_name: Apollo Sheet Metal
+  status: 1
+  sort_order: 780
+- code: Apollo Valves
+  display_name: Apollo Valves
+  status: 1
+  sort_order: 790
+- code: Applied Technical Services
+  display_name: Applied Technical Services
+  status: 1
+  sort_order: 800
+- code: Aqua Aerobic
+  display_name: Aqua Aerobic
+  status: 1
+  sort_order: 810
+- code: Aquatech International
+  display_name: Aquatech International
+  status: 1
+  sort_order: 820
+- code: Aquateck West
+  display_name: Aquateck West
+  status: 1
+  sort_order: 830
+- code: Areva
+  display_name: Areva
+  status: 1
+  sort_order: 840
+- code: Arga Controls
+  display_name: Arga Controls
+  status: 1
+  sort_order: 850
+- code: Argus
+  display_name: Argus
+  status: 1
+  sort_order: 860
+- code: Arjay Engineering
+  display_name: Arjay Engineering
+  status: 1
+  sort_order: 870
+- code: Armour Valve-Conval
+  display_name: Armour Valve-Conval
+  status: 1
+  sort_order: 880
+- code: Armstrong Fluid Technology
+  display_name: Armstrong Fluid Technology
+  status: 1
+  sort_order: 890
+- code: Armstrong International
+  display_name: Armstrong International
+  status: 1
+  sort_order: 900
+- code: Armtec
+  display_name: Armtec
+  status: 1
+  sort_order: 910
+- code: Arpis Industries
+  display_name: Arpis Industries
+  status: 1
+  sort_order: 920
+- code: Arrow Tank & Engineering
+  display_name: Arrow Tank & Engineering
+  status: 1
+  sort_order: 930
+- code: ASCO Power Technologies
+  display_name: ASCO Power Technologies
+  status: 1
+  sort_order: 940
+- code: Ash Grove Cement
+  display_name: Ash Grove Cement
+  status: 1
+  sort_order: 950
+- code: Ashcroft
+  display_name: Ashcroft
+  status: 1
+  sort_order: 960
+- code: Ashcroft-Dresser
+  display_name: Ashcroft-Dresser
+  status: 1
+  sort_order: 970
+- code: ASME
+  display_name: ASME
+  status: 1
+  sort_order: 980
+- code: ASNT
+  display_name: ASNT
+  status: 1
+  sort_order: 990
+- code: ASSC
+  display_name: ASSC
+  status: 1
+  sort_order: 1000
+- code: Associated Engineering
+  display_name: Associated Engineering
+  status: 1
+  sort_order: 1010
+- code: Associated Engineering-ENMAX
+  display_name: Associated Engineering-ENMAX
+  status: 1
+  sort_order: 1020
+- code: ASTM
+  display_name: ASTM
+  status: 1
+  sort_order: 1030
+- code: ATCO
+  display_name: ATCO
+  status: 1
+  sort_order: 1040
+- code: Atlas Copco
+  display_name: Atlas Copco
+  status: 1
+  sort_order: 1050
+- code: AUDCO India
+  display_name: AUDCO India
+  status: 1
+  sort_order: 1060
+- code: Auma Actuators
+  display_name: Auma Actuators
+  status: 1
+  sort_order: 1070
+- code: Aurian Consulting-Volker Stevin
+  display_name: Aurian Consulting-Volker Stevin
+  status: 1
+  sort_order: 1080
+- code: Autodesk
+  display_name: Autodesk
+  status: 1
+  sort_order: 1090
+- code: Autoflame
+  display_name: Autoflame
+  status: 1
+  sort_order: 1100
+- code: Automatic Switch
+  display_name: Automatic Switch
+  status: 1
+  sort_order: 1110
+- code: Automation Components
+  display_name: Automation Components
+  status: 1
+  sort_order: 1120
+- code: AZCO Hennes
+  display_name: AZCO Hennes
+  status: 1
+  sort_order: 1130
+- code: AZZ-Calvert
+  display_name: AZZ-Calvert
+  status: 1
+  sort_order: 1140
+- code: B & B Electronics
+  display_name: B & B Electronics
+  status: 1
+  sort_order: 1150
+- code: Babco Electric & Engineering
+  display_name: Babco Electric & Engineering
+  status: 1
+  sort_order: 1160
+- code: Babcock and Wilcox
+  display_name: Babcock and Wilcox
+  status: 1
+  sort_order: 1170
+- code: Babcock and Wilcox-Fransen
+  display_name: Babcock and Wilcox-Fransen
+  status: 1
+  sort_order: 1180
+- code: Baldor
+  display_name: Baldor
+  status: 1
+  sort_order: 1190
+- code: Balzers Installations
+  display_name: Balzers Installations
+  status: 1
+  sort_order: 1200
+- code: Barclay
+  display_name: Barclay
+  status: 1
+  sort_order: 1210
+- code: Barclay-Belden
+  display_name: Barclay-Belden
+  status: 1
+  sort_order: 1220
+- code: Barclay-Curber
+  display_name: Barclay-Curber
+  status: 1
+  sort_order: 1230
+- code: Barnes Pumps
+  display_name: Barnes Pumps
+  status: 1
+  sort_order: 1240
+- code: BASF
+  display_name: BASF
+  status: 1
+  sort_order: 1250
+- code: Basler Electric
+  display_name: Basler Electric
+  status: 1
+  sort_order: 1260
+- code: Bauer
+  display_name: Bauer
+  status: 1
+  sort_order: 1270
+- code: BDT Engineering
+  display_name: BDT Engineering
+  status: 1
+  sort_order: 1280
+- code: Beck Engineering
+  display_name: Beck Engineering
+  status: 1
+  sort_order: 1290
+- code: Behlen Industries
+  display_name: Behlen Industries
+  status: 1
+  sort_order: 1300
+- code: Behlen Industries-Barclay
+  display_name: Behlen Industries-Barclay
+  status: 1
+  sort_order: 1310
+- code: Bel Products
+  display_name: Bel Products
+  status: 1
+  sort_order: 1320
+- code: Belden
+  display_name: Belden
+  status: 1
+  sort_order: 1330
+- code: Belding Tank Technologies
+  display_name: Belding Tank Technologies
+  status: 1
+  sort_order: 1340
+- code: Bell & Gossett
+  display_name: Bell & Gossett
+  status: 1
+  sort_order: 1350
+- code: Benjamin Moore
+  display_name: Benjamin Moore
+  status: 1
+  sort_order: 1360
+- code: Bentek Systems
+  display_name: Bentek Systems
+  status: 1
+  sort_order: 1370
+- code: Bently Nevada
+  display_name: Bently Nevada
+  status: 1
+  sort_order: 1380
+- code: Best Access Systems
+  display_name: Best Access Systems
+  status: 1
+  sort_order: 1390
+- code: BKDI Architects
+  display_name: BKDI Architects
+  status: 1
+  sort_order: 1400
+- code: Black & McDonald
+  display_name: Black & McDonald
+  status: 1
+  sort_order: 1410
+- code: Black & Veatch
+  display_name: Black & Veatch
+  status: 1
+  sort_order: 1420
+- code: Black & Veatch-Lisega
+  display_name: Black & Veatch-Lisega
+  status: 1
+  sort_order: 1430
+- code: Black Sivalls & Bryson
+  display_name: Black Sivalls & Bryson
+  status: 1
+  sort_order: 1440
+- code: Blacoh
+  display_name: Blacoh
+  status: 1
+  sort_order: 1450
+- code: Bohmer
+  display_name: Bohmer
+  status: 1
+  sort_order: 1460
+- code: Bomac
+  display_name: Bomac
+  status: 1
+  sort_order: 1470
+- code: Bonney Forge
+  display_name: Bonney Forge
+  status: 1
+  sort_order: 1480
+- code: Bonomi-Valbia
+  display_name: Bonomi-Valbia
+  status: 1
+  sort_order: 1490
+- code: Bosch Rexroth
+  display_name: Bosch Rexroth
+  status: 1
+  sort_order: 1500
+- code: Bow Ridge
+  display_name: Bow Ridge
+  status: 1
+  sort_order: 1510
+- code: Bow Ridge-BRT Consulting
+  display_name: Bow Ridge-BRT Consulting
+  status: 1
+  sort_order: 1520
+- code: Braden Manufacturing
+  display_name: Braden Manufacturing
+  status: 1
+  sort_order: 1530
+- code: Bradon Industries-Nooter Eriksen
+  display_name: Bradon Industries-Nooter Eriksen
+  status: 1
+  sort_order: 1540
+- code: Braeside Fabricators
+  display_name: Braeside Fabricators
+  status: 1
+  sort_order: 1550
+- code: Bray Controls
+  display_name: Bray Controls
+  status: 1
+  sort_order: 1560
+- code: Brook Crompton
+  display_name: Brook Crompton
+  status: 1
+  sort_order: 1570
+- code: Brush
+  display_name: Brush
+  status: 1
+  sort_order: 1580
+- code: BSI
+  display_name: BSI
+  status: 1
+  sort_order: 1590
+- code: BSMI
+  display_name: BSMI
+  status: 1
+  sort_order: 1600
+- code: BTG Valves
+  display_name: BTG Valves
+  status: 1
+  sort_order: 1610
+- code: Bureau Veritas
+  display_name: Bureau Veritas
+  status: 1
+  sort_order: 1620
+- code: Burnco
+  display_name: Burnco
+  status: 1
+  sort_order: 1630
+- code: Burndy
+  display_name: Burndy
+  status: 1
+  sort_order: 1640
+- code: Butler Manufacturing
+  display_name: Butler Manufacturing
+  status: 1
+  sort_order: 1650
+- code: C&W Fabricators
+  display_name: C&W Fabricators
+  status: 1
+  sort_order: 1660
+- code: CADO Industries
+  display_name: CADO Industries
+  status: 1
+  sort_order: 1670
+- code: Caepipe
+  display_name: Caepipe
+  status: 1
+  sort_order: 1680
+- code: Calgary Power
+  display_name: Calgary Power
+  status: 1
+  sort_order: 1690
+- code: California Steel
+  display_name: California Steel
+  status: 1
+  sort_order: 1700
+- code: Caloritech
+  display_name: Caloritech
+  status: 1
+  sort_order: 1710
+- code: Calpine
+  display_name: Calpine
+  status: 1
+  sort_order: 1720
+- code: Cal-Tech Glass Services
+  display_name: Cal-Tech Glass Services
+  status: 1
+  sort_order: 1730
+- code: Calumet Specialty Products Partners
+  display_name: Calumet Specialty Products Partners
+  status: 1
+  sort_order: 1740
+- code: Calvert
+  display_name: Calvert
+  status: 1
+  sort_order: 1750
+- code: Cambridge Profab
+  display_name: Cambridge Profab
+  status: 1
+  sort_order: 1760
+- code: Cameron International
+  display_name: Cameron International
+  status: 1
+  sort_order: 1770
+- code: Camfil Power Systems - Super Radiator Coils
+  display_name: Camfil Power Systems - Super Radiator Coils
+  status: 1
+  sort_order: 1780
+- code: Campbell Scientific
+  display_name: Campbell Scientific
+  status: 1
+  sort_order: 1790
+- code: Canada Border Service Agency
+  display_name: Canada Border Service Agency
+  status: 1
+  sort_order: 1800
+- code: Canada Pipeline Accessories
+  display_name: Canada Pipeline Accessories
+  status: 1
+  sort_order: 1810
+- code: Canadian Welding Bureau
+  display_name: Canadian Welding Bureau
+  status: 1
+  sort_order: 1820
+- code: Canam
+  display_name: Canam
+  status: 1
+  sort_order: 1830
+- code: Canbar-PMCL
+  display_name: Canbar-PMCL
+  status: 1
+  sort_order: 1840
+- code: CanStahl
+  display_name: CanStahl
+  status: 1
+  sort_order: 1850
+- code: Cantega Technologies
+  display_name: Cantega Technologies
+  status: 1
+  sort_order: 1860
+- code: Cape Electrical
+  display_name: Cape Electrical
+  status: 1
+  sort_order: 1870
+- code: Capital City Cranes
+  display_name: Capital City Cranes
+  status: 1
+  sort_order: 1880
+- code: Capital Engineering
+  display_name: Capital Engineering
+  status: 1
+  sort_order: 1890
+- code: Carboline
+  display_name: Carboline
+  status: 1
+  sort_order: 1900
+- code: Carboline Company
+  display_name: Carboline Company
+  status: 1
+  sort_order: 1910
+- code: Carlo Gavazzi
+  display_name: Carlo Gavazzi
+  status: 1
+  sort_order: 1920
+- code: Carmanah
+  display_name: Carmanah
+  status: 1
+  sort_order: 1930
+- code: Caterpillar
+  display_name: Caterpillar
+  status: 1
+  sort_order: 1940
+- code: CCI
+  display_name: CCI
+  status: 1
+  sort_order: 1950
+- code: CCI-BTG Valves
+  display_name: CCI-BTG Valves
+  status: 1
+  sort_order: 1960
+- code: CCI-Fluid Kinetics
+  display_name: CCI-Fluid Kinetics
+  status: 1
+  sort_order: 1970
+- code: CE Franklin
+  display_name: CE Franklin
+  status: 1
+  sort_order: 1980
+- code: CEM Engineering
+  display_name: CEM Engineering
+  status: 1
+  sort_order: 1990
+- code: Centrix
+  display_name: Centrix
+  status: 1
+  sort_order: 2000
+- code: Century Valve
+  display_name: Century Valve
+  status: 1
+  sort_order: 2010
+- code: Cerrey-Nooter Eriksen
+  display_name: Cerrey-Nooter Eriksen
+  status: 1
+  sort_order: 2020
+- code: Cerus
+  display_name: Cerus
+  status: 1
+  sort_order: 2030
+- code: CGIS-EBRO
+  display_name: CGIS-EBRO
+  status: 1
+  sort_order: 2040
+- code: Challenger Geomatics
+  display_name: Challenger Geomatics
+  status: 1
+  sort_order: 2050
+- code: Chamco
+  display_name: Chamco
+  status: 1
+  sort_order: 2060
+- code: Chamco-Cutler Hammer
+  display_name: Chamco-Cutler Hammer
+  status: 1
+  sort_order: 2070
+- code: Chanute
+  display_name: Chanute
+  status: 1
+  sort_order: 2080
+- code: Chanute-Nooter Eriksen
+  display_name: Chanute-Nooter Eriksen
+  status: 1
+  sort_order: 2090
+- code: Chemineer
+  display_name: Chemineer
+  status: 1
+  sort_order: 2100
+- code: Chemline
+  display_name: Chemline
+  status: 1
+  sort_order: 2110
+- code: ChemTreat
+  display_name: ChemTreat
+  status: 1
+  sort_order: 2120
+- code: Chemtrol
+  display_name: Chemtrol
+  status: 1
+  sort_order: 2130
+- code: Chicago Blower
+  display_name: Chicago Blower
+  status: 1
+  sort_order: 2140
+- code: Chicago Blower-Fransen
+  display_name: Chicago Blower-Fransen
+  status: 1
+  sort_order: 2150
+- code: Chisholm Industries
+  display_name: Chisholm Industries
+  status: 1
+  sort_order: 2160
+- code: Chromalox
+  display_name: Chromalox
+  status: 1
+  sort_order: 2170
+- code: CIF Composites
+  display_name: CIF Composites
+  status: 1
+  sort_order: 2180
+- code: CIMA Canada
+  display_name: CIMA Canada
+  status: 1
+  sort_order: 2190
+- code: Circor Energy
+  display_name: Circor Energy
+  status: 1
+  sort_order: 2200
+- code: Cisco
+  display_name: Cisco
+  status: 1
+  sort_order: 2210
+- code: City of Calgary
+  display_name: City of Calgary
+  status: 1
+  sort_order: 2220
+- code: Clarke
+  display_name: Clarke
+  status: 1
+  sort_order: 2230
+- code: Clarke Fire Protection Products
+  display_name: Clarke Fire Protection Products
+  status: 1
+  sort_order: 2240
+- code: Clark-Reliance
+  display_name: Clark-Reliance
+  status: 1
+  sort_order: 2250
+- code: Clemmer Steel Craft Technologies
+  display_name: Clemmer Steel Craft Technologies
+  status: 1
+  sort_order: 2260
+- code: Cloverdale Paint
+  display_name: Cloverdale Paint
+  status: 1
+  sort_order: 2270
+- code: Clow Valve
+  display_name: Clow Valve
+  status: 1
+  sort_order: 2280
+- code: Cobra
+  display_name: Cobra
+  status: 1
+  sort_order: 2290
+- code: Cobra-Aimlite
+  display_name: Cobra-Aimlite
+  status: 1
+  sort_order: 2300
+- code: Cobra-APC
+  display_name: Cobra-APC
+  status: 1
+  sort_order: 2310
+- code: Cobra-Davco Power
+  display_name: Cobra-Davco Power
+  status: 1
+  sort_order: 2320
+- code: Cobra-DayBrite
+  display_name: Cobra-DayBrite
+  status: 1
+  sort_order: 2330
+- code: Cobra-Dimplex
+  display_name: Cobra-Dimplex
+  status: 1
+  sort_order: 2340
+- code: Cobra-ENMAX
+  display_name: Cobra-ENMAX
+  status: 1
+  sort_order: 2350
+- code: Cobra-Global Engineering and Testing
+  display_name: Cobra-Global Engineering and Testing
+  status: 1
+  sort_order: 2360
+- code: Cobra-Manaras
+  display_name: Cobra-Manaras
+  status: 1
+  sort_order: 2370
+- code: Cobra-Olympia Engineering
+  display_name: Cobra-Olympia Engineering
+  status: 1
+  sort_order: 2380
+- code: Cobra-Rocky View County
+  display_name: Cobra-Rocky View County
+  status: 1
+  sort_order: 2390
+- code: Cobra-Saqqara
+  display_name: Cobra-Saqqara
+  status: 1
+  sort_order: 2400
+- code: Cobra-Sloan Valve
+  display_name: Cobra-Sloan Valve
+  status: 1
+  sort_order: 2410
+- code: Cobra-Upwardor
+  display_name: Cobra-Upwardor
+  status: 1
+  sort_order: 2420
+- code: Cobra-Westcon
+  display_name: Cobra-Westcon
+  status: 1
+  sort_order: 2430
+- code: Code Welding and Manufacturing
+  display_name: Code Welding and Manufacturing
+  status: 1
+  sort_order: 2440
+- code: Coen Company
+  display_name: Coen Company
+  status: 1
+  sort_order: 2450
+- code: Coen Company-Foster Wheeler
+  display_name: Coen Company-Foster Wheeler
+  status: 1
+  sort_order: 2460
+- code: Coen Company-Nooter Eriksen
+  display_name: Coen Company-Nooter Eriksen
+  status: 1
+  sort_order: 2470
+- code: Coen Company-Rentech
+  display_name: Coen Company-Rentech
+  status: 1
+  sort_order: 2480
+- code: Coen Company-Todd
+  display_name: Coen Company-Todd
+  status: 1
+  sort_order: 2490
+- code: Coffing Hoists
+  display_name: Coffing Hoists
+  status: 1
+  sort_order: 2500
+- code: Cole Parmer Instrument
+  display_name: Cole Parmer Instrument
+  status: 1
+  sort_order: 2510
+- code: Colton Industries
+  display_name: Colton Industries
+  status: 1
+  sort_order: 2520
+- code: Conbraco
+  display_name: Conbraco
+  status: 1
+  sort_order: 2530
+- code: Concoa
+  display_name: Concoa
+  status: 1
+  sort_order: 2540
+- code: ConocoPhillips
+  display_name: ConocoPhillips
+  status: 1
+  sort_order: 2550
+- code: Consolidated Fabricators
+  display_name: Consolidated Fabricators
+  status: 1
+  sort_order: 2560
+- code: Constant Fire Protection
+  display_name: Constant Fire Protection
+  status: 1
+  sort_order: 2570
+- code: Constructora Metalica Romero SA DE CV
+  display_name: Constructora Metalica Romero SA DE CV
+  status: 1
+  sort_order: 2580
+- code: Control Center
+  display_name: Control Center
+  status: 1
+  sort_order: 2590
+- code: Control Devices
+  display_name: Control Devices
+  status: 1
+  sort_order: 2600
+- code: Control Engineering
+  display_name: Control Engineering
+  status: 1
+  sort_order: 2610
+- code: Control System
+  display_name: Control System
+  status: 1
+  sort_order: 2620
+- code: Convergint Technologies
+  display_name: Convergint Technologies
+  status: 1
+  sort_order: 2630
+- code: Cook
+  display_name: Cook
+  status: 1
+  sort_order: 2640
+- code: Cooper B-Line
+  display_name: Cooper B-Line
+  status: 1
+  sort_order: 2650
+- code: Cooper Power Systems
+  display_name: Cooper Power Systems
+  status: 1
+  sort_order: 2660
+- code: Cormetech
+  display_name: Cormetech
+  status: 1
+  sort_order: 2670
+- code: Cormetech-Nooter Eriksen
+  display_name: Cormetech-Nooter Eriksen
+  status: 1
+  sort_order: 2680
+- code: Cormetech-Vogt Power International
+  display_name: Cormetech-Vogt Power International
+  status: 1
+  sort_order: 2690
+- code: Cornell
+  display_name: Cornell
+  status: 1
+  sort_order: 2700
+- code: Corrosion Service
+  display_name: Corrosion Service
+  status: 1
+  sort_order: 2710
+- code: Cortec
+  display_name: Cortec
+  status: 1
+  sort_order: 2720
+- code: Cougar Metal
+  display_name: Cougar Metal
+  status: 1
+  sort_order: 2730
+- code: CP Distributors Calgary
+  display_name: CP Distributors Calgary
+  status: 1
+  sort_order: 2740
+- code: Crane
+  display_name: Crane
+  status: 1
+  sort_order: 2750
+- code: Crispin Valves
+  display_name: Crispin Valves
+  status: 1
+  sort_order: 2760
+- code: Crosby-Tyco
+  display_name: Crosby-Tyco
+  status: 1
+  sort_order: 2770
+- code: CRS Crane Systems
+  display_name: CRS Crane Systems
+  status: 1
+  sort_order: 2780
+- code: CSA International
+  display_name: CSA International
+  status: 1
+  sort_order: 2790
+- code: CTS Industries
+  display_name: CTS Industries
+  status: 1
+  sort_order: 2800
+- code: CU Services
+  display_name: CU Services
+  status: 1
+  sort_order: 2810
+- code: Cummins Power Generation
+  display_name: Cummins Power Generation
+  status: 1
+  sort_order: 2820
+- code: Curber
+  display_name: Curber
+  status: 1
+  sort_order: 2830
+- code: Curber Manufacturing-Barclay
+  display_name: Curber Manufacturing-Barclay
+  status: 1
+  sort_order: 2840
+- code: Curtis Engineering
+  display_name: Curtis Engineering
+  status: 1
+  sort_order: 2850
+- code: Curtiss Wright-Farris Engineering
+  display_name: Curtiss Wright-Farris Engineering
+  status: 1
+  sort_order: 2860
+- code: Custom Instrumentation Services-CISCO
+  display_name: Custom Instrumentation Services-CISCO
+  status: 1
+  sort_order: 2870
+- code: Custom Power
+  display_name: Custom Power
+  status: 1
+  sort_order: 2880
+- code: Cutler  Hammer-ENMAX
+  display_name: Cutler  Hammer-ENMAX
+  status: 1
+  sort_order: 2890
+- code: Cutler-Hammer
+  display_name: Cutler-Hammer
+  status: 1
+  sort_order: 2900
+- code: CV
+  display_name: CV
+  status: 1
+  sort_order: 2910
+- code: CWB Group
+  display_name: CWB Group
+  status: 1
+  sort_order: 2920
+- code: DA Electric
+  display_name: DA Electric
+  status: 1
+  sort_order: 2930
+- code: Daido Machines
+  display_name: Daido Machines
+  status: 1
+  sort_order: 2940
+- code: Danfoss
+  display_name: Danfoss
+  status: 1
+  sort_order: 2950
+- code: Daniel Industries
+  display_name: Daniel Industries
+  status: 1
+  sort_order: 2960
+- code: Davco Power Systems
+  display_name: Davco Power Systems
+  status: 1
+  sort_order: 2970
+- code: Davies Turpin & Associates
+  display_name: Davies Turpin & Associates
+  status: 1
+  sort_order: 2980
+- code: Davis Wire-Davis
+  display_name: Davis Wire-Davis
+  status: 1
+  sort_order: 2990
+- code: De Ran Gear
+  display_name: De Ran Gear
+  status: 1
+  sort_order: 3000
+- code: Deca Cables
+  display_name: Deca Cables
+  status: 1
+  sort_order: 3010
+- code: Dell
+  display_name: Dell
+  status: 1
+  sort_order: 3020
+- code: Delta Hudson
+  display_name: Delta Hudson
+  status: 1
+  sort_order: 3030
+- code: Delta Unibus
+  display_name: Delta Unibus
+  status: 1
+  sort_order: 3040
+- code: Department of Homeland Security
+  display_name: Department of Homeland Security
+  status: 1
+  sort_order: 3050
+- code: Derrick
+  display_name: Derrick
+  status: 1
+  sort_order: 3060
+- code: Design & Construction Engineers
+  display_name: Design & Construction Engineers
+  status: 1
+  sort_order: 3070
+- code: Design Components
+  display_name: Design Components
+  status: 1
+  sort_order: 3080
+- code: Det Norske Veritas
+  display_name: Det Norske Veritas
+  status: 1
+  sort_order: 3090
+- code: Det Norske Veritas-Washington Group Northern
+  display_name: Det Norske Veritas-Washington Group Northern
+  status: 1
+  sort_order: 3100
+- code: Det-Tronics
+  display_name: Det-Tronics
+  status: 1
+  sort_order: 3110
+- code: Dexter
+  display_name: Dexter
+  status: 1
+  sort_order: 3120
+- code: DFK Engineering
+  display_name: DFK Engineering
+  status: 1
+  sort_order: 3130
+- code: DHC
+  display_name: DHC
+  status: 1
+  sort_order: 3140
+- code: Diamond Fiberglass
+  display_name: Diamond Fiberglass
+  status: 1
+  sort_order: 3150
+- code: Direct Power and Water
+  display_name: Direct Power and Water
+  status: 1
+  sort_order: 3160
+- code: Dixie Southern
+  display_name: Dixie Southern
+  status: 1
+  sort_order: 3170
+- code: Dixie Tank Company
+  display_name: Dixie Tank Company
+  status: 1
+  sort_order: 3180
+- code: Dixon
+  display_name: Dixon
+  status: 1
+  sort_order: 3190
+- code: D-Link
+  display_name: D-Link
+  status: 1
+  sort_order: 3200
+- code: Dobbyn Lightning Protection
+  display_name: Dobbyn Lightning Protection
+  status: 1
+  sort_order: 3210
+- code: Douglas Barwick
+  display_name: Douglas Barwick
+  status: 1
+  sort_order: 3220
+- code: Douglas Lighting Controls
+  display_name: Douglas Lighting Controls
+  status: 1
+  sort_order: 3230
+- code: DPH Engineering
+  display_name: DPH Engineering
+  status: 1
+  sort_order: 3240
+- code: DPM
+  display_name: DPM
+  status: 1
+  sort_order: 3250
+- code: Dresser
+  display_name: Dresser
+  status: 1
+  sort_order: 3260
+- code: Dresser-Technical Standards & Safety Authority
+  display_name: Dresser-Technical Standards & Safety Authority
+  status: 1
+  sort_order: 3270
+- code: Dresser-Utility Engineering
+  display_name: Dresser-Utility Engineering
+  status: 1
+  sort_order: 3280
+- code: Drierite
+  display_name: Drierite
+  status: 1
+  sort_order: 3290
+- code: Dri-Steem Vapormist Humidifier
+  display_name: Dri-Steem Vapormist Humidifier
+  status: 1
+  sort_order: 3300
+- code: DSI Valve
+  display_name: DSI Valve
+  status: 1
+  sort_order: 3310
+- code: Dupont Starblast
+  display_name: Dupont Starblast
+  status: 1
+  sort_order: 3320
+- code: Duravent
+  display_name: Duravent
+  status: 1
+  sort_order: 3330
+- code: Duro Dyne
+  display_name: Duro Dyne
+  status: 1
+  sort_order: 3340
+- code: Dwyer Instruments
+  display_name: Dwyer Instruments
+  status: 1
+  sort_order: 3350
+- code: Dynamic Products
+  display_name: Dynamic Products
+  status: 1
+  sort_order: 3360
+- code: Dynamic Research
+  display_name: Dynamic Research
+  status: 1
+  sort_order: 3370
+- code: E Myatt
+  display_name: E Myatt
+  status: 1
+  sort_order: 3380
+- code: Eagle Pump and Compressor
+  display_name: Eagle Pump and Compressor
+  status: 1
+  sort_order: 3390
+- code: Eaton
+  display_name: Eaton
+  status: 1
+  sort_order: 3400
+- code: Eaton-Cutler-Hammer
+  display_name: Eaton-Cutler-Hammer
+  status: 1
+  sort_order: 3410
+- code: EBA
+  display_name: EBA
+  status: 1
+  sort_order: 3420
+- code: EBMPAPST
+  display_name: EBMPAPST
+  status: 1
+  sort_order: 3430
+- code: EBRO Armaturen
+  display_name: EBRO Armaturen
+  status: 1
+  sort_order: 3440
+- code: Eclipse Geomatics and Engineering
+  display_name: Eclipse Geomatics and Engineering
+  status: 1
+  sort_order: 3450
+- code: Eclipse Innovative Thermal Solutions
+  display_name: Eclipse Innovative Thermal Solutions
+  status: 1
+  sort_order: 3460
+- code: Eco
+  display_name: Eco
+  status: 1
+  sort_order: 3470
+- code: EGS Electrical
+  display_name: EGS Electrical
+  status: 1
+  sort_order: 3480
+- code: EH Price Sales
+  display_name: EH Price Sales
+  status: 1
+  sort_order: 3490
+- code: EIM Company
+  display_name: EIM Company
+  status: 1
+  sort_order: 3500
+- code: EIM Company-Spartan Controls
+  display_name: EIM Company-Spartan Controls
+  status: 1
+  sort_order: 3510
+- code: Elec Wholesaler
+  display_name: Elec Wholesaler
+  status: 1
+  sort_order: 3520
+- code: Electrical Power Products
+  display_name: Electrical Power Products
+  status: 1
+  sort_order: 3530
+- code: Emans Smith Andersen
+  display_name: Emans Smith Andersen
+  status: 1
+  sort_order: 3540
+- code: Emerson
+  display_name: Emerson
+  status: 1
+  sort_order: 3550
+- code: Emerson-Daniel Industries
+  display_name: Emerson-Daniel Industries
+  status: 1
+  sort_order: 3560
+- code: Emerson-Fisher
+  display_name: Emerson-Fisher
+  status: 1
+  sort_order: 3570
+- code: Emerson-Rosemount
+  display_name: Emerson-Rosemount
+  status: 1
+  sort_order: 3580
+- code: Enardo Flame Arrestors
+  display_name: Enardo Flame Arrestors
+  status: 1
+  sort_order: 3590
+- code: ENCANA
+  display_name: ENCANA
+  status: 1
+  sort_order: 3600
+- code: Enclosures for Industry
+  display_name: Enclosures for Industry
+  status: 1
+  sort_order: 3610
+- code: Endress & Hauser
+  display_name: Endress & Hauser
+  status: 1
+  sort_order: 3620
+- code: ENEFEN
+  display_name: ENEFEN
+  status: 1
+  sort_order: 3630
+- code: Enercon
+  display_name: Enercon
+  status: 1
+  sort_order: 3640
+- code: Enermodal
+  display_name: Enermodal
+  status: 1
+  sort_order: 3650
+- code: Enerpro Insulation
+  display_name: Enerpro Insulation
+  status: 1
+  sort_order: 3660
+- code: EnerQuest Services
+  display_name: EnerQuest Services
+  status: 1
+  sort_order: 3670
+- code: Enersys
+  display_name: Enersys
+  status: 1
+  sort_order: 3680
+- code: Engineered Air
+  display_name: Engineered Air
+  status: 1
+  sort_order: 3690
+- code: Engineered Air-Barclay
+  display_name: Engineered Air-Barclay
+  status: 1
+  sort_order: 3700
+- code: Engineered Fluid
+  display_name: Engineered Fluid
+  status: 1
+  sort_order: 3710
+- code: ENMAX
+  display_name: ENMAX
+  status: 1
+  sort_order: 3720
+- code: ENMAX Power
+  display_name: ENMAX Power
+  status: 1
+  sort_order: 3730
+- code: ENMAX Power-ABSA
+  display_name: ENMAX Power-ABSA
+  status: 1
+  sort_order: 3740
+- code: ENMAX Power-Tarpon Energy
+  display_name: ENMAX Power-Tarpon Energy
+  status: 1
+  sort_order: 3750
+- code: ENMAX Power-Tuxtla
+  display_name: ENMAX Power-Tuxtla
+  status: 1
+  sort_order: 3760
+- code: ENMAX Power-Washington Group Northern
+  display_name: ENMAX Power-Washington Group Northern
+  status: 1
+  sort_order: 3770
+- code: ENMAX-EMBO Technical Services
+  display_name: ENMAX-EMBO Technical Services
+  status: 1
+  sort_order: 3780
+- code: ENMAX-Emerson
+  display_name: ENMAX-Emerson
+  status: 1
+  sort_order: 3790
+- code: ENMAX-Exchanger Industries
+  display_name: ENMAX-Exchanger Industries
+  status: 1
+  sort_order: 3800
+- code: ENMAX-GE
+  display_name: ENMAX-GE
+  status: 1
+  sort_order: 3810
+- code: ENMAX-Hatch
+  display_name: ENMAX-Hatch
+  status: 1
+  sort_order: 3820
+- code: ENMAX-Siemens
+  display_name: ENMAX-Siemens
+  status: 1
+  sort_order: 3830
+- code: ENMAX-SiFi
+  display_name: ENMAX-SiFi
+  status: 1
+  sort_order: 3840
+- code: ENMAX-Utility Engineering
+  display_name: ENMAX-Utility Engineering
+  status: 1
+  sort_order: 3850
+- code: EnSync
+  display_name: EnSync
+  status: 1
+  sort_order: 3860
+- code: Enterprise Steel Fabricators
+  display_name: Enterprise Steel Fabricators
+  status: 1
+  sort_order: 3870
+- code: Enviro Metrics
+  display_name: Enviro Metrics
+  status: 1
+  sort_order: 3880
+- code: Epson
+  display_name: Epson
+  status: 1
+  sort_order: 3890
+- code: Erico
+  display_name: Erico
+  status: 1
+  sort_order: 3900
+- code: Ernst Flow Industries
+  display_name: Ernst Flow Industries
+  status: 1
+  sort_order: 3910
+- code: Ervin Industries
+  display_name: Ervin Industries
+  status: 1
+  sort_order: 3920
+- code: ESBI Alberta
+  display_name: ESBI Alberta
+  status: 1
+  sort_order: 3930
+- code: ESI Steel & Fabrication
+  display_name: ESI Steel & Fabrication
+  status: 1
+  sort_order: 3940
+- code: Eskay Heat Transfers
+  display_name: Eskay Heat Transfers
+  status: 1
+  sort_order: 3950
+- code: Etirex
+  display_name: Etirex
+  status: 1
+  sort_order: 3960
+- code: EUB
+  display_name: EUB
+  status: 1
+  sort_order: 3970
+- code: EXFO EO Engineering
+  display_name: EXFO EO Engineering
+  status: 1
+  sort_order: 3980
+- code: Fabco/IPF Limited
+  display_name: Fabco/IPF Limited
+  status: 1
+  sort_order: 3990
+- code: Fabco Plastics Western
+  display_name: Fabco Plastics Western
+  status: 1
+  sort_order: 4000
+- code: Fabco Shell & Tube
+  display_name: Fabco Shell & Tube
+  status: 1
+  sort_order: 4010
+- code: Fairchild
+  display_name: Fairchild
+  status: 1
+  sort_order: 4020
+- code: Farris Engineering
+  display_name: Farris Engineering
+  status: 1
+  sort_order: 4030
+- code: Federal Signal Corporation
+  display_name: Federal Signal Corporation
+  status: 1
+  sort_order: 4040
+- code: Ferraz Shawmut
+  display_name: Ferraz Shawmut
+  status: 1
+  sort_order: 4050
+- code: Festival City Fabricators
+  display_name: Festival City Fabricators
+  status: 1
+  sort_order: 4060
+- code: Fike Corporation
+  display_name: Fike Corporation
+  status: 1
+  sort_order: 4070
+- code: Fintube Technologies
+  display_name: Fintube Technologies
+  status: 1
+  sort_order: 4080
+- code: Fisher
+  display_name: Fisher
+  status: 1
+  sort_order: 4090
+- code: Fisher & Ludlow
+  display_name: Fisher & Ludlow
+  status: 1
+  sort_order: 4100
+- code: Fisher-Honeywell
+  display_name: Fisher-Honeywell
+  status: 1
+  sort_order: 4110
+- code: Fisher-Porter
+  display_name: Fisher-Porter
+  status: 1
+  sort_order: 4120
+- code: Fisher-Rosemount
+  display_name: Fisher-Rosemount
+  status: 1
+  sort_order: 4130
+- code: Fisher-Spartan Controls
+  display_name: Fisher-Spartan Controls
+  status: 1
+  sort_order: 4140
+- code: Fisher-Technical Standards & Safety Authority
+  display_name: Fisher-Technical Standards & Safety Authority
+  status: 1
+  sort_order: 4150
+- code: Flash Technology
+  display_name: Flash Technology
+  status: 1
+  sort_order: 4160
+- code: Fleming
+  display_name: Fleming
+  status: 1
+  sort_order: 4170
+- code: Flexmaster
+  display_name: Flexmaster
+  status: 1
+  sort_order: 4180
+- code: Flextech Industries
+  display_name: Flextech Industries
+  status: 1
+  sort_order: 4190
+- code: Flint Energy
+  display_name: Flint Energy
+  status: 1
+  sort_order: 4200
+- code: Flint Energy-Flint Field Services
+  display_name: Flint Energy-Flint Field Services
+  status: 1
+  sort_order: 4210
+- code: Flint Field Services
+  display_name: Flint Field Services
+  status: 1
+  sort_order: 4220
+- code: Florida Junior College at Jacksonville
+  display_name: Florida Junior College at Jacksonville
+  status: 1
+  sort_order: 4230
+- code: Flow Line Controls
+  display_name: Flow Line Controls
+  status: 1
+  sort_order: 4240
+- code: Flowell
+  display_name: Flowell
+  status: 1
+  sort_order: 4250
+- code: Flowserve
+  display_name: Flowserve
+  status: 1
+  sort_order: 4260
+- code: Flowserve Corporation (Pump Division)
+  display_name: Flowserve Corporation (Pump Division)
+  status: 1
+  sort_order: 4270
+- code: Flowtronex-ITT
+  display_name: Flowtronex-ITT
+  status: 1
+  sort_order: 4280
+- code: Fluid Kinetics
+  display_name: Fluid Kinetics
+  status: 1
+  sort_order: 4290
+- code: Fluidic Techniques
+  display_name: Fluidic Techniques
+  status: 1
+  sort_order: 4300
+- code: Flygt
+  display_name: Flygt
+  status: 1
+  sort_order: 4310
+- code: Flynn
+  display_name: Flynn
+  status: 1
+  sort_order: 4320
+- code: Flynn-Barclay
+  display_name: Flynn-Barclay
+  status: 1
+  sort_order: 4330
+- code: Flynn-Kingspan
+  display_name: Flynn-Kingspan
+  status: 1
+  sort_order: 4340
+- code: Fortune Electric
+  display_name: Fortune Electric
+  status: 1
+  sort_order: 4350
+- code: Forum Energy Technologies-ABZ Valves & Controls
+  display_name: Forum Energy Technologies-ABZ Valves & Controls
+  status: 1
+  sort_order: 4360
+- code: Foster Wheeler
+  display_name: Foster Wheeler
+  status: 1
+  sort_order: 4370
+- code: Fox Equipment
+  display_name: Fox Equipment
+  status: 1
+  sort_order: 4380
+- code: Foxboro
+  display_name: Foxboro
+  status: 1
+  sort_order: 4390
+- code: Fransen
+  display_name: Fransen
+  status: 1
+  sort_order: 4400
+- code: Fransen-Todd Combustion
+  display_name: Fransen-Todd Combustion
+  status: 1
+  sort_order: 4410
+- code: Fresno
+  display_name: Fresno
+  status: 1
+  sort_order: 4420
+- code: Friedrich  Gledbach
+  display_name: Friedrich  Gledbach
+  status: 1
+  sort_order: 4430
+- code: Fronius
+  display_name: Fronius
+  status: 1
+  sort_order: 4440
+- code: FRP Fabrication
+  display_name: FRP Fabrication
+  status: 1
+  sort_order: 4450
+- code: Fuji Electric
+  display_name: Fuji Electric
+  status: 1
+  sort_order: 4460
+- code: Fuji Electric-ENMAX
+  display_name: Fuji Electric-ENMAX
+  status: 1
+  sort_order: 4470
+- code: Fuji Electric-Howard Marten
+  display_name: Fuji Electric-Howard Marten
+  status: 1
+  sort_order: 4480
+- code: Fuji Electric-Hyundai
+  display_name: Fuji Electric-Hyundai
+  status: 1
+  sort_order: 4490
+- code: Furey Filter & Pump
+  display_name: Furey Filter & Pump
+  status: 1
+  sort_order: 4500
+- code: FVB Energy
+  display_name: FVB Energy
+  status: 1
+  sort_order: 4510
+- code: FVB Energy-Associated Engineering
+  display_name: FVB Energy-Associated Engineering
+  status: 1
+  sort_order: 4520
+- code: Gai-Tronics
+  display_name: Gai-Tronics
+  status: 1
+  sort_order: 4530
+- code: Galloup
+  display_name: Galloup
+  status: 1
+  sort_order: 4540
+- code: Ganotec West ULC
+  display_name: Ganotec West ULC
+  status: 1
+  sort_order: 4550
+- code: Gantrex
+  display_name: Gantrex
+  status: 1
+  sort_order: 4560
+- code: GAS Analytical Systems
+  display_name: GAS Analytical Systems
+  status: 1
+  sort_order: 4570
+- code: GasDrive
+  display_name: GasDrive
+  status: 1
+  sort_order: 4580
+- code: Gastops
+  display_name: Gastops
+  status: 1
+  sort_order: 4590
+- code: Gateway Mechanical Services
+  display_name: Gateway Mechanical Services
+  status: 1
+  sort_order: 4600
+- code: Gateway Mechanical-Barclay
+  display_name: Gateway Mechanical-Barclay
+  status: 1
+  sort_order: 4610
+- code: Gateway-Convergint
+  display_name: Gateway-Convergint
+  status: 1
+  sort_order: 4620
+- code: Gaumer Process
+  display_name: Gaumer Process
+  status: 1
+  sort_order: 4630
+- code: GE
+  display_name: GE
+  status: 1
+  sort_order: 4640
+- code: GE Jenbacher
+  display_name: GE Jenbacher
+  status: 1
+  sort_order: 4650
+- code: GE MDS
+  display_name: GE MDS
+  status: 1
+  sort_order: 4660
+- code: GE Water & Process Technologies
+  display_name: GE Water & Process Technologies
+  status: 1
+  sort_order: 4670
+- code: GEA
+  display_name: GEA
+  status: 1
+  sort_order: 4680
+- code: GEA PHE Systems North America
+  display_name: GEA PHE Systems North America
+  status: 1
+  sort_order: 4690
+- code: GEA Rainey
+  display_name: GEA Rainey
+  status: 1
+  sort_order: 4700
+- code: GE-Automatic Protection
+  display_name: GE-Automatic Protection
+  status: 1
+  sort_order: 4710
+- code: Gems Sensors
+  display_name: Gems Sensors
+  status: 1
+  sort_order: 4720
+- code: General Cable
+  display_name: General Cable
+  status: 1
+  sort_order: 4730
+- code: General Cable-Canadian Standard Association
+  display_name: General Cable-Canadian Standard Association
+  status: 1
+  sort_order: 4740
+- code: General Monitors
+  display_name: General Monitors
+  status: 1
+  sort_order: 4750
+- code: Gerb Akustik Consult
+  display_name: Gerb Akustik Consult
+  status: 1
+  sort_order: 4760
+- code: Gescan-Hubbell Lighting
+  display_name: Gescan-Hubbell Lighting
+  status: 1
+  sort_order: 4770
+- code: Gex Pro Supply
+  display_name: Gex Pro Supply
+  status: 1
+  sort_order: 4780
+- code: Gibbs Gage
+  display_name: Gibbs Gage
+  status: 1
+  sort_order: 4790
+- code: Gibbs Gage-Emans Smith Andersen
+  display_name: Gibbs Gage-Emans Smith Andersen
+  status: 1
+  sort_order: 4800
+- code: Gibbs Gage-FVB Energy
+  display_name: Gibbs Gage-FVB Energy
+  status: 1
+  sort_order: 4810
+- code: Gibbs Gage-Kellam Berg
+  display_name: Gibbs Gage-Kellam Berg
+  status: 1
+  sort_order: 4820
+- code: Gibbs Gage-Mulvey & Banani
+  display_name: Gibbs Gage-Mulvey & Banani
+  status: 1
+  sort_order: 4830
+- code: Gibbs Gage-Read Jones
+  display_name: Gibbs Gage-Read Jones
+  status: 1
+  sort_order: 4840
+- code: Gibson Products
+  display_name: Gibson Products
+  status: 1
+  sort_order: 4850
+- code: Glaunach
+  display_name: Glaunach
+  status: 1
+  sort_order: 4860
+- code: GLM Industries
+  display_name: GLM Industries
+  status: 1
+  sort_order: 4870
+- code: Global Analyzer Systems
+  display_name: Global Analyzer Systems
+  status: 1
+  sort_order: 4880
+- code: Global Chem
+  display_name: Global Chem
+  status: 1
+  sort_order: 4890
+- code: Global Chem-Feed Solutions
+  display_name: Global Chem-Feed Solutions
+  status: 1
+  sort_order: 4900
+- code: Global Controls
+  display_name: Global Controls
+  status: 1
+  sort_order: 4910
+- code: Global Heat Transfer
+  display_name: Global Heat Transfer
+  status: 1
+  sort_order: 4920
+- code: Global Power Components-Underwriters Laboratories
+  display_name: Global Power Components-Underwriters Laboratories
+  status: 1
+  sort_order: 4930
+- code: Golder Associates
+  display_name: Golder Associates
+  status: 1
+  sort_order: 4940
+- code: Goulds Pumps-ITT
+  display_name: Goulds Pumps-ITT
+  status: 1
+  sort_order: 4950
+- code: Goulds Water Technology
+  display_name: Goulds Water Technology
+  status: 1
+  sort_order: 4960
+- code: Grace Concrete
+  display_name: Grace Concrete
+  status: 1
+  sort_order: 4970
+- code: Graham
+  display_name: Graham
+  status: 1
+  sort_order: 4980
+- code: Graham Corporation
+  display_name: Graham Corporation
+  status: 1
+  sort_order: 4990
+- code: Graham-Motion Steel
+  display_name: Graham-Motion Steel
+  status: 1
+  sort_order: 5000
+- code: Grainger
+  display_name: Grainger
+  status: 1
+  sort_order: 5010
+- code: Great Lakes Testing
+  display_name: Great Lakes Testing
+  status: 1
+  sort_order: 5020
+- code: Greenheck
+  display_name: Greenheck
+  status: 1
+  sort_order: 5030
+- code: Griffco Valve
+  display_name: Griffco Valve
+  status: 1
+  sort_order: 5040
+- code: Grinnell Fire Protection
+  display_name: Grinnell Fire Protection
+  status: 1
+  sort_order: 5050
+- code: Grundfos
+  display_name: Grundfos
+  status: 1
+  sort_order: 5060
+- code: GS HiTech Controls
+  display_name: GS HiTech Controls
+  status: 1
+  sort_order: 5070
+- code: GT Exhaust Systems
+  display_name: GT Exhaust Systems
+  status: 1
+  sort_order: 5080
+- code: GTK Electric Controls-Suncor
+  display_name: GTK Electric Controls-Suncor
+  status: 1
+  sort_order: 5090
+- code: Gulfgate Equipment
+  display_name: Gulfgate Equipment
+  status: 1
+  sort_order: 5100
+- code: Gutor Electronics
+  display_name: Gutor Electronics
+  status: 1
+  sort_order: 5110
+- code: H2O Innovation
+  display_name: H2O Innovation
+  status: 1
+  sort_order: 5120
+- code: Hach
+  display_name: Hach
+  status: 1
+  sort_order: 5130
+- code: Hamilton Ornamental Ironworks
+  display_name: Hamilton Ornamental Ironworks
+  status: 1
+  sort_order: 5140
+- code: Hammond Power Solutions
+  display_name: Hammond Power Solutions
+  status: 1
+  sort_order: 5150
+- code: Hankuk Industrial Engineering
+  display_name: Hankuk Industrial Engineering
+  status: 1
+  sort_order: 5160
+- code: Hanson
+  display_name: Hanson
+  status: 1
+  sort_order: 5170
+- code: Hardcast
+  display_name: Hardcast
+  status: 1
+  sort_order: 5180
+- code: Hardline Engineering
+  display_name: Hardline Engineering
+  status: 1
+  sort_order: 5190
+- code: Harris Rebar
+  display_name: Harris Rebar
+  status: 1
+  sort_order: 5200
+- code: Hatch
+  display_name: Hatch
+  status: 1
+  sort_order: 5210
+- code: Haws
+  display_name: Haws
+  status: 1
+  sort_order: 5220
+- code: Hayden
+  display_name: Hayden
+  status: 1
+  sort_order: 5230
+- code: Hayley Industrial
+  display_name: Hayley Industrial
+  status: 1
+  sort_order: 5240
+- code: Hayward Flow-Control Systems
+  display_name: Hayward Flow-Control Systems
+  status: 1
+  sort_order: 5250
+- code: Hayward Industrial
+  display_name: Hayward Industrial
+  status: 1
+  sort_order: 5260
+- code: HBE Engineering
+  display_name: HBE Engineering
+  status: 1
+  sort_order: 5270
+- code: HD Baumann
+  display_name: HD Baumann
+  status: 1
+  sort_order: 5280
+- code: Head to Toe Safety Ltd-Concept Controls Inc
+  display_name: Head to Toe Safety Ltd-Concept Controls Inc
+  status: 1
+  sort_order: 5290
+- code: Heat Treating
+  display_name: Heat Treating
+  status: 1
+  sort_order: 5300
+- code: Heatech-Fransen
+  display_name: Heatech-Fransen
+  status: 1
+  sort_order: 5310
+- code: Hebeler
+  display_name: Hebeler
+  status: 1
+  sort_order: 5320
+- code: HES PV
+  display_name: HES PV
+  status: 1
+  sort_order: 5330
+- code: HFP Acoustical
+  display_name: HFP Acoustical
+  status: 1
+  sort_order: 5340
+- code: Hidrostal
+  display_name: Hidrostal
+  status: 1
+  sort_order: 5350
+- code: Highland Tank
+  display_name: Highland Tank
+  status: 1
+  sort_order: 5360
+- code: Honeywell
+  display_name: Honeywell
+  status: 1
+  sort_order: 5370
+- code: Hooper Welding
+  display_name: Hooper Welding
+  status: 1
+  sort_order: 5380
+- code: Howard Marten
+  display_name: Howard Marten
+  status: 1
+  sort_order: 5390
+- code: HP
+  display_name: HP
+  status: 1
+  sort_order: 5400
+- code: HRST
+  display_name: HRST
+  status: 1
+  sort_order: 5410
+- code: HSB Global Standards Code Services
+  display_name: HSB Global Standards Code Services
+  status: 1
+  sort_order: 5420
+- code: HSB Registration Services
+  display_name: HSB Registration Services
+  status: 1
+  sort_order: 5430
+- code: Hubbell
+  display_name: Hubbell
+  status: 1
+  sort_order: 5440
+- code: Hudson Products
+  display_name: Hudson Products
+  status: 1
+  sort_order: 5450
+- code: HVB AE Power Systems
+  display_name: HVB AE Power Systems
+  status: 1
+  sort_order: 5460
+- code: Hydraulic Company of America
+  display_name: Hydraulic Company of America
+  status: 1
+  sort_order: 5470
+- code: Hydro Air Technical
+  display_name: Hydro Air Technical
+  status: 1
+  sort_order: 5480
+- code: Hypershell-Vogt Power International
+  display_name: Hypershell-Vogt Power International
+  status: 1
+  sort_order: 5490
+- code: Hyundai
+  display_name: Hyundai
+  status: 1
+  sort_order: 5500
+- code: Hyundai-Fuji Electric
+  display_name: Hyundai-Fuji Electric
+  status: 1
+  sort_order: 5510
+- code: HZ Projects
+  display_name: HZ Projects
+  status: 1
+  sort_order: 5520
+- code: IDEC
+  display_name: IDEC
+  status: 1
+  sort_order: 5530
+- code: IDT Systems
+  display_name: IDT Systems
+  status: 1
+  sort_order: 5540
+- code: IFM Electronic
+  display_name: IFM Electronic
+  status: 1
+  sort_order: 5550
+- code: I-Gard
+  display_name: I-Gard
+  status: 1
+  sort_order: 5560
+- code: Igloo Erectors-Fransen
+  display_name: Igloo Erectors-Fransen
+  status: 1
+  sort_order: 5570
+- code: INDEECO
+  display_name: INDEECO
+  status: 1
+  sort_order: 5580
+- code: Indico-Valcom
+  display_name: Indico-Valcom
+  status: 1
+  sort_order: 5590
+- code: Industrial Environmental Systems
+  display_name: Industrial Environmental Systems
+  status: 1
+  sort_order: 5600
+- code: Industrial Heat Transfer
+  display_name: Industrial Heat Transfer
+  status: 1
+  sort_order: 5610
+- code: Industrial Painting Specialists
+  display_name: Industrial Painting Specialists
+  status: 1
+  sort_order: 5620
+- code: Industrial Process Equipment
+  display_name: Industrial Process Equipment
+  status: 1
+  sort_order: 5630
+- code: Infasco
+  display_name: Infasco
+  status: 1
+  sort_order: 5640
+- code: Ingersoll-Dresser
+  display_name: Ingersoll-Dresser
+  status: 1
+  sort_order: 5650
+- code: Ingersoll-Rand
+  display_name: Ingersoll-Rand
+  status: 1
+  sort_order: 5660
+- code: Inland Pipe
+  display_name: Inland Pipe
+  status: 1
+  sort_order: 5670
+- code: Inland Pipe-Graham
+  display_name: Inland Pipe-Graham
+  status: 1
+  sort_order: 5680
+- code: Inland Valve
+  display_name: Inland Valve
+  status: 1
+  sort_order: 5690
+- code: Innovative Steam Technologies
+  display_name: Innovative Steam Technologies
+  status: 1
+  sort_order: 5700
+- code: Instream
+  display_name: Instream
+  status: 1
+  sort_order: 5710
+- code: Instrument Transformers
+  display_name: Instrument Transformers
+  status: 1
+  sort_order: 5720
+- code: Insul Covers
+  display_name: Insul Covers
+  status: 1
+  sort_order: 5730
+- code: INTEMPC
+  display_name: INTEMPC
+  status: 1
+  sort_order: 5740
+- code: International Cooling Tower
+  display_name: International Cooling Tower
+  status: 1
+  sort_order: 5750
+- code: International Fire Code
+  display_name: International Fire Code
+  status: 1
+  sort_order: 5760
+- code: International Quality Consultants
+  display_name: International Quality Consultants
+  status: 1
+  sort_order: 5770
+- code: Intertek ETL Semko
+  display_name: Intertek ETL Semko
+  status: 1
+  sort_order: 5780
+- code: Intertek Systems-Ametek Solidstate Controls
+  display_name: Intertek Systems-Ametek Solidstate Controls
+  status: 1
+  sort_order: 5790
+- code: Intertek Testing Services
+  display_name: Intertek Testing Services
+  status: 1
+  sort_order: 5800
+- code: Invensys-Foxboro
+  display_name: Invensys-Foxboro
+  status: 1
+  sort_order: 5810
+- code: IPAC Services
+  display_name: IPAC Services
+  status: 1
+  sort_order: 5820
+- code: IPEX
+  display_name: IPEX
+  status: 1
+  sort_order: 5830
+- code: IPF Limited
+  display_name: IPF Limited
+  status: 1
+  sort_order: 5840
+- code: IPSCO Tabulars
+  display_name: IPSCO Tabulars
+  status: 1
+  sort_order: 5850
+- code: Iqnet-SQS
+  display_name: Iqnet-SQS
+  status: 1
+  sort_order: 5860
+- code: IRISNDT
+  display_name: IRISNDT
+  status: 1
+  sort_order: 5870
+- code: ISA
+  display_name: ISA
+  status: 1
+  sort_order: 5880
+- code: ISA-Ashcroft
+  display_name: ISA-Ashcroft
+  status: 1
+  sort_order: 5890
+- code: ISA-Consolidated
+  display_name: ISA-Consolidated
+  status: 1
+  sort_order: 5900
+- code: ISA-Crosby
+  display_name: ISA-Crosby
+  status: 1
+  sort_order: 5910
+- code: ISA-Fisher
+  display_name: ISA-Fisher
+  status: 1
+  sort_order: 5920
+- code: ISA-TCP
+  display_name: ISA-TCP
+  status: 1
+  sort_order: 5930
+- code: Islip Flow Controls
+  display_name: Islip Flow Controls
+  status: 1
+  sort_order: 5940
+- code: ITT
+  display_name: ITT
+  status: 1
+  sort_order: 5950
+- code: ITT Bell and Gossett-Fransen
+  display_name: ITT Bell and Gossett-Fransen
+  status: 1
+  sort_order: 5960
+- code: ITT RCW Dallas
+  display_name: ITT RCW Dallas
+  status: 1
+  sort_order: 5970
+- code: Jacobs
+  display_name: Jacobs
+  status: 1
+  sort_order: 5980
+- code: Jacobs-Babco Electric
+  display_name: Jacobs-Babco Electric
+  status: 1
+  sort_order: 5990
+- code: Jacobs-Delta Hudson
+  display_name: Jacobs-Delta Hudson
+  status: 1
+  sort_order: 6000
+- code: Jacobs-DPH Engineering
+  display_name: Jacobs-DPH Engineering
+  status: 1
+  sort_order: 6010
+- code: Jacobs-ENMAX
+  display_name: Jacobs-ENMAX
+  status: 1
+  sort_order: 6020
+- code: Jacobs-Fransen
+  display_name: Jacobs-Fransen
+  status: 1
+  sort_order: 6030
+- code: Jacobs-Rev
+  display_name: Jacobs-Rev
+  status: 1
+  sort_order: 6040
+- code: Jacques Whitford
+  display_name: Jacques Whitford
+  status: 1
+  sort_order: 6050
+- code: James Electric
+  display_name: James Electric
+  status: 1
+  sort_order: 6060
+- code: Jamesbury
+  display_name: Jamesbury
+  status: 1
+  sort_order: 6070
+- code: Jedson Engineering
+  display_name: Jedson Engineering
+  status: 1
+  sort_order: 6080
+- code: Jerguson
+  display_name: Jerguson
+  status: 1
+  sort_order: 6090
+- code: Jerguson Gage & Valve
+  display_name: Jerguson Gage & Valve
+  status: 1
+  sort_order: 6100
+- code: Jerguson-Clark Reliance
+  display_name: Jerguson-Clark Reliance
+  status: 1
+  sort_order: 6110
+- code: Jerguson-Rosemount
+  display_name: Jerguson-Rosemount
+  status: 1
+  sort_order: 6120
+- code: JF Ahern
+  display_name: JF Ahern
+  status: 1
+  sort_order: 6130
+- code: JFE Steel
+  display_name: JFE Steel
+  status: 1
+  sort_order: 6140
+- code: Jinjiang Yuyi Machinery Valve
+  display_name: Jinjiang Yuyi Machinery Valve
+  status: 1
+  sort_order: 6150
+- code: JMC Steel Group
+  display_name: JMC Steel Group
+  status: 1
+  sort_order: 6160
+- code: JMS Southeast
+  display_name: JMS Southeast
+  status: 1
+  sort_order: 6170
+- code: John Brooks Company
+  display_name: John Brooks Company
+  status: 1
+  sort_order: 6180
+- code: John C Ernst
+  display_name: John C Ernst
+  status: 1
+  sort_order: 6190
+- code: John Crane
+  display_name: John Crane
+  status: 1
+  sort_order: 6200
+- code: John Deere Power Systems
+  display_name: John Deere Power Systems
+  status: 1
+  sort_order: 6210
+- code: John Zink
+  display_name: John Zink
+  status: 1
+  sort_order: 6220
+- code: Johnson Controls
+  display_name: Johnson Controls
+  status: 1
+  sort_order: 6230
+- code: Johnson March Systems
+  display_name: Johnson March Systems
+  status: 1
+  sort_order: 6240
+- code: Johnson March-ENMAX
+  display_name: Johnson March-ENMAX
+  status: 1
+  sort_order: 6250
+- code: Johnston Pump
+  display_name: Johnston Pump
+  status: 1
+  sort_order: 6260
+- code: Jonas
+  display_name: Jonas
+  status: 1
+  sort_order: 6270
+- code: Joslyn Hi-Voltage
+  display_name: Joslyn Hi-Voltage
+  status: 1
+  sort_order: 6280
+- code: JP Environmental Products
+  display_name: JP Environmental Products
+  status: 1
+  sort_order: 6290
+- code: JS Mckinney
+  display_name: JS Mckinney
+  status: 1
+  sort_order: 6300
+- code: Kamstrup
+  display_name: Kamstrup
+  status: 1
+  sort_order: 6310
+- code: Kamtech
+  display_name: Kamtech
+  status: 1
+  sort_order: 6320
+- code: Kansas City Deaerator
+  display_name: Kansas City Deaerator
+  status: 1
+  sort_order: 6330
+- code: Kassian Dyck
+  display_name: Kassian Dyck
+  status: 1
+  sort_order: 6340
+- code: Kaverit Steel and Crane
+  display_name: Kaverit Steel and Crane
+  status: 1
+  sort_order: 6350
+- code: Kawasaki Steel
+  display_name: Kawasaki Steel
+  status: 1
+  sort_order: 6360
+- code: Keckley
+  display_name: Keckley
+  status: 1
+  sort_order: 6370
+- code: Kele & Associates
+  display_name: Kele & Associates
+  status: 1
+  sort_order: 6380
+- code: Kellam Berg
+  display_name: Kellam Berg
+  status: 1
+  sort_order: 6390
+- code: Kelton
+  display_name: Kelton
+  status: 1
+  sort_order: 6400
+- code: Kemp-Meek
+  display_name: Kemp-Meek
+  status: 1
+  sort_order: 6410
+- code: Kenco Engineering
+  display_name: Kenco Engineering
+  status: 1
+  sort_order: 6420
+- code: Kenics Static Mixers
+  display_name: Kenics Static Mixers
+  status: 1
+  sort_order: 6430
+- code: Kennedy Industries
+  display_name: Kennedy Industries
+  status: 1
+  sort_order: 6440
+- code: Kentube Engineered Products
+  display_name: Kentube Engineered Products
+  status: 1
+  sort_order: 6450
+- code: Kepware Technologies
+  display_name: Kepware Technologies
+  status: 1
+  sort_order: 6460
+- code: Key Controls
+  display_name: Key Controls
+  status: 1
+  sort_order: 6470
+- code: Keystone Electrical Manufacturing
+  display_name: Keystone Electrical Manufacturing
+  status: 1
+  sort_order: 6480
+- code: Keystone Valve
+  display_name: Keystone Valve
+  status: 1
+  sort_order: 6490
+- code: KF Butterfly Valves
+  display_name: KF Butterfly Valves
+  status: 1
+  sort_order: 6500
+- code: KF Industries
+  display_name: KF Industries
+  status: 1
+  sort_order: 6510
+- code: KGS Group
+  display_name: KGS Group
+  status: 1
+  sort_order: 6520
+- code: KGS Group-Barclay
+  display_name: KGS Group-Barclay
+  status: 1
+  sort_order: 6530
+- code: Kidde Fire Systems
+  display_name: Kidde Fire Systems
+  status: 1
+  sort_order: 6540
+- code: Kings Energy
+  display_name: Kings Energy
+  status: 1
+  sort_order: 6550
+- code: Kingspan
+  display_name: Kingspan
+  status: 1
+  sort_order: 6560
+- code: Kitz
+  display_name: Kitz
+  status: 1
+  sort_order: 6570
+- code: Kobelco Compressors America
+  display_name: Kobelco Compressors America
+  status: 1
+  sort_order: 6580
+- code: KOBOLD
+  display_name: KOBOLD
+  status: 1
+  sort_order: 6590
+- code: Koenig Engineering
+  display_name: Koenig Engineering
+  status: 1
+  sort_order: 6600
+- code: Kohler
+  display_name: Kohler
+  status: 1
+  sort_order: 6610
+- code: Koontz Wagner
+  display_name: Koontz Wagner
+  status: 1
+  sort_order: 6620
+- code: Kop-Coat
+  display_name: Kop-Coat
+  status: 1
+  sort_order: 6630
+- code: Korea Unicom Valve
+  display_name: Korea Unicom Valve
+  status: 1
+  sort_order: 6640
+- code: KPS
+  display_name: KPS
+  status: 1
+  sort_order: 6650
+- code: Krenz & Company
+  display_name: Krenz & Company
+  status: 1
+  sort_order: 6660
+- code: KSB
+  display_name: KSB
+  status: 1
+  sort_order: 6670
+- code: K-Tek
+  display_name: K-Tek
+  status: 1
+  sort_order: 6680
+- code: LA Boiler Works
+  display_name: LA Boiler Works
+  status: 1
+  sort_order: 6690
+- code: Lafarge
+  display_name: Lafarge
+  status: 1
+  sort_order: 6700
+- code: Lafarge-Bluerock Engineering
+  display_name: Lafarge-Bluerock Engineering
+  status: 1
+  sort_order: 6710
+- code: Lanmark
+  display_name: Lanmark
+  status: 1
+  sort_order: 6720
+- code: Laviolette Engineering
+  display_name: Laviolette Engineering
+  status: 1
+  sort_order: 6730
+- code: Lectrus
+  display_name: Lectrus
+  status: 1
+  sort_order: 6740
+- code: LED Sign Supply
+  display_name: LED Sign Supply
+  status: 1
+  sort_order: 6750
+- code: LEESON
+  display_name: LEESON
+  status: 1
+  sort_order: 6760
+- code: Legacy Fire Protection
+  display_name: Legacy Fire Protection
+  status: 1
+  sort_order: 6770
+- code: Lehigh
+  display_name: Lehigh
+  status: 1
+  sort_order: 6780
+- code: Limitorque
+  display_name: Limitorque
+  status: 1
+  sort_order: 6790
+- code: Lisega
+  display_name: Lisega
+  status: 1
+  sort_order: 6800
+- code: Lithonia Lighting
+  display_name: Lithonia Lighting
+  status: 1
+  sort_order: 6810
+- code: Lloyds Register Quality Assurance
+  display_name: Lloyds Register Quality Assurance
+  status: 1
+  sort_order: 6820
+- code: LMS Reinforcing Steel
+  display_name: LMS Reinforcing Steel
+  status: 1
+  sort_order: 6830
+- code: Logstor
+  display_name: Logstor
+  status: 1
+  sort_order: 6840
+- code: Lonestar Corrosion Services
+  display_name: Lonestar Corrosion Services
+  status: 1
+  sort_order: 6850
+- code: LRQA
+  display_name: LRQA
+  status: 1
+  sort_order: 6860
+- code: MA Stewart & Sons
+  display_name: MA Stewart & Sons
+  status: 1
+  sort_order: 6870
+- code: Machining & Metalworks
+  display_name: Machining & Metalworks
+  status: 1
+  sort_order: 6880
+- code: Macrodyne
+  display_name: Macrodyne
+  status: 1
+  sort_order: 6890
+- code: Mac-Weld
+  display_name: Mac-Weld
+  status: 1
+  sort_order: 6900
+- code: Magna IV Engineering
+  display_name: Magna IV Engineering
+  status: 1
+  sort_order: 6910
+- code: Magnetrol
+  display_name: Magnetrol
+  status: 1
+  sort_order: 6920
+- code: Magnetrol-Orion Instruments
+  display_name: Magnetrol-Orion Instruments
+  status: 1
+  sort_order: 6930
+- code: Magtech
+  display_name: Magtech
+  status: 1
+  sort_order: 6940
+- code: Makloc Buildings
+  display_name: Makloc Buildings
+  status: 1
+  sort_order: 6950
+- code: Mammoet
+  display_name: Mammoet
+  status: 1
+  sort_order: 6960
+- code: Manchester Tank
+  display_name: Manchester Tank
+  status: 1
+  sort_order: 6970
+- code: Marex
+  display_name: Marex
+  status: 1
+  sort_order: 6980
+- code: Marley Cooling Tower
+  display_name: Marley Cooling Tower
+  status: 1
+  sort_order: 6990
+- code: Martin Murray & Associates-Arpis
+  display_name: Martin Murray & Associates-Arpis
+  status: 1
+  sort_order: 7000
+- code: Material Inspection Technology
+  display_name: Material Inspection Technology
+  status: 1
+  sort_order: 7010
+- code: Matrikon
+  display_name: Matrikon
+  status: 1
+  sort_order: 7020
+- code: Maxxam Analytics
+  display_name: Maxxam Analytics
+  status: 1
+  sort_order: 7030
+- code: McDonnell & Miller
+  display_name: McDonnell & Miller
+  status: 1
+  sort_order: 7040
+- code: McKinney
+  display_name: McKinney
+  status: 1
+  sort_order: 7050
+- code: MCS Industrial
+  display_name: MCS Industrial
+  status: 1
+  sort_order: 7060
+- code: MDS
+  display_name: MDS
+  status: 1
+  sort_order: 7070
+- code: Measurement Assurance Technology
+  display_name: Measurement Assurance Technology
+  status: 1
+  sort_order: 7080
+- code: MEGA
+  display_name: MEGA
+  status: 1
+  sort_order: 7090
+- code: MELCO
+  display_name: MELCO
+  status: 1
+  sort_order: 7100
+- code: Mercer Valve
+  display_name: Mercer Valve
+  status: 1
+  sort_order: 7110
+- code: Meridian Valves
+  display_name: Meridian Valves
+  status: 1
+  sort_order: 7120
+- code: Merit Brass
+  display_name: Merit Brass
+  status: 1
+  sort_order: 7130
+- code: Merlin Gerin
+  display_name: Merlin Gerin
+  status: 1
+  sort_order: 7140
+- code: Merrill
+  display_name: Merrill
+  status: 1
+  sort_order: 7150
+- code: Metacor International
+  display_name: Metacor International
+  status: 1
+  sort_order: 7160
+- code: Metal Systems
+  display_name: Metal Systems
+  status: 1
+  sort_order: 7170
+- code: Metalogic Inspection Services
+  display_name: Metalogic Inspection Services
+  status: 1
+  sort_order: 7180
+- code: Metrix Instrument
+  display_name: Metrix Instrument
+  status: 1
+  sort_order: 7190
+- code: Metrode
+  display_name: Metrode
+  status: 1
+  sort_order: 7200
+- code: MHI
+  display_name: MHI
+  status: 1
+  sort_order: 7210
+- code: MHI-DongHwa Entec
+  display_name: MHI-DongHwa Entec
+  status: 1
+  sort_order: 7220
+- code: MHI-Vogt Power International
+  display_name: MHI-Vogt Power International
+  status: 1
+  sort_order: 7230
+- code: MHI-Vogt Power International-Fox Equipment
+  display_name: MHI-Vogt Power International-Fox Equipment
+  status: 1
+  sort_order: 7240
+- code: MHI-Vogt Power International-Greenheck
+  display_name: MHI-Vogt Power International-Greenheck
+  status: 1
+  sort_order: 7250
+- code: MHI-Vogt Power International-Holophane
+  display_name: MHI-Vogt Power International-Holophane
+  status: 1
+  sort_order: 7260
+- code: MHI-Vogt Power International-The Arthur Louis Steel Company
+  display_name: MHI-Vogt Power International-The Arthur Louis Steel Company
+  status: 1
+  sort_order: 7270
+- code: MHPS
+  display_name: MHPS
+  status: 1
+  sort_order: 7280
+- code: MHPS - Chemetron
+  display_name: MHPS - Chemetron
+  status: 1
+  sort_order: 7290
+- code: Microflex
+  display_name: Microflex
+  status: 1
+  sort_order: 7300
+- code: Mid America Steel
+  display_name: Mid America Steel
+  status: 1
+  sort_order: 7310
+- code: Midfield Supply
+  display_name: Midfield Supply
+  status: 1
+  sort_order: 7320
+- code: Mike Spencer Geometrics
+  display_name: Mike Spencer Geometrics
+  status: 1
+  sort_order: 7330
+- code: Mike Zahner Roof
+  display_name: Mike Zahner Roof
+  status: 1
+  sort_order: 7340
+- code: Milton Roy
+  display_name: Milton Roy
+  status: 1
+  sort_order: 7350
+- code: Minute Man
+  display_name: Minute Man
+  status: 1
+  sort_order: 7360
+- code: Mitsubishi
+  display_name: Mitsubishi
+  status: 1
+  sort_order: 7370
+- code: MKS Source Integrity
+  display_name: MKS Source Integrity
+  status: 1
+  sort_order: 7380
+- code: Modine
+  display_name: Modine
+  status: 1
+  sort_order: 7390
+- code: Modine-Barclay
+  display_name: Modine-Barclay
+  status: 1
+  sort_order: 7400
+- code: Mogas Industries
+  display_name: Mogas Industries
+  status: 1
+  sort_order: 7410
+- code: Mogas-TSSA
+  display_name: Mogas-TSSA
+  status: 1
+  sort_order: 7420
+- code: Moniteur Devices
+  display_name: Moniteur Devices
+  status: 1
+  sort_order: 7430
+- code: Moog
+  display_name: Moog
+  status: 1
+  sort_order: 7440
+- code: Mooney
+  display_name: Mooney
+  status: 1
+  sort_order: 7450
+- code: Morin-Tyco
+  display_name: Morin-Tyco
+  status: 1
+  sort_order: 7460
+- code: Morrison Hershfield
+  display_name: Morrison Hershfield
+  status: 1
+  sort_order: 7470
+- code: Motion Canada
+  display_name: Motion Canada
+  status: 1
+  sort_order: 7480
+- code: MSSM Company
+  display_name: MSSM Company
+  status: 1
+  sort_order: 7490
+- code: Mueller Co
+  display_name: Mueller Co
+  status: 1
+  sort_order: 7500
+- code: Mueller Steam Specialty
+  display_name: Mueller Steam Specialty
+  status: 1
+  sort_order: 7510
+- code: Muhr and Bender Gmbh
+  display_name: Muhr and Bender Gmbh
+  status: 1
+  sort_order: 7520
+- code: Multigas Detection & Instrumentaion
+  display_name: Multigas Detection & Instrumentaion
+  status: 1
+  sort_order: 7530
+- code: Mulvey & Banani
+  display_name: Mulvey & Banani
+  status: 1
+  sort_order: 7540
+- code: Murray Supply
+  display_name: Murray Supply
+  status: 1
+  sort_order: 7550
+- code: Myers
+  display_name: Myers
+  status: 1
+  sort_order: 7560
+- code: Nailor Industries
+  display_name: Nailor Industries
+  status: 1
+  sort_order: 7570
+- code: Nalco
+  display_name: Nalco
+  status: 1
+  sort_order: 7580
+- code: Namasco
+  display_name: Namasco
+  status: 1
+  sort_order: 7590
+- code: Nash US
+  display_name: Nash US
+  status: 1
+  sort_order: 7600
+- code: National Filtration Systems
+  display_name: National Filtration Systems
+  status: 1
+  sort_order: 7610
+- code: Nederman-Barclay
+  display_name: Nederman-Barclay
+  status: 1
+  sort_order: 7620
+- code: Neitronics
+  display_name: Neitronics
+  status: 1
+  sort_order: 7630
+- code: Neptune Technology Group
+  display_name: Neptune Technology Group
+  status: 1
+  sort_order: 7640
+- code: New York Blower Company
+  display_name: New York Blower Company
+  status: 1
+  sort_order: 7650
+- code: Newage International
+  display_name: Newage International
+  status: 1
+  sort_order: 7660
+- code: Newpoint Manufacturing
+  display_name: Newpoint Manufacturing
+  status: 1
+  sort_order: 7670
+- code: Newpoint Thermal
+  display_name: Newpoint Thermal
+  status: 1
+  sort_order: 7680
+- code: Nexans
+  display_name: Nexans
+  status: 1
+  sort_order: 7690
+- code: Nibco
+  display_name: Nibco
+  status: 1
+  sort_order: 7700
+- code: Nooter Eriksen
+  display_name: Nooter Eriksen
+  status: 1
+  sort_order: 7710
+- code: Nooter Eriksen-Cambridge Profab
+  display_name: Nooter Eriksen-Cambridge Profab
+  status: 1
+  sort_order: 7720
+- code: Nooter Eriksen-Festival City Fabricators
+  display_name: Nooter Eriksen-Festival City Fabricators
+  status: 1
+  sort_order: 7730
+- code: Nooter Eriksen-Titan Fabricators
+  display_name: Nooter Eriksen-Titan Fabricators
+  status: 1
+  sort_order: 7740
+- code: Norelco Industries
+  display_name: Norelco Industries
+  status: 1
+  sort_order: 7750
+- code: Norsat Communications
+  display_name: Norsat Communications
+  status: 1
+  sort_order: 7760
+- code: North American Free Trade Agreement
+  display_name: North American Free Trade Agreement
+  status: 1
+  sort_order: 7770
+- code: North American Stainless
+  display_name: North American Stainless
+  status: 1
+  sort_order: 7780
+- code: Northern Lights Steel Fabrication
+  display_name: Northern Lights Steel Fabrication
+  status: 1
+  sort_order: 7790
+- code: Northwest Pipe Company
+  display_name: Northwest Pipe Company
+  status: 1
+  sort_order: 7800
+- code: NRG Systems
+  display_name: NRG Systems
+  status: 1
+  sort_order: 7810
+- code: N-Tron
+  display_name: N-Tron
+  status: 1
+  sort_order: 7820
+- code: Nusteel Fabricators
+  display_name: Nusteel Fabricators
+  status: 1
+  sort_order: 7830
+- code: Nutron
+  display_name: Nutron
+  status: 1
+  sort_order: 7840
+- code: Olds Iron Works-Trotter & Morton
+  display_name: Olds Iron Works-Trotter & Morton
+  status: 1
+  sort_order: 7850
+- code: Olsun Electrics
+  display_name: Olsun Electrics
+  status: 1
+  sort_order: 7860
+- code: Olympia Engineering-Amped Consulting
+  display_name: Olympia Engineering-Amped Consulting
+  status: 1
+  sort_order: 7870
+- code: Omnicable
+  display_name: Omnicable
+  status: 1
+  sort_order: 7880
+- code: Omron
+  display_name: Omron
+  status: 1
+  sort_order: 7890
+- code: Optima
+  display_name: Optima
+  status: 1
+  sort_order: 7900
+- code: Optima-Fransen
+  display_name: Optima-Fransen
+  status: 1
+  sort_order: 7910
+- code: Orbis
+  display_name: Orbis
+  status: 1
+  sort_order: 7920
+- code: Orival
+  display_name: Orival
+  status: 1
+  sort_order: 7930
+- code: Orlaco
+  display_name: Orlaco
+  status: 1
+  sort_order: 7940
+- code: Ovation
+  display_name: Ovation
+  status: 1
+  sort_order: 7950
+- code: Overhead Door-Barclay
+  display_name: Overhead Door-Barclay
+  status: 1
+  sort_order: 7960
+- code: Pace-Gescan
+  display_name: Pace-Gescan
+  status: 1
+  sort_order: 7970
+- code: Pacific Air Switch
+  display_name: Pacific Air Switch
+  status: 1
+  sort_order: 7980
+- code: Pan Canadian
+  display_name: Pan Canadian
+  status: 1
+  sort_order: 7990
+- code: Panelmatic
+  display_name: Panelmatic
+  status: 1
+  sort_order: 8000
+- code: Park Ohio Electric
+  display_name: Park Ohio Electric
+  status: 1
+  sort_order: 8010
+- code: Parker
+  display_name: Parker
+  status: 1
+  sort_order: 8020
+- code: Parkline
+  display_name: Parkline
+  status: 1
+  sort_order: 8030
+- code: Pascor
+  display_name: Pascor
+  status: 1
+  sort_order: 8040
+- code: Patrick Fabricating & Welding
+  display_name: Patrick Fabricating & Welding
+  status: 1
+  sort_order: 8050
+- code: Patrick Fabricating & Welding-Process Services
+  display_name: Patrick Fabricating & Welding-Process Services
+  status: 1
+  sort_order: 8060
+- code: Paul Ransom
+  display_name: Paul Ransom
+  status: 1
+  sort_order: 8070
+- code: Pauwels
+  display_name: Pauwels
+  status: 1
+  sort_order: 8080
+- code: Pauwels-Enercon
+  display_name: Pauwels-Enercon
+  status: 1
+  sort_order: 8090
+- code: PCL
+  display_name: PCL
+  status: 1
+  sort_order: 8100
+- code: PCL-TIC
+  display_name: PCL-TIC
+  status: 1
+  sort_order: 8110
+- code: PCL-TIC-Projex
+  display_name: PCL-TIC-Projex
+  status: 1
+  sort_order: 8120
+- code: Peco
+  display_name: Peco
+  status: 1
+  sort_order: 8130
+- code: Peerless MFG
+  display_name: Peerless MFG
+  status: 1
+  sort_order: 8140
+- code: Peerless MFG-Ashcroft
+  display_name: Peerless MFG-Ashcroft
+  status: 1
+  sort_order: 8150
+- code: Peerless MFG-ENMAX
+  display_name: Peerless MFG-ENMAX
+  status: 1
+  sort_order: 8160
+- code: Peerless MFG-Fluidic Techniques
+  display_name: Peerless MFG-Fluidic Techniques
+  status: 1
+  sort_order: 8170
+- code: Peerless MFG-Magnetrol
+  display_name: Peerless MFG-Magnetrol
+  status: 1
+  sort_order: 8180
+- code: Peerless MFG-Nooter Eriksen
+  display_name: Peerless MFG-Nooter Eriksen
+  status: 1
+  sort_order: 8190
+- code: Penberthy
+  display_name: Penberthy
+  status: 1
+  sort_order: 8200
+- code: Penta Engineering
+  display_name: Penta Engineering
+  status: 1
+  sort_order: 8210
+- code: Perry Equipment
+  display_name: Perry Equipment
+  status: 1
+  sort_order: 8220
+- code: Perry Johnson Registrars
+  display_name: Perry Johnson Registrars
+  status: 1
+  sort_order: 8230
+- code: PGI International
+  display_name: PGI International
+  status: 1
+  sort_order: 8240
+- code: Pheumafil-Siemens
+  display_name: Pheumafil-Siemens
+  status: 1
+  sort_order: 8250
+- code: Phoenix Contact
+  display_name: Phoenix Contact
+  status: 1
+  sort_order: 8260
+- code: Pinelands Detailing Services
+  display_name: Pinelands Detailing Services
+  status: 1
+  sort_order: 8270
+- code: Pioneer Pipe
+  display_name: Pioneer Pipe
+  status: 1
+  sort_order: 8280
+- code: Pipe Fabricating & Supply
+  display_name: Pipe Fabricating & Supply
+  status: 1
+  sort_order: 8290
+- code: Piping Technology & Products
+  display_name: Piping Technology & Products
+  status: 1
+  sort_order: 8300
+- code: Plasteel
+  display_name: Plasteel
+  status: 1
+  sort_order: 8310
+- code: Pneumafil
+  display_name: Pneumafil
+  status: 1
+  sort_order: 8320
+- code: Powell Company
+  display_name: Powell Company
+  status: 1
+  sort_order: 8330
+- code: Powell Electrical Systems
+  display_name: Powell Electrical Systems
+  status: 1
+  sort_order: 8340
+- code: Powell Valves
+  display_name: Powell Valves
+  status: 1
+  sort_order: 8350
+- code: Powercon
+  display_name: Powercon
+  status: 1
+  sort_order: 8360
+- code: Powertech Labs
+  display_name: Powertech Labs
+  status: 1
+  sort_order: 8370
+- code: PPG Industries
+  display_name: PPG Industries
+  status: 1
+  sort_order: 8380
+- code: PPG Liquid Coatings
+  display_name: PPG Liquid Coatings
+  status: 1
+  sort_order: 8390
+- code: PPG Protective & Marine Coatings
+  display_name: PPG Protective & Marine Coatings
+  status: 1
+  sort_order: 8400
+- code: Practical Instrument Electronics
+  display_name: Practical Instrument Electronics
+  status: 1
+  sort_order: 8410
+- code: Praxair
+  display_name: Praxair
+  status: 1
+  sort_order: 8420
+- code: Precision Components
+  display_name: Precision Components
+  status: 1
+  sort_order: 8430
+- code: Precon
+  display_name: Precon
+  status: 1
+  sort_order: 8440
+- code: Primary Fluid Systems
+  display_name: Primary Fluid Systems
+  status: 1
+  sort_order: 8450
+- code: Pro Energy Services
+  display_name: Pro Energy Services
+  status: 1
+  sort_order: 8460
+- code: Probes Unlimited
+  display_name: Probes Unlimited
+  status: 1
+  sort_order: 8470
+- code: Procesco
+  display_name: Procesco
+  status: 1
+  sort_order: 8480
+- code: Process Heating
+  display_name: Process Heating
+  status: 1
+  sort_order: 8490
+- code: Process Services-Patrick Fabricating & Welding
+  display_name: Process Services-Patrick Fabricating & Welding
+  status: 1
+  sort_order: 8500
+- code: Proco Products
+  display_name: Proco Products
+  status: 1
+  sort_order: 8510
+- code: Prolec
+  display_name: Prolec
+  status: 1
+  sort_order: 8520
+- code: Prominent
+  display_name: Prominent
+  status: 1
+  sort_order: 8530
+- code: Prosoft
+  display_name: Prosoft
+  status: 1
+  sort_order: 8540
+- code: Prosteel & Manufacturing
+  display_name: Prosteel & Manufacturing
+  status: 1
+  sort_order: 8550
+- code: Protech
+  display_name: Protech
+  status: 1
+  sort_order: 8560
+- code: Protego
+  display_name: Protego
+  status: 1
+  sort_order: 8570
+- code: Pruftechnik Alignment
+  display_name: Pruftechnik Alignment
+  status: 1
+  sort_order: 8580
+- code: PS Filter
+  display_name: PS Filter
+  status: 1
+  sort_order: 8590
+- code: PS Filter-Patrick Fabricating & Welding
+  display_name: PS Filter-Patrick Fabricating & Welding
+  status: 1
+  sort_order: 8600
+- code: PS International
+  display_name: PS International
+  status: 1
+  sort_order: 8610
+- code: Pure Aire Monitoring Systems
+  display_name: Pure Aire Monitoring Systems
+  status: 1
+  sort_order: 8620
+- code: Puregas
+  display_name: Puregas
+  status: 1
+  sort_order: 8630
+- code: Pyco
+  display_name: Pyco
+  status: 1
+  sort_order: 8640
+- code: Quadna Pumping Solutions
+  display_name: Quadna Pumping Solutions
+  status: 1
+  sort_order: 8650
+- code: Qualimet
+  display_name: Qualimet
+  status: 1
+  sort_order: 8660
+- code: Quality Products & Sales
+  display_name: Quality Products & Sales
+  status: 1
+  sort_order: 8670
+- code: Quatrex
+  display_name: Quatrex
+  status: 1
+  sort_order: 8680
+- code: Quatrex Environmental
+  display_name: Quatrex Environmental
+  status: 1
+  sort_order: 8690
+- code: Quest-Tec Solutions
+  display_name: Quest-Tec Solutions
+  status: 1
+  sort_order: 8700
+- code: R & M Materials Handling
+  display_name: R & M Materials Handling
+  status: 1
+  sort_order: 8710
+- code: R & M Materials Handling-Spacemaster
+  display_name: R & M Materials Handling-Spacemaster
+  status: 1
+  sort_order: 8720
+- code: RAE Engineering and Inspection
+  display_name: RAE Engineering and Inspection
+  status: 1
+  sort_order: 8730
+- code: Ramco Electrical
+  display_name: Ramco Electrical
+  status: 1
+  sort_order: 8740
+- code: Raychem
+  display_name: Raychem
+  status: 1
+  sort_order: 8750
+- code: Read Jones
+  display_name: Read Jones
+  status: 1
+  sort_order: 8760
+- code: Read Jones-Trotter & Morton
+  display_name: Read Jones-Trotter & Morton
+  status: 1
+  sort_order: 8770
+- code: Red Associates Engineering
+  display_name: Red Associates Engineering
+  status: 1
+  sort_order: 8780
+- code: Rego Products
+  display_name: Rego Products
+  status: 1
+  sort_order: 8790
+- code: Reliance Electric
+  display_name: Reliance Electric
+  status: 1
+  sort_order: 8800
+- code: Remington Valves
+  display_name: Remington Valves
+  status: 1
+  sort_order: 8810
+- code: Renegade Testing & Inspection
+  display_name: Renegade Testing & Inspection
+  status: 1
+  sort_order: 8820
+- code: Rentech Boiler Systems
+  display_name: Rentech Boiler Systems
+  status: 1
+  sort_order: 8830
+- code: Rev Engineering
+  display_name: Rev Engineering
+  status: 1
+  sort_order: 8840
+- code: Revenue Canada
+  display_name: Revenue Canada
+  status: 1
+  sort_order: 8850
+- code: Rising Edge Engineering
+  display_name: Rising Edge Engineering
+  status: 1
+  sort_order: 8860
+- code: Ritz
+  display_name: Ritz
+  status: 1
+  sort_order: 8870
+- code: RM Young
+  display_name: RM Young
+  status: 1
+  sort_order: 8880
+- code: Robertson Building Systems
+  display_name: Robertson Building Systems
+  status: 1
+  sort_order: 8890
+- code: Robinson Fans
+  display_name: Robinson Fans
+  status: 1
+  sort_order: 8900
+- code: Rockwell Automation
+  display_name: Rockwell Automation
+  status: 1
+  sort_order: 8910
+- code: Rockwell Automation-Reliance Electric
+  display_name: Rockwell Automation-Reliance Electric
+  status: 1
+  sort_order: 8920
+- code: Rocky View County
+  display_name: Rocky View County
+  status: 1
+  sort_order: 8930
+- code: Rohl Geomatics
+  display_name: Rohl Geomatics
+  status: 1
+  sort_order: 8940
+- code: Ronaco Industries
+  display_name: Ronaco Industries
+  status: 1
+  sort_order: 8950
+- code: Rosemount
+  display_name: Rosemount
+  status: 1
+  sort_order: 8960
+- code: Rosemount-Emerson
+  display_name: Rosemount-Emerson
+  status: 1
+  sort_order: 8970
+- code: Rotork
+  display_name: Rotork
+  status: 1
+  sort_order: 8980
+- code: Rotork Fluid Systems
+  display_name: Rotork Fluid Systems
+  status: 1
+  sort_order: 8990
+- code: Roxul
+  display_name: Roxul
+  status: 1
+  sort_order: 9000
+- code: Royal Switchgear
+  display_name: Royal Switchgear
+  status: 1
+  sort_order: 9010
+- code: RP&C Valve
+  display_name: RP&C Valve
+  status: 1
+  sort_order: 9020
+- code: Ruskin
+  display_name: Ruskin
+  status: 1
+  sort_order: 9030
+- code: S & T
+  display_name: S & T
+  status: 1
+  sort_order: 9040
+- code: S&C Electric
+  display_name: S&C Electric
+  status: 1
+  sort_order: 9050
+- code: SA Armstrong
+  display_name: SA Armstrong
+  status: 1
+  sort_order: 9060
+- code: Sacre-Davey Engineering
+  display_name: Sacre-Davey Engineering
+  status: 1
+  sort_order: 9070
+- code: Sadtem
+  display_name: Sadtem
+  status: 1
+  sort_order: 9080
+- code: Sadtem-ENMAX Power
+  display_name: Sadtem-ENMAX Power
+  status: 1
+  sort_order: 9090
+- code: SAF-T-FLO Water Services
+  display_name: SAF-T-FLO Water Services
+  status: 1
+  sort_order: 9100
+- code: SAI Global
+  display_name: SAI Global
+  status: 1
+  sort_order: 9110
+- code: Sama Drawings-Calpine
+  display_name: Sama Drawings-Calpine
+  status: 1
+  sort_order: 9120
+- code: Samuel Pressure Vessel Group
+  display_name: Samuel Pressure Vessel Group
+  status: 1
+  sort_order: 9130
+- code: Sandvik Materials
+  display_name: Sandvik Materials
+  status: 1
+  sort_order: 9140
+- code: Saneng Steel Forging
+  display_name: Saneng Steel Forging
+  status: 1
+  sort_order: 9150
+- code: Sanghvi Forging & Engineering
+  display_name: Sanghvi Forging & Engineering
+  status: 1
+  sort_order: 9160
+- code: Santamaria Engineering
+  display_name: Santamaria Engineering
+  status: 1
+  sort_order: 9170
+- code: Schindler Elevator
+  display_name: Schindler Elevator
+  status: 1
+  sort_order: 9180
+- code: Schneider Electric
+  display_name: Schneider Electric
+  status: 1
+  sort_order: 9190
+- code: Schutte and Koerting
+  display_name: Schutte and Koerting
+  status: 1
+  sort_order: 9200
+- code: Schweitzer Engineering Laboratories
+  display_name: Schweitzer Engineering Laboratories
+  status: 1
+  sort_order: 9210
+- code: Score Energy
+  display_name: Score Energy
+  status: 1
+  sort_order: 9220
+- code: SD Meyers
+  display_name: SD Meyers
+  status: 1
+  sort_order: 9230
+- code: Sea Box
+  display_name: Sea Box
+  status: 1
+  sort_order: 9240
+- code: Se-Mar Electric
+  display_name: Se-Mar Electric
+  status: 1
+  sort_order: 9250
+- code: Senior Flexonics
+  display_name: Senior Flexonics
+  status: 1
+  sort_order: 9260
+- code: Sentron-Siemens Industry
+  display_name: Sentron-Siemens Industry
+  status: 1
+  sort_order: 9270
+- code: Sentry
+  display_name: Sentry
+  status: 1
+  sort_order: 9280
+- code: Severe Service Technology
+  display_name: Severe Service Technology
+  status: 1
+  sort_order: 9290
+- code: SGC
+  display_name: SGC
+  status: 1
+  sort_order: 9300
+- code: Shanahan's Building Specialties
+  display_name: Shanahan's Building Specialties
+  status: 1
+  sort_order: 9310
+- code: Sharp
+  display_name: Sharp
+  status: 1
+  sort_order: 9320
+- code: Sherwood Steel
+  display_name: Sherwood Steel
+  status: 1
+  sort_order: 9330
+- code: Siemens
+  display_name: Siemens
+  status: 1
+  sort_order: 9340
+- code: Siemens-C&W Fabricators
+  display_name: Siemens-C&W Fabricators
+  status: 1
+  sort_order: 9350
+- code: Siemens-Hughes Supply
+  display_name: Siemens-Hughes Supply
+  status: 1
+  sort_order: 9360
+- code: Siemens-ITT
+  display_name: Siemens-ITT
+  status: 1
+  sort_order: 9370
+- code: Siemens-Metal Systems
+  display_name: Siemens-Metal Systems
+  status: 1
+  sort_order: 9380
+- code: SiFi
+  display_name: SiFi
+  status: 1
+  sort_order: 9390
+- code: Sigma Thermal
+  display_name: Sigma Thermal
+  status: 1
+  sort_order: 9400
+- code: Silicium Becancour
+  display_name: Silicium Becancour
+  status: 1
+  sort_order: 9410
+- code: Silvan Industries
+  display_name: Silvan Industries
+  status: 1
+  sort_order: 9420
+- code: Simoneau-Thermodesign
+  display_name: Simoneau-Thermodesign
+  status: 1
+  sort_order: 9430
+- code: Simplex-Barclay
+  display_name: Simplex-Barclay
+  status: 1
+  sort_order: 9440
+- code: Simplexgrinnell
+  display_name: Simplexgrinnell
+  status: 1
+  sort_order: 9450
+- code: Simpson Electric Company
+  display_name: Simpson Electric Company
+  status: 1
+  sort_order: 9460
+- code: Sinto
+  display_name: Sinto
+  status: 1
+  sort_order: 9470
+- code: Siva & Associates
+  display_name: Siva & Associates
+  status: 1
+  sort_order: 9480
+- code: Smith Cameron Industrial
+  display_name: Smith Cameron Industrial
+  status: 1
+  sort_order: 9490
+- code: Smith Instrument
+  display_name: Smith Instrument
+  status: 1
+  sort_order: 9500
+- code: SNC Lavalin
+  display_name: SNC Lavalin
+  status: 1
+  sort_order: 9510
+- code: Snogem
+  display_name: Snogem
+  status: 1
+  sort_order: 9520
+- code: Snow Management Systems
+  display_name: Snow Management Systems
+  status: 1
+  sort_order: 9530
+- code: Software House-Tyco
+  display_name: Software House-Tyco
+  status: 1
+  sort_order: 9540
+- code: SOR
+  display_name: SOR
+  status: 1
+  sort_order: 9550
+- code: Sound Technologies
+  display_name: Sound Technologies
+  status: 1
+  sort_order: 9560
+- code: South Rock
+  display_name: South Rock
+  status: 1
+  sort_order: 9570
+- code: Southeastern Hose
+  display_name: Southeastern Hose
+  status: 1
+  sort_order: 9580
+- code: Southern States
+  display_name: Southern States
+  status: 1
+  sort_order: 9590
+- code: Southwire Industrial Cable
+  display_name: Southwire Industrial Cable
+  status: 1
+  sort_order: 9600
+- code: Southwire-Barclay
+  display_name: Southwire-Barclay
+  status: 1
+  sort_order: 9610
+- code: Sowesco
+  display_name: Sowesco
+  status: 1
+  sort_order: 9620
+- code: Spartan Controls
+  display_name: Spartan Controls
+  status: 1
+  sort_order: 9630
+- code: Spartan Controls-EIM Company
+  display_name: Spartan Controls-EIM Company
+  status: 1
+  sort_order: 9640
+- code: Spartan Controls-Emerson
+  display_name: Spartan Controls-Emerson
+  status: 1
+  sort_order: 9650
+- code: Spartan Controls-TIC
+  display_name: Spartan Controls-TIC
+  status: 1
+  sort_order: 9660
+- code: Specific Systems
+  display_name: Specific Systems
+  status: 1
+  sort_order: 9670
+- code: Spicer
+  display_name: Spicer
+  status: 1
+  sort_order: 9680
+- code: Spirax Sarco
+  display_name: Spirax Sarco
+  status: 1
+  sort_order: 9690
+- code: Springer Controls Company
+  display_name: Springer Controls Company
+  status: 1
+  sort_order: 9700
+- code: Square D Schneider Electric
+  display_name: Square D Schneider Electric
+  status: 1
+  sort_order: 9710
+- code: Square D-Barclay
+  display_name: Square D-Barclay
+  status: 1
+  sort_order: 9720
+- code: SRI Quality System Registrar
+  display_name: SRI Quality System Registrar
+  status: 1
+  sort_order: 9730
+- code: STAHL Crane Systems
+  display_name: STAHL Crane Systems
+  status: 1
+  sort_order: 9740
+- code: Stainless Piping Specialists
+  display_name: Stainless Piping Specialists
+  status: 1
+  sort_order: 9750
+- code: Stainless Unlimited
+  display_name: Stainless Unlimited
+  status: 1
+  sort_order: 9760
+- code: Stanpro Lighting Systems
+  display_name: Stanpro Lighting Systems
+  status: 1
+  sort_order: 9770
+- code: StarLine
+  display_name: StarLine
+  status: 1
+  sort_order: 9780
+- code: State of Florida Department of Labor and Employment Security
+  display_name: State of Florida Department of Labor and Employment Security
+  status: 1
+  sort_order: 9790
+- code: Static Energy Inc
+  display_name: Static Energy Inc
+  status: 1
+  sort_order: 9800
+- code: Steel Fab
+  display_name: Steel Fab
+  status: 1
+  sort_order: 9810
+- code: Steel Fab-Thermo King
+  display_name: Steel Fab-Thermo King
+  status: 1
+  sort_order: 9820
+- code: Steel Tank Institute
+  display_name: Steel Tank Institute
+  status: 1
+  sort_order: 9830
+- code: Steelscape
+  display_name: Steelscape
+  status: 1
+  sort_order: 9840
+- code: Steeltek
+  display_name: Steeltek
+  status: 1
+  sort_order: 9850
+- code: Stego
+  display_name: Stego
+  status: 1
+  sort_order: 9860
+- code: Sterling Combustion
+  display_name: Sterling Combustion
+  status: 1
+  sort_order: 9870
+- code: Sterling Deaerator
+  display_name: Sterling Deaerator
+  status: 1
+  sort_order: 9880
+- code: Sterling Fluid Systems
+  display_name: Sterling Fluid Systems
+  status: 1
+  sort_order: 9890
+- code: Sterling Valve Automation
+  display_name: Sterling Valve Automation
+  status: 1
+  sort_order: 9900
+- code: Strike Energy
+  display_name: Strike Energy
+  status: 1
+  sort_order: 9910
+- code: Strike Energy-Washington Group Northern
+  display_name: Strike Energy-Washington Group Northern
+  status: 1
+  sort_order: 9920
+- code: Structural Integrity Associates
+  display_name: Structural Integrity Associates
+  status: 1
+  sort_order: 9930
+- code: Summit Valve and Controls
+  display_name: Summit Valve and Controls
+  status: 1
+  sort_order: 9940
+- code: Sunggwang Company-Vogt Power International
+  display_name: Sunggwang Company-Vogt Power International
+  status: 1
+  sort_order: 9950
+- code: Sungkwang Bend
+  display_name: Sungkwang Bend
+  status: 1
+  sort_order: 9960
+- code: SUPERBOLT
+  display_name: SUPERBOLT
+  status: 1
+  sort_order: 9970
+- code: SUPERBOLT - Precision Bolting Ltd
+  display_name: SUPERBOLT - Precision Bolting Ltd
+  status: 1
+  sort_order: 9980
+- code: Superior Products
+  display_name: Superior Products
+  status: 1
+  sort_order: 9990
+- code: Supreme Steel
+  display_name: Supreme Steel
+  status: 1
+  sort_order: 10000
+- code: Sure Flow Equipment
+  display_name: Sure Flow Equipment
+  status: 1
+  sort_order: 10010
+- code: Surround Technologies
+  display_name: Surround Technologies
+  status: 1
+  sort_order: 10020
+- code: SW Controls
+  display_name: SW Controls
+  status: 1
+  sort_order: 10030
+- code: Swagelok
+  display_name: Swagelok
+  status: 1
+  sort_order: 10040
+- code: Swagelok-Penn Fluid System
+  display_name: Swagelok-Penn Fluid System
+  status: 1
+  sort_order: 10050
+- code: Swan Analytic
+  display_name: Swan Analytic
+  status: 1
+  sort_order: 10060
+- code: Switchboard Apparatus
+  display_name: Switchboard Apparatus
+  status: 1
+  sort_order: 10070
+- code: Switchgear Power Systems
+  display_name: Switchgear Power Systems
+  status: 1
+  sort_order: 10080
+- code: Symmetricom
+  display_name: Symmetricom
+  status: 1
+  sort_order: 10090
+- code: Syracuse Castings
+  display_name: Syracuse Castings
+  status: 1
+  sort_order: 10100
+- code: System Aire
+  display_name: System Aire
+  status: 1
+  sort_order: 10110
+- code: TACANADA
+  display_name: TACANADA
+  status: 1
+  sort_order: 10120
+- code: Taco
+  display_name: Taco
+  status: 1
+  sort_order: 10130
+- code: TAMCO
+  display_name: TAMCO
+  status: 1
+  sort_order: 10140
+- code: TAQA North-Tuxtla
+  display_name: TAQA North-Tuxtla
+  status: 1
+  sort_order: 10150
+- code: Taris Hybrid
+  display_name: Taris Hybrid
+  status: 1
+  sort_order: 10160
+- code: Tarpon Energy
+  display_name: Tarpon Energy
+  status: 1
+  sort_order: 10170
+- code: Tarsco Tank & Industrial Services
+  display_name: Tarsco Tank & Industrial Services
+  status: 1
+  sort_order: 10180
+- code: Tarsco-TFWarren
+  display_name: Tarsco-TFWarren
+  status: 1
+  sort_order: 10190
+- code: TAS Packaged Central Plants
+  display_name: TAS Packaged Central Plants
+  status: 1
+  sort_order: 10200
+- code: Tate
+  display_name: Tate
+  status: 1
+  sort_order: 10210
+- code: Taylor Forge Engineered
+  display_name: Taylor Forge Engineered
+  status: 1
+  sort_order: 10220
+- code: TB Wood's
+  display_name: TB Wood's
+  status: 1
+  sort_order: 10230
+- code: TDK-Lambda
+  display_name: TDK-Lambda
+  status: 1
+  sort_order: 10240
+- code: Team Power Solutions
+  display_name: Team Power Solutions
+  status: 1
+  sort_order: 10250
+- code: Techmation
+  display_name: Techmation
+  status: 1
+  sort_order: 10260
+- code: Technibus
+  display_name: Technibus
+  status: 1
+  sort_order: 10270
+- code: Technical Standards & Safety Authority
+  display_name: Technical Standards & Safety Authority
+  status: 1
+  sort_order: 10280
+- code: Technical Standards & Safety Authority-Fisher
+  display_name: Technical Standards & Safety Authority-Fisher
+  status: 1
+  sort_order: 10290
+- code: TECO Electric & Machinery
+  display_name: TECO Electric & Machinery
+  status: 1
+  sort_order: 10300
+- code: Teco Westinghouse
+  display_name: Teco Westinghouse
+  status: 1
+  sort_order: 10310
+- code: Tecsystem
+  display_name: Tecsystem
+  status: 1
+  sort_order: 10320
+- code: Teledyne API
+  display_name: Teledyne API
+  status: 1
+  sort_order: 10330
+- code: Teshmont Consultants
+  display_name: Teshmont Consultants
+  status: 1
+  sort_order: 10340
+- code: Texmet
+  display_name: Texmet
+  status: 1
+  sort_order: 10350
+- code: Thaier
+  display_name: Thaier
+  status: 1
+  sort_order: 10360
+- code: The Aeroacoustic
+  display_name: The Aeroacoustic
+  status: 1
+  sort_order: 10370
+- code: The American Society for Nondestructive Testing
+  display_name: The American Society for Nondestructive Testing
+  status: 1
+  sort_order: 10380
+- code: The American Society of Mechanical Engineers
+  display_name: The American Society of Mechanical Engineers
+  status: 1
+  sort_order: 10390
+- code: The Arthur Louis Steel Company
+  display_name: The Arthur Louis Steel Company
+  status: 1
+  sort_order: 10400
+- code: The Bureau of Standards Metrology and Inspection
+  display_name: The Bureau of Standards Metrology and Inspection
+  status: 1
+  sort_order: 10410
+- code: The Group Simoneau
+  display_name: The Group Simoneau
+  status: 1
+  sort_order: 10420
+- code: The Inspection Group
+  display_name: The Inspection Group
+  status: 1
+  sort_order: 10430
+- code: The John Wood Company
+  display_name: The John Wood Company
+  status: 1
+  sort_order: 10440
+- code: The National Board of Boiler & Pressure Vessel Inspectors
+  display_name: The National Board of Boiler & Pressure Vessel Inspectors
+  status: 1
+  sort_order: 10450
+- code: The Society for Protective Coatings
+  display_name: The Society for Protective Coatings
+  status: 1
+  sort_order: 10460
+- code: Thermal Engineering International
+  display_name: Thermal Engineering International
+  status: 1
+  sort_order: 10470
+- code: Thermodesign
+  display_name: Thermodesign
+  status: 1
+  sort_order: 10480
+- code: Therm-Omega-Tech
+  display_name: Therm-Omega-Tech
+  status: 1
+  sort_order: 10490
+- code: Thermon
+  display_name: Thermon
+  status: 1
+  sort_order: 10500
+- code: Thomson Technology
+  display_name: Thomson Technology
+  status: 1
+  sort_order: 10510
+- code: Thurber Engineering
+  display_name: Thurber Engineering
+  status: 1
+  sort_order: 10520
+- code: Tideflex Technologies
+  display_name: Tideflex Technologies
+  status: 1
+  sort_order: 10530
+- code: Titan Flow Control
+  display_name: Titan Flow Control
+  status: 1
+  sort_order: 10540
+- code: TIW Steel Platework
+  display_name: TIW Steel Platework
+  status: 1
+  sort_order: 10550
+- code: TK
+  display_name: TK
+  status: 1
+  sort_order: 10560
+- code: TLV
+  display_name: TLV
+  status: 1
+  sort_order: 10570
+- code: TMP Consulting
+  display_name: TMP Consulting
+  status: 1
+  sort_order: 10580
+- code: TMP Consulting-Engineered Air
+  display_name: TMP Consulting-Engineered Air
+  status: 1
+  sort_order: 10590
+- code: Tnemec Company
+  display_name: Tnemec Company
+  status: 1
+  sort_order: 10600
+- code: Topworx
+  display_name: Topworx
+  status: 1
+  sort_order: 10610
+- code: Torna Tech
+  display_name: Torna Tech
+  status: 1
+  sort_order: 10620
+- code: Toshiba
+  display_name: Toshiba
+  status: 1
+  sort_order: 10630
+- code: Toshiba Mitsubishi-Electric Industrial Systems
+  display_name: Toshiba Mitsubishi-Electric Industrial Systems
+  status: 1
+  sort_order: 10640
+- code: TPM
+  display_name: TPM
+  status: 1
+  sort_order: 10650
+- code: Tracer Industries
+  display_name: Tracer Industries
+  status: 1
+  sort_order: 10660
+- code: Tracker Pipeline & Utility
+  display_name: Tracker Pipeline & Utility
+  status: 1
+  sort_order: 10670
+- code: Trane
+  display_name: Trane
+  status: 1
+  sort_order: 10680
+- code: Transcanada
+  display_name: Transcanada
+  status: 1
+  sort_order: 10690
+- code: Trans-Coil
+  display_name: Trans-Coil
+  status: 1
+  sort_order: 10700
+- code: Trelleborg
+  display_name: Trelleborg
+  status: 1
+  sort_order: 10710
+- code: Tremco
+  display_name: Tremco
+  status: 1
+  sort_order: 10720
+- code: Trenergy
+  display_name: Trenergy
+  status: 1
+  sort_order: 10730
+- code: Triad Measurement & Equipment
+  display_name: Triad Measurement & Equipment
+  status: 1
+  sort_order: 10740
+- code: Triangle Steel
+  display_name: Triangle Steel
+  status: 1
+  sort_order: 10750
+- code: Triangle Steel-Nooter Eriksen
+  display_name: Triangle Steel-Nooter Eriksen
+  status: 1
+  sort_order: 10760
+- code: Trotter & Morton
+  display_name: Trotter & Morton
+  status: 1
+  sort_order: 10770
+- code: Trotter & Morton-Caloritech
+  display_name: Trotter & Morton-Caloritech
+  status: 1
+  sort_order: 10780
+- code: Trotter & Morton-Emans Smith
+  display_name: Trotter & Morton-Emans Smith
+  status: 1
+  sort_order: 10790
+- code: Trotter & Morton-Rambler
+  display_name: Trotter & Morton-Rambler
+  status: 1
+  sort_order: 10800
+- code: Trotter & Morton-Whaler
+  display_name: Trotter & Morton-Whaler
+  status: 1
+  sort_order: 10810
+- code: Trylon TSF
+  display_name: Trylon TSF
+  status: 1
+  sort_order: 10820
+- code: TSSA
+  display_name: TSSA
+  status: 1
+  sort_order: 10830
+- code: TSSA-Boiler and Pressure Vessels
+  display_name: TSSA-Boiler and Pressure Vessels
+  status: 1
+  sort_order: 10840
+- code: TSSA-Sure Flow
+  display_name: TSSA-Sure Flow
+  status: 1
+  sort_order: 10850
+- code: TUD SUD Management Service GMBH
+  display_name: TUD SUD Management Service GMBH
+  status: 1
+  sort_order: 10860
+- code: Tulsar
+  display_name: Tulsar
+  status: 1
+  sort_order: 10870
+- code: Turbine Air Systems
+  display_name: Turbine Air Systems
+  status: 1
+  sort_order: 10880
+- code: TUV Rheinland Cert Gmbh
+  display_name: TUV Rheinland Cert Gmbh
+  status: 1
+  sort_order: 10890
+- code: TXRX Engineering Inc.
+  display_name: TXRX Engineering Inc.
+  status: 1
+  sort_order: 10900
+- code: Tyco
+  display_name: Tyco
+  status: 1
+  sort_order: 10910
+- code: Tyco Electronics
+  display_name: Tyco Electronics
+  status: 1
+  sort_order: 10920
+- code: Tyco Simplexgrinnell
+  display_name: Tyco Simplexgrinnell
+  status: 1
+  sort_order: 10930
+- code: Tyco Thermal Controls
+  display_name: Tyco Thermal Controls
+  status: 1
+  sort_order: 10940
+- code: Tyco Valves & Controls
+  display_name: Tyco Valves & Controls
+  status: 1
+  sort_order: 10950
+- code: Tyco Valves and Controls-Spartan Controls
+  display_name: Tyco Valves and Controls-Spartan Controls
+  status: 1
+  sort_order: 10960
+- code: Tyco-Morin
+  display_name: Tyco-Morin
+  status: 1
+  sort_order: 10970
+- code: Tyco-Vanessa
+  display_name: Tyco-Vanessa
+  status: 1
+  sort_order: 10980
+- code: Tyzo Engineering-Trotter & Morton
+  display_name: Tyzo Engineering-Trotter & Morton
+  status: 1
+  sort_order: 10990
+- code: UL
+  display_name: UL
+  status: 1
+  sort_order: 11000
+- code: UL DQS
+  display_name: UL DQS
+  status: 1
+  sort_order: 11010
+- code: UL Management Systems Solutions
+  display_name: UL Management Systems Solutions
+  status: 1
+  sort_order: 11020
+- code: UL Online Certifications Directory
+  display_name: UL Online Certifications Directory
+  status: 1
+  sort_order: 11030
+- code: Underwood Fire Equipment
+  display_name: Underwood Fire Equipment
+  status: 1
+  sort_order: 11040
+- code: Underwriters Laboratories
+  display_name: Underwriters Laboratories
+  status: 1
+  sort_order: 11050
+- code: Unibus
+  display_name: Unibus
+  status: 1
+  sort_order: 11060
+- code: Uniloc Rosemount Analytical
+  display_name: Uniloc Rosemount Analytical
+  status: 1
+  sort_order: 11070
+- code: Unilux Advanced
+  display_name: Unilux Advanced
+  status: 1
+  sort_order: 11080
+- code: Unique Systems
+  display_name: Unique Systems
+  status: 1
+  sort_order: 11090
+- code: Unique Systems-Heat Exchange Institute
+  display_name: Unique Systems-Heat Exchange Institute
+  status: 1
+  sort_order: 11100
+- code: Unison Industries
+  display_name: Unison Industries
+  status: 1
+  sort_order: 11110
+- code: United Electric Controls
+  display_name: United Electric Controls
+  status: 1
+  sort_order: 11120
+- code: United States Customs Service
+  display_name: United States Customs Service
+  status: 1
+  sort_order: 11130
+- code: Unitorq
+  display_name: Unitorq
+  status: 1
+  sort_order: 11140
+- code: Universal Silencer
+  display_name: Universal Silencer
+  status: 1
+  sort_order: 11150
+- code: Universe Machine
+  display_name: Universe Machine
+  status: 1
+  sort_order: 11160
+- code: URS
+  display_name: URS
+  status: 1
+  sort_order: 11170
+- code: URS-ABSA
+  display_name: URS-ABSA
+  status: 1
+  sort_order: 11180
+- code: URS-Westburne Electric
+  display_name: URS-Westburne Electric
+  status: 1
+  sort_order: 11190
+- code: US Filter
+  display_name: US Filter
+  status: 1
+  sort_order: 11200
+- code: Utility Engineering
+  display_name: Utility Engineering
+  status: 1
+  sort_order: 11210
+- code: Utility Engineering-Agra Moneco
+  display_name: Utility Engineering-Agra Moneco
+  status: 1
+  sort_order: 11220
+- code: Utility Engineering-AMEC
+  display_name: Utility Engineering-AMEC
+  status: 1
+  sort_order: 11230
+- code: Utility Engineering-Ashcroft
+  display_name: Utility Engineering-Ashcroft
+  status: 1
+  sort_order: 11240
+- code: Utility Engineering-CCI
+  display_name: Utility Engineering-CCI
+  status: 1
+  sort_order: 11250
+- code: Utility Engineering-Daniel Industries
+  display_name: Utility Engineering-Daniel Industries
+  status: 1
+  sort_order: 11260
+- code: Utility Engineering-Fisher
+  display_name: Utility Engineering-Fisher
+  status: 1
+  sort_order: 11270
+- code: Utility Engineering-Fluidic Techniques
+  display_name: Utility Engineering-Fluidic Techniques
+  status: 1
+  sort_order: 11280
+- code: Utility Engineering-Foxboro
+  display_name: Utility Engineering-Foxboro
+  status: 1
+  sort_order: 11290
+- code: Utility Engineering-Golden Spread
+  display_name: Utility Engineering-Golden Spread
+  status: 1
+  sort_order: 11300
+- code: Utility Engineering-Honeywell
+  display_name: Utility Engineering-Honeywell
+  status: 1
+  sort_order: 11310
+- code: Utility Engineering-Magnetrol
+  display_name: Utility Engineering-Magnetrol
+  status: 1
+  sort_order: 11320
+- code: Utility Engineering-Magtech
+  display_name: Utility Engineering-Magtech
+  status: 1
+  sort_order: 11330
+- code: Utility Engineering-Niagara
+  display_name: Utility Engineering-Niagara
+  status: 1
+  sort_order: 11340
+- code: Utility Engineering-Pyco
+  display_name: Utility Engineering-Pyco
+  status: 1
+  sort_order: 11350
+- code: Utility Engineering-Rosemount
+  display_name: Utility Engineering-Rosemount
+  status: 1
+  sort_order: 11360
+- code: Utility Engineering-SOR
+  display_name: Utility Engineering-SOR
+  status: 1
+  sort_order: 11370
+- code: Utility Engineering-Spituala & Associates
+  display_name: Utility Engineering-Spituala & Associates
+  status: 1
+  sort_order: 11380
+- code: Utility Engineering-TIC
+  display_name: Utility Engineering-TIC
+  status: 1
+  sort_order: 11390
+- code: UTSUE Valve
+  display_name: UTSUE Valve
+  status: 1
+  sort_order: 11400
+- code: Vallourec & Mannesmann Tubes
+  display_name: Vallourec & Mannesmann Tubes
+  status: 1
+  sort_order: 11410
+- code: Valmatic Valve and Manufacturing
+  display_name: Valmatic Valve and Manufacturing
+  status: 1
+  sort_order: 11420
+- code: Valmont
+  display_name: Valmont
+  status: 1
+  sort_order: 11430
+- code: Valtek
+  display_name: Valtek
+  status: 1
+  sort_order: 11440
+- code: Valvtechnologies
+  display_name: Valvtechnologies
+  status: 1
+  sort_order: 11450
+- code: Vector Electric
+  display_name: Vector Electric
+  status: 1
+  sort_order: 11460
+- code: Vector Systems
+  display_name: Vector Systems
+  status: 1
+  sort_order: 11470
+- code: Velan
+  display_name: Velan
+  status: 1
+  sort_order: 11480
+- code: Velcon Canada
+  display_name: Velcon Canada
+  status: 1
+  sort_order: 11490
+- code: Veris
+  display_name: Veris
+  status: 1
+  sort_order: 11500
+- code: Versastile Measuring Instruments
+  display_name: Versastile Measuring Instruments
+  status: 1
+  sort_order: 11510
+- code: Vessel Technology-TIC
+  display_name: Vessel Technology-TIC
+  status: 1
+  sort_order: 11520
+- code: Vestas
+  display_name: Vestas
+  status: 1
+  sort_order: 11530
+- code: Vets Sheet Metal
+  display_name: Vets Sheet Metal
+  status: 1
+  sort_order: 11540
+- code: Vickery-Simms
+  display_name: Vickery-Simms
+  status: 1
+  sort_order: 11550
+- code: Vipond
+  display_name: Vipond
+  status: 1
+  sort_order: 11560
+- code: Virelec
+  display_name: Virelec
+  status: 1
+  sort_order: 11570
+- code: Virelec-Jacobs
+  display_name: Virelec-Jacobs
+  status: 1
+  sort_order: 11580
+- code: Vital Engineering
+  display_name: Vital Engineering
+  status: 1
+  sort_order: 11590
+- code: Vogt Power International
+  display_name: Vogt Power International
+  status: 1
+  sort_order: 11600
+- code: Vogt Power International-ABB Power Generation
+  display_name: Vogt Power International-ABB Power Generation
+  status: 1
+  sort_order: 11610
+- code: Vogt Power International-ABSA
+  display_name: Vogt Power International-ABSA
+  status: 1
+  sort_order: 11620
+- code: Vogt Power International-Amistco
+  display_name: Vogt Power International-Amistco
+  status: 1
+  sort_order: 11630
+- code: Vogt Power International-ASCO
+  display_name: Vogt Power International-ASCO
+  status: 1
+  sort_order: 11640
+- code: Vogt Power International-Ashcroft
+  display_name: Vogt Power International-Ashcroft
+  status: 1
+  sort_order: 11650
+- code: Vogt Power International-Auma Actuators
+  display_name: Vogt Power International-Auma Actuators
+  status: 1
+  sort_order: 11660
+- code: Vogt Power International-Baldor-Dodge
+  display_name: Vogt Power International-Baldor-Dodge
+  status: 1
+  sort_order: 11670
+- code: Vogt Power International-Barton Instrument Systems
+  display_name: Vogt Power International-Barton Instrument Systems
+  status: 1
+  sort_order: 11680
+- code: Vogt Power International-Caloritech
+  display_name: Vogt Power International-Caloritech
+  status: 1
+  sort_order: 11690
+- code: Vogt Power International-Carboline
+  display_name: Vogt Power International-Carboline
+  status: 1
+  sort_order: 11700
+- code: Vogt Power International-CCI
+  display_name: Vogt Power International-CCI
+  status: 1
+  sort_order: 11710
+- code: Vogt Power International-Chemineer
+  display_name: Vogt Power International-Chemineer
+  status: 1
+  sort_order: 11720
+- code: Vogt Power International-Coen Company
+  display_name: Vogt Power International-Coen Company
+  status: 1
+  sort_order: 11730
+- code: Vogt Power International-Coen Company-Todd
+  display_name: Vogt Power International-Coen Company-Todd
+  status: 1
+  sort_order: 11740
+- code: Vogt Power International-Coffing Hoists
+  display_name: Vogt Power International-Coffing Hoists
+  status: 1
+  sort_order: 11750
+- code: Vogt Power International-Curb Plus
+  display_name: Vogt Power International-Curb Plus
+  status: 1
+  sort_order: 11760
+- code: Vogt Power International-Dodge Master Reeves-Reliance Electric
+  display_name: Vogt Power International-Dodge Master Reeves-Reliance Electric
+  status: 1
+  sort_order: 11770
+- code: Vogt Power International-Drag Velocity
+  display_name: Vogt Power International-Drag Velocity
+  status: 1
+  sort_order: 11780
+- code: Vogt Power International-Dresser
+  display_name: Vogt Power International-Dresser
+  status: 1
+  sort_order: 11790
+- code: Vogt Power International-Eagle Burgmann EJS
+  display_name: Vogt Power International-Eagle Burgmann EJS
+  status: 1
+  sort_order: 11800
+- code: Vogt Power International-Fisher
+  display_name: Vogt Power International-Fisher
+  status: 1
+  sort_order: 11810
+- code: Vogt Power International-Fisher & Ludlow
+  display_name: Vogt Power International-Fisher & Ludlow
+  status: 1
+  sort_order: 11820
+- code: Vogt Power International-Flowserve
+  display_name: Vogt Power International-Flowserve
+  status: 1
+  sort_order: 11830
+- code: Vogt Power International-Flue Gas Solutions
+  display_name: Vogt Power International-Flue Gas Solutions
+  status: 1
+  sort_order: 11840
+- code: Vogt Power International-Fluid Kinetics
+  display_name: Vogt Power International-Fluid Kinetics
+  status: 1
+  sort_order: 11850
+- code: Vogt Power International-Fox Equipment
+  display_name: Vogt Power International-Fox Equipment
+  status: 1
+  sort_order: 11860
+- code: Vogt Power International-Greenheck
+  display_name: Vogt Power International-Greenheck
+  status: 1
+  sort_order: 11870
+- code: Vogt Power International-HBE Engineering
+  display_name: Vogt Power International-HBE Engineering
+  status: 1
+  sort_order: 11880
+- code: Vogt Power International-Hoffman
+  display_name: Vogt Power International-Hoffman
+  status: 1
+  sort_order: 11890
+- code: Vogt Power International-Holophane
+  display_name: Vogt Power International-Holophane
+  status: 1
+  sort_order: 11900
+- code: Vogt Power International-HyperShell
+  display_name: Vogt Power International-HyperShell
+  status: 1
+  sort_order: 11910
+- code: Vogt Power International-Islip Flow Controls
+  display_name: Vogt Power International-Islip Flow Controls
+  status: 1
+  sort_order: 11920
+- code: Vogt Power International-John Zink
+  display_name: Vogt Power International-John Zink
+  status: 1
+  sort_order: 11930
+- code: Vogt Power International-Johnson Controls
+  display_name: Vogt Power International-Johnson Controls
+  status: 1
+  sort_order: 11940
+- code: Vogt Power International-Jonas
+  display_name: Vogt Power International-Jonas
+  status: 1
+  sort_order: 11950
+- code: Vogt Power International-Lab Test Certification
+  display_name: Vogt Power International-Lab Test Certification
+  status: 1
+  sort_order: 11960
+- code: Vogt Power International-Lamtec
+  display_name: Vogt Power International-Lamtec
+  status: 1
+  sort_order: 11970
+- code: Vogt Power International-Marathon Electric
+  display_name: Vogt Power International-Marathon Electric
+  status: 1
+  sort_order: 11980
+- code: Vogt Power International-Miller
+  display_name: Vogt Power International-Miller
+  status: 1
+  sort_order: 11990
+- code: Vogt Power International-MSSM Company
+  display_name: Vogt Power International-MSSM Company
+  status: 1
+  sort_order: 12000
+- code: Vogt Power International-Nucor Building Systems
+  display_name: Vogt Power International-Nucor Building Systems
+  status: 1
+  sort_order: 12010
+- code: Vogt Power International-NuFlo
+  display_name: Vogt Power International-NuFlo
+  status: 1
+  sort_order: 12020
+- code: Vogt Power International-Nusteel Fabricators
+  display_name: Vogt Power International-Nusteel Fabricators
+  status: 1
+  sort_order: 12030
+- code: Vogt Power International-Pennsylvania Machine Works
+  display_name: Vogt Power International-Pennsylvania Machine Works
+  status: 1
+  sort_order: 12040
+- code: Vogt Power International-PGI International
+  display_name: Vogt Power International-PGI International
+  status: 1
+  sort_order: 12050
+- code: Vogt Power International-Quest-Tec Solutions
+  display_name: Vogt Power International-Quest-Tec Solutions
+  status: 1
+  sort_order: 12060
+- code: Vogt Power International-Robinson Fans
+  display_name: Vogt Power International-Robinson Fans
+  status: 1
+  sort_order: 12070
+- code: Vogt Power International-Rosemount-Emerson
+  display_name: Vogt Power International-Rosemount-Emerson
+  status: 1
+  sort_order: 12080
+- code: Vogt Power International-Severe Service Technology
+  display_name: Vogt Power International-Severe Service Technology
+  status: 1
+  sort_order: 12090
+- code: Vogt Power International-SFF
+  display_name: Vogt Power International-SFF
+  status: 1
+  sort_order: 12100
+- code: Vogt Power International-Sound Technologies
+  display_name: Vogt Power International-Sound Technologies
+  status: 1
+  sort_order: 12110
+- code: Vogt Power International-Stanpro Lighting Systems
+  display_name: Vogt Power International-Stanpro Lighting Systems
+  status: 1
+  sort_order: 12120
+- code: Vogt Power International-Steel Dynamics
+  display_name: Vogt Power International-Steel Dynamics
+  status: 1
+  sort_order: 12130
+- code: Vogt Power International-Sterling Deaerator Company
+  display_name: Vogt Power International-Sterling Deaerator Company
+  status: 1
+  sort_order: 12140
+- code: Vogt Power International-SungGwang Company
+  display_name: Vogt Power International-SungGwang Company
+  status: 1
+  sort_order: 12150
+- code: Vogt Power International-Teco Westinghouse
+  display_name: Vogt Power International-Teco Westinghouse
+  status: 1
+  sort_order: 12160
+- code: Vogt Power International-The Arthur Louis Steel Company
+  display_name: Vogt Power International-The Arthur Louis Steel Company
+  status: 1
+  sort_order: 12170
+- code: Vogt Power International-Tyco
+  display_name: Vogt Power International-Tyco
+  status: 1
+  sort_order: 12180
+- code: Vogt Power International-Vector Systems
+  display_name: Vogt Power International-Vector Systems
+  status: 1
+  sort_order: 12190
+- code: Vogt Power International-Velan
+  display_name: Vogt Power International-Velan
+  status: 1
+  sort_order: 12200
+- code: Vogt Power International-Versa Valves
+  display_name: Vogt Power International-Versa Valves
+  status: 1
+  sort_order: 12210
+- code: Vogt Power International-Vickery Simms
+  display_name: Vogt Power International-Vickery Simms
+  status: 1
+  sort_order: 12220
+- code: Vogt Power International-WEG Electric
+  display_name: Vogt Power International-WEG Electric
+  status: 1
+  sort_order: 12230
+- code: Vogt Power International-Westlake Industries
+  display_name: Vogt Power International-Westlake Industries
+  status: 1
+  sort_order: 12240
+- code: Vogt Power International-Wika Instruments
+  display_name: Vogt Power International-Wika Instruments
+  status: 1
+  sort_order: 12250
+- code: Vogt Valve-Flowserve
+  display_name: Vogt Valve-Flowserve
+  status: 1
+  sort_order: 12260
+- code: Voith Turbo
+  display_name: Voith Turbo
+  status: 1
+  sort_order: 12270
+- code: Voith Turbo GMBH
+  display_name: Voith Turbo GMBH
+  status: 1
+  sort_order: 12280
+- code: Volker Stevin
+  display_name: Volker Stevin
+  status: 1
+  sort_order: 12290
+- code: Volker Stevin-Aurian Consulting
+  display_name: Volker Stevin-Aurian Consulting
+  status: 1
+  sort_order: 12300
+- code: Vulcain
+  display_name: Vulcain
+  status: 1
+  sort_order: 12310
+- code: Wahlco Metro Flex
+  display_name: Wahlco Metro Flex
+  status: 1
+  sort_order: 12320
+- code: Waiward Steel
+  display_name: Waiward Steel
+  status: 1
+  sort_order: 12330
+- code: Waiward Steel-M&D Drafting
+  display_name: Waiward Steel-M&D Drafting
+  status: 1
+  sort_order: 12340
+- code: Wajax Power Systems
+  display_name: Wajax Power Systems
+  status: 1
+  sort_order: 12350
+- code: Waltron
+  display_name: Waltron
+  status: 1
+  sort_order: 12360
+- code: Warren Environment
+  display_name: Warren Environment
+  status: 1
+  sort_order: 12370
+- code: Warwick Industries
+  display_name: Warwick Industries
+  status: 1
+  sort_order: 12380
+- code: Washington Group International
+  display_name: Washington Group International
+  status: 1
+  sort_order: 12390
+- code: Washington Group Northern
+  display_name: Washington Group Northern
+  status: 1
+  sort_order: 12400
+- code: Washington Group Northern-Ashcroft
+  display_name: Washington Group Northern-Ashcroft
+  status: 1
+  sort_order: 12410
+- code: Washington Group Northern-Black Box
+  display_name: Washington Group Northern-Black Box
+  status: 1
+  sort_order: 12420
+- code: Washington Group Northern-Daniel Industries
+  display_name: Washington Group Northern-Daniel Industries
+  status: 1
+  sort_order: 12430
+- code: Washington Group Northern-Eagle A
+  display_name: Washington Group Northern-Eagle A
+  status: 1
+  sort_order: 12440
+- code: Washington Group Northern-EtherWan Systems
+  display_name: Washington Group Northern-EtherWan Systems
+  status: 1
+  sort_order: 12450
+- code: Washington Group Northern-Fisher
+  display_name: Washington Group Northern-Fisher
+  status: 1
+  sort_order: 12460
+- code: Washington Group Northern-Goulds
+  display_name: Washington Group Northern-Goulds
+  status: 1
+  sort_order: 12470
+- code: Washington Group Northern-Hidrostal
+  display_name: Washington Group Northern-Hidrostal
+  status: 1
+  sort_order: 12480
+- code: Washington Group Northern-Rosemount
+  display_name: Washington Group Northern-Rosemount
+  status: 1
+  sort_order: 12490
+- code: Washington Group Northern-Spartan Controls
+  display_name: Washington Group Northern-Spartan Controls
+  status: 1
+  sort_order: 12500
+- code: Washington Group Northern-Thermal Heat Tracing
+  display_name: Washington Group Northern-Thermal Heat Tracing
+  status: 1
+  sort_order: 12510
+- code: Watlow
+  display_name: Watlow
+  status: 1
+  sort_order: 12520
+- code: Watson McDaniel
+  display_name: Watson McDaniel
+  status: 1
+  sort_order: 12530
+- code: Watts
+  display_name: Watts
+  status: 1
+  sort_order: 12540
+- code: Wayne Dalton
+  display_name: Wayne Dalton
+  status: 1
+  sort_order: 12550
+- code: WE Gundy & Associates
+  display_name: WE Gundy & Associates
+  status: 1
+  sort_order: 12560
+- code: Wedgcor-Cobra
+  display_name: Wedgcor-Cobra
+  status: 1
+  sort_order: 12570
+- code: WeedComm
+  display_name: WeedComm
+  status: 1
+  sort_order: 12580
+- code: WEG Electric
+  display_name: WEG Electric
+  status: 1
+  sort_order: 12590
+- code: Weidmann Electrical
+  display_name: Weidmann Electrical
+  status: 1
+  sort_order: 12600
+- code: Weidmuller Interface
+  display_name: Weidmuller Interface
+  status: 1
+  sort_order: 12610
+- code: Weishaupt
+  display_name: Weishaupt
+  status: 1
+  sort_order: 12620
+- code: Weld Wire Company
+  display_name: Weld Wire Company
+  status: 1
+  sort_order: 12630
+- code: Welding Outlets
+  display_name: Welding Outlets
+  status: 1
+  sort_order: 12640
+- code: Weldmuller
+  display_name: Weldmuller
+  status: 1
+  sort_order: 12650
+- code: West Coast Engineering
+  display_name: West Coast Engineering
+  status: 1
+  sort_order: 12660
+- code: Westburne Electric
+  display_name: Westburne Electric
+  status: 1
+  sort_order: 12670
+- code: Westglas-Gibs Gage
+  display_name: Westglas-Gibs Gage
+  status: 1
+  sort_order: 12680
+- code: Westhoff Engineering Resources
+  display_name: Westhoff Engineering Resources
+  status: 1
+  sort_order: 12690
+- code: Westlake Industries
+  display_name: Westlake Industries
+  status: 1
+  sort_order: 12700
+- code: Westview Sales
+  display_name: Westview Sales
+  status: 1
+  sort_order: 12710
+- code: Whaler Industrial
+  display_name: Whaler Industrial
+  status: 1
+  sort_order: 12720
+- code: Wheeler Tank Manufacturing
+  display_name: Wheeler Tank Manufacturing
+  status: 1
+  sort_order: 12730
+- code: Whitey
+  display_name: Whitey
+  status: 1
+  sort_order: 12740
+- code: WIKA
+  display_name: WIKA
+  status: 1
+  sort_order: 12750
+- code: Wilden
+  display_name: Wilden
+  status: 1
+  sort_order: 12760
+- code: Wilhelm Geldbach-TUV Cert
+  display_name: Wilhelm Geldbach-TUV Cert
+  status: 1
+  sort_order: 12770
+- code: Winters Instruments
+  display_name: Winters Instruments
+  status: 1
+  sort_order: 12780
+- code: Wisconsin Protective Coating
+  display_name: Wisconsin Protective Coating
+  status: 1
+  sort_order: 12790
+- code: WL Plastics
+  display_name: WL Plastics
+  status: 1
+  sort_order: 12800
+- code: WM Powell Company
+  display_name: WM Powell Company
+  status: 1
+  sort_order: 12810
+- code: Wolseley Waterworks-Mueller
+  display_name: Wolseley Waterworks-Mueller
+  status: 1
+  sort_order: 12820
+- code: Woods
+  display_name: Woods
+  status: 1
+  sort_order: 12830
+- code: Woodward
+  display_name: Woodward
+  status: 1
+  sort_order: 12840
+- code: Workers Compensation
+  display_name: Workers Compensation
+  status: 1
+  sort_order: 12850
+- code: World Spec Testing Services Canada
+  display_name: World Spec Testing Services Canada
+  status: 1
+  sort_order: 12860
+- code: Worley Parsons
+  display_name: Worley Parsons
+  status: 1
+  sort_order: 12870
+- code: WSP Canada
+  display_name: WSP Canada
+  status: 1
+  sort_order: 12880
+- code: WTTI
+  display_name: WTTI
+  status: 1
+  sort_order: 12890
+- code: Xanik
+  display_name: Xanik
+  status: 1
+  sort_order: 12900
+- code: Xebec
+  display_name: Xebec
+  status: 1
+  sort_order: 12910
+- code: XXX
+  display_name: XXX
+  status: 1
+  sort_order: 12920
+- code: Xylem
+  display_name: Xylem
+  status: 1
+  sort_order: 12930
+- code: Yale
+  display_name: Yale
+  status: 1
+  sort_order: 12940
+- code: Yancheng H&M Pressure Valve
+  display_name: Yancheng H&M Pressure Valve
+  status: 1
+  sort_order: 12950
+- code: Yangzhou Huayu Pipe Fitting
+  display_name: Yangzhou Huayu Pipe Fitting
+  status: 1
+  sort_order: 12960
+- code: Yokogawa Electric
+  display_name: Yokogawa Electric
+  status: 1
+  sort_order: 12970
+- code: YSTIL Custom Cabinets
+  display_name: YSTIL Custom Cabinets
+  status: 1
+  sort_order: 12980
+- code: YUASA
+  display_name: YUASA
+  status: 1
+  sort_order: 12990
+- code: ZCL Corrosion
+  display_name: ZCL Corrosion
+  status: 1
+  sort_order: 13000
+- code: Zenon Environmental
+  display_name: Zenon Environmental
+  status: 1
+  sort_order: 13010
+- code: ZIBO Wel-Fit Metal
+  display_name: ZIBO Wel-Fit Metal
+  status: 1
+  sort_order: 13020
+- code: Zoeller Pump-Barclay
+  display_name: Zoeller Pump-Barclay
+  status: 1
+  sort_order: 13030
+- code: Zook Enterprises
+  display_name: Zook Enterprises
+  status: 1
+  sort_order: 13040
+- code: Zy-Tech Global Industries
+  display_name: Zy-Tech Global Industries
+  status: 1
+  sort_order: 13050

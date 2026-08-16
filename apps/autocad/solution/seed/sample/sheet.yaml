@@ -1,0 +1,263 @@
+table: enmax_autocadsheet
+natural_key_columns: [filename]
+lookups:
+  drawing: {table: enmax_autocaddrawing, key: number, source_column: drawing_number}
+rows:
+- filename: DG-ST-ACB-SD-001_S01.pdf
+  drawing_number: DG-ST-ACB-SD-001
+  enmax_acdnsheetnumber: 1
+  enmax_acdnsharepointurl: https://enmax.sharepoint.com/sites/autocad/DG/ST/ACB/SD/DG-ST-ACB-SD-001_S01.pdf
+  enmax_acdnstate: Available
+
+- filename: DG-ST-ACB-SD-002_S01.pdf
+  drawing_number: DG-ST-ACB-SD-002
+  enmax_acdnsheetnumber: 1
+  enmax_acdnsharepointurl: https://enmax.sharepoint.com/sites/autocad/DG/ST/ACB/SD/DG-ST-ACB-SD-002_S01.pdf
+  enmax_acdnstate: Available
+
+- filename: DG-ST-ACB-SD-003_S01.pdf
+  drawing_number: DG-ST-ACB-SD-003
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Checked Out
+
+- filename: GG-CF-ACS-PD-001_S01.pdf
+  drawing_number: GG-CF-ACS-PD-001
+  enmax_acdnsheetnumber: 1
+  enmax_acdnsharepointurl: https://enmax.sharepoint.com/sites/autocad/GG/CF/ACS/PD/GG-CF-ACS-PD-001_S01.pdf
+  enmax_acdnstate: Available
+
+- filename: GG-CF-ACS-PD-002_S01.pdf
+  drawing_number: GG-CF-ACS-PD-002
+  enmax_acdnsheetnumber: 1
+  enmax_acdnsharepointurl: https://enmax.sharepoint.com/sites/autocad/GG/CF/ACS/PD/GG-CF-ACS-PD-002_S01.pdf
+  enmax_acdnstate: Available
+
+- filename: GG-CF-ACS-PD-003_S01.pdf
+  drawing_number: GG-CF-ACS-PD-003
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: GG-CF-ACS-PD-004_S01.pdf
+  drawing_number: GG-CF-ACS-PD-004
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: GG-CF-ACS-PD-005_S01.pdf
+  drawing_number: GG-CF-ACS-PD-005
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Awaiting Validation
+
+- filename: GG-CF-ACS-PD-006_S01.pdf
+  drawing_number: GG-CF-ACS-PD-006
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Awaiting Validation
+
+- filename: GG-CF-ACS-PD-007_S01.pdf
+  drawing_number: GG-CF-ACS-PD-007
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: GG-CF-ACS-PD-008_S01.pdf
+  drawing_number: GG-CF-ACS-PD-008
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: GW-GN-ABB-PD-001_S01.pdf
+  drawing_number: GW-GN-ABB-PD-001
+  enmax_acdnsheetnumber: 1
+  enmax_acdnsharepointurl: https://enmax.sharepoint.com/sites/autocad/GW/GN/ABB/PD/GW-GN-ABB-PD-001_S01.pdf
+  enmax_acdnstate: Available
+
+- filename: GW-GN-ABB-PD-002_S01.pdf
+  drawing_number: GW-GN-ABB-PD-002
+  enmax_acdnsheetnumber: 1
+  enmax_acdnsharepointurl: https://enmax.sharepoint.com/sites/autocad/GW/GN/ABB/PD/GW-GN-ABB-PD-002_S01.pdf
+  enmax_acdnstate: Available
+
+- filename: GW-GN-ABB-PD-003_S01.pdf
+  drawing_number: GW-GN-ABB-PD-003
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: GW-GN-ABB-PD-004_S01.pdf
+  drawing_number: GW-GN-ABB-PD-004
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Checked Out
+
+- filename: GW-GN-ABB-PD-005_S01.pdf
+  drawing_number: GW-GN-ABB-PD-005
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: GW-GN-ABB-PD-006_S01.pdf
+  drawing_number: GW-GN-ABB-PD-006
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: GW-GN-ABB-PD-007_S01.pdf
+  drawing_number: GW-GN-ABB-PD-007
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: GW-GN-ABB-PD-008_S01.pdf
+  drawing_number: GW-GN-ABB-PD-008
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: GW-GN-ABB-PD-009_S01.pdf
+  drawing_number: GW-GN-ABB-PD-009
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: GW-GN-ABB-PD-010_S01.pdf
+  drawing_number: GW-GN-ABB-PD-010
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: WD-KH-ACB-LD-001_S01.pdf
+  drawing_number: WD-KH-ACB-LD-001
+  enmax_acdnsheetnumber: 1
+  enmax_acdnsharepointurl: https://enmax.sharepoint.com/sites/autocad/WD/KH/ACB/LD/WD-KH-ACB-LD-001_S01.pdf
+  enmax_acdnstate: Available
+
+- filename: WD-KH-ACB-LD-002_S01.pdf
+  drawing_number: WD-KH-ACB-LD-002
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: WD-KH-ACB-LD-003_S01.pdf
+  drawing_number: WD-KH-ACB-LD-003
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Checked Out
+
+- filename: WD-KH-ACB-LD-004_S01.pdf
+  drawing_number: WD-KH-ACB-LD-004
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: DG-VS-ACS-PD-001_S01.pdf
+  drawing_number: DG-VS-ACS-PD-001
+  enmax_acdnsheetnumber: 1
+  enmax_acdnsharepointurl: https://enmax.sharepoint.com/sites/autocad/DG/VS/ACS/PD/DG-VS-ACS-PD-001_S01.pdf
+  enmax_acdnstate: Available
+
+- filename: DG-VS-ACS-PD-002_S01.pdf
+  drawing_number: DG-VS-ACS-PD-002
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: DG-VS-ACS-PD-003_S01.pdf
+  drawing_number: DG-VS-ACS-PD-003
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: DG-VS-ACS-PD-004_S01.pdf
+  drawing_number: DG-VS-ACS-PD-004
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: DG-VS-ACS-PD-005_S01.pdf
+  drawing_number: DG-VS-ACS-PD-005
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Checked Out
+
+- filename: DG-VS-ACS-PD-006_S01.pdf
+  drawing_number: DG-VS-ACS-PD-006
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: DG-VS-ACS-PD-007_S01.pdf
+  drawing_number: DG-VS-ACS-PD-007
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: GG-CV-ACB-LP-001_S01.pdf
+  drawing_number: GG-CV-ACB-LP-001
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: GG-CV-ACB-LP-002_S01.pdf
+  drawing_number: GG-CV-ACB-LP-002
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: GG-CV-ACB-LP-003_S01.pdf
+  drawing_number: GG-CV-ACB-LP-003
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: GG-CV-ACB-LP-004_S01.pdf
+  drawing_number: GG-CV-ACB-LP-004
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Checked Out
+
+- filename: GG-CV-ACB-LP-005_S01.pdf
+  drawing_number: GG-CV-ACB-LP-005
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: WD-TB-ACS-LD-001_S01.pdf
+  drawing_number: WD-TB-ACS-LD-001
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: WD-TB-ACS-LD-002_S01.pdf
+  drawing_number: WD-TB-ACS-LD-002
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: WD-TB-ACS-LD-003_S01.pdf
+  drawing_number: WD-TB-ACS-LD-003
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: WD-TB-ACS-LD-004_S01.pdf
+  drawing_number: WD-TB-ACS-LD-004
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: WD-TB-ACS-LD-005_S01.pdf
+  drawing_number: WD-TB-ACS-LD-005
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Checked Out
+
+- filename: WD-TB-ACS-LD-006_S01.pdf
+  drawing_number: WD-TB-ACS-LD-006
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: DG-ST-AAA-RL-001_S01.pdf
+  drawing_number: DG-ST-AAA-RL-001
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: GG-CF-ABF-GA-001_S01.pdf
+  drawing_number: GG-CF-ABF-GA-001
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: GG-CG-ACC-GA-001_S01.pdf
+  drawing_number: GG-CG-ACC-GA-001
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: WD-KH-ABB-PD-001_S01.pdf
+  drawing_number: WD-KH-ABB-PD-001
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: GG-SH-AAA-RL-001_S01.pdf
+  drawing_number: GG-SH-AAA-RL-001
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available
+
+- filename: GW-WH-ACC-PD-001_S01.pdf
+  drawing_number: GW-WH-ACC-PD-001
+  enmax_acdnsheetnumber: 1
+  enmax_acdnsharepointurl: https://enmax.sharepoint.com/sites/autocad/GW/WH/ACC/PD/GW-WH-ACC-PD-001_S01.pdf
+  enmax_acdnstate: Available
+
+- filename: GG-CV-ABS-SD-001_S01.pdf
+  drawing_number: GG-CV-ABS-SD-001
+  enmax_acdnsheetnumber: 1
+  enmax_acdnstate: Available

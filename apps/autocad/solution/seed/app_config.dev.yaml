@@ -1,0 +1,38 @@
+# DEV environment overrides for App Configuration (merged onto app_config.yaml).
+table: enmax_autocadappconfig
+natural_key_columns: [key]
+rows:
+  - key: SharePointSiteUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC
+  - key: CheckInUploadLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+  - key: DrawingDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+  - key: DrawingDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+  - key: DocumentDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/EECDocumentControl/DropoffLibrary
+  - key: DocumentDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/EECDocumentControl/A
+  - key: StandardDocumentDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/EECDocumentControl/DropoffLibrary
+  - key: StandardDocumentDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/EECDocumentControl/A
+  - key: ProcedureDocumentDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/EECDocumentControl/DropoffLibrary
+  - key: ProcedureDocumentDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/EECDocumentControl/A
+  - key: FormDocumentDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/EECDocumentControl/DropoffLibrary
+  - key: FormDocumentDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/EECDocumentControl/A
+  - key: SharePointIndexerLogFolderPath
+    value: Shared Documents/Enmax AutoCAD/Indexer Logs
+  - key: EnvironmentBadge
+    value: Sandbox
+  - key: CodeAppBaseUrl
+    # Full play URL to the DEV Code App (env id + app id from apps/code-app/power.config.json).
+    # No trailing slash / no query / no hash — flows append a deep-link query string
+    # (?target=reservation&id={id}, ?target=approvals&section=documents&tab=checkout) that
+    # DeepLinkBootstrap resolves on boot. Hash routes are not used: the player drops the fragment.
+    value: "{{ CODE_APP_BASE_URL | default('https://apps.powerapps.com/play/e/21763ca5-959a-e114-9ce5-f67c2a0dbef0/app/1342b673-23ab-4cdd-b340-dca3aa6dd1a8') }}"

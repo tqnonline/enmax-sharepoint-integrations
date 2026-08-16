@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Role id="{30ae573d-f95d-f111-a826-00224802e55b}" name="Enmax AutoCAD Read Only" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <IsCustomizable>1</IsCustomizable>
+  <IsAutoAssigned>0</IsAutoAssigned>
+  <Description>Auditors, compliance reviewers, and temporary observers. Organisation-wide read across all tables. No write access. Use for external reviews, audit cycles, or support escalations. Stacks on Basic User.</Description>
+  <RolePrivileges>
+    <RolePrivilege name="prvCreateSharePointData" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocadappconfig" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocadasset" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocadauditevent" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocadbroadcast" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocadbroadcastdismissal" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocadbusiness" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocadcheckout" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocaddomain" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocaddrawing" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocadflowexception" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocadinappnotification" level="Basic" />
+    <RolePrivilege name="prvReadenmax_autocadkind" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocadnumbersequence" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocadrecordphase" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocadrecordtype" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocadreservation" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocadsheet" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocadsystem" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocadsystemscope" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocadunit" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocaduserpreference" level="Global" />
+    <RolePrivilege name="prvReadenmax_autocadvendor" level="Global" />
+    <RolePrivilege name="prvReadSharePointData" level="Global" />
+    <RolePrivilege name="prvReadSharePointDocument" level="Global" />
+    <RolePrivilege name="prvWriteSharePointData" level="Global" />
+  </RolePrivileges>
+</Role>

@@ -1,0 +1,9 @@
+schema_name: enmax_acdn_sequencetype
+display_name: Sequence Type
+values:
+  - value: 0
+    label: None
+  - value: 1
+    label: New
+  - value: 2
+    label: Existing

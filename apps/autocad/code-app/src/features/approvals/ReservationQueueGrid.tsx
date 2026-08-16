@@ -1,0 +1,196 @@
+import { useCallback, useMemo } from "react";
+import {
+  Badge,
+  Persona,
+  Text,
+} from "@fluentui/react-components";
+import { Warning16Regular } from "@fluentui/react-icons";
+import {
+  EnmaxDataGrid,
+  approvedByColumn,
+  dateTimeColumn,
+  peopleFilterIds,
+  sharePointColumn,
+} from "../../components/DataGrid";
+import type { ColumnDef, GridFetchParams } from "../../components/DataGrid";
+import { clientPage } from "../../components/DataGrid/clientPage";
+import type { PendingReservation } from "./hooks/usePendingReservations";
+import { formatReservationDisplay } from "./compositionUtils";
+import { usePageSize } from "../../config/usePageSize";
+import { DocumentTypeBadge } from "../../components/DocumentTypeBadge";
+
+interface Props {
+  reservations: PendingReservation[];
+  onSelect: (reservation: PendingReservation) => void;
+  onBulkApprove?: (selected: PendingReservation[]) => void;
+  emptyMessage?: string;
+  allRecordsCount?: number;
+  /** Column header for the approver/decliner person column. */
+  approverColumnHeader?: string;
+}
+
+function buildColumns(approverColumnHeader: string): ColumnDef<PendingReservation>[] {
+  return [
+  {
+    id: "composition", header: "Drawing/Document Number",
+    accessor: r => formatReservationDisplay({
+      ...r,
+      enmax_acdnissuednumbers: r.enmax_acdnissuednumbers,
+      appendFirst: r.appendFirst,
+      appendLast: r.appendLast,
+      targetDrawingId: r.targetDrawingId,
+      sequenceType: r.sequenceType,
+    }),
+    filterable: true,
+    width: 220,
+    cell: r => (
+      <Text weight="semibold" style={{ fontFamily: "monospace", whiteSpace: "nowrap" }}>
+        {formatReservationDisplay({
+          ...r,
+          enmax_acdnissuednumbers: r.enmax_acdnissuednumbers,
+          appendFirst: r.appendFirst,
+          appendLast: r.appendLast,
+          targetDrawingId: r.targetDrawingId,
+          sequenceType: r.sequenceType,
+        })}
+      </Text>
+    ),
+  },
+  sharePointColumn<PendingReservation>(() => ""),
+  {
+    id: "reason", header: "Reason",
+    accessor: r => r.enmax_acdnreason ?? "",
+    filterable: true,
+    filterType: "text",
+    wrap: true,
+    width: 280,
+    cell: r => (
+      <Text title={r.enmax_acdnreason}>
+        {r.enmax_acdnreason?.slice(0, 80)}{(r.enmax_acdnreason?.length ?? 0) > 80 ? "…" : ""}
+      </Text>
+    ),
+  },
+  {
+    id: "submittedBy",
+    header: "Submitted By",
+    accessor: r => r.submittedByName,
+    sortable: true,
+    filterable: true,
+    filterType: "people",
+    cell: r => (
+      <Persona
+        name={r.submittedByName}
+        secondaryText={r.createdByJobTitle || undefined}
+        size="small"
+      />
+    ),
+  },
+  {
+    id: "typeLabel", header: "Type",
+    accessor: r => r.typeLabel,
+    sortable: true,
+    width: 160,
+    cell: r => <DocumentTypeBadge label={r.typeLabel} />,
+  },
+  {
+    id: "enmax_acdndrawingcount", header: "Count",
+    accessor: r => r.enmax_acdndrawingcount,
+    sortable: true,
+    width: 80,
+  },
+  {
+    id: "override", header: "Override",
+    accessor: r => r.enmax_acdnoverride ? "Yes" : "No",
+    width: 100,
+    cell: r => r.enmax_acdnoverride
+      ? <Badge icon={<Warning16Regular />} color="warning">Yes</Badge>
+      : <>No</>,
+    visibleByDefault: false,
+  },
+  dateTimeColumn<PendingReservation>({
+    id: "createdon",
+    header: "Submitted On",
+    accessor: r => r.createdon,
+    width: 160,
+  }),
+  approvedByColumn<PendingReservation>({ header: approverColumnHeader }),
+  ];
+}
+
+export function ReservationQueueGrid({
+  reservations,
+  onSelect,
+  onBulkApprove,
+  emptyMessage,
+  allRecordsCount,
+  approverColumnHeader = "Approved By",
+}: Props) {
+  const pageSize = usePageSize();
+  const columns = useMemo(
+    () => buildColumns(approverColumnHeader),
+    [approverColumnHeader],
+  );
+  const fetcher = useCallback(
+    async (params: GridFetchParams): Promise<{ rows: PendingReservation[]; totalCount: number }> =>
+      clientPage(reservations, params, {
+        searchText: r => [
+          formatReservationDisplay({
+            ...r,
+            enmax_acdnissuednumbers: r.enmax_acdnissuednumbers,
+            appendFirst: r.appendFirst,
+            appendLast: r.appendLast,
+            targetDrawingId: r.targetDrawingId,
+            sequenceType: r.sequenceType,
+          }),
+          r.submittedByName ?? "",
+          r.approvedByName ?? "",
+          r.enmax_acdnreason ?? "",
+        ],
+        filterText: {
+          composition: r => formatReservationDisplay({
+            ...r,
+            enmax_acdnissuednumbers: r.enmax_acdnissuednumbers,
+            appendFirst: r.appendFirst,
+            appendLast: r.appendLast,
+            targetDrawingId: r.targetDrawingId,
+            sequenceType: r.sequenceType,
+          }),
+        },
+        filterIds: {
+          submittedBy: peopleFilterIds.submittedBy,
+          approvedBy: peopleFilterIds.approvedBy,
+        },
+      }),
+    [reservations],
+  );
+
+  const queryKey = useMemo(
+    () => ["reservation-queue", approverColumnHeader, reservations.map(r => r.enmax_acdnreservationid).join(",")],
+    [approverColumnHeader, reservations],
+  );
+
+  const bulkActions = onBulkApprove
+    ? [{ label: "Approve Selected", onClick: onBulkApprove }]
+    : undefined;
+
+  return (
+    <div style={{ flex: "1 0 auto", minHeight: "500px" }}>
+      <EnmaxDataGrid
+        queryKey={queryKey}
+        fetcher={fetcher}
+        columns={columns}
+        rowKey={r => r.enmax_acdnreservationid}
+        onRowClick={onSelect}
+        bulkActions={bulkActions}
+        enableColumnVisibility
+        enableQuickSearch={false}
+        exportFileName="reservations.csv"
+        initialPageSize={pageSize}
+        defaultSort={{ column: "createdon", direction: "desc" }}
+        emptyMessage={emptyMessage ?? "No reservations found."}
+        errorMessage="Failed to load reservations."
+        allRecordsCount={allRecordsCount}
+      />
+    </div>
+  );
+}

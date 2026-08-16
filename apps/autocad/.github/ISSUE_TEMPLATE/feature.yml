@@ -1,0 +1,30 @@
+name: Feature request
+description: Propose a new capability or improvement
+labels: ["enhancement"]
+body:
+  - type: input
+    id: spec_section
+    attributes:
+      label: PRD / spec section
+      description: Which PRD functional requirement (F-xx) or Phase 2 backlog item?
+      placeholder: "e.g. F-06, Phase 2 backlog"
+    validations:
+      required: false
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What capability do you need and why?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How will we know this is done?
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: What is explicitly out of scope for this request?

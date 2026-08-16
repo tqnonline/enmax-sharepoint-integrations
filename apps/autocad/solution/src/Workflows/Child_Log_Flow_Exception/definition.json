@@ -1,0 +1,124 @@
+{
+  "schemaVersion": "1.0.0.0",
+  "triggers": {
+    "manual": {
+      "type": "Request",
+      "kind": "Button",
+      "inputs": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "Origin": {
+              "type": "integer"
+            },
+            "FlowDisplayName": {
+              "type": "string"
+            },
+            "FailedAction": {
+              "type": "string"
+            },
+            "ErrorMessage": {
+              "type": "string"
+            },
+            "ErrorCode": {
+              "type": "string"
+            },
+            "ErrorDetail": {
+              "type": "string"
+            },
+            "FlowRunId": {
+              "type": "string"
+            },
+            "FlowRunUrl": {
+              "type": "string"
+            },
+            "CorrelationId": {
+              "type": "string"
+            },
+            "SubjectTable": {
+              "type": "string"
+            },
+            "SubjectId": {
+              "type": "string"
+            },
+            "Severity": {
+              "type": "integer"
+            },
+            "ActingUserId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "Origin",
+            "ErrorMessage",
+            "Severity"
+          ]
+        }
+      }
+    }
+  },
+  "actions": {
+    "Compose_Exception_Title": {
+      "type": "Compose",
+      "runAfter": {},
+      "inputs": "@{concat(if(equals(triggerBody()?['Origin'], 1), 'Flow', if(equals(triggerBody()?['Origin'], 3), 'Plugin', 'Code App')), ' | ', coalesce(triggerBody()?['FailedAction'], 'Unknown'), ' | ', utcNow('yyyy-MM-dd HH:mm'))}"
+    },
+    "Create_Exception_Record": {
+      "type": "OpenApiConnection",
+      "runAfter": {
+        "Compose_Exception_Title": [
+          "Succeeded"
+        ]
+      },
+      "inputs": {
+        "host": {
+          "connectionName": "shared_commondataserviceforapps",
+          "operationId": "CreateRecord",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+        },
+        "parameters": {
+          "entityName": "enmax_autocadflowexceptions",
+          "item/enmax_acdnname": "@{outputs('Compose_Exception_Title')}",
+          "item/enmax_acdnorigin": "@triggerBody()?['Origin']",
+          "item/enmax_acdnseverity": "@triggerBody()?['Severity']",
+          "item/enmax_acdnerrormessage": "@triggerBody()?['ErrorMessage']",
+          "item/enmax_acdnerrorcode": "@{coalesce(triggerBody()?['ErrorCode'], '')}",
+          "item/enmax_acdnerrordetail": "@{coalesce(triggerBody()?['ErrorDetail'], '')}",
+          "item/enmax_acdnfailedaction": "@{coalesce(triggerBody()?['FailedAction'], '')}",
+          "item/enmax_acdnflowdisplayname": "@{coalesce(triggerBody()?['FlowDisplayName'], '')}",
+          "item/enmax_acdnflowrunid": "@{coalesce(triggerBody()?['FlowRunId'], '')}",
+          "item/enmax_acdnflowrunurl": "@{coalesce(triggerBody()?['FlowRunUrl'], '')}",
+          "item/enmax_acdncorrelationid": "@{coalesce(triggerBody()?['CorrelationId'], '')}",
+          "item/enmax_acdnsubjecttable": "@{coalesce(triggerBody()?['SubjectTable'], '')}",
+          "item/enmax_acdnsubjectid": "@{coalesce(triggerBody()?['SubjectId'], '')}"
+        }
+      }
+    },
+    "Respond_to_Parent": {
+      "type": "Response",
+      "kind": "PowerApp",
+      "runAfter": {
+        "Create_Exception_Record": [
+          "Succeeded",
+          "Failed",
+          "TimedOut",
+          "Skipped"
+        ]
+      },
+      "inputs": {
+        "statusCode": 200,
+        "body": {
+          "ok": true
+        },
+        "schema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    }
+  }
+}

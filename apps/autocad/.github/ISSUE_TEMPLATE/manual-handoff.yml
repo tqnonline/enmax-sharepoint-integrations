@@ -1,0 +1,36 @@
+name: Manual handoff (IT Admin task)
+description: Track a manual IT Admin runbook execution
+labels: ["runbook", "manual"]
+body:
+  - type: input
+    id: runbook
+    attributes:
+      label: Runbook number and name
+      placeholder: "e.g. 001 - Entra App Registration"
+    validations:
+      required: true
+  - type: input
+    id: spec_section
+    attributes:
+      label: PRD section
+      placeholder: "e.g. Section 12"
+    validations:
+      required: false
+  - type: textarea
+    id: description
+    attributes:
+      label: What needs to be done
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Verification checklist
+      description: Steps the IT Admin takes to verify completion.
+    validations:
+      required: true
+  - type: input
+    id: runbook_link
+    attributes:
+      label: Link to runbook on runbooks branch
+      placeholder: "https://github.com/tqnonline/enmax-autocad/blob/runbooks/runbooks/001-*.md"

@@ -1,0 +1,13 @@
+schema_name: enmax_acdn_notificationseverity
+display_name: Notification Severity
+values:
+  - value: 0
+    label: None
+  - value: 1
+    label: Info
+  - value: 2
+    label: Success
+  - value: 3
+    label: Warning
+  - value: 4
+    label: Critical

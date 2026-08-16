@@ -1,0 +1,214 @@
+table: enmax_autocadreservation
+natural_key_columns: [_nk]
+lookups:
+  business: {table: enmax_autocadbusiness, key: code, source_column: business_code}
+  asset:    {table: enmax_autocadasset,    key: code, source_column: asset_code}
+  unit:     {table: enmax_autocadunit,     key: code, source_column: unit_code}
+  domain:   {table: enmax_autocaddomain,   key: code, source_column: domain_code}
+  system:   {table: enmax_autocadsystem,   key: code, source_column: system_code}
+  kind:     {table: enmax_autocadkind,     key: code, source_column: kind_code}
+rows:
+- _nk: RES-S001
+  business_code: DG
+  asset_code: ST
+  unit_code: '01'
+  domain_code: ECS
+  system_code: ACC
+  kind_code: GA
+  enmax_acdndrawingcount: 5
+  enmax_acdnsheetsperdrawing: 3
+  enmax_acdnsequencetype: New
+  enmax_acdnreason: New cable tray arrangement drawings for Stoney Transit Unit 01
+  enmax_acdnstatus: Pending
+
+- _nk: RES-S002
+  business_code: DG
+  asset_code: ST
+  unit_code: '02'
+  domain_code: EEL
+  system_code: ACB
+  kind_code: SD
+  enmax_acdndrawingcount: 3
+  enmax_acdnsheetsperdrawing: 2
+  enmax_acdnsequencetype: New
+  enmax_acdnreason: AC battery backup system single line diagrams for Unit 02
+  enmax_acdnstatus: Approved
+  enmax_acdnapprovedon: '2026-01-15T10:00:00Z'
+
+- _nk: RES-S003
+  business_code: GG
+  asset_code: CF
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ACS
+  kind_code: PD
+  enmax_acdndrawingcount: 8
+  enmax_acdnsheetsperdrawing: 4
+  enmax_acdnsequencetype: New
+  enmax_acdnreason: Acid and caustic system P&ID revision for Crossfield Unit 01
+  enmax_acdnstatus: Approved
+  enmax_acdnapprovedon: '2026-01-20T14:30:00Z'
+
+- _nk: RES-S004
+  business_code: GG
+  asset_code: CG
+  unit_code: '01'
+  domain_code: EIC
+  system_code: ACB
+  kind_code: LD
+  enmax_acdndrawingcount: 4
+  enmax_acdnsheetsperdrawing: 2
+  enmax_acdnsequencetype: New
+  enmax_acdnreason: Control loop logic diagrams for Calgary Energy Centre Unit 01
+  enmax_acdnstatus: Pending
+
+- _nk: RES-S005
+  business_code: GG
+  asset_code: CF
+  unit_code: '02'
+  domain_code: ECS
+  system_code: ABF
+  kind_code: GA
+  enmax_acdndrawingcount: 6
+  enmax_acdnsheetsperdrawing: 3
+  enmax_acdnsequencetype: New
+  enmax_acdnreason: Auxiliary boiler feed structural support general arrangements
+  enmax_acdndeclinereason: Scope not aligned with current project budget
+  enmax_acdnstatus: Declined
+
+- _nk: RES-S006
+  business_code: GW
+  asset_code: GN
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ABB
+  kind_code: PD
+  enmax_acdndrawingcount: 10
+  enmax_acdnsheetsperdrawing: 4
+  enmax_acdnsequencetype: New
+  enmax_acdnreason: Auxiliary boiler blowdown P&IDs for Generation fleet Unit 01
+  enmax_acdnstatus: Approved
+  enmax_acdnapprovedon: '2026-02-01T09:00:00Z'
+
+- _nk: RES-S007
+  business_code: GW
+  asset_code: GW
+  unit_code: '01'
+  domain_code: EEL
+  system_code: ABS
+  kind_code: SD
+  enmax_acdndrawingcount: 2
+  enmax_acdnsheetsperdrawing: 2
+  enmax_acdnsequencetype: New
+  enmax_acdnreason: ABSA compliance schematics for Generation Unit 01
+  enmax_acdnstatus: Pending
+
+- _nk: RES-S008
+  business_code: WD
+  asset_code: KH
+  unit_code: '01'
+  domain_code: EIC
+  system_code: ACB
+  kind_code: LD
+  enmax_acdndrawingcount: 4
+  enmax_acdnsheetsperdrawing: 3
+  enmax_acdnsequencetype: New
+  enmax_acdnreason: Wind farm control battery backup logic diagrams
+  enmax_acdnstatus: Approved
+  enmax_acdnapprovedon: '2026-02-10T11:00:00Z'
+
+- _nk: RES-S009
+  business_code: WD
+  asset_code: TB
+  unit_code: '01'
+  domain_code: ECS
+  system_code: ACC
+  kind_code: GA
+  enmax_acdndrawingcount: 3
+  enmax_acdnsheetsperdrawing: 2
+  enmax_acdnsequencetype: New
+  enmax_acdnreason: Air cooled condenser general arrangement drawings for Taber Unit 01
+  enmax_acdnstatus: Pending
+
+- _nk: RES-S010
+  business_code: DG
+  asset_code: VS
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ACS
+  kind_code: PD
+  enmax_acdndrawingcount: 7
+  enmax_acdnsheetsperdrawing: 4
+  enmax_acdnsequencetype: New
+  enmax_acdnreason: Solar facility acid and caustic P&IDs for Vauxhall Solar Unit 01
+  enmax_acdnstatus: Approved
+  enmax_acdnapprovedon: '2026-02-15T13:00:00Z'
+  enmax_acdnissuednumbers: '["DG-VS-ACS-PD-001","DG-VS-ACS-PD-002","DG-VS-ACS-PD-003","DG-VS-ACS-PD-004","DG-VS-ACS-PD-005","DG-VS-ACS-PD-006","DG-VS-ACS-PD-007"]'
+
+- _nk: RES-S011
+  business_code: GG
+  asset_code: SH
+  unit_code: '01'
+  domain_code: DOC
+  system_code: AAA
+  kind_code: RL
+  enmax_acdndrawingcount: 2
+  enmax_acdnsheetsperdrawing: 1
+  enmax_acdnsequencetype: New
+  enmax_acdnreason: Document register and index for Shepard Energy Centre
+  enmax_acdndeclinereason: Covered by existing master document register
+  enmax_acdnstatus: Declined
+
+- _nk: RES-S012
+  business_code: GG
+  asset_code: CV
+  unit_code: '01'
+  domain_code: EIC
+  system_code: ACB
+  kind_code: LP
+  enmax_acdndrawingcount: 5
+  enmax_acdnsheetsperdrawing: 3
+  enmax_acdnsequencetype: New
+  enmax_acdnreason: Instrumentation location and positioning drawings for Cavalier Unit 01
+  enmax_acdnstatus: Approved
+  enmax_acdnapprovedon: '2026-03-01T10:00:00Z'
+
+- _nk: RES-S013
+  business_code: GW
+  asset_code: WH
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ACC
+  kind_code: DD
+  enmax_acdndrawingcount: 3
+  enmax_acdnsheetsperdrawing: 2
+  enmax_acdnsequencetype: Existing
+  enmax_acdnreason: Re-issue of existing air cooled condenser design details for WH Unit 01
+  enmax_acdnstatus: Pending
+
+- _nk: RES-S014
+  business_code: DG
+  asset_code: ST
+  unit_code: '03'
+  domain_code: ECS
+  system_code: ABF
+  kind_code: GA
+  enmax_acdndrawingcount: 4
+  enmax_acdnsheetsperdrawing: 2
+  enmax_acdnsequencetype: New
+  enmax_acdnreason: Auxiliary boiler feed structural arrangements — project cancelled
+  enmax_acdnstatus: Cancelled
+
+- _nk: RES-S015
+  business_code: WD
+  asset_code: TB
+  unit_code: '02'
+  domain_code: EIC
+  system_code: ACS
+  kind_code: LD
+  enmax_acdndrawingcount: 6
+  enmax_acdnsheetsperdrawing: 4
+  enmax_acdnsequencetype: New
+  enmax_acdnreason: New instrumentation logic diagrams for Taber Wind Unit 02
+  enmax_acdnstatus: Approved
+  enmax_acdnapprovedon: '2026-03-10T15:00:00Z'

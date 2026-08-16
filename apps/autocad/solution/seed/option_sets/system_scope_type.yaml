@@ -1,0 +1,9 @@
+schema_name: enmax_acdn_systemscopetype
+display_name: System Scope Type
+values:
+  - value: 0
+    label: None
+  - value: 1
+    label: Asset Only
+  - value: 2
+    label: Domain Only

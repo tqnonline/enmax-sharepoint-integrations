@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install
+        working-directory: apps/code-app
+        run: npm ci
+      - name: Lint
+        working-directory: apps/code-app
+        run: npm run lint
+      - name: Test (Vitest)
+        working-directory: apps/code-app
+        run: npm test -- --coverage
+      - name: Build
+        working-directory: apps/code-app
+        run: npm run build
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build plug-in (net462 via reference assemblies)
+        working-directory: solution/plugins/IssueNumbers
+        run: dotnet build --configuration Release
+      - name: Test plug-in (IssueNumbers unit tests)
+        working-directory: solution/plugins
+        run: dotnet test IssueNumbers.Tests/IssueNumbers.Tests.csproj --filter "Category!=Integration" --configuration Release
+      - name: Upload build artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-app-build
+          path: apps/code-app/dist
+          retention-days: 7
+      - name: Upload plugin DLL artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-release
+          path: solution/plugins/IssueNumbers/bin/Release/net462/Enmax.AutoCAD.dll
+          retention-days: 7
+
+  # Cross-platform sandbox: prove the PowerPlatform.Deploy scripts + plug-in build
+  # run on Linux (the GitHub ubuntu runner is a sandboxed Linux container with pwsh
+  # and dotnet pre-installed). net462 BUILDS here via reference assemblies but cannot
+  # EXECUTE on Linux, so the .NET unit tests stay on the Windows job above.
+  deploy-scripts-linux:
+    name: Deploy scripts (Linux sandbox)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Build plug-in on Linux (net462 via reference assemblies)
+        working-directory: solution/plugins/IssueNumbers
+        run: dotnet build --configuration Release
+      - name: Install Pester
+        shell: pwsh
+        run: Install-Module Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck -Scope CurrentUser
+      - name: Run PowerPlatform.Deploy Pester on Linux (clean env)
+        shell: pwsh
+        run: |
+          'ENVIRONMENT_URL','CLIENT_ID','CLIENT_SECRET','TENANT_ID','DATAVERSE_URL','DATAVERSE_CLIENT_ID','DATAVERSE_CLIENT_SECRET','DATAVERSE_TENANT_ID' |
+            ForEach-Object { [Environment]::SetEnvironmentVariable($_, $null, 'Process') }
+          $cfg = New-PesterConfiguration
+          $cfg.Run.Path = 'scripts/PowerPlatform.Deploy/Tests'
+          $cfg.Run.Exit = $true
+          $cfg.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $cfg

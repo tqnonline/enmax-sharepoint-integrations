@@ -1,0 +1,43 @@
+# deploy.profile.yaml — project identity for powerplatform_deploy tooling
+# Verified against solution/scripts/pack.py (solution zip: EnmaxAutoCADNumbering_unmanaged.zip)
+# and the dataSources in scripts/push-to-dev.ps1.
+
+entity_prefix: enmax_acdn
+solution_name: EnmaxAutoCADNumbering
+business_unit: enmax-autocad-app
+security_roles_file: solution/seed/security_roles.yaml
+
+# All Dataverse table logical names used by this solution.
+# Derived from the databaseReferences.dataSources block in scripts/push-to-dev.ps1.
+tables:
+  - enmax_autocadappconfig
+  - enmax_autocadreservation
+  - enmax_autocaddrawing
+  - enmax_autocadsheet
+  - enmax_autocadcheckout
+  - enmax_autocadbusiness
+  - enmax_autocadasset
+  - enmax_autocadunit
+  - enmax_autocaddomain
+  - enmax_autocadsystem
+  - enmax_autocadkind
+  - enmax_autocadsystemscope
+  - enmax_autocadnumbersequence
+  - enmax_autocadauditevent
+  - enmax_autocadrecordtype
+  - enmax_autocadrecordphase
+  - enmax_autocadvendor
+  - enmax_autocadbroadcast
+  - enmax_autocadbroadcastdismissal
+  - enmax_autocaduserpreference
+  - enmax_autocadinappnotification
+  - team
+  - systemuser
+
+# Solution connection references (enmax_autocadsln). Flow workflow.json maps
+# connector keys to these logical names; bind connections per environment on import.
+connection_references:
+  enmax_autocadconrefDataverse: shared_commondataserviceforapps
+  enmax_autocadconrefOutlook: shared_office365
+  enmax_autocadconrefSharePoint: shared_sharepointonline
+  enmax_autocadconrefTeams: shared_teams

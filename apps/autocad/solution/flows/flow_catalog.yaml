@@ -1,0 +1,42 @@
+# Maker display names for Cloud Flows (folder slug → displayName) — PROD solution.
+# Deploy: deploy_flows.py --catalog prod (default) reads this file and deploys into
+# enmax_autocadsln. Folder slug stays the git/deploy key.
+# UAT-only harness flows live in flow_catalog_admin.yaml / enmax_autocadadminsln (ADR 0005).
+
+flows:
+  Manual_Refresh_SharePoint_Index:
+    displayName: "Enmax AutoCAD | On Demand | Refresh & Update SharePoint Links for Drawing-Document Records"
+    description: On-demand SharePoint link refresh for drawing and document records.
+  Scheduled_SharePoint_Indexer_Full:
+    displayName: "Enmax AutoCAD | Scheduled | Full SharePoint Index Sweep"
+    description: Daily full recursive sweep of taxonomy SharePoint libraries; upserts links and ingests destination orphans.
+  Scheduled_SharePoint_Indexer_Incremental:
+    displayName: "Enmax AutoCAD | Scheduled | Incremental SharePoint Index Refresh"
+    description: Hourly incremental refresh of recently modified SharePoint files; upserts links without clearing missing flags.
+  On_Checkout_Created_Email_Notifications:
+    displayName: "Enmax AutoCAD | On Create of Checkout | Send Notification Emails"
+    description: Sends checkout or checkout-request notification emails when a checkout is created.
+  On_Checkout_Updated_Email_Notifications:
+    displayName: "Enmax AutoCAD | On Update of Checkout | Send Lifecycle Emails"
+    description: Sends checkout lifecycle emails after checkout status updates.
+  On_Reservation_Created_Notify_Admins:
+    displayName: "Enmax AutoCAD | On Create of Reservation | Notify Document Control of Pending Approval"
+    description: Notifies Document Control when a reservation enters pending approval.
+  On_Reservation_Approved_Issue_Drawings:
+    displayName: "Enmax AutoCAD | On Update of Reservation | Issue Drawing Numbers When Approved"
+    description: Issues numbers via enmax_acdnIssueNumbers when a reservation is approved.
+  On_Reservation_Declined_Notify_Requester:
+    displayName: "Enmax AutoCAD | On Update of Reservation | Notify Requester When Declined"
+    description: Notifies the requester when a reservation is declined.
+  Child_Log_Flow_Exception:
+    displayName: "Enmax AutoCAD | Internal | Log Flow Exception"
+    description: Writes failure rows to enmax_autocadflowexception (internal child flow).
+  Child_Send_System_Email:
+    displayName: "Enmax AutoCAD | Internal | Send System Email From Shared Mailbox"
+    description: Sends templated email from the configured shared mailbox.
+  Child_Send_Approval_Needed_Email:
+    displayName: "Enmax AutoCAD | Internal | Send Reservation Approval Needed Email"
+    description: Sends approval-needed email for pending reservations.
+  Child_Send_Approval_Result_Email:
+    displayName: "Enmax AutoCAD | Internal | Send Reservation Approval Result Email"
+    description: Sends approved or declined result email to the requester.

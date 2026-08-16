@@ -1,0 +1,40 @@
+table: enmax_autocadrecordtype
+natural_key_columns:
+- code
+rows:
+- code: Drawings
+  display_name: Drawings
+  status: 1
+  sort_order: 10
+- code: OEM Manuals & Instructions
+  display_name: OEM Manuals & Instructions
+  status: 1
+  sort_order: 20
+- code: Turnover Packages
+  display_name: Turnover Packages
+  status: 1
+  sort_order: 30
+- code: OEM Training
+  display_name: OEM Training
+  status: 1
+  sort_order: 40
+- code: ENMAX Procedures
+  display_name: ENMAX Procedures
+  status: 1
+  sort_order: 50
+- code: ENMAX Training
+  display_name: ENMAX Training
+  status: 1
+  sort_order: 60
+- code: ENMAX Manuals
+  display_name: ENMAX Manuals
+  status: 1
+  sort_order: 70
+- code: Packages
+  display_name: Packages
+  status: 1
+  sort_order: 80
+- code: XXX
+  display_name: XXX
+  status: 1
+  sort_order: 90

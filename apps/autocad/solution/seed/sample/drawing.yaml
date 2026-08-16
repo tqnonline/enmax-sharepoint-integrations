@@ -1,0 +1,870 @@
+table: enmax_autocaddrawing
+natural_key_columns: [number]
+lookups:
+  reservation:  {table: enmax_autocadreservation, key: _nk,  source_column: reservation_nk}
+  business:     {table: enmax_autocadbusiness,    key: code, source_column: business_code}
+  asset:        {table: enmax_autocadasset,        key: code, source_column: asset_code}
+  unit:         {table: enmax_autocadunit,         key: code, source_column: unit_code}
+  domain:       {table: enmax_autocaddomain,       key: code, source_column: domain_code}
+  system:       {table: enmax_autocadsystem,       key: code, source_column: system_code}
+  kind:         {table: enmax_autocadkind,         key: code, source_column: kind_code}
+  vendor:       {table: enmax_autocadvendor,       key: code, source_column: vendor_code}
+  record_type:  {table: enmax_autocadrecordtype,   key: code, source_column: record_type_code}
+  record_phase: {table: enmax_autocadrecordphase,  key: code, source_column: record_phase_code}
+rows:
+# --- RES-S002: DG-ST-02 ACB SD (3 drawings) ---
+- number: DG-ST-ACB-SD-001
+  title: Stoney Transit U02 – AC Battery Backup Single Line Diagram Sheet 1
+  reservation_nk: RES-S002
+  business_code: DG
+  asset_code: ST
+  unit_code: '02'
+  domain_code: EEL
+  system_code: ACB
+  kind_code: SD
+  enmax_acdnsequencenumber: 1
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-02-01'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: IFC
+
+- number: DG-ST-ACB-SD-002
+  title: Stoney Transit U02 – AC Battery Backup Single Line Diagram Sheet 2
+  reservation_nk: RES-S002
+  business_code: DG
+  asset_code: ST
+  unit_code: '02'
+  domain_code: EEL
+  system_code: ACB
+  kind_code: SD
+  enmax_acdnsequencenumber: 2
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-02-01'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: IFC
+
+- number: DG-ST-ACB-SD-003
+  title: Stoney Transit U02 – Battery Backup System Schematic
+  reservation_nk: RES-S002
+  business_code: DG
+  asset_code: ST
+  unit_code: '02'
+  domain_code: EEL
+  system_code: ACB
+  kind_code: SD
+  enmax_acdnsequencenumber: 3
+  enmax_acdnsheetcount: 1
+  enmax_acdncurrentrevision: '0'
+  enmax_acdnrevisiondate: '2026-02-01'
+  enmax_acdnstate: Checked Out
+  record_type_code: Drawings
+  record_phase_code: IFR
+
+# --- RES-S003: GG-CF-01 ACS PD (8 drawings) ---
+- number: GG-CF-ACS-PD-001
+  title: Crossfield U01 – Acid & Caustic System P&ID – Train A
+  reservation_nk: RES-S003
+  business_code: GG
+  asset_code: CF
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ACS
+  kind_code: PD
+  enmax_acdnsequencenumber: 1
+  enmax_acdnsheetcount: 4
+  enmax_acdncurrentrevision: B
+  enmax_acdnrevisiondate: '2026-02-10'
+  enmax_acdnstate: Available
+  vendor_code: Flowserve
+  record_type_code: Drawings
+  record_phase_code: As Built
+
+- number: GG-CF-ACS-PD-002
+  title: Crossfield U01 – Acid & Caustic System P&ID – Train B
+  reservation_nk: RES-S003
+  business_code: GG
+  asset_code: CF
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ACS
+  kind_code: PD
+  enmax_acdnsequencenumber: 2
+  enmax_acdnsheetcount: 4
+  enmax_acdncurrentrevision: B
+  enmax_acdnrevisiondate: '2026-02-10'
+  enmax_acdnstate: Available
+  vendor_code: Flowserve
+  record_type_code: Drawings
+  record_phase_code: As Built
+
+- number: GG-CF-ACS-PD-003
+  title: Crossfield U01 – Acid & Caustic Dosing Skid P&ID
+  reservation_nk: RES-S003
+  business_code: GG
+  asset_code: CF
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ACS
+  kind_code: PD
+  enmax_acdnsequencenumber: 3
+  enmax_acdnsheetcount: 3
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-02-10'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: IFC
+
+- number: GG-CF-ACS-PD-004
+  title: Crossfield U01 – Chemical Injection P&ID
+  reservation_nk: RES-S003
+  business_code: GG
+  asset_code: CF
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ACS
+  kind_code: PD
+  enmax_acdnsequencenumber: 4
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-02-10'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: IFC
+
+- number: GG-CF-ACS-PD-005
+  title: Crossfield U01 – Acid Tank P&ID
+  reservation_nk: RES-S003
+  business_code: GG
+  asset_code: CF
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ACS
+  kind_code: PD
+  enmax_acdnsequencenumber: 5
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: '0'
+  enmax_acdnrevisiondate: '2026-02-10'
+  enmax_acdnstate: Awaiting Validation
+  record_type_code: Drawings
+  record_phase_code: IFR
+
+- number: GG-CF-ACS-PD-006
+  title: Crossfield U01 – Caustic Tank P&ID
+  reservation_nk: RES-S003
+  business_code: GG
+  asset_code: CF
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ACS
+  kind_code: PD
+  enmax_acdnsequencenumber: 6
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: '0'
+  enmax_acdnrevisiondate: '2026-02-10'
+  enmax_acdnstate: Awaiting Validation
+  record_type_code: Drawings
+  record_phase_code: IFR
+
+- number: GG-CF-ACS-PD-007
+  title: Crossfield U01 – Inhibitor Injection P&ID
+  reservation_nk: RES-S003
+  business_code: GG
+  asset_code: CF
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ACS
+  kind_code: PD
+  enmax_acdnsequencenumber: 7
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: '0'
+  enmax_acdnrevisiondate: '2026-02-10'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: IFD
+
+- number: GG-CF-ACS-PD-008
+  title: Crossfield U01 – Waste Neutralisation P&ID
+  reservation_nk: RES-S003
+  business_code: GG
+  asset_code: CF
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ACS
+  kind_code: PD
+  enmax_acdnsequencenumber: 8
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-02-10'
+  enmax_acdnstate: Obsolete
+  record_type_code: Drawings
+  record_phase_code: Obsolete
+
+# --- RES-S006: GW-GN-01 ABB PD (10 drawings) ---
+- number: GW-GN-ABB-PD-001
+  title: Generation Fleet U01 – Aux Boiler Blowdown P&ID – Unit 1
+  reservation_nk: RES-S006
+  business_code: GW
+  asset_code: GN
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ABB
+  kind_code: PD
+  enmax_acdnsequencenumber: 1
+  enmax_acdnsheetcount: 4
+  enmax_acdncurrentrevision: C
+  enmax_acdnrevisiondate: '2026-02-20'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: As Built
+
+- number: GW-GN-ABB-PD-002
+  title: Generation Fleet U01 – Aux Boiler Blowdown P&ID – Unit 2
+  reservation_nk: RES-S006
+  business_code: GW
+  asset_code: GN
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ABB
+  kind_code: PD
+  enmax_acdnsequencenumber: 2
+  enmax_acdnsheetcount: 4
+  enmax_acdncurrentrevision: C
+  enmax_acdnrevisiondate: '2026-02-20'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: As Built
+
+- number: GW-GN-ABB-PD-003
+  title: Generation Fleet U01 – Boiler Blowdown Flash Tank P&ID
+  reservation_nk: RES-S006
+  business_code: GW
+  asset_code: GN
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ABB
+  kind_code: PD
+  enmax_acdnsequencenumber: 3
+  enmax_acdnsheetcount: 3
+  enmax_acdncurrentrevision: B
+  enmax_acdnrevisiondate: '2026-02-20'
+  enmax_acdnstate: Available
+  vendor_code: ABB
+  record_type_code: Drawings
+  record_phase_code: As Built
+
+- number: GW-GN-ABB-PD-004
+  title: Generation Fleet U01 – Blowdown Recovery P&ID
+  reservation_nk: RES-S006
+  business_code: GW
+  asset_code: GN
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ABB
+  kind_code: PD
+  enmax_acdnsequencenumber: 4
+  enmax_acdnsheetcount: 3
+  enmax_acdncurrentrevision: B
+  enmax_acdnrevisiondate: '2026-02-20'
+  enmax_acdnstate: Checked Out
+  record_type_code: Drawings
+  record_phase_code: IFC
+
+- number: GW-GN-ABB-PD-005
+  title: Generation Fleet U01 – Blowdown Sampling P&ID
+  reservation_nk: RES-S006
+  business_code: GW
+  asset_code: GN
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ABB
+  kind_code: PD
+  enmax_acdnsequencenumber: 5
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-02-20'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: IFC
+
+- number: GW-GN-ABB-PD-006
+  title: Generation Fleet U01 – Blowdown Water Treatment P&ID
+  reservation_nk: RES-S006
+  business_code: GW
+  asset_code: GN
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ABB
+  kind_code: PD
+  enmax_acdnsequencenumber: 6
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-02-20'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: IFR
+
+- number: GW-GN-ABB-PD-007
+  title: Generation Fleet U01 – Boiler Drum P&ID
+  reservation_nk: RES-S006
+  business_code: GW
+  asset_code: GN
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ABB
+  kind_code: PD
+  enmax_acdnsequencenumber: 7
+  enmax_acdnsheetcount: 3
+  enmax_acdncurrentrevision: '0'
+  enmax_acdnrevisiondate: '2026-02-20'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: Information
+
+- number: GW-GN-ABB-PD-008
+  title: Generation Fleet U01 – Feedwater Control P&ID
+  reservation_nk: RES-S006
+  business_code: GW
+  asset_code: GN
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ABB
+  kind_code: PD
+  enmax_acdnsequencenumber: 8
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: '0'
+  enmax_acdnrevisiondate: '2026-02-20'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: IFD
+
+- number: GW-GN-ABB-PD-009
+  title: Generation Fleet U01 – Steam Conditioning P&ID
+  reservation_nk: RES-S006
+  business_code: GW
+  asset_code: GN
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ABB
+  kind_code: PD
+  enmax_acdnsequencenumber: 9
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: '0'
+  enmax_acdnrevisiondate: '2026-02-20'
+  enmax_acdnstate: Available
+  vendor_code: ABB
+  record_type_code: Drawings
+  record_phase_code: Record
+
+- number: GW-GN-ABB-PD-010
+  title: Generation Fleet U01 – Sootblowing P&ID
+  reservation_nk: RES-S006
+  business_code: GW
+  asset_code: GN
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ABB
+  kind_code: PD
+  enmax_acdnsequencenumber: 10
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-02-20'
+  enmax_acdnstate: Void
+  record_type_code: Drawings
+  record_phase_code: Void
+
+# --- RES-S008: WD-KH-01 ACB LD (4 drawings) ---
+- number: WD-KH-ACB-LD-001
+  title: Kipp Hill U01 – Battery Backup System Logic Diagram – Main
+  reservation_nk: RES-S008
+  business_code: WD
+  asset_code: KH
+  unit_code: '01'
+  domain_code: EIC
+  system_code: ACB
+  kind_code: LD
+  enmax_acdnsequencenumber: 1
+  enmax_acdnsheetcount: 3
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-03-01'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: As Built
+
+- number: WD-KH-ACB-LD-002
+  title: Kipp Hill U01 – Battery Backup System Logic Diagram – Alarm
+  reservation_nk: RES-S008
+  business_code: WD
+  asset_code: KH
+  unit_code: '01'
+  domain_code: EIC
+  system_code: ACB
+  kind_code: LD
+  enmax_acdnsequencenumber: 2
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-03-01'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: As Built
+
+- number: WD-KH-ACB-LD-003
+  title: Kipp Hill U01 – Battery Backup System Logic Diagram – Shutdown
+  reservation_nk: RES-S008
+  business_code: WD
+  asset_code: KH
+  unit_code: '01'
+  domain_code: EIC
+  system_code: ACB
+  kind_code: LD
+  enmax_acdnsequencenumber: 3
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: B
+  enmax_acdnrevisiondate: '2026-03-01'
+  enmax_acdnstate: Checked Out
+  record_type_code: Drawings
+  record_phase_code: IFC
+
+- number: WD-KH-ACB-LD-004
+  title: Kipp Hill U01 – Battery Charger Control Logic Diagram
+  reservation_nk: RES-S008
+  business_code: WD
+  asset_code: KH
+  unit_code: '01'
+  domain_code: EIC
+  system_code: ACB
+  kind_code: LD
+  enmax_acdnsequencenumber: 4
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-03-01'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: As Built
+
+# --- RES-S010: DG-VS-01 ACS PD (7 drawings) ---
+- number: DG-VS-ACS-PD-001
+  title: Vauxhall Solar U01 – Acid & Caustic System P&ID – Overview
+  reservation_nk: RES-S010
+  business_code: DG
+  asset_code: VS
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ACS
+  kind_code: PD
+  enmax_acdnsequencenumber: 1
+  enmax_acdnsheetcount: 4
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-03-05'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: IFC
+
+- number: DG-VS-ACS-PD-002
+  title: Vauxhall Solar U01 – Acid Dosing P&ID
+  reservation_nk: RES-S010
+  business_code: DG
+  asset_code: VS
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ACS
+  kind_code: PD
+  enmax_acdnsequencenumber: 2
+  enmax_acdnsheetcount: 3
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-03-05'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: IFC
+
+- number: DG-VS-ACS-PD-003
+  title: Vauxhall Solar U01 – Caustic Dosing P&ID
+  reservation_nk: RES-S010
+  business_code: DG
+  asset_code: VS
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ACS
+  kind_code: PD
+  enmax_acdnsequencenumber: 3
+  enmax_acdnsheetcount: 3
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-03-05'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: IFC
+
+- number: DG-VS-ACS-PD-004
+  title: Vauxhall Solar U01 – Inhibitor Injection P&ID
+  reservation_nk: RES-S010
+  business_code: DG
+  asset_code: VS
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ACS
+  kind_code: PD
+  enmax_acdnsequencenumber: 4
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: '0'
+  enmax_acdnrevisiondate: '2026-03-05'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: IFR
+
+- number: DG-VS-ACS-PD-005
+  title: Vauxhall Solar U01 – Waste Disposal P&ID
+  reservation_nk: RES-S010
+  business_code: DG
+  asset_code: VS
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ACS
+  kind_code: PD
+  enmax_acdnsequencenumber: 5
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: '0'
+  enmax_acdnrevisiondate: '2026-03-05'
+  enmax_acdnstate: Checked Out
+  record_type_code: Drawings
+  record_phase_code: IFD
+
+- number: DG-VS-ACS-PD-006
+  title: Vauxhall Solar U01 – Chemical Storage Layout P&ID
+  reservation_nk: RES-S010
+  business_code: DG
+  asset_code: VS
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ACS
+  kind_code: PD
+  enmax_acdnsequencenumber: 6
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: '0'
+  enmax_acdnrevisiondate: '2026-03-05'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: Information
+
+- number: DG-VS-ACS-PD-007
+  title: Vauxhall Solar U01 – Safety Relief Valve P&ID
+  reservation_nk: RES-S010
+  business_code: DG
+  asset_code: VS
+  unit_code: '01'
+  domain_code: EMP
+  system_code: ACS
+  kind_code: PD
+  enmax_acdnsequencenumber: 7
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-03-05'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: Record
+
+# --- RES-S012: GG-CV-01 ACB LP (5 drawings) ---
+- number: GG-CV-ACB-LP-001
+  title: Cavalier U01 – Battery Backup Instrumentation Location – Level 1
+  reservation_nk: RES-S012
+  business_code: GG
+  asset_code: CV
+  unit_code: '01'
+  domain_code: EIC
+  system_code: ACB
+  kind_code: LP
+  enmax_acdnsequencenumber: 1
+  enmax_acdnsheetcount: 3
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-03-10'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: As Built
+
+- number: GG-CV-ACB-LP-002
+  title: Cavalier U01 – Battery Backup Instrumentation Location – Level 2
+  reservation_nk: RES-S012
+  business_code: GG
+  asset_code: CV
+  unit_code: '01'
+  domain_code: EIC
+  system_code: ACB
+  kind_code: LP
+  enmax_acdnsequencenumber: 2
+  enmax_acdnsheetcount: 3
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-03-10'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: As Built
+
+- number: GG-CV-ACB-LP-003
+  title: Cavalier U01 – Instrument Cable Routing Plan
+  reservation_nk: RES-S012
+  business_code: GG
+  asset_code: CV
+  unit_code: '01'
+  domain_code: EIC
+  system_code: ACB
+  kind_code: LP
+  enmax_acdnsequencenumber: 3
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: B
+  enmax_acdnrevisiondate: '2026-03-10'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: IFC
+
+- number: GG-CV-ACB-LP-004
+  title: Cavalier U01 – JB and Marshalling Cabinet Location Plan
+  reservation_nk: RES-S012
+  business_code: GG
+  asset_code: CV
+  unit_code: '01'
+  domain_code: EIC
+  system_code: ACB
+  kind_code: LP
+  enmax_acdnsequencenumber: 4
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: '0'
+  enmax_acdnrevisiondate: '2026-03-10'
+  enmax_acdnstate: Checked Out
+  record_type_code: Drawings
+  record_phase_code: IFR
+
+- number: GG-CV-ACB-LP-005
+  title: Cavalier U01 – Analyser House Instrumentation Location Plan
+  reservation_nk: RES-S012
+  business_code: GG
+  asset_code: CV
+  unit_code: '01'
+  domain_code: EIC
+  system_code: ACB
+  kind_code: LP
+  enmax_acdnsequencenumber: 5
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: '0'
+  enmax_acdnrevisiondate: '2026-03-10'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: IFD
+
+# --- RES-S015: WD-TB-02 ACS LD (6 drawings) ---
+- number: WD-TB-ACS-LD-001
+  title: Taber U02 – Acid & Caustic System Logic Diagram – Startup
+  reservation_nk: RES-S015
+  business_code: WD
+  asset_code: TB
+  unit_code: '02'
+  domain_code: EIC
+  system_code: ACS
+  kind_code: LD
+  enmax_acdnsequencenumber: 1
+  enmax_acdnsheetcount: 4
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-03-15'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: IFC
+
+- number: WD-TB-ACS-LD-002
+  title: Taber U02 – Acid & Caustic System Logic Diagram – Normal Operation
+  reservation_nk: RES-S015
+  business_code: WD
+  asset_code: TB
+  unit_code: '02'
+  domain_code: EIC
+  system_code: ACS
+  kind_code: LD
+  enmax_acdnsequencenumber: 2
+  enmax_acdnsheetcount: 4
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-03-15'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: IFC
+
+- number: WD-TB-ACS-LD-003
+  title: Taber U02 – Acid & Caustic System Logic Diagram – Alarm
+  reservation_nk: RES-S015
+  business_code: WD
+  asset_code: TB
+  unit_code: '02'
+  domain_code: EIC
+  system_code: ACS
+  kind_code: LD
+  enmax_acdnsequencenumber: 3
+  enmax_acdnsheetcount: 3
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2026-03-15'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: IFC
+
+- number: WD-TB-ACS-LD-004
+  title: Taber U02 – Acid & Caustic System Logic Diagram – Shutdown
+  reservation_nk: RES-S015
+  business_code: WD
+  asset_code: TB
+  unit_code: '02'
+  domain_code: EIC
+  system_code: ACS
+  kind_code: LD
+  enmax_acdnsequencenumber: 4
+  enmax_acdnsheetcount: 3
+  enmax_acdncurrentrevision: '0'
+  enmax_acdnrevisiondate: '2026-03-15'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: IFR
+
+- number: WD-TB-ACS-LD-005
+  title: Taber U02 – Chemical Dosing Logic Diagram
+  reservation_nk: RES-S015
+  business_code: WD
+  asset_code: TB
+  unit_code: '02'
+  domain_code: EIC
+  system_code: ACS
+  kind_code: LD
+  enmax_acdnsequencenumber: 5
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: '0'
+  enmax_acdnrevisiondate: '2026-03-15'
+  enmax_acdnstate: Checked Out
+  record_type_code: Drawings
+  record_phase_code: IFD
+
+- number: WD-TB-ACS-LD-006
+  title: Taber U02 – Emergency Shutdown Logic Diagram
+  reservation_nk: RES-S015
+  business_code: WD
+  asset_code: TB
+  unit_code: '02'
+  domain_code: EIC
+  system_code: ACS
+  kind_code: LD
+  enmax_acdnsequencenumber: 6
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: '0'
+  enmax_acdnrevisiondate: '2026-03-15'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: Record
+
+# --- Standalone drawings (no reservation) ---
+- number: DG-ST-AAA-RL-001
+  title: Stoney Transit – Master Document Register
+  business_code: DG
+  asset_code: ST
+  unit_code: '00'
+  domain_code: DOC
+  system_code: AAA
+  kind_code: RL
+  enmax_acdnsequencenumber: 1
+  enmax_acdnsheetcount: 1
+  enmax_acdncurrentrevision: K
+  enmax_acdnrevisiondate: '2026-01-01'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: Record
+
+- number: GG-CF-ABF-GA-001
+  title: Crossfield Energy Centre – Aux Boiler Feed General Arrangement
+  business_code: GG
+  asset_code: CF
+  unit_code: '00'
+  domain_code: ECS
+  system_code: ABF
+  kind_code: GA
+  enmax_acdnsequencenumber: 1
+  enmax_acdnsheetcount: 3
+  enmax_acdncurrentrevision: D
+  enmax_acdnrevisiondate: '2025-06-01'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: As Built
+
+- number: GG-CG-ACC-GA-001
+  title: Calgary Energy Centre – Air Cooled Condenser General Arrangement
+  business_code: GG
+  asset_code: CG
+  unit_code: '00'
+  domain_code: ECS
+  system_code: ACC
+  kind_code: GA
+  enmax_acdnsequencenumber: 1
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: B
+  enmax_acdnrevisiondate: '2025-09-15'
+  enmax_acdnstate: Available
+  vendor_code: CCI
+  record_type_code: Drawings
+  record_phase_code: As Built
+
+- number: WD-KH-ABB-PD-001
+  title: Kipp Hill – Aux Boiler Blowdown P&ID
+  business_code: WD
+  asset_code: KH
+  unit_code: '00'
+  domain_code: EMP
+  system_code: ABB
+  kind_code: PD
+  enmax_acdnsequencenumber: 1
+  enmax_acdnsheetcount: 3
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2025-11-01'
+  enmax_acdnstate: Obsolete
+  record_type_code: Drawings
+  record_phase_code: Obsolete
+
+- number: GG-SH-AAA-RL-001
+  title: Shepard Energy Centre – Document Index
+  business_code: GG
+  asset_code: SH
+  unit_code: '00'
+  domain_code: DOC
+  system_code: AAA
+  kind_code: RL
+  enmax_acdnsequencenumber: 1
+  enmax_acdnsheetcount: 1
+  enmax_acdncurrentrevision: F
+  enmax_acdnrevisiondate: '2026-01-10'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: Record
+
+- number: GW-WH-ACC-PD-001
+  title: Wabamun Hydro – Air Cooled Condenser P&ID
+  business_code: GW
+  asset_code: WH
+  unit_code: '00'
+  domain_code: EMP
+  system_code: ACC
+  kind_code: PD
+  enmax_acdnsequencenumber: 1
+  enmax_acdnsheetcount: 3
+  enmax_acdncurrentrevision: C
+  enmax_acdnrevisiondate: '2025-08-20'
+  enmax_acdnstate: Available
+  vendor_code: ABB Instrument
+  record_type_code: Drawings
+  record_phase_code: As Built
+
+- number: GG-CV-ABS-SD-001
+  title: Cavalier Energy Centre – ABSA Compliance Schematic
+  business_code: GG
+  asset_code: CV
+  unit_code: '00'
+  domain_code: ARS
+  system_code: ABS
+  kind_code: SD
+  enmax_acdnsequencenumber: 1
+  enmax_acdnsheetcount: 2
+  enmax_acdncurrentrevision: A
+  enmax_acdnrevisiondate: '2025-12-01'
+  enmax_acdnstate: Available
+  record_type_code: Drawings
+  record_phase_code: IFC

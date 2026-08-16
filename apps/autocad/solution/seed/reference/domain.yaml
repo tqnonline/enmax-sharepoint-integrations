@@ -1,0 +1,124 @@
+table: enmax_autocaddomain
+natural_key_columns:
+- code
+rows:
+- code: AES
+  display_name: Alberta Electric System Operator (AESO)
+  status: 1
+  sort_order: 10
+- code: AMS
+  display_name: Asset Management System
+  status: 1
+  sort_order: 20
+- code: ARS
+  display_name: Alberta Reliability Standards
+  status: 1
+  sort_order: 30
+- code: BUD
+  display_name: Business Development
+  status: 1
+  sort_order: 40
+- code: CAP
+  display_name: Corrective Action Program
+  status: 1
+  sort_order: 50
+- code: CCM
+  display_name: Construction - Construction Management
+  status: 1
+  sort_order: 60
+- code: CPM
+  display_name: Construction - Project Management
+  status: 1
+  sort_order: 70
+- code: DOC
+  display_name: Document Management
+  status: 1
+  sort_order: 80
+- code: ECS
+  display_name: Engineering - Civil Structural Architectural
+  status: 1
+  sort_order: 90
+- code: EEL
+  display_name: Engineering - Electrical
+  status: 1
+  sort_order: 100
+- code: EIC
+  display_name: Engineering - Instrumentation & Controls
+  status: 1
+  sort_order: 110
+- code: EMM
+  display_name: Engineering - Management
+  status: 1
+  sort_order: 120
+- code: EMP
+  display_name: Engineering - Mechanical, Process and Piping
+  status: 1
+  sort_order: 130
+- code: ENG
+  display_name: Engineering
+  status: 1
+  sort_order: 140
+- code: ENV
+  display_name: Environment
+  status: 1
+  sort_order: 150
+- code: FIN
+  display_name: Finance
+  status: 1
+  sort_order: 160
+- code: FSM
+  display_name: Fire Safety Management
+  status: 1
+  sort_order: 170
+- code: GEN
+  display_name: Generation
+  status: 1
+  sort_order: 180
+- code: JVP
+  display_name: Joint Ventures & Partnerships
+  status: 1
+  sort_order: 190
+- code: MNT
+  display_name: Maintenance
+  status: 1
+  sort_order: 200
+- code: OEM
+  display_name: Original Equipment Manufacturer
+  status: 1
+  sort_order: 210
+- code: OHS
+  display_name: Occupational Health & Safety
+  status: 1
+  sort_order: 220
+- code: OPS
+  display_name: Operations
+  status: 1
+  sort_order: 230
+- code: PIR
+  display_name: Problem Identification and Resolution
+  status: 1
+  sort_order: 240
+- code: PMO
+  display_name: Project Management
+  status: 1
+  sort_order: 250
+- code: QAP
+  display_name: Quality Assurance Program
+  status: 1
+  sort_order: 260
+- code: SAF
+  display_name: Safety
+  status: 1
+  sort_order: 270
+- code: SCM
+  display_name: Supply Chain Management
+  status: 1
+  sort_order: 280
+- code: WHE
+  display_name: Wholesale Energy
+  status: 1
+  sort_order: 290
+- code: XXX
+  display_name: XXX
+  status: 1
+  sort_order: 300

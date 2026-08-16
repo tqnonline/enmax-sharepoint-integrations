@@ -1,0 +1,5 @@
+requests>=2.31
+PyYAML>=6.0
+azure-identity>=1.15
+msal>=1.27
+python-dotenv>=1.0

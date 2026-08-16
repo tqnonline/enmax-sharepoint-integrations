@@ -1,0 +1,13 @@
+schema_name: enmax_acdn_appconfigvaluetype
+display_name: App Config Value Type
+values:
+  - value: 0
+    label: None
+  - value: 1
+    label: Boolean
+  - value: 2
+    label: Integer
+  - value: 3
+    label: String
+  - value: 4
+    label: Json

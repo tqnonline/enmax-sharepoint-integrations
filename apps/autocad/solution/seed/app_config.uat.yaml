@@ -1,0 +1,38 @@
+# UAT environment overrides for App Configuration (merged onto app_config.yaml).
+table: enmax_autocadappconfig
+natural_key_columns: [key]
+rows:
+  - key: SharePointSiteUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC
+  - key: CheckInUploadLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+  - key: DrawingDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+  - key: DrawingDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+  - key: DocumentDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+  - key: DocumentDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+  - key: StandardDocumentDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+  - key: StandardDocumentDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+  - key: ProcedureDocumentDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+  - key: ProcedureDocumentDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+  - key: FormDocumentDropOffLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/DropOffLibrary
+  - key: FormDocumentDestinationLibraryUrl
+    value: https://enmaxcorp.sharepoint.com/sites/GEN-POC/GF
+  - key: SharePointIndexerLogFolderPath
+    value: Shared Documents/Enmax AutoCAD/Indexer Logs
+  - key: EnvironmentBadge
+    value: Sandbox
+  - key: CodeAppBaseUrl
+    # Full play URL to the UAT Code App (no trailing slash / no query / no hash). Flows append a
+    # deep-link query string (?target=reservation&id={id}, ?target=approvals&...) that
+    # DeepLinkBootstrap resolves on boot; hash routes are not used (the player drops the fragment).
+    # Set CODE_APP_BASE_URL at deploy time or replace the placeholder below with the real UAT env id + app id.
+    value: "{{ CODE_APP_BASE_URL | default('https://apps.powerapps.com/play/e/REPLACE_UAT_ENVIRONMENT_ID/app/REPLACE_UAT_APP_ID') }}"

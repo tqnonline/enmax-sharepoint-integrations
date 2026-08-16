@@ -1,0 +1,13 @@
+schema_name: enmax_acdn_reservationstatus
+display_name: Reservation Status
+values:
+  - value: 0
+    label: None
+  - value: 1
+    label: Pending
+  - value: 2
+    label: Approved
+  - value: 3
+    label: Declined
+  - value: 4
+    label: Cancelled

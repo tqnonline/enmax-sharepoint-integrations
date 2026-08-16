@@ -1,0 +1,9 @@
+schema_name: enmax_acdn_recordstatus
+display_name: Record Status
+values:
+  - value: 0
+    label: None
+  - value: 1
+    label: Active
+  - value: 2
+    label: Inactive

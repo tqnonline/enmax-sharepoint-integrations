@@ -1,0 +1,49 @@
+# Worktrees (per CLAUDE.md project pattern)
+.worktrees/
+
+# Node
+node_modules/
+dist/
+.vite/
+coverage/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Operator run artifacts (Heather Excel, checkpoints, preflight CSVs)
+solution/scripts/reports/
+**/~$*.xlsx
+
+# .NET / plugin
+solution/plugins/**/bin/
+solution/plugins/**/obj/
+testResults.xml
+
+# PAC / Power Platform
+solution/build/
+solution/src/**/*.zip
+power.config.json
+power.config.*.json
+.pac/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+.env.local
+.env.dev
+.env.uat
+*.pem
+*.pfx

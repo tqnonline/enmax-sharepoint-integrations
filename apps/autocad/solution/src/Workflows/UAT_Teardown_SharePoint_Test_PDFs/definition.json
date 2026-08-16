@@ -1,0 +1,197 @@
+{
+  "schemaVersion": "1.0.0.0",
+  "metadata": {
+    "description": "WS5e UAT harness: deletes seeded ~1KB test PDFs from UAT SharePoint libraries. Run after Validate or to reset the scenario matrix."
+  },
+  "triggers": {
+    "Manual_Teardown": {
+      "type": "Request",
+      "kind": "Http",
+      "inputs": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "files": {
+              "type": "string",
+              "title": "JSON array of {libraryUrl,folderPath,fileName} entries to delete"
+            }
+          },
+          "required": [
+            "files"
+          ]
+        }
+      }
+    }
+  },
+  "actions": {
+    "Initialize_CorrelationId": {
+      "type": "InitializeVariable",
+      "runAfter": {},
+      "inputs": {
+        "variables": [
+          {
+            "name": "CorrelationId",
+            "type": "string",
+            "value": "@{coalesce(triggerBody()?['CorrelationId'], guid())}"
+          }
+        ]
+      }
+    },
+    "Initialize_FlowDisplayName": {
+      "type": "InitializeVariable",
+      "runAfter": {
+        "Initialize_CorrelationId": [
+          "Succeeded"
+        ]
+      },
+      "inputs": {
+        "variables": [
+          {
+            "name": "FlowDisplayName",
+            "type": "string",
+            "value": "Enmax AutoCAD | On Demand | UAT Teardown SharePoint Test PDFs"
+          }
+        ]
+      }
+    },
+    "Initialize_FlowRunUrlTemplate": {
+      "type": "InitializeVariable",
+      "runAfter": {
+        "Initialize_FlowDisplayName": [
+          "Succeeded"
+        ]
+      },
+      "inputs": {
+        "variables": [
+          {
+            "name": "FlowRunUrlTemplate",
+            "type": "string",
+            "value": "https://make.powerautomate.com/environments/{environmentId}/flows/{flowId}/runs/{runId}"
+          }
+        ]
+      }
+    },
+    "Scope_Try_Main": {
+      "type": "Scope",
+      "runAfter": {
+        "Initialize_FlowRunUrlTemplate": [
+          "Succeeded"
+        ]
+      },
+      "actions": {
+        "Apply_to_each_File": {
+          "type": "Foreach",
+          "runAfter": {},
+          "foreach": "@json(triggerBody()?['files'])",
+          "actions": {
+            "Delete_File": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_sharepointonline",
+                  "operationId": "DeleteFile",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+                },
+                "parameters": {
+                  "dataset": "@{items('Apply_to_each_File')?['libraryUrl']}",
+                  "id": "@{concat(items('Apply_to_each_File')?['folderPath'], '/', items('Apply_to_each_File')?['fileName'])}"
+                }
+              }
+            }
+          }
+        },
+        "Response": {
+          "type": "Response",
+          "runAfter": {
+            "Apply_to_each_File": [
+              "Succeeded",
+              "Failed"
+            ]
+          },
+          "kind": "Http",
+          "inputs": {
+            "statusCode": 200,
+            "body": {
+              "status": "teardown-complete"
+            }
+          }
+        }
+      }
+    },
+    "Scope_Catch_Failure": {
+      "type": "Scope",
+      "runAfter": {
+        "Scope_Try_Main": [
+          "Failed",
+          "TimedOut"
+        ]
+      },
+      "actions": {
+        "Compose_Error_Context": {
+          "type": "Compose",
+          "runAfter": {},
+          "inputs": {
+            "failedAction": "@{coalesce(first(result('Scope_Try_Main'))?['name'], 'Scope_Try_Main')}",
+            "errorMessage": "@{coalesce(first(result('Scope_Try_Main'))?['error']?['message'], 'Flow failed')}",
+            "errorCode": "@{coalesce(first(result('Scope_Try_Main'))?['error']?['code'], 'FlowFailed')}",
+            "errorDetail": "@{string(result('Scope_Try_Main'))}"
+          }
+        },
+        "Compose_FlowRunUrl": {
+          "type": "Compose",
+          "runAfter": {
+            "Compose_Error_Context": [
+              "Succeeded"
+            ]
+          },
+          "inputs": "@{replace(replace(replace(variables('FlowRunUrlTemplate'), '{environmentId}', coalesce(workflow()?['tags']?['environmentName'], '')), '{flowId}', coalesce(workflow()?['name'], '')), '{runId}', coalesce(workflow()?['run']?['name'], ''))}"
+        },
+        "Invoke_Log_Flow_Exception": {
+          "type": "Workflow",
+          "runAfter": {
+            "Compose_FlowRunUrl": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "host": {
+              "workflowReferenceName": "Admin_Child_Log_Flow_Exception"
+            },
+            "body": {
+              "Origin": 1,
+              "FlowDisplayName": "@{variables('FlowDisplayName')}",
+              "FailedAction": "@{outputs('Compose_Error_Context')?['failedAction']}",
+              "ErrorMessage": "@{outputs('Compose_Error_Context')?['errorMessage']}",
+              "ErrorCode": "@{outputs('Compose_Error_Context')?['errorCode']}",
+              "ErrorDetail": "@{outputs('Compose_Error_Context')?['errorDetail']}",
+              "FlowRunId": "@{workflow()?['run']?['name']}",
+              "FlowRunUrl": "@{outputs('Compose_FlowRunUrl')}",
+              "CorrelationId": "@{variables('CorrelationId')}",
+              "SubjectTable": "",
+              "SubjectId": "",
+              "Severity": 2
+            }
+          }
+        },
+        "Terminate_Failed": {
+          "type": "Terminate",
+          "runAfter": {
+            "Invoke_Log_Flow_Exception": [
+              "Succeeded",
+              "Failed",
+              "Skipped",
+              "TimedOut"
+            ]
+          },
+          "inputs": {
+            "runStatus": "Failed",
+            "runError": {
+              "code": "@{outputs('Compose_Error_Context')?['errorCode']}",
+              "message": "@{outputs('Compose_Error_Context')?['errorMessage']}"
+            }
+          }
+        }
+      }
+    }
+  }
+}

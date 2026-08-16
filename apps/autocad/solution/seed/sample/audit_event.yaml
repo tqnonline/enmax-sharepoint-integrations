@@ -1,0 +1,382 @@
+table: enmax_autocadauditevent
+natural_key_columns: [name]
+rows:
+# Reservation lifecycle events (15)
+- name: AE-RES-S001-Created
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnevent: Created
+  enmax_acdntostate: Pending
+  enmax_acdnreason: Reservation submitted for new drawings
+  enmax_acdnsource: Code App
+
+- name: AE-RES-S002-Created
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnevent: Created
+  enmax_acdntostate: Pending
+  enmax_acdnsource: Code App
+
+- name: AE-RES-S002-Approved
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnevent: Approval Granted
+  enmax_acdnfromstate: Pending
+  enmax_acdntostate: Approved
+  enmax_acdnsource: Code App
+
+- name: AE-RES-S003-Created
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnevent: Created
+  enmax_acdntostate: Pending
+  enmax_acdnsource: Code App
+
+- name: AE-RES-S003-Approved
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnevent: Approval Granted
+  enmax_acdnfromstate: Pending
+  enmax_acdntostate: Approved
+  enmax_acdnsource: Code App
+
+- name: AE-RES-S004-Created
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnevent: Created
+  enmax_acdntostate: Pending
+  enmax_acdnsource: Code App
+
+- name: AE-RES-S005-Created
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnevent: Created
+  enmax_acdntostate: Pending
+  enmax_acdnsource: Code App
+
+- name: AE-RES-S005-Declined
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnevent: Approval Denied
+  enmax_acdnfromstate: Pending
+  enmax_acdntostate: Declined
+  enmax_acdnreason: Scope not aligned with current project budget
+  enmax_acdnsource: Code App
+
+- name: AE-RES-S006-Created
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnevent: Created
+  enmax_acdntostate: Pending
+  enmax_acdnsource: Code App
+
+- name: AE-RES-S006-Approved
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnevent: Approval Granted
+  enmax_acdnfromstate: Pending
+  enmax_acdntostate: Approved
+  enmax_acdnsource: Code App
+
+- name: AE-RES-S008-Created
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnevent: Created
+  enmax_acdntostate: Pending
+  enmax_acdnsource: Code App
+
+- name: AE-RES-S008-Approved
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnevent: Approval Granted
+  enmax_acdnfromstate: Pending
+  enmax_acdntostate: Approved
+  enmax_acdnsource: Code App
+
+- name: AE-RES-S010-Override
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnevent: Override Used
+  enmax_acdntostate: Approved
+  enmax_acdnreason: System flagged 7 drawings exceeds soft limit of 5; override approved by engineering manager
+  enmax_acdnsource: Code App
+
+- name: AE-RES-S011-Declined
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnevent: Approval Denied
+  enmax_acdnfromstate: Pending
+  enmax_acdntostate: Declined
+  enmax_acdnreason: Covered by existing master document register
+  enmax_acdnsource: Code App
+
+- name: AE-RES-S014-Cancelled
+  enmax_acdnsubjecttable: enmax_autocadreservation
+  enmax_acdnevent: State Changed
+  enmax_acdnfromstate: Pending
+  enmax_acdntostate: Cancelled
+  enmax_acdnreason: Project cancelled due to budget constraints
+  enmax_acdnsource: Code App
+
+# Drawing state change events (20)
+- name: AE-DRW-GG-CF-ACS-PD-005-Checkout
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: GG-CF-ACS-PD-005
+  enmax_acdnevent: State Changed
+  enmax_acdnfromstate: Available
+  enmax_acdntostate: Checked Out
+  enmax_acdnsource: Code App
+
+- name: AE-DRW-GG-CF-ACS-PD-005-AwaitingValidation
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: GG-CF-ACS-PD-005
+  enmax_acdnevent: State Changed
+  enmax_acdnfromstate: Checked Out
+  enmax_acdntostate: Awaiting Validation
+  enmax_acdnsource: Code App
+
+- name: AE-DRW-GG-CF-ACS-PD-006-Checkout
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: GG-CF-ACS-PD-006
+  enmax_acdnevent: State Changed
+  enmax_acdnfromstate: Available
+  enmax_acdntostate: Checked Out
+  enmax_acdnsource: Code App
+
+- name: AE-DRW-GW-GN-ABB-PD-004-Checkout
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: GW-GN-ABB-PD-004
+  enmax_acdnevent: State Changed
+  enmax_acdnfromstate: Available
+  enmax_acdntostate: Checked Out
+  enmax_acdnsource: Code App
+
+- name: AE-DRW-GW-GN-ABB-PD-010-Void
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: GW-GN-ABB-PD-010
+  enmax_acdnevent: State Changed
+  enmax_acdnfromstate: Available
+  enmax_acdntostate: Void
+  enmax_acdnreason: Drawing superseded by updated design
+  enmax_acdnsource: Code App
+
+- name: AE-DRW-GG-CF-ACS-PD-008-Obsolete
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: GG-CF-ACS-PD-008
+  enmax_acdnevent: State Changed
+  enmax_acdnfromstate: Available
+  enmax_acdntostate: Obsolete
+  enmax_acdnreason: Superseded by revised process design
+  enmax_acdnsource: Code App
+
+- name: AE-DRW-WD-KH-ABB-PD-001-Obsolete
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: WD-KH-ABB-PD-001
+  enmax_acdnevent: State Changed
+  enmax_acdnfromstate: Available
+  enmax_acdntostate: Obsolete
+  enmax_acdnreason: Replaced by new KH blowdown design
+  enmax_acdnsource: Code App
+
+- name: AE-DRW-WD-KH-ACB-LD-003-Checkout
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: WD-KH-ACB-LD-003
+  enmax_acdnevent: State Changed
+  enmax_acdnfromstate: Available
+  enmax_acdntostate: Checked Out
+  enmax_acdnsource: Code App
+
+- name: AE-DRW-DG-VS-ACS-PD-005-Checkout
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: DG-VS-ACS-PD-005
+  enmax_acdnevent: State Changed
+  enmax_acdnfromstate: Available
+  enmax_acdntostate: Checked Out
+  enmax_acdnsource: Code App
+
+- name: AE-DRW-GG-CV-ACB-LP-004-Checkout
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: GG-CV-ACB-LP-004
+  enmax_acdnevent: State Changed
+  enmax_acdnfromstate: Available
+  enmax_acdntostate: Checked Out
+  enmax_acdnsource: Code App
+
+- name: AE-DRW-WD-TB-ACS-LD-005-Checkout
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: WD-TB-ACS-LD-005
+  enmax_acdnevent: State Changed
+  enmax_acdnfromstate: Available
+  enmax_acdntostate: Checked Out
+  enmax_acdnsource: Code App
+
+- name: AE-DRW-DG-ST-ACB-SD-003-Checkout
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: DG-ST-ACB-SD-003
+  enmax_acdnevent: State Changed
+  enmax_acdnfromstate: Available
+  enmax_acdntostate: Checked Out
+  enmax_acdnsource: Code App
+
+- name: AE-DRW-GG-CF-ACS-PD-001-Created
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: GG-CF-ACS-PD-001
+  enmax_acdnevent: Created
+  enmax_acdntostate: Available
+  enmax_acdnsource: Flow
+
+- name: AE-DRW-GG-CF-ACS-PD-002-Created
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: GG-CF-ACS-PD-002
+  enmax_acdnevent: Created
+  enmax_acdntostate: Available
+  enmax_acdnsource: Flow
+
+- name: AE-DRW-GW-GN-ABB-PD-001-Created
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: GW-GN-ABB-PD-001
+  enmax_acdnevent: Created
+  enmax_acdntostate: Available
+  enmax_acdnsource: Flow
+
+- name: AE-DRW-WD-KH-ACB-LD-001-Created
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: WD-KH-ACB-LD-001
+  enmax_acdnevent: Created
+  enmax_acdntostate: Available
+  enmax_acdnsource: Flow
+
+- name: AE-DRW-DG-VS-ACS-PD-001-Created
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: DG-VS-ACS-PD-001
+  enmax_acdnevent: Created
+  enmax_acdntostate: Available
+  enmax_acdnsource: Flow
+
+- name: AE-DRW-WD-TB-ACS-LD-001-Created
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: WD-TB-ACS-LD-001
+  enmax_acdnevent: Created
+  enmax_acdntostate: Available
+  enmax_acdnsource: Flow
+
+- name: AE-DRW-GG-CV-ACB-LP-001-Created
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: GG-CV-ACB-LP-001
+  enmax_acdnevent: Created
+  enmax_acdntostate: Available
+  enmax_acdnsource: Flow
+
+- name: AE-DRW-GG-CV-ABS-SD-001-Created
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: GG-CV-ABS-SD-001
+  enmax_acdnevent: Created
+  enmax_acdntostate: Available
+  enmax_acdnsource: Flow
+
+# Configuration and reference data events (15)
+- name: AE-CFG-MaxDrawingsPerReservation-Changed
+  enmax_acdnsubjecttable: enmax_autocadappconfig
+  enmax_acdnsubjectid: MaxDrawingsPerReservation
+  enmax_acdnevent: Config Changed
+  enmax_acdnfromstate: '5'
+  enmax_acdntostate: '20'
+  enmax_acdnreason: Increased limit to support large project packages
+  enmax_acdnsource: Code App
+
+- name: AE-CFG-CheckoutDueDays-Changed
+  enmax_acdnsubjecttable: enmax_autocadappconfig
+  enmax_acdnsubjectid: CheckoutDueDays
+  enmax_acdnevent: Config Changed
+  enmax_acdnfromstate: '14'
+  enmax_acdntostate: '21'
+  enmax_acdnreason: Extended checkout period for large drawing sets
+  enmax_acdnsource: Code App
+
+- name: AE-REF-Business-DE-Added
+  enmax_acdnsubjecttable: enmax_autocadbusiness
+  enmax_acdnsubjectid: DE
+  enmax_acdnevent: Reference Data Changed
+  enmax_acdntostate: Active
+  enmax_acdnreason: District Energy business unit added to system
+  enmax_acdnsource: Code App
+
+- name: AE-REF-Asset-ST-Updated
+  enmax_acdnsubjecttable: enmax_autocadasset
+  enmax_acdnsubjectid: ST
+  enmax_acdnevent: Reference Data Changed
+  enmax_acdnfromstate: Stoney Transit
+  enmax_acdntostate: ST - Stoney Transit
+  enmax_acdnreason: Display name updated to include code prefix
+  enmax_acdnsource: Code App
+
+- name: AE-REF-Kind-PD-Updated
+  enmax_acdnsubjecttable: enmax_autocadkind
+  enmax_acdnsubjectid: PD
+  enmax_acdnevent: Reference Data Changed
+  enmax_acdnreason: Description updated for clarity
+  enmax_acdnsource: Code App
+
+- name: AE-CHECKOUT-GG-CF-ACS-PD-005-ForceIn
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: GG-CF-ACS-PD-005
+  enmax_acdnevent: Force Checked In
+  enmax_acdnfromstate: Checked Out
+  enmax_acdntostate: Available
+  enmax_acdnreason: Checked in by admin after 30-day overdue notification
+  enmax_acdnsource: Flow
+
+- name: AE-CHECKOUT-WD-KH-ACB-LD-003-ValidationApproved
+  enmax_acdnsubjecttable: enmax_autocaddrawing
+  enmax_acdnsubjectid: WD-KH-ACB-LD-003
+  enmax_acdnevent: State Changed
+  enmax_acdnfromstate: Awaiting Validation
+  enmax_acdntostate: Available
+  enmax_acdnreason: Validation approved — revision B accepted
+  enmax_acdnsource: Code App
+
+- name: AE-CFG-StaleCheckoutDays-Changed
+  enmax_acdnsubjecttable: enmax_autocadappconfig
+  enmax_acdnsubjectid: StaleCheckoutDays
+  enmax_acdnevent: Config Changed
+  enmax_acdnfromstate: '30'
+  enmax_acdntostate: '45'
+  enmax_acdnsource: Code App
+
+- name: AE-CFG-SharedMailbox-Changed
+  enmax_acdnsubjecttable: enmax_autocadappconfig
+  enmax_acdnsubjectid: SharedMailboxAddress
+  enmax_acdnevent: Config Changed
+  enmax_acdnreason: Updated shared mailbox for notification routing
+  enmax_acdnsource: Code App
+
+- name: AE-REF-Vendor-Flowserve-Updated
+  enmax_acdnsubjecttable: enmax_autocadvendor
+  enmax_acdnsubjectid: Flowserve
+  enmax_acdnevent: Reference Data Changed
+  enmax_acdnreason: Vendor record validated against procurement register
+  enmax_acdnsource: Code App
+
+- name: AE-REF-Domain-EEL-Updated
+  enmax_acdnsubjecttable: enmax_autocaddomain
+  enmax_acdnsubjectid: EEL
+  enmax_acdnevent: Reference Data Changed
+  enmax_acdnreason: Description updated to match current engineering nomenclature
+  enmax_acdnsource: Code App
+
+- name: AE-REF-System-ABF-Updated
+  enmax_acdnsubjecttable: enmax_autocadsystem
+  enmax_acdnsubjectid: ABF
+  enmax_acdnevent: Reference Data Changed
+  enmax_acdnreason: System description updated following equipment rebranding
+  enmax_acdnsource: Code App
+
+- name: AE-REF-RecordPhase-IFD-Added
+  enmax_acdnsubjecttable: enmax_autocadrecordphase
+  enmax_acdnsubjectid: IFD
+  enmax_acdnevent: Reference Data Changed
+  enmax_acdntostate: Active
+  enmax_acdnreason: IFD phase added to support decommissioning projects
+  enmax_acdnsource: Code App
+
+- name: AE-CFG-ApproverEmail-Changed
+  enmax_acdnsubjecttable: enmax_autocadappconfig
+  enmax_acdnsubjectid: DefaultApproverEmail
+  enmax_acdnevent: Config Changed
+  enmax_acdnreason: Default approver updated after team restructuring
+  enmax_acdnsource: Code App
+
+- name: AE-CFG-MaxSheetsPerDrawing-Changed
+  enmax_acdnsubjecttable: enmax_autocadappconfig
+  enmax_acdnsubjectid: MaxSheetsPerDrawing
+  enmax_acdnevent: Config Changed
+  enmax_acdnfromstate: '50'
+  enmax_acdntostate: '100'
+  enmax_acdnreason: Increased to support large drawing packages
+  enmax_acdnsource: Code App

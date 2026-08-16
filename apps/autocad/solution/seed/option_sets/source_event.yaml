@@ -1,0 +1,23 @@
+schema_name: enmax_acdn_sourceevent
+display_name: Source Event
+values:
+  - value: 0
+    label: None
+  - value: 1
+    label: Reservation Approved
+  - value: 2
+    label: Reservation Declined
+  - value: 3
+    label: Check In Validated
+  - value: 4
+    label: Check In Declined
+  - value: 5
+    label: Stale Checkout Reminder
+  - value: 6
+    label: Broadcast Published
+  - value: 7
+    label: Force Check In
+  - value: 8
+    label: System Message
+  - value: 9
+    label: Reservation Pending

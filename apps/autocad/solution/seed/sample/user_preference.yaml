@@ -1,0 +1,10 @@
+table: enmax_autocaduserpreference
+natural_key_columns: [name]
+# Requires SEED_USER_EMAIL set in .env.local
+lookups:
+  user: {table: systemuser, key: internalemailaddress, source_column: user_email}
+rows:
+- name: '{{ SEED_USER_EMAIL | default(''dev-user'') }}-prefs'
+  user_email: '{{ SEED_USER_EMAIL | default('''') }}'
+  enmax_acdnemailenabled: true
+  enmax_acdnteamsenabled: true

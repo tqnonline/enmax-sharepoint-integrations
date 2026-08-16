@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<savedqueries xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <savedquery>
+    <IsCustomizable>1</IsCustomizable>
+    <CanBeDeleted>0</CanBeDeleted>
+    <isquickfindquery>1</isquickfindquery>
+    <isprivate>0</isprivate>
+    <isdefault>1</isdefault>
+    <savedqueryid>{410ed5b0-701b-4641-9164-d96ed7fef264}</savedqueryid>
+    <layoutxml>
+      <grid name="resultset" jump="enmax_acdnnumber" select="1" icon="1" preview="1">
+        <row name="result" id="enmax_autocaddrawingid">
+          <cell name="enmax_acdnnumber" width="300" />
+          <cell name="createdon" width="125" />
+        </row>
+      </grid>
+    </layoutxml>
+    <querytype>4</querytype>
+    <fetchxml>
+      <fetch version="1.0" mapping="logical">
+        <entity name="enmax_autocaddrawing">
+          <attribute name="enmax_autocaddrawingid" />
+          <attribute name="enmax_acdnnumber" />
+          <attribute name="createdon" />
+          <order attribute="enmax_acdnnumber" descending="false" />
+          <filter type="and">
+            <condition attribute="statecode" operator="eq" value="0" />
+          </filter>
+          <filter type="or" isquickfindfields="1">
+            <condition attribute="enmax_acdnnumber" operator="like" value="{0}" />
+          </filter>
+        </entity>
+      </fetch>
+    </fetchxml>
+    <IntroducedVersion>1.0.0.0</IntroducedVersion>
+    <LocalizedNames>
+      <LocalizedName description="Quick Find Active Drawings" languagecode="1033" />
+    </LocalizedNames>
+  </savedquery>
+</savedqueries>

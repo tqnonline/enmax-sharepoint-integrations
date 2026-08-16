@@ -1,0 +1,28 @@
+table: enmax_autocadbusiness
+natural_key_columns:
+- code
+rows:
+- code: DE
+  display_name: District Energy
+  status: 1
+  sort_order: 10
+- code: DG
+  display_name: Distributed Generation (DSTGN)
+  status: 1
+  sort_order: 20
+- code: GG
+  display_name: Gas Generation
+  status: 1
+  sort_order: 30
+- code: GW
+  display_name: Generation
+  status: 1
+  sort_order: 40
+- code: HY
+  display_name: Hydro
+  status: 1
+  sort_order: 50
+- code: WD
+  display_name: Wind
+  status: 1
+  sort_order: 60
