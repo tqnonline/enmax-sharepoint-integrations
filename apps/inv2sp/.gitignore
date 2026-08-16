@@ -1,0 +1,48 @@
+# Handoff artifacts — generated for stakeholder distribution, never committed.
+# Includes the production prerequisites document, cover email, and any
+# environment-specific export used only to produce them.
+handoff/
+
+# Internal planning reference — captures design discussion history.
+# Kept locally for continuity across sessions; not part of the delivered source.
+PLAN.md
+/planning/
+
+# PowerShell / Az CLI
+*.pfx
+*.publishsettings
+*.azcopy
+
+# Bicep / ARM
+*.bicepparam.local.json
+infra/**/*.local.bicep
+
+# Secrets and local overrides — never commit real values
+**/local.settings.json
+**/*.env
+**/*.env.local
+.env*
+!*.env.example
+
+# Logic App Standard local run artifacts
+workflows/**/.debug/
+workflows/**/bin/
+workflows/**/obj/
+*.zip
+
+# uv / Python (docs generation only)
+.venv/
+__pycache__/
+*.pyc
+.uv-cache/
+
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+
+# OS temp
+*.log
+*.tmp

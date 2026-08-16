@@ -1,0 +1,11 @@
+self-hosted-runner:
+  # ENMAX-provided VNET-injected runners (org's "Technology Standards"
+  # deployment guide - Available Runners table). Declared here purely so
+  # actionlint doesn't false-positive on labels it can't know about -
+  # these are org-managed runner groups, not created/configured by this
+  # repository.
+  labels:
+    - windows-latest-enmax-corp
+    - ubuntu-latest-enmax-corp
+    - windows-latest-enmax-corp-ue1
+    - ubuntu-latest-enmax-corp-ue1

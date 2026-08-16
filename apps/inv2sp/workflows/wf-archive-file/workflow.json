@@ -1,0 +1,120 @@
+{
+  "kind": "Stateful",
+  "definition": {
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {},
+    "triggers": {
+      "manual": {
+        "type": "Request",
+        "kind": "Http",
+        "inputs": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "sourcePath": {
+                "type": "string"
+              },
+              "fileName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "sourcePath",
+              "fileName"
+            ]
+          }
+        },
+        "operationOptions": "None"
+      }
+    },
+    "actions": {
+      "Is_Archiving_Enabled": {
+        "type": "If",
+        "description": "FILESHARE_ARCHIVE_FOLDER is deliberately empty by default (see infra params) until a real path is confirmed for an environment - prod as of this writing has no confirmed archive path (its file share root is an entirely different share from dev's). This subflow safely no-ops rather than failing when archiving isn't configured, so wf-copy-invoices can call it unconditionally in every environment.",
+        "expression": {
+          "not": {
+            "equals": [
+              "@coalesce(appsetting('FILESHARE_ARCHIVE_FOLDER'), '')",
+              ""
+            ]
+          }
+        },
+        "actions": {
+          "Compose_Destination_Path": {
+            "type": "Compose",
+            "inputs": "@{concat('/', appsetting('FILESHARE_ARCHIVE_FOLDER'), '/', triggerBody()?['fileName'])}",
+            "runAfter": {}
+          },
+          "Copy_To_Archive": {
+            "type": "ApiConnection",
+            "description": "REST shape (POST /datasets/default/copyFile, source/destination/overwrite as query params) confirmed live against the real connector, 2026-08-14 - a throwaway test against an existing, already-processed disposable fixture (TestInvoice_Word_4.docx) returned a clean, specific 403 ('credentials for this connection do not have access to /Archive') rather than a malformed-request error, proving the request reached the actual file-system backend and was evaluated on permissions, not rejected as badly formed. Currently blocked by an external file-share ACL, not by this action's shape - see docs/operations/known-issues.md. overwrite=true per user decision (2026-08-14): a same-named file already in Archive gets overwritten, not uniquified or treated as a failure.",
+            "inputs": {
+              "host": {
+                "connection": {
+                  "referenceName": "filesystem"
+                }
+              },
+              "method": "post",
+              "path": "/datasets/default/copyFile",
+              "queries": {
+                "source": "@triggerBody()?['sourcePath']",
+                "destination": "@outputs('Compose_Destination_Path')",
+                "overwrite": true
+              }
+            },
+            "runAfter": {
+              "Compose_Destination_Path": [
+                "Succeeded"
+              ]
+            }
+          },
+          "Delete_Source_After_Archive": {
+            "type": "ApiConnection",
+            "description": "REST shape NOT yet empirically confirmed (Copy_To_Archive fails first on the current permission blocker, so this action has never actually executed live) - best-effort guess following this connector's established by-id convention (GetFileContent's 'id' parameter accepts an encoded path directly, same as this). Only runs if Copy_To_Archive succeeded - never delete the source until the archive copy is confirmed to exist, so a failed/partial archive never loses the file entirely.",
+            "inputs": {
+              "host": {
+                "connection": {
+                  "referenceName": "filesystem"
+                }
+              },
+              "method": "delete",
+              "path": "/datasets/default/files/@{encodeURIComponent(triggerBody()?['sourcePath'])}"
+            },
+            "runAfter": {
+              "Copy_To_Archive": [
+                "Succeeded"
+              ]
+            }
+          }
+        },
+        "else": {
+          "actions": {}
+        },
+        "runAfter": {}
+      },
+      "Response": {
+        "type": "Response",
+        "kind": "Http",
+        "description": "Always returns 200 regardless of archive outcome - archiving is a best-effort, secondary step. The file's Succeeded status in ProcessedFiles is already written by the caller BEFORE this subflow is invoked, and must never be affected by whether the archive-move itself succeeds or fails.",
+        "inputs": {
+          "statusCode": 200,
+          "body": {
+            "archivingEnabled": "@actions('Is_Archiving_Enabled')?['status']",
+            "copyStatus": "@actions('Copy_To_Archive')?['status']",
+            "deleteStatus": "@actions('Delete_Source_After_Archive')?['status']"
+          }
+        },
+        "runAfter": {
+          "Is_Archiving_Enabled": [
+            "Succeeded",
+            "Failed",
+            "Skipped",
+            "TimedOut"
+          ]
+        }
+      }
+    },
+    "outputs": {}
+  }
+}

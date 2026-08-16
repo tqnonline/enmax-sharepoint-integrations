@@ -1,0 +1,65 @@
+{
+  "managedApiConnections": {
+    "filesystem": {
+      "api": {
+        "id": "/subscriptions/@appsetting('WORKFLOWS_SUBSCRIPTION_ID')/providers/Microsoft.Web/locations/@appsetting('WORKFLOWS_LOCATION_NAME')/managedApis/filesystem"
+      },
+      "connection": {
+        "id": "/subscriptions/@appsetting('WORKFLOWS_SUBSCRIPTION_ID')/resourceGroups/@appsetting('WORKFLOWS_RESOURCE_GROUP_NAME')/providers/Microsoft.Web/connections/@appsetting('FILESYSTEM_CONNECTION_NAME')"
+      },
+      "connectionRuntimeUrl": "@appsetting('FILESYSTEM_CONNECTION_RUNTIME_URL')",
+      "authentication": {
+        "type": "ManagedServiceIdentity"
+      }
+    },
+    "sharepointonline": {
+      "api": {
+        "id": "/subscriptions/@appsetting('WORKFLOWS_SUBSCRIPTION_ID')/providers/Microsoft.Web/locations/@appsetting('WORKFLOWS_LOCATION_NAME')/managedApis/sharepointonline"
+      },
+      "connection": {
+        "id": "/subscriptions/@appsetting('WORKFLOWS_SUBSCRIPTION_ID')/resourceGroups/@appsetting('WORKFLOWS_RESOURCE_GROUP_NAME')/providers/Microsoft.Web/connections/@appsetting('SHAREPOINTONLINE_CONNECTION_NAME')"
+      },
+      "connectionRuntimeUrl": "@appsetting('SHAREPOINTONLINE_CONNECTION_RUNTIME_URL')",
+      "authentication": {
+        "type": "ManagedServiceIdentity"
+      }
+    },
+    "office365": {
+      "api": {
+        "id": "/subscriptions/@appsetting('WORKFLOWS_SUBSCRIPTION_ID')/providers/Microsoft.Web/locations/@appsetting('WORKFLOWS_LOCATION_NAME')/managedApis/office365"
+      },
+      "connection": {
+        "id": "/subscriptions/@appsetting('WORKFLOWS_SUBSCRIPTION_ID')/resourceGroups/@appsetting('WORKFLOWS_RESOURCE_GROUP_NAME')/providers/Microsoft.Web/connections/@appsetting('OFFICE365_CONNECTION_NAME')"
+      },
+      "connectionRuntimeUrl": "@appsetting('OFFICE365_CONNECTION_RUNTIME_URL')",
+      "authentication": {
+        "type": "ManagedServiceIdentity"
+      }
+    }
+  },
+  "serviceProviderConnections": {
+    "azureTableConnection": {
+      "displayName": "INV2SP state tables",
+      "parameterValues": {
+        "connectionString": "@appsetting('TABLES_CONNECTION_STRING')"
+      },
+      "parameterSetName": "connectionString",
+      "serviceProvider": {
+        "id": "/serviceProviders/azureTables"
+      }
+    },
+    "keyvault": {
+      "displayName": "INV2SP Key Vault",
+      "parameterValues": {
+        "VaultUri": "@appsetting('KEY_VAULT_URI')",
+        "authProvider": {
+          "Type": "ManagedServiceIdentity"
+        }
+      },
+      "parameterSetName": "ManagedServiceIdentity",
+      "serviceProvider": {
+        "id": "/serviceProviders/keyVault"
+      }
+    }
+  }
+}

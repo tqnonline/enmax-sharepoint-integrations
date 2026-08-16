@@ -1,0 +1,314 @@
+{
+  "kind": "Stateful",
+  "definition": {
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {},
+    "triggers": {
+      "Recurrence": {
+        "type": "Recurrence",
+        "recurrence": {
+          "frequency": "Day",
+          "interval": 1,
+          "schedule": {
+            "hours": [
+              7
+            ],
+            "minutes": [
+              0
+            ]
+          },
+          "timeZone": "Mountain Standard Time"
+        }
+      }
+    },
+    "actions": {
+      "Initialize_PeriodEnd": {
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [
+            {
+              "name": "PeriodEndUtc",
+              "type": "string",
+              "value": "@{utcNow()}"
+            }
+          ]
+        },
+        "runAfter": {}
+      },
+      "Initialize_PeriodStart": {
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [
+            {
+              "name": "PeriodStartUtc",
+              "type": "string",
+              "value": "@{subtractFromTime(variables('PeriodEndUtc'), 24, 'Hour')}"
+            }
+          ]
+        },
+        "runAfter": {
+          "Initialize_PeriodEnd": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Query_RunLog_Period": {
+        "type": "ServiceProvider",
+        "description": "No partition restriction - RunLog's PartitionKey is monthly, and querying purely on StartTimeUtc across the whole table is simplest and cheap at this scale (max ~96 runs/day). Used ONLY for run-level metrics (runsExecuted/runsWithIssues) - file-level counts below no longer sum RunLog's per-run counters (see 2026-08-11 redesign note on Query_Copied_Period).",
+        "inputs": {
+          "parameters": {
+            "tableName": "RunLog",
+            "filter": "@{concat('StartTimeUtc ge ''', variables('PeriodStartUtc'), '''')}"
+          },
+          "serviceProviderConfiguration": {
+            "connectionName": "azureTableConnection",
+            "operationId": "queryEntities",
+            "serviceProviderId": "/serviceProviders/azureTables"
+          }
+        },
+        "runAfter": {
+          "Initialize_PeriodStart": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Query_Failed_Runs_Period": {
+        "type": "ServiceProvider",
+        "description": "Separate targeted query rather than filtering the already-fetched Query_RunLog_Period results client-side (no filter() function exists) - length() of this query's own results gives the failed-run count directly.",
+        "inputs": {
+          "parameters": {
+            "tableName": "RunLog",
+            "filter": "@{concat('StartTimeUtc ge ''', variables('PeriodStartUtc'), ''' and Outcome ne ''Succeeded''')}"
+          },
+          "serviceProviderConfiguration": {
+            "connectionName": "azureTableConnection",
+            "operationId": "queryEntities",
+            "serviceProviderId": "/serviceProviders/azureTables"
+          }
+        },
+        "runAfter": {
+          "Query_RunLog_Period": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Query_Copied_Period": {
+        "type": "ServiceProvider",
+        "description": "Redesign (2026-08-11 - real bug found live: a dev-testing day produced 6 RunLog rows where FilesSeen was incremented per-file but no terminal bucket was ever recorded for those files, because the per-run counters summed here previously counted ATTEMPTS across every run in the period, not DISTINCT files - a file retried across multiple scheduled polls (or, worse, redeployed/retested code) got counted multiple times, and the count could never reconcile with the CSV attachment (built from ProcessedFiles' one-row-per-distinct-file current state). Fixed by deriving Copied/Failed/Abandoned directly from ProcessedFiles.Status (mutually exclusive - a distinct file has exactly one current status), the SAME source the CSV uses, so the headline numbers and the attachment always agree by construction.",
+        "inputs": {
+          "parameters": {
+            "tableName": "ProcessedFiles",
+            "filter": "@{concat('LastAttemptUtc ge ''', variables('PeriodStartUtc'), ''' and Status eq ''Succeeded''')}"
+          },
+          "serviceProviderConfiguration": {
+            "connectionName": "azureTableConnection",
+            "operationId": "queryEntities",
+            "serviceProviderId": "/serviceProviders/azureTables"
+          }
+        },
+        "runAfter": {
+          "Query_Failed_Runs_Period": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Query_Failed_Files_Period": {
+        "type": "ServiceProvider",
+        "description": "Distinct files whose CURRENT (latest) status is Failed - i.e. genuinely still stuck/retrying as of now, not every failure attempt that happened in the period (a file that failed twice then succeeded is counted once, under Copied, matching the CSV/ProcessedFiles - see Query_Copied_Period rationale).",
+        "inputs": {
+          "parameters": {
+            "tableName": "ProcessedFiles",
+            "filter": "@{concat('LastAttemptUtc ge ''', variables('PeriodStartUtc'), ''' and Status eq ''Failed''')}"
+          },
+          "serviceProviderConfiguration": {
+            "connectionName": "azureTableConnection",
+            "operationId": "queryEntities",
+            "serviceProviderId": "/serviceProviders/azureTables"
+          }
+        },
+        "runAfter": {
+          "Query_Copied_Period": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Query_Abandoned_Period": {
+        "type": "ServiceProvider",
+        "description": "Distinct files that transitioned to Abandoned during THIS period specifically (time-bounded) - distinct from Query_Abandoned_Backlog below, which is the full all-time unresolved list carried in every digest regardless of when abandonment happened.",
+        "inputs": {
+          "parameters": {
+            "tableName": "ProcessedFiles",
+            "filter": "@{concat('LastAttemptUtc ge ''', variables('PeriodStartUtc'), ''' and Status eq ''Abandoned''')}"
+          },
+          "serviceProviderConfiguration": {
+            "connectionName": "azureTableConnection",
+            "operationId": "queryEntities",
+            "serviceProviderId": "/serviceProviders/azureTables"
+          }
+        },
+        "runAfter": {
+          "Query_Failed_Files_Period": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Query_Skipped_Events_Period": {
+        "type": "ServiceProvider",
+        "description": "'Already on file' has no representation in ProcessedFiles at all (a skip is a no-op - nothing is upserted), so it is the one metric that must come from the new FileRunEvents audit table (added 2026-08-11 - user request: durable per-file-per-run tracking of what every run identified/ingested, kept indefinitely). A file skipped on every 15-min poll for the whole period produces many event rows for the SAME file - deduplicated to a distinct-file count below (Select_Skipped_DedupKeys + Compose_Distinct_Skipped), matching the same 'count files, not events' philosophy as the ProcessedFiles-based queries above.",
+        "inputs": {
+          "parameters": {
+            "tableName": "FileRunEvents",
+            "filter": "@{concat('EventTimeUtc ge ''', variables('PeriodStartUtc'), ''' and Outcome eq ''Skipped''')}"
+          },
+          "serviceProviderConfiguration": {
+            "connectionName": "azureTableConnection",
+            "operationId": "queryEntities",
+            "serviceProviderId": "/serviceProviders/azureTables"
+          }
+        },
+        "runAfter": {
+          "Query_Abandoned_Period": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Select_Skipped_DedupKeys": {
+        "type": "Select",
+        "inputs": {
+          "from": "@body('Query_Skipped_Events_Period')?['entities']",
+          "select": "@item()?['DedupKey']"
+        },
+        "runAfter": {
+          "Query_Skipped_Events_Period": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Compose_Distinct_Skipped": {
+        "type": "Compose",
+        "description": "union() against itself is the idiomatic WDL dedup trick (there is no distinct() function, and createArray() cannot be called with zero arguments - real bug found live, 2026-08-11: createArray() with no args throws InvalidTemplate, fixed by using the array itself as both union operands instead of an empty-array placeholder). Collapses repeat Skipped events for the same file (e.g. one already-copied file re-skipped on every 15-min poll all day) down to one count per distinct DedupKey.",
+        "inputs": "@union(body('Select_Skipped_DedupKeys'), body('Select_Skipped_DedupKeys'))",
+        "runAfter": {
+          "Select_Skipped_DedupKeys": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Compose_TotalFilesSeen": {
+        "type": "Compose",
+        "description": "'Invoices detected' redefined (2026-08-11) as the count of distinct files with ANY activity this period (Copied + Failed + Abandoned + Skipped) - these four buckets are mutually exclusive per distinct file (a file's current ProcessedFiles status is exactly one of Succeeded/Failed/Abandoned, and Skipped-in-period only ever applies to files whose LastAttemptUtc falls outside this period, i.e. no overlap), so this sum has no double-counting.",
+        "inputs": "@add(add(length(body('Query_Copied_Period')?['entities']), length(body('Query_Failed_Files_Period')?['entities'])), add(length(body('Query_Abandoned_Period')?['entities']), length(outputs('Compose_Distinct_Skipped'))))",
+        "runAfter": {
+          "Compose_Distinct_Skipped": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Query_Files_Period": {
+        "type": "ServiceProvider",
+        "description": "Full per-file detail for the CSV attachment - every file touched (copied, failed, or abandoned) in this period, regardless of current status. Unfiltered by Status because ProcessedFiles only ever stores Succeeded/Failed/Abandoned, so this is already exactly the union of Query_Copied_Period + Query_Failed_Files_Period + Query_Abandoned_Period - kept as its own query since it needs full row detail, not just a count.",
+        "inputs": {
+          "parameters": {
+            "tableName": "ProcessedFiles",
+            "filter": "@{concat('LastAttemptUtc ge ''', variables('PeriodStartUtc'), '''')}"
+          },
+          "serviceProviderConfiguration": {
+            "connectionName": "azureTableConnection",
+            "operationId": "queryEntities",
+            "serviceProviderId": "/serviceProviders/azureTables"
+          }
+        },
+        "runAfter": {
+          "Compose_TotalFilesSeen": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Query_Abandoned_Backlog": {
+        "type": "ServiceProvider",
+        "description": "Carried forward in every digest until resolved (decision) - not time-bounded, so a failure never silently scrolls out of view after 24h.",
+        "inputs": {
+          "parameters": {
+            "tableName": "ProcessedFiles",
+            "filter": "Status eq 'Abandoned'"
+          },
+          "serviceProviderConfiguration": {
+            "connectionName": "azureTableConnection",
+            "operationId": "queryEntities",
+            "serviceProviderId": "/serviceProviders/azureTables"
+          }
+        },
+        "runAfter": {
+          "Query_Files_Period": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Compose_Health": {
+        "type": "Compose",
+        "inputs": "@{if(greater(length(body('Query_Abandoned_Backlog')?['entities']), 0), 'FAILED', if(greater(length(body('Query_Failed_Files_Period')?['entities']), 0), 'DEGRADED', 'OK'))}",
+        "runAfter": {
+          "Query_Abandoned_Backlog": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Build_CSV_Rows": {
+        "type": "Select",
+        "description": "CSV escaping per RFC 4180 (double-quote fields, double internal quotes) PLUS CSV/formula-injection defense (security review finding, 2026-08-02): a filename or error message beginning with =, +, -, or @ would be interpreted as a formula by Excel when the recipient opens the attachment. Prefixing a single quote neutralizes this in Excel without changing the visible text, applied only to the free-text fields that can originate from outside our control (file share names, connector-echoed error text) or embed them (destination paths).",
+        "inputs": {
+          "from": "@body('Query_Files_Period')?['entities']",
+          "select": "@{concat('\"', replace(if(or(startsWith(string(item()?['FileName']), '='), startsWith(string(item()?['FileName']), '+'), startsWith(string(item()?['FileName']), '-'), startsWith(string(item()?['FileName']), '@')), concat('''', string(item()?['FileName'])), string(item()?['FileName'])), '\"', '\"\"'), '\",\"', replace(if(or(startsWith(string(item()?['SourcePath']), '='), startsWith(string(item()?['SourcePath']), '+'), startsWith(string(item()?['SourcePath']), '-'), startsWith(string(item()?['SourcePath']), '@')), concat('''', string(item()?['SourcePath'])), string(item()?['SourcePath'])), '\"', '\"\"'), '\",\"', replace(if(or(startsWith(string(item()?['DestinationUrl']), '='), startsWith(string(item()?['DestinationUrl']), '+'), startsWith(string(item()?['DestinationUrl']), '-'), startsWith(string(item()?['DestinationUrl']), '@')), concat('''', string(item()?['DestinationUrl'])), string(item()?['DestinationUrl'])), '\"', '\"\"'), '\",\"', replace(if(or(startsWith(string(item()?['IntendedDestinationPath']), '='), startsWith(string(item()?['IntendedDestinationPath']), '+'), startsWith(string(item()?['IntendedDestinationPath']), '-'), startsWith(string(item()?['IntendedDestinationPath']), '@')), concat('''', string(item()?['IntendedDestinationPath'])), string(item()?['IntendedDestinationPath'])), '\"', '\"\"'), '\",\"', item()?['Status'], '\",\"', string(item()?['AttemptCount']), '\",\"', item()?['ErrorCategory'], '\",\"', replace(if(or(startsWith(string(item()?['ErrorMessage']), '='), startsWith(string(item()?['ErrorMessage']), '+'), startsWith(string(item()?['ErrorMessage']), '-'), startsWith(string(item()?['ErrorMessage']), '@')), concat('''', string(item()?['ErrorMessage'])), string(item()?['ErrorMessage'])), '\"', '\"\"'), '\",\"', item()?['RunId'], '\",\"', item()?['TriggerType'], '\",\"', coalesce(item()?['TriggeredByWorkflow'], 'Unknown'), '\",\"', string(item()?['LastAttemptUtc']), '\"')}"
+        },
+        "runAfter": {
+          "Compose_Health": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Compose_CSV_Content": {
+        "type": "Compose",
+        "description": "TriggeredByWorkflow column added 2026-08-11 (user request: CSV should show which WORKFLOW copied each file, not just RunId/TriggerType) - sourced from ProcessedFiles.TriggeredByWorkflow, populated by wf-copy-invoices from the caller's own workflow().name. coalesce(...,'Unknown') in Build_CSV_Rows covers rows written before this field existed.",
+        "inputs": "@{concat('FileName,SourcePath,DestinationUrl,IntendedDestinationPath,Status,AttemptCount,ErrorCategory,ErrorMessage,RunId,TriggerType,TriggeredByWorkflow,LastAttemptUtc', decodeUriComponent('%0D%0A'), join(body('Build_CSV_Rows'), decodeUriComponent('%0D%0A')))}",
+        "runAfter": {
+          "Build_CSV_Rows": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Call_Send_Digest_Email": {
+        "type": "Workflow",
+        "description": "Delegates all HTML branding/formatting to the single shared template (wf-send-digest-email), also used by wf-run-digest for immediate on-demand-run digests, so both always render identically (decision, 2026-08-10 - user request for proper branding/business-ready messaging). filesSeen/Copied/Skipped/Failed/filesAbandonedThisPeriod are now all distinct-file counts sourced from ProcessedFiles + FileRunEvents (2026-08-11 redesign) rather than summed RunLog attempt counters, so they always reconcile with the CSV attachment built from the same ProcessedFiles data.",
+        "inputs": {
+          "host": {
+            "workflow": {
+              "id": "wf-send-digest-email"
+            }
+          },
+          "body": {
+            "reportType": "Daily Digest",
+            "periodLabel": "@{concat('Period: ', formatDateTime(convertFromUtc(variables('PeriodStartUtc'), 'Mountain Standard Time'), 'yyyy-MM-dd HH:mm'), ' to ', formatDateTime(convertFromUtc(variables('PeriodEndUtc'), 'Mountain Standard Time'), 'yyyy-MM-dd HH:mm'), ' (America/Edmonton)')}",
+            "health": "@outputs('Compose_Health')",
+            "filesSeen": "@outputs('Compose_TotalFilesSeen')",
+            "filesCopied": "@length(body('Query_Copied_Period')?['entities'])",
+            "filesSkipped": "@length(outputs('Compose_Distinct_Skipped'))",
+            "filesFailed": "@length(body('Query_Failed_Files_Period')?['entities'])",
+            "filesAbandonedThisPeriod": "@length(body('Query_Abandoned_Period')?['entities'])",
+            "runsExecuted": "@length(body('Query_RunLog_Period')?['entities'])",
+            "runsWithIssues": "@length(body('Query_Failed_Runs_Period')?['entities'])",
+            "abandonedBacklog": "@body('Query_Abandoned_Backlog')?['entities']",
+            "csvContent": "@outputs('Compose_CSV_Content')",
+            "csvFileName": "@{concat('INV2SP-digest-', formatDateTime(convertFromUtc(variables('PeriodEndUtc'), 'Mountain Standard Time'), 'yyyyMMdd'), '.csv')}"
+          }
+        },
+        "runAfter": {
+          "Compose_CSV_Content": [
+            "Succeeded"
+          ]
+        }
+      }
+    },
+    "outputs": {}
+  }
+}

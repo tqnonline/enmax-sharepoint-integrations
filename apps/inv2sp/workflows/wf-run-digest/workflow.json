@@ -1,0 +1,173 @@
+{
+  "kind": "Stateful",
+  "definition": {
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {},
+    "triggers": {
+      "manual": {
+        "type": "Request",
+        "kind": "Http",
+        "inputs": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "runId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "runId"
+            ]
+          }
+        }
+      }
+    },
+    "actions": {
+      "Query_RunLog_ById": {
+        "type": "ServiceProvider",
+        "description": "RunId is unique (a fresh guid() per run, see Initialize_RunId in wf-copy-invoices) and is also the RowKey Upsert_RunLog writes - filtering on the RunId property directly (no PartitionKey restriction needed) returns exactly one row, matching wf-daily-digest's own 'no partition restriction... simplest at this scale' decision.",
+        "inputs": {
+          "parameters": {
+            "tableName": "RunLog",
+            "filter": "@{concat('RunId eq ''', triggerBody()?['runId'], '''')}"
+          },
+          "serviceProviderConfiguration": {
+            "connectionName": "azureTableConnection",
+            "operationId": "queryEntities",
+            "serviceProviderId": "/serviceProviders/azureTables"
+          }
+        },
+        "runAfter": {}
+      },
+      "Query_Files_ById": {
+        "type": "ServiceProvider",
+        "description": "Per-file detail for the CSV attachment - every file this specific run touched, regardless of current status (a later run could have since changed a file's status; this snapshot reflects what happened in THIS run specifically, matching the user's request for a digest scoped to 'that run itself').",
+        "inputs": {
+          "parameters": {
+            "tableName": "ProcessedFiles",
+            "filter": "@{concat('RunId eq ''', triggerBody()?['runId'], '''')}"
+          },
+          "serviceProviderConfiguration": {
+            "connectionName": "azureTableConnection",
+            "operationId": "queryEntities",
+            "serviceProviderId": "/serviceProviders/azureTables"
+          }
+        },
+        "runAfter": {
+          "Query_RunLog_ById": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Query_Abandoned_Backlog": {
+        "type": "ServiceProvider",
+        "description": "Same all-time, not-time-bounded backlog wf-daily-digest shows (decision: a failure never silently scrolls out of view) - an on-demand run's digest should surface the SAME unresolved backlog, not just this run's own files, so finance/accounting always sees the complete current picture regardless of which digest they're reading.",
+        "inputs": {
+          "parameters": {
+            "tableName": "ProcessedFiles",
+            "filter": "Status eq 'Abandoned'"
+          },
+          "serviceProviderConfiguration": {
+            "connectionName": "azureTableConnection",
+            "operationId": "queryEntities",
+            "serviceProviderId": "/serviceProviders/azureTables"
+          }
+        },
+        "runAfter": {
+          "Query_Files_ById": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Compose_RunRow": {
+        "type": "Compose",
+        "description": "The single RunLog row for this runId - Upsert_RunLog writes exactly one row per run, so first() is safe. Composed once so downstream expressions don't all repeat the same first(body(...)?['entities']) lookup.",
+        "inputs": "@first(body('Query_RunLog_ById')?['entities'])",
+        "runAfter": {
+          "Query_Abandoned_Backlog": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Compose_Health": {
+        "type": "Compose",
+        "inputs": "@{if(greater(length(body('Query_Abandoned_Backlog')?['entities']), 0), 'FAILED', if(greater(outputs('Compose_RunRow')?['FilesFailed'], 0), 'DEGRADED', 'OK'))}",
+        "runAfter": {
+          "Compose_RunRow": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Build_CSV_Rows": {
+        "type": "Select",
+        "description": "Same RFC 4180 + CSV/formula-injection escaping as wf-daily-digest's Build_CSV_Rows (security review, 2026-08-02) - duplicated here rather than factored out because Select actions cannot be shared across workflows without their own child-workflow call, which would be disproportionate for a single string-building step.",
+        "inputs": {
+          "from": "@body('Query_Files_ById')?['entities']",
+          "select": "@{concat('\"', replace(if(or(startsWith(string(item()?['FileName']), '='), startsWith(string(item()?['FileName']), '+'), startsWith(string(item()?['FileName']), '-'), startsWith(string(item()?['FileName']), '@')), concat('''', string(item()?['FileName'])), string(item()?['FileName'])), '\"', '\"\"'), '\",\"', replace(if(or(startsWith(string(item()?['SourcePath']), '='), startsWith(string(item()?['SourcePath']), '+'), startsWith(string(item()?['SourcePath']), '-'), startsWith(string(item()?['SourcePath']), '@')), concat('''', string(item()?['SourcePath'])), string(item()?['SourcePath'])), '\"', '\"\"'), '\",\"', replace(if(or(startsWith(string(item()?['DestinationUrl']), '='), startsWith(string(item()?['DestinationUrl']), '+'), startsWith(string(item()?['DestinationUrl']), '-'), startsWith(string(item()?['DestinationUrl']), '@')), concat('''', string(item()?['DestinationUrl'])), string(item()?['DestinationUrl'])), '\"', '\"\"'), '\",\"', replace(if(or(startsWith(string(item()?['IntendedDestinationPath']), '='), startsWith(string(item()?['IntendedDestinationPath']), '+'), startsWith(string(item()?['IntendedDestinationPath']), '-'), startsWith(string(item()?['IntendedDestinationPath']), '@')), concat('''', string(item()?['IntendedDestinationPath'])), string(item()?['IntendedDestinationPath'])), '\"', '\"\"'), '\",\"', item()?['Status'], '\",\"', string(item()?['AttemptCount']), '\",\"', item()?['ErrorCategory'], '\",\"', replace(if(or(startsWith(string(item()?['ErrorMessage']), '='), startsWith(string(item()?['ErrorMessage']), '+'), startsWith(string(item()?['ErrorMessage']), '-'), startsWith(string(item()?['ErrorMessage']), '@')), concat('''', string(item()?['ErrorMessage'])), string(item()?['ErrorMessage'])), '\"', '\"\"'), '\",\"', item()?['RunId'], '\",\"', item()?['TriggerType'], '\",\"', coalesce(item()?['TriggeredByWorkflow'], 'Unknown'), '\",\"', string(item()?['LastAttemptUtc']), '\"')}"
+        },
+        "runAfter": {
+          "Compose_Health": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Compose_CSV_Content": {
+        "type": "Compose",
+        "description": "TriggeredByWorkflow column added 2026-08-11 - see wf-daily-digest's Compose_CSV_Content for rationale.",
+        "inputs": "@{concat('FileName,SourcePath,DestinationUrl,IntendedDestinationPath,Status,AttemptCount,ErrorCategory,ErrorMessage,RunId,TriggerType,TriggeredByWorkflow,LastAttemptUtc', decodeUriComponent('%0D%0A'), join(body('Build_CSV_Rows'), decodeUriComponent('%0D%0A')))}",
+        "runAfter": {
+          "Build_CSV_Rows": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Call_Send_Digest_Email": {
+        "type": "Workflow",
+        "description": "Delegates all HTML branding/formatting to the single shared template (wf-send-digest-email) also used by the scheduled daily digest, so an on-demand run's immediate email always looks identical to the daily one (decision, 2026-08-10 - user request).",
+        "inputs": {
+          "host": {
+            "workflow": {
+              "id": "wf-send-digest-email"
+            }
+          },
+          "body": {
+            "reportType": "On-Demand Run Summary",
+            "periodLabel": "@{concat('Run started ', outputs('Compose_RunRow')?['StartTimeUtc'], ' UTC - trigger: ', outputs('Compose_RunRow')?['TriggerType'])}",
+            "health": "@outputs('Compose_Health')",
+            "filesSeen": "@outputs('Compose_RunRow')?['FilesSeen']",
+            "filesCopied": "@outputs('Compose_RunRow')?['FilesCopied']",
+            "filesSkipped": "@outputs('Compose_RunRow')?['FilesSkipped']",
+            "filesFailed": "@outputs('Compose_RunRow')?['FilesFailed']",
+            "filesAbandonedThisPeriod": "@outputs('Compose_RunRow')?['FilesAbandoned']",
+            "abandonedBacklog": "@body('Query_Abandoned_Backlog')?['entities']",
+            "csvContent": "@outputs('Compose_CSV_Content')",
+            "csvFileName": "@{concat('INV2SP-run-', triggerBody()?['runId'], '.csv')}"
+          }
+        },
+        "runAfter": {
+          "Compose_CSV_Content": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Response": {
+        "type": "Response",
+        "kind": "Http",
+        "inputs": {
+          "statusCode": 200,
+          "body": {
+            "sent": true
+          }
+        },
+        "runAfter": {
+          "Call_Send_Digest_Email": [
+            "Succeeded",
+            "Failed"
+          ]
+        }
+      }
+    },
+    "outputs": {}
+  }
+}
