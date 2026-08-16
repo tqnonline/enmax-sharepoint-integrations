@@ -7,6 +7,13 @@ decisions and phases for consolidating `enmax-autocad` and
 - `https://github.com/tqnonline/enmax-autocad` (Power Apps Code App + Dataverse solution — document numbering)
 - `https://github.com/tqnonline/enmax-apinv2sp-integration` (Azure Logic App Standard — AP invoices → SharePoint)
 
+`tqnonline` is a staging org used to build and validate this merge. The
+authoritative long-term home is `enmax-corp/cnp-sharepoint-integrations` on
+the ENMAX GitHub Enterprise org — see
+[`WINDOWS_ENTERPRISE_MIGRATION_GUIDE.md`](WINDOWS_ENTERPRISE_MIGRATION_GUIDE.md)
+for the step-by-step runbook that moves this repo (with full history) there
+and finishes the items left `BLOCKED`/`HANDOFF` below.
+
 ## Decisions
 
 | # | Decision | Choice |

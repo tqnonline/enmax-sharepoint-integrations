@@ -6,6 +6,10 @@ Merged from `enmax-autocad` and `enmax-apinv2sp-integration` — see
 decisions, and phase log, and [`docs/cicd.md`](docs/cicd.md) for the
 branch/environment/pipeline contract that governs both apps.
 
+> **Moving this repo to the ENMAX GitHub Enterprise org?** See
+> [`docs/WINDOWS_ENTERPRISE_MIGRATION_GUIDE.md`](docs/WINDOWS_ENTERPRISE_MIGRATION_GUIDE.md)
+> for the step-by-step runbook (written for an agent operating on Windows).
+
 ## Applications
 
 | App | Path | What it is |
