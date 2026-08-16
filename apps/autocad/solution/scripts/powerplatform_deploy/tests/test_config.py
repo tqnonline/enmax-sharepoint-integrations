@@ -156,7 +156,7 @@ class TestLoadEnvEnvOnlyMode:
     def test_env_only_returns_values_without_file(self, tmp_path, monkeypatch):
         """When all four DATAVERSE_* are set, load_env succeeds with no .env file.
 
-        tmp_path has no apps/code-app/.env.* files, so any file-based lookup
+        tmp_path has no code-app/.env.* files, so any file-based lookup
         would raise FileNotFoundError. Passing confirms the fast path was taken.
         """
         monkeypatch.setenv("DATAVERSE_URL", "https://ci-org.crm3.dynamics.com")

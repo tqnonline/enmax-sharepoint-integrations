@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write apps/code-app/power.config.json for pac code push (user-auth deploy).
+"""Write code-app/power.config.json for pac code push (user-auth deploy).
 
 Usage:
     APP_ID=<guid> ENVIRONMENT_ID=<guid> python solution/scripts/write_power_config.py

@@ -29,7 +29,7 @@ function Connect-PpDataverse {
 
     .NOTES
       Requires pac CLI installed as a dotnet global tool (~/.dotnet/tools/pac).
-      Credentials are read from apps\code-app\.env.<Environment> with a git-worktree
+      Credentials are read from code-app\.env.<Environment> with a git-worktree
       fallback to the main repo checkout (see Get-PpEnvConfig).
     #>
     [CmdletBinding(SupportsShouldProcess)]

@@ -30,7 +30,7 @@ def _pac() -> str:
 def run(environment: str, dry_run: bool, verbose: bool) -> None:
     """Pack solution/src/ into the build zip using the PAC CLI.
 
-    Loads DATAVERSE_* credentials from apps/code-app/.env.<environment> and
+    Loads DATAVERSE_* credentials from code-app/.env.<environment> and
     makes them available as environment variables for the subprocess call.
     On --dry-run, logs the intended command and returns without executing.
 

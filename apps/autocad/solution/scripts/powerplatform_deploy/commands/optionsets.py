@@ -22,7 +22,7 @@ from powerplatform_deploy.config import load_env
 def run(environment: str, dry_run: bool, verbose: bool) -> None:
     """Patch Dataverse option set labels by delegating to patch_optionsets.py.
 
-    Loads DATAVERSE_* credentials from apps/code-app/.env.<environment> and
+    Loads DATAVERSE_* credentials from code-app/.env.<environment> and
     passes them through the subprocess environment.  On --dry-run, appends
     ``--dry-run`` to patch_optionsets.py so it prints planned patches without
     applying them.

@@ -3,3 +3,9 @@ PyYAML>=6.0
 azure-identity>=1.15
 msal>=1.27
 python-dotenv>=1.0
+# Required by extract_master_data.py, legacy_coded_pdf_report.py,
+# legacy_coded_pdf_parse.py, generate_seed_from_xlsx.py. Was missing here
+# despite being a real runtime dependency - only discovered because these
+# modules' tests are now wired into CI for the first time (see
+# docs/MIGRATION_PLAN.md Phase 5).
+openpyxl>=3.1

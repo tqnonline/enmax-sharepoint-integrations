@@ -10,10 +10,10 @@ function Publish-PpCodeApp {
            is set).
         2. Ensures pac CLI is authenticated via Connect-PpDataverse (idempotent)
            for Dataverse org discovery / solution work — not for the Code App push.
-        3. Writes apps\code-app\power.config.json with the environment-specific
+        3. Writes code-app\power.config.json with the environment-specific
            configuration, including the full databaseReferences dataSources map
            (23 Dataverse entity sets) required for the app's data bindings.
-        4. Runs `npm run build` in apps\code-app.
+        4. Runs `npm run build` in code-app.
         5. Runs `npx power-apps push` (never `pac code push` — pac's Code App
            path fails on macOS and rejects SP ownership checks in this tenant).
         6. Prints the play URL so it can be opened immediately.
@@ -38,7 +38,7 @@ function Publish-PpCodeApp {
     .NOTES
       Requires Node.js and npm available on PATH.
       Code App push always uses `npx power-apps push` (npm Power Apps CLI).
-      Credentials are read from apps\code-app\.env.<Environment> with a git-worktree
+      Credentials are read from code-app\.env.<Environment> with a git-worktree
       fallback to the main repo checkout (see Get-PpEnvConfig), unless
       -PacProfileName is used (user auth + APP_ID).
     #>
@@ -77,7 +77,7 @@ function Publish-PpCodeApp {
     # ── Resolve paths ─────────────────────────────────────────────────────────
     $moduleRoot = Split-Path $PSScriptRoot -Parent                    # scripts/PowerPlatform.Deploy/
     $repoRoot   = Split-Path (Split-Path $moduleRoot -Parent) -Parent # repo root (module -> scripts -> repo)
-    $codeApp    = Join-Path $repoRoot "apps/code-app"
+    $codeApp    = Join-Path $repoRoot "code-app"
     $configOut  = Join-Path $codeApp  "power.config.json"
 
     if ($PSCmdlet.ShouldProcess($configOut, 'Write power.config.json + npm build + power-apps push')) {

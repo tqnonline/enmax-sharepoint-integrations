@@ -8,7 +8,7 @@ namespace Enmax.AutoCad.Plugins.IssueNumbers.Tests
     /// <summary>
     /// Asserts the C# TaxonomyMatrix fixture stays in sync with
     /// Enmax.AutoCAD.TaxonomyConstants (docs/drawing-document-subtype-CONTRACT.md).
-    /// Mirrors apps/code-app/src/__tests__/taxonomy/taxonomyMatrix.test.ts and
+    /// Mirrors code-app/src/__tests__/taxonomy/taxonomyMatrix.test.ts and
     /// solution/scripts/tests/test_taxonomy_matrix_consistency.py.
     /// </summary>
     public class TaxonomyMatrixTests

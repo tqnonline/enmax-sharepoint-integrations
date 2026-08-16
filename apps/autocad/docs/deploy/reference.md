@@ -27,7 +27,7 @@ Connect-PpDataverse [-Environment] <String> [-WhatIf] [-Confirm] [<CommonParamet
 
 **Description:** Loads credentials from `.env.<Environment>` via `Get-PpEnvConfig`, then idempotently ensures the pac CLI has an auth profile for that environment. Steps: (1) calls `pac auth list`; (2) if the environment URL is not already listed, creates a new auth profile with `pac auth create` (guarded by `-WhatIf`); (3) selects index 1 so the profile is active for subsequent pac commands.
 
-**Notes:** Requires pac CLI installed as a dotnet global tool. Credentials are read from `apps\code-app\.env.<Environment>` with a git-worktree fallback to the main repo checkout.
+**Notes:** Requires pac CLI installed as a dotnet global tool. Credentials are read from `code-app\.env.<Environment>` with a git-worktree fallback to the main repo checkout.
 
 **Examples:**
 
@@ -93,7 +93,7 @@ Publish-PpCodeApp [-Environment] <String> [-WhatIf] [-Confirm] [<CommonParameter
 | `-Environment` | String | Yes | Environment name matching a `.env.<Environment>` file, e.g. `dev`, `uat`. |
 | `-WhatIf` | Switch | No | Shows what would happen without writing files, running npm, or calling pac. |
 
-**Description:** (1) Loads credentials from `.env.<Environment>`. (2) Ensures pac CLI is authenticated via `Connect-PpDataverse` (idempotent). (3) Writes `apps\code-app\power.config.json` with environment-specific configuration including the full `databaseReferences` `dataSources` map (25 Dataverse entity sets). (4) Runs `npm run build` in `apps\code-app`. (5) Runs `npx power-apps push --non-interactive`. (6) Prints the play URL. Steps 3–5 are guarded by `-WhatIf`.
+**Description:** (1) Loads credentials from `.env.<Environment>`. (2) Ensures pac CLI is authenticated via `Connect-PpDataverse` (idempotent). (3) Writes `code-app\power.config.json` with environment-specific configuration including the full `databaseReferences` `dataSources` map (25 Dataverse entity sets). (4) Runs `npm run build` in `code-app`. (5) Runs `npx power-apps push --non-interactive`. (6) Prints the play URL. Steps 3–5 are guarded by `-WhatIf`.
 
 **Notes:** Requires pac CLI and Node.js + npm on PATH.
 

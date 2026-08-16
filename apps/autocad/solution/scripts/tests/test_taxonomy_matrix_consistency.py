@@ -1,6 +1,6 @@
 """Cross-checks the Python taxonomy matrix fixture against the seeded
 enmax_acdn_documentsubtype option set YAML, and documents the expected
-TS (apps/code-app/src/features/reserve/terminology.ts DOCUMENT_SUBTYPE_VALUE)
+TS (code-app/src/features/reserve/terminology.ts DOCUMENT_SUBTYPE_VALUE)
 and C# (solution/plugins/IssueNumbers/TaxonomyConstants.cs) integer mapping
 that the other two taxonomy_matrix fixtures must also honour.
 

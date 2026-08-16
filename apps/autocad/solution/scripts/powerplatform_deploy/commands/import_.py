@@ -35,7 +35,7 @@ def _pac() -> str:
 def run(environment: str, dry_run: bool, verbose: bool) -> None:
     """Import the packed solution zip into the target Dataverse environment.
 
-    Loads DATAVERSE_* credentials from apps/code-app/.env.<environment>.
+    Loads DATAVERSE_* credentials from code-app/.env.<environment>.
     On --dry-run, logs the intended command and returns without executing.
 
     The pac call uses --async --max-async-wait-time 60 to poll the import job

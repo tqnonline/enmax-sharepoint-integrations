@@ -96,7 +96,7 @@ Describe 'Publish-PpCodeApp — normal run (mocked)' {
         Mock -ModuleName PowerPlatform.Deploy Invoke-PpNpm            {}
         Mock -ModuleName PowerPlatform.Deploy Invoke-PpPowerAppsPush  {}
         # Suppress the real power.config.json write — the normal-run path now resolves
-        # to the actual apps/code-app dir, so without this mock the test would write a
+        # to the actual code-app dir, so without this mock the test would write a
         # (gitignored) file as a side effect.
         Mock -ModuleName PowerPlatform.Deploy Set-Content        {}
     }

@@ -20,7 +20,7 @@ Audit events (`enmax_autocadauditevent`) record business lifecycle facts (create
 
 4. **Build-time error scaffold** — [`build_flow_error_handling.py`](../../solution/scripts/build_flow_error_handling.py) wraps each flow definition in `Scope_Try_Main` with a catch path that calls the child logger then terminates failed. Correlation id is initialized at flow start (`guid()`).
 
-5. **Code App persistence** — [`exceptionLogger.ts`](../../apps/code-app/src/telemetry/exceptionLogger.ts) extends `logDataverseError`: console first (Rule 12), then fire-and-forget create on `enmax_autocadflowexceptions`. Logger failures never block UI. Secrets redacted from detail JSON.
+5. **Code App persistence** — [`exceptionLogger.ts`](../../code-app/src/telemetry/exceptionLogger.ts) extends `logDataverseError`: console first (Rule 12), then fire-and-forget create on `enmax_autocadflowexceptions`. Logger failures never block UI. Secrets redacted from detail JSON.
 
 6. **Action naming** — Power Automate actions use `{Verb}_{Object}[_{Qualifier}]` (e.g. `Get_DocControl_Email_Config`, `Invoke_IssueNumbers`). Scopes prefixed `Scope_`.
 

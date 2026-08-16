@@ -52,7 +52,7 @@ Use PowerShell 7+ (`pwsh`) for all shell scripts.
 npm install
 
 # Code App dev server (requires plan #04 env binding first)
-Set-Location apps/code-app
+Set-Location code-app
 npm run dev
 
 # Python tooling

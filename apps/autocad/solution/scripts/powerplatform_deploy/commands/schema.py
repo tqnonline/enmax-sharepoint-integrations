@@ -22,7 +22,7 @@ from powerplatform_deploy.config import load_env
 def run(environment: str, dry_run: bool, verbose: bool) -> None:
     """Provision Dataverse schema by delegating to solution/scripts/provision_schema.py.
 
-    Loads DATAVERSE_* credentials from apps/code-app/.env.<environment> and
+    Loads DATAVERSE_* credentials from code-app/.env.<environment> and
     passes them through the subprocess environment.  On --dry-run, appends
     ``--dry-run`` to provision_schema.py so it prints intended operations without
     writing to Dataverse.

@@ -1,7 +1,7 @@
 """Configuration loading for powerplatform_deploy.
 
 Two entry points:
-  - load_env(environment)  — reads apps/code-app/.env.<environment>, falls back to
+  - load_env(environment)  — reads code-app/.env.<environment>, falls back to
                               the main repo checkout when running inside a git worktree.
   - load_profile(repo_root) — reads deploy.profile.yaml from the repo root.
 
@@ -80,7 +80,7 @@ def _find_main_repo_root(start: Path) -> Path | None:
 
 
 def load_env(environment: str, _repo_root: Path | None = None) -> dict[str, str]:
-    """Load credentials from apps/code-app/.env.<environment>.
+    """Load credentials from code-app/.env.<environment>.
 
     Env-only fast path (CI / GitHub Actions):
       If ALL FOUR canonical DATAVERSE_* keys are present and non-empty in
@@ -90,8 +90,8 @@ def load_env(environment: str, _repo_root: Path | None = None) -> dict[str, str]
 
     File-based path (local developer machines):
       Lookup order for the .env file:
-      1. <this_worktree>/apps/code-app/.env.<environment>
-      2. <main_repo_root>/apps/code-app/.env.<environment>  (worktree fallback)
+      1. <this_worktree>/code-app/.env.<environment>
+      2. <main_repo_root>/code-app/.env.<environment>  (worktree fallback)
       For each key, os.environ wins over the file value.
 
     Returns a dict containing at minimum the four DATAVERSE_* keys.

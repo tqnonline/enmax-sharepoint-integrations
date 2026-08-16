@@ -34,7 +34,7 @@ def _pac() -> str:
 def run(environment: str, dry_run: bool, verbose: bool) -> None:
     """Export the unmanaged solution from dev tenant and unpack to solution/src/.
 
-    Loads DATAVERSE_* credentials from apps/code-app/.env.<environment>.
+    Loads DATAVERSE_* credentials from code-app/.env.<environment>.
     On --dry-run, logs both intended commands and returns without executing.
 
     Two-step process:

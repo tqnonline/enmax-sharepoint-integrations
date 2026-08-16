@@ -35,7 +35,7 @@ ENMAX Document Control (`GWE-DocControl@enmax.com`) must receive all approval re
    `getContext().app.queryParams`. On boot, `DeepLinkBootstrap` (mounted at the app
    root inside `AppShell`) reads those params — falling back to
    `window.location.search` for local dev — maps them through the single
-   `resolveDeepLink` registry in [`lib/deeplink/deeplinkTargets.ts`](../../apps/code-app/src/lib/deeplink/deeplinkTargets.ts),
+   `resolveDeepLink` registry in [`lib/deeplink/deeplinkTargets.ts`](../../code-app/src/lib/deeplink/deeplinkTargets.ts),
    and redirects once (`navigate(path, { replace: true })`) to the internal hash
    route. In-app share links use the same registry via `buildDeepLinkUrl`, and
    `#/link?target=...` is a testable in-app landing that exercises the resolver.

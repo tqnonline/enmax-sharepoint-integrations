@@ -9,7 +9,7 @@ Replaces the legacy manual process for assigning Drawing/Document Numbers across
 ## Repository layout
 
 ```
-apps/code-app/      React 18 + Fluent UI v9 Code App (plan #04+)
+code-app/      React 18 + Fluent UI v9 Code App (plan #04+)
 solution/
   plugins/          C# Dataverse plug-in (plan #03)
   src/              PAC solution unpack target (plan #02)
@@ -35,7 +35,7 @@ cd enmax-autocad
 npm install
 
 # Code App (requires plan #04 env binding for full dev server)
-Set-Location apps/code-app
+Set-Location code-app
 npm run dev
 
 # Python tooling

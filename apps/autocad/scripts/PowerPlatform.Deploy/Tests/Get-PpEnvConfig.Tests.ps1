@@ -20,7 +20,7 @@ Describe 'Get-PpEnvConfig' {
         # silent auth failures. Every format variant present in real .env files must parse.
         BeforeAll {
             $script:TempDir = Join-Path ([System.IO.Path]::GetTempPath()) ([guid]::NewGuid())
-            $envDir = Join-Path $script:TempDir 'apps/code-app'
+            $envDir = Join-Path $script:TempDir 'code-app'
             New-Item -ItemType Directory -Force -Path $envDir | Out-Null
 
             $envContent = @'

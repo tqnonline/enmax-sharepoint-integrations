@@ -91,7 +91,7 @@ namespace Enmax.AutoCAD
         /// pair. Fallback chain: type key → legacy plural Drawings*/Documents* key → (Document
         /// only) old subtype-specific key from the pre-remap taxonomy → (drop-off only)
         /// CheckInUploadLibraryUrl. Mirrors the TypeScript resolveLibraryUrls in
-        /// apps/code-app/src/features/sharepoint/sharepointUrls.ts.
+        /// code-app/src/features/sharepoint/sharepointUrls.ts.
         /// </summary>
         public static class TaxonomyLibraryConfig
         {

@@ -13,7 +13,7 @@ All `pp-deploy` examples assume the package is installed (`uv pip install -e sol
 
 ### Full chain — dev
 
-Runs all 8 deploy steps (pac auth, pack, import, plugins, optionsets, seed, roles, Code App) against the dev environment. Reads credentials from `apps/code-app/.env.dev`.
+Runs all 8 deploy steps (pac auth, pack, import, plugins, optionsets, seed, roles, Code App) against the dev environment. Reads credentials from `code-app/.env.dev`.
 
 ```powershell
 Invoke-PpDeploy -Environment dev

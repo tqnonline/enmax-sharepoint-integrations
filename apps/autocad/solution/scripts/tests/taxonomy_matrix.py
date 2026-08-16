@@ -2,7 +2,7 @@
 document subtype behaviour (docs/drawing-document-subtype-CONTRACT.md).
 
 This fixture is intentionally duplicated (same rows, same shape) in:
-  - apps/code-app/src/__tests__/taxonomy/taxonomyMatrix.ts
+  - code-app/src/__tests__/taxonomy/taxonomyMatrix.ts
   - solution/plugins/IssueNumbers.Tests/TaxonomyMatrix.cs
   - solution/scripts/tests/taxonomy_matrix.py (this file)
 Keep all three in sync when the taxonomy changes.

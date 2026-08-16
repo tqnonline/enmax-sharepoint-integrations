@@ -25,7 +25,7 @@ Import-Module scripts/PowerPlatform.Deploy/PowerPlatform.Deploy.psd1
 
 ## Environment and Credentials
 
-**Local development:** credentials are read from `apps/code-app/.env.<env>` (gitignored). The file must contain:
+**Local development:** credentials are read from `code-app/.env.<env>` (gitignored). The file must contain:
 
 ```
 ENVIRONMENT_URL=https://org.crm3.dynamics.com

@@ -4,7 +4,7 @@
   (default) : deactivate reference rows whose code is NOT in the regenerated YAML
   --verify  : assert active counts match the YAML (+ system_scope 0)
 
-Credentials via load_env(<environment>): apps/code-app/.env.<env> or DATAVERSE_* vars.
+Credentials via load_env(<environment>): code-app/.env.<env> or DATAVERSE_* vars.
 
 Usage:
   uv run --with requests --with msal --with pyyaml python solution/scripts/reconcile_refdata.py \

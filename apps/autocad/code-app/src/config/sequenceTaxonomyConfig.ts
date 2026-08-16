@@ -6,7 +6,7 @@ import {
 
 /**
  * Sequence gates for WS1a taxonomy (docs/drawing-document-subtype-CONTRACT.md
- * + apps/code-app/src/__tests__/taxonomy/taxonomyMatrix.ts).
+ * + code-app/src/__tests__/taxonomy/taxonomyMatrix.ts).
  *
  * Drawing Document is New-only unless AllowDrawingDocumentExistingSequence.
  * Standard/Procedure are New-only. Form is Existing-only. Drawing allows both.

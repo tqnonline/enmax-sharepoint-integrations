@@ -11,7 +11,7 @@
 
     1. Verifies the active pac auth profile is a USER (not Application/SPN) and
        targets the UAT environment URL. Aborts otherwise.
-    2. Swaps apps/code-app/power.config.uat.json into power.config.json
+    2. Swaps code-app/power.config.uat.json into power.config.json
        (backing up the current one).
     3. Runs `npm run build` then `pac code push` (uses the active user auth).
     4. ALWAYS restores the original power.config.json (try/finally), even on
@@ -20,7 +20,7 @@
   Prereqs:
     - pac CLI authed as a UAT user: `pac auth create --url <UAT url>` then
       `pac auth select --environment <UAT url>`.
-    - apps/code-app/power.config.uat.json present (UAT appId + environmentId).
+    - code-app/power.config.uat.json present (UAT appId + environmentId).
     - Node/npm + pac CLI on PATH.
 
 .EXAMPLE
@@ -34,7 +34,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot   = Split-Path $PSScriptRoot -Parent
-$codeApp    = Join-Path $repoRoot "apps/code-app"
+$codeApp    = Join-Path $repoRoot "code-app"
 $configMain = Join-Path $codeApp  "power.config.json"
 $configUat  = Join-Path $codeApp  "power.config.uat.json"
 $envUat     = Join-Path $codeApp  ".env.uat"

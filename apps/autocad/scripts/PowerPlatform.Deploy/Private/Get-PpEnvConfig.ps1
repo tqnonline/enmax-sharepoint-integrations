@@ -4,7 +4,7 @@ function Get-PpEnvConfig {
       Loads and parses a .env.<Environment> credential file for a Power Platform environment.
 
     .DESCRIPTION
-      Reads KEY=VALUE pairs from apps\code-app\.env.<Environment> under $RepoRoot.
+      Reads KEY=VALUE pairs from code-app\.env.<Environment> under $RepoRoot.
       If the file is absent (e.g. inside a git worktree where .env files are gitignored),
       falls back to the main repo checkout by resolving the git common dir.
       Throws a clear error if the file is not found in either location.
@@ -69,15 +69,26 @@ function Get-PpEnvConfig {
         return $cfg
     }
 
-    $relPath = "apps/code-app/.env.$Environment"
+    $relPath = "code-app/.env.$Environment"
     $envFile = Join-Path $RepoRoot $relPath
 
-    # Worktree fallback: .env files are gitignored and may only exist in the main checkout
+    # Worktree fallback: .env files are gitignored and may only exist in the main checkout.
+    # $RepoRoot is the APP root (scripts/PowerPlatform.Deploy/.. /.. /..), which since the
+    # enmax-sharepoint-integrations monorepo merge is a SUBDIRECTORY of the git repo root
+    # (apps/autocad), not the repo root itself. `git rev-parse --git-common-dir`'s parent is
+    # the monorepo root, so it must be joined with the same subpath from this worktree's own
+    # top-level down to $RepoRoot - not with $relPath directly, or the fallback would look for
+    # <monorepo-root>/code-app/.env.<Environment> instead of
+    # <monorepo-root>/apps/autocad/code-app/.env.<Environment>.
     if (-not (Test-Path $envFile)) {
         $gitCommonDir = & git -C $RepoRoot rev-parse --git-common-dir 2>$null
-        if ($gitCommonDir) {
+        $thisTopLevel = & git -C $RepoRoot rev-parse --show-toplevel 2>$null
+        if ($gitCommonDir -and $thisTopLevel) {
             $mainRepoRoot = Split-Path ([System.IO.Path]::GetFullPath($gitCommonDir)) -Parent
-            $fallback = Join-Path $mainRepoRoot $relPath
+            $repoRootFull = [System.IO.Path]::GetFullPath($RepoRoot)
+            $topLevelFull = [System.IO.Path]::GetFullPath($thisTopLevel.Trim())
+            $appSubPath   = $repoRootFull.Substring($topLevelFull.Length).TrimStart('/', '\')
+            $fallback     = Join-Path $mainRepoRoot (Join-Path $appSubPath $relPath)
             if (Test-Path $fallback) {
                 Write-Verbose "[Pp] .env.$Environment not in worktree — using $fallback"
                 $envFile = $fallback
