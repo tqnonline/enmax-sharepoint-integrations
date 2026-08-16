@@ -41,6 +41,8 @@ session log, not a permanent team artifact).
 | [0030](0030-sharepoint-site-library-targets.md) | SharePoint site/library targets (dev/prod) | Accepted (prod path unconfirmed) |
 | [0031](0031-digest-escalation-contact.md) | Digest escalation contact | Accepted |
 | [0032](0032-documentation-format-and-granularity.md) | Documentation format and ADR granularity | Accepted |
+| [0033](0033-github-actions-prod-deployment-spn.md) | GitHub Actions production deployment via SPN | Accepted (amends 0014, cannot run yet) |
+| [0034](0034-archive-successfully-copied-files.md) | Archive successfully-copied files (subflow `wf-archive-file`) | Accepted, amends 0003 (blocked by external file-share permission) |
 
 ## Known open items (not decisions — tracked here so they aren't lost)
 
@@ -49,5 +51,9 @@ session log, not a permanent team artifact).
   against the original assumed path without re-confirming.
 - **Prod deployment pipeline** — cannot run yet, SPN not provisioned (see
   ADR-0033 and [`../operations/known-issues.md`](../operations/known-issues.md)).
+- **Archive folder permissions** — write/delete access on `LogicAppTest`
+  and `/Archive` not yet granted to the file-share service account (see
+  ADR-0034). The subflow is built and ready but every real attempt
+  currently fails cleanly with a `403 Forbidden` (absorbed, non-fatal).
 - **FAILED digest health-badge variant** — not yet exercised with a genuine
   abandoned file (OK and DEGRADED have both been seen live).

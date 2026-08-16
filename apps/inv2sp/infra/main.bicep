@@ -106,6 +106,9 @@ param fileSharePassword string = ''
 @description('Folder the engine watches, relative to the connection root folder. Dev/UAT = "LogicAppTest" (changed 2026-08-10, was "testing folder"), Prod = "APInvoices". These are genuinely different values per environment with no shared derivation.')
 param fileShareTriggerFolder string
 
+@description('Folder successfully-copied files are moved to after a successful SharePoint copy, relative to the connection root folder (ADR-0034 - subflow wf-archive-file). Dev = "Archive" (sibling of LogicAppTest under the same \\\\dcna30v004\\AP_Invoice_LogicApp_Integration root). Prod is NOT the same value - prod\'s fileShareRootFolder is an entirely different share (livelink_prd_data$, not AP_Invoice_LogicApp_Integration) - do not assume it mirrors dev. Empty string disables archiving entirely (the archive subflow no-ops if this is empty), which is the safe default until prod\'s real path is confirmed.')
+param fileShareArchiveFolder string = ''
+
 // ---------------------------------------------------------------------------
 // SharePoint Online connection
 // ---------------------------------------------------------------------------
@@ -303,6 +306,7 @@ module logicApp 'modules/logicApp.bicep' = {
     office365ConnectionRuntimeUrl: office365Connection.outputs.connectionRuntimeUrl
     office365ConnectionName: office365ConnectionName
     fileShareTriggerFolder: fileShareTriggerFolder
+    fileShareArchiveFolder: fileShareArchiveFolder
     sharePointSiteUrl: sharePointSiteUrl
     sharePointLibraryName: sharePointLibraryName
     sharePointContentType: sharePointContentType

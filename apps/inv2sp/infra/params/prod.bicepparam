@@ -85,6 +85,15 @@ param fileSharePassword = '' // supplied at deploy time via Set-KeyVaultSecrets.
 
 param fileShareTriggerFolder = 'APInvoices'
 
+// TODO: confirm exact prod archive path with the business/DataOps before
+// setting this (ADR-0034). Prod's fileShareRootFolder above is a DIFFERENT
+// share entirely from dev's (livelink_prd_data$, not
+// AP_Invoice_LogicApp_Integration) - do not assume it mirrors dev's
+// "Archive" value. Left empty deliberately: the archive subflow safely
+// no-ops when this is empty, so prod deploys with archiving disabled
+// until this is set.
+param fileShareArchiveFolder = ''
+
 // SharePoint does not require gateway access, so this can be created as
 // soon as the resource group exists - it just deploys unauthenticated
 // until the M365 service account signs in post-deploy (handoff document

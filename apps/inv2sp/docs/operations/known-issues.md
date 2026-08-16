@@ -27,6 +27,24 @@ ServiceNow-guided flow only provisions a Federated Credential by default
 - see [`cicd.md`](cicd.md)'s prerequisites list for the complete setup
 checklist). None of this can be verified live until the ticket resolves.
 
+### Archive folder write/delete permissions not yet granted
+[ADR-0034](../decisions/0034-archive-successfully-copied-files.md)'s
+`wf-archive-file` subflow is built, wired into `wf-copy-invoices`, and
+deployed to dev - but the file-share service account behind the
+`filesystem`/`filesystem-2` connection currently has **read-only** access
+to `LogicAppTest` and **no access at all** to `/Archive`. Every real
+attempt fails cleanly with `403 Forbidden` (confirmed live, absorbed
+safely - the source file is never deleted when the archive copy fails,
+and no run/alert-level failure results). Whoever administers
+`\\dcna30v004\AP_Invoice_LogicApp_Integration` needs to grant this
+account write+delete access on both `LogicAppTest` and `Archive` before
+this feature does anything useful. Also unresolved: prod's own archive
+path was intentionally left unconfigured (`FILESHARE_ARCHIVE_FOLDER`
+empty in `prod.bicepparam`) - prod's file share root
+(`livelink_prd_data$`) is an entirely different share from dev's, so
+dev's path cannot be assumed to apply; confirm the real prod path
+separately once needed.
+
 ## Design gaps, not yet resolved
 
 ### Source share grows without bound
@@ -34,10 +52,12 @@ Files are never deleted or archived from the source share after a
 successful copy ([ADR-0003](../decisions/0003-dedup-state-external-table.md)).
 The digest's distinct-file accounting
 ([ADR-0023](../decisions/0023-fileRunEvents-audit-trail.md)) prevents this
-from inflating headline *counts* incorrectly, but the underlying share
-itself is not pruned by this integration — that's a business-owned
-process, out of scope here, worth surfacing if the backlog ever becomes
-operationally noticeable.
+from inflating headline *counts* incorrectly. **The `wf-archive-file`
+subflow ([ADR-0034](../decisions/0034-archive-successfully-copied-files.md))
+is the planned fix** — moves successfully-copied files out of the trigger
+folder entirely — but it's currently blocked by the file-share permission
+gap above, so the underlying share is still not actually being pruned in
+practice yet.
 
 ### Content-type stamping is not functionally active
 `Patch_Content_Type` was removed entirely

@@ -661,12 +661,45 @@
                                       "serviceProviderId": "/serviceProviders/azureTables"
                                     }
                                   },
-                                  "runAfter": {
-                                    "Increment_FilesCopied": [
-                                      "Succeeded"
-                                    ]
+                                    "runAfter": {
+                                      "Increment_FilesCopied": [
+                                        "Succeeded"
+                                      ]
+                                    }
+                                  },
+                                  "Call_Archive_File": {
+                                    "type": "Workflow",
+                                    "description": "Moves the successfully-copied source file to the archive folder (ADR-0034, subflow wf-archive-file) - best-effort, secondary to the SharePoint copy which already succeeded and is already recorded above. wf-archive-file safely no-ops when FILESHARE_ARCHIVE_FOLDER is unset (e.g. prod today - see docs/operations/known-issues.md, the archive folder's write/delete permissions are still pending from whoever administers the file share).",
+                                    "inputs": {
+                                      "host": {
+                                        "workflow": {
+                                          "id": "wf-archive-file"
+                                        }
+                                      },
+                                      "body": {
+                                        "sourcePath": "@items('For_Each_File')?['Path']",
+                                        "fileName": "@items('For_Each_File')?['Name']"
+                                      }
+                                    },
+                                    "runAfter": {
+                                      "Upsert_FileRunEvent_Copied": [
+                                        "Succeeded"
+                                      ]
+                                    }
+                                  },
+                                  "Compose_ArchiveOutcome": {
+                                    "type": "Compose",
+                                    "description": "Absorbs any Call_Archive_File failure so it never bubbles up as an iteration/run-level failure - the file itself is already fully, successfully processed (SharePoint copy + ProcessedFiles/FileRunEvents already written above) regardless of whether the archive-move step succeeds. Without this, a failed archive attempt (e.g. the current pending file-share permission issue) would otherwise make this run show as 'Failed' in run history and could trip the run-failure Azure Monitor alert for what is actually a fully successful file copy.",
+                                    "inputs": "@{if(equals(actions('Call_Archive_File')?['status'], 'Succeeded'), 'archive-call-completed', 'archive-call-not-successful-file-copy-still-succeeded')}",
+                                    "runAfter": {
+                                      "Call_Archive_File": [
+                                        "Succeeded",
+                                        "Failed",
+                                        "Skipped",
+                                        "TimedOut"
+                                      ]
+                                    }
                                   }
-                                }
                               },
                               "else": {
                                 "actions": {

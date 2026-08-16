@@ -54,7 +54,13 @@ pagination against it fails every single call, not just large folders):
    containing scope's aggregate status. This matters: an expected 404 from
    the "does it already exist" check makes the scope's own aggregate
    status `Failed` even when the actual copy succeeded — checking the
-   individual terminal action's status avoids a false-negative here.
+   individual terminal action's status avoids a false-negative here. On
+   success, after writing `ProcessedFiles`/`FileRunEvents` and
+   incrementing `FilesCopied`, calls the `wf-archive-file` subflow
+   ([ADR-0034](../decisions/0034-archive-successfully-copied-files.md)) to
+   move the source file to the archive folder - best-effort, secondary to
+   the already-recorded success; see that ADR for the current external
+   permission blocker.
 7. On failure: classify via the error taxonomy
    ([ADR-0019](../decisions/0019-error-taxonomy.md)), increment
    `AttemptCount`, and either mark `Failed` (retryable, will be picked up

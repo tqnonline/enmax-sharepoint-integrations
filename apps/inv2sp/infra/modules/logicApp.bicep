@@ -59,6 +59,9 @@ param office365ConnectionName string = 'office365'
 @description('Folder on the file share that the engine watches (relative to the connection root folder). Dev/UAT = "LogicAppTest" (changed 2026-08-10, was "testing folder"), Prod = "APInvoices". These differ by full path, not just this folder name - see configuration-reference.md.')
 param fileShareTriggerFolder string
 
+@description('Folder successfully-copied files are moved to (ADR-0034). Empty disables archiving entirely - the safe default until a real path is confirmed for an environment (e.g. prod as of this writing).')
+param fileShareArchiveFolder string = ''
+
 @description('Target SharePoint site URL.')
 param sharePointSiteUrl string
 
@@ -141,6 +144,7 @@ var baseAppSettings = [
   { name: 'OFFICE365_CONNECTION_RUNTIME_URL', value: office365ConnectionRuntimeUrl }
   { name: 'OFFICE365_CONNECTION_NAME', value: office365ConnectionName }
   { name: 'FILESHARE_TRIGGER_FOLDER', value: fileShareTriggerFolder }
+  { name: 'FILESHARE_ARCHIVE_FOLDER', value: fileShareArchiveFolder }
   { name: 'SHAREPOINT_SITE_URL', value: sharePointSiteUrl }
   { name: 'SHAREPOINT_LIBRARY_NAME', value: sharePointLibraryName }
   { name: 'SHAREPOINT_CONTENT_TYPE', value: sharePointContentType }

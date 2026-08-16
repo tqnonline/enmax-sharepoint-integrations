@@ -202,4 +202,59 @@ Describe 'Workflow JSON definitions' {
             $text | Should -Match 'TriggerType,TriggeredByWorkflow,LastAttemptUtc'
         }
     }
+
+    Context 'wf-archive-file (ADR-0034) - safety invariants' {
+        BeforeAll {
+            $script:ArchivePath = Join-Path $script:WorkflowsDir 'wf-archive-file/workflow.json'
+            $script:Archive = Get-Content -Path $script:ArchivePath -Raw | ConvertFrom-Json -Depth 100
+        }
+
+        It 'no-ops (does nothing) when FILESHARE_ARCHIVE_FOLDER is empty - checked via not(equals(..., empty string))' {
+            $expr = $script:Archive.definition.actions.Is_Archiving_Enabled.expression
+            ($expr | ConvertTo-Json -Depth 10 -Compress) | Should -Match "coalesce\(appsetting\('FILESHARE_ARCHIVE_FOLDER'\)"
+        }
+
+        It 'never deletes the source file unless the archive copy already succeeded' {
+            $deleteAction = $script:Archive.definition.actions.Is_Archiving_Enabled.actions.Delete_Source_After_Archive
+            $deleteAction.runAfter.Copy_To_Archive | Should -Be @('Succeeded')
+        }
+
+        It 'response always returns 200 regardless of archive outcome (best-effort, never workflow-fatal)' {
+            $script:Archive.definition.actions.Response.inputs.statusCode | Should -Be 200
+            $script:Archive.definition.actions.Response.runAfter.Is_Archiving_Enabled | Should -Contain 'Failed'
+        }
+    }
+
+    Context 'wf-copy-invoices calls wf-archive-file as a best-effort subflow (ADR-0034)' {
+        BeforeAll {
+            $script:EngineText = Get-Content -Path (Join-Path $script:WorkflowsDir 'wf-copy-invoices/workflow.json') -Raw
+            $script:EngineJson = $script:EngineText | ConvertFrom-Json -Depth 100
+        }
+
+        It 'calls wf-archive-file after a successful copy' {
+            $script:EngineText | Should -Match '"id":\s*"wf-archive-file"'
+        }
+
+        It 'absorbs Call_Archive_File failures so they never cascade into run-level failure' {
+            # locate Compose_ArchiveOutcome anywhere in the tree and check its runAfter tolerance
+            function Find-Action($obj, $name) {
+                if ($obj -is [System.Management.Automation.PSCustomObject]) {
+                    foreach ($p in $obj.PSObject.Properties) {
+                        if ($p.Name -eq $name) { return $p.Value }
+                        if ($p.Name -eq 'actions' -or $p.Name -eq 'else') {
+                            $found = Find-Action $p.Value $name
+                            if ($found) { return $found }
+                        } else {
+                            $found = Find-Action $p.Value $name
+                            if ($found) { return $found }
+                        }
+                    }
+                }
+                return $null
+            }
+            $composeArchiveOutcome = Find-Action $script:EngineJson.definition 'Compose_ArchiveOutcome'
+            $composeArchiveOutcome | Should -Not -BeNullOrEmpty
+            $composeArchiveOutcome.runAfter.Call_Archive_File | Should -Contain 'Failed'
+        }
+    }
 }

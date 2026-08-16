@@ -70,6 +70,11 @@ param fileSharePassword = '' // unused - adopt mode
 // troubleshooting).
 param fileShareTriggerFolder = 'LogicAppTest'
 
+// ADR-0034 - sibling of LogicAppTest under the same \\dcna30v004\AP_Invoice_LogicApp_Integration
+// root (confirmed live via the adopted connection's rootfolder parameter,
+// 2026-08-14). Successfully-copied files are moved here by wf-archive-file.
+param fileShareArchiveFolder = 'Archive'
+
 // Recreated fresh as V2 (decision reversed 2026-08-03 - see
 // sharePointOnline.bicep module header). The prior "adopt" mode adopted an
 // existing V1-kind connection that cannot support the accessPolicy grant
