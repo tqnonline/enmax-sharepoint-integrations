@@ -1,0 +1,38 @@
+name: pac auth (service account, ROPC)
+description: >
+  Authenticates the Power Platform CLI as a Dataverse user via
+  Resource-Owner-Password-Credentials (username + password), and selects
+  the resulting profile. This is the ONLY autocad auth path allowed to push
+  the Code App (`pac code push`) - Service Principals cannot own Code Apps
+  in this tenant (see docs/cicd.md and
+  apps/autocad/scripts/push-codeapp-uat.ps1). Runners are ephemeral, so
+  there is no cached-profile fallback if this fails; treat any failure here
+  as the Phase-0 ROPC/Conditional-Access risk materializing, not a
+  transient error worth retrying blindly.
+
+inputs:
+  environment-url:
+    description: Dataverse / Power Platform environment URL
+    required: true
+  username:
+    description: Service account UPN, e.g. eec_pwrplat_svc@enmax.com
+    required: true
+  password:
+    required: true
+  profile-name:
+    required: true
+    default: svc-profile
+
+runs:
+  using: composite
+  steps:
+    - name: pac auth create (service account, ROPC)
+      shell: pwsh
+      env:
+        PP_URL: ${{ inputs.environment-url }}
+        PP_USERNAME: ${{ inputs.username }}
+        PP_PASSWORD: ${{ inputs.password }}
+        PP_PROFILE: ${{ inputs.profile-name }}
+      run: |
+        pac auth create --name $env:PP_PROFILE --url $env:PP_URL --username $env:PP_USERNAME --password $env:PP_PASSWORD
+        pac auth select --name $env:PP_PROFILE

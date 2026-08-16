@@ -1,12 +1,12 @@
-name: Feature request
-description: Propose a new capability or improvement
-labels: ["enhancement"]
+name: Feature request (autocad)
+description: Propose a new capability or improvement to the autocad app
+labels: ["enhancement", "autocad"]
 body:
   - type: input
     id: spec_section
     attributes:
       label: PRD / spec section
-      description: Which PRD functional requirement (F-xx) or Phase 2 backlog item?
+      description: Which PRD functional requirement (F-xx) or backlog item?
       placeholder: "e.g. F-06, Phase 2 backlog"
     validations:
       required: false

@@ -1,0 +1,47 @@
+name: _rw-inv2sp-deploy
+
+# Reusable workflow: Deploy-Infrastructure.ps1 -> Deploy-Workflows.ps1 for
+# apps/inv2sp against a single environment. Called directly by
+# cd-inv2sp-dev.yml, and by the reviewer-gated `deploy` job in
+# cd-inv2sp-prod.yml (which is preceded by a separate `plan` job running
+# under the no-reviewer `prod-plan` environment - see that workflow and
+# docs/cicd.md for why the what-if preview must run outside the approval
+# gate).
+#
+# Same caveat as _rw-autocad-deploy.yml applies: Environment-scoped secrets
+# cannot cross a `secrets:` map on a workflow_call, so `environment:` is
+# declared on this job directly and secrets are read as INV2SP_AZURE_*.
+
+on:
+  workflow_call:
+    inputs:
+      environment-name:
+        description: dev | prod - both the GitHub Environment name and the -Environment script parameter
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest-enmax-corp
+    environment: ${{ inputs.environment-name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/azure-login
+        with:
+          client-id: ${{ secrets.INV2SP_AZURE_CLIENT_ID }}
+          client-secret: ${{ secrets.INV2SP_AZURE_CLIENT_SECRET }}
+          subscription-id: ${{ secrets.INV2SP_AZURE_SUBSCRIPTION_ID }}
+          tenant-id: ${{ secrets.INV2SP_AZURE_TENANT_ID }}
+
+      - uses: ./.github/actions/setup-inv2sp
+
+      - name: Deploy infrastructure (Bicep)
+        working-directory: apps/inv2sp
+        shell: pwsh
+        run: ./scripts/Deploy-Infrastructure.ps1 -Environment ${{ inputs.environment-name }} -Force
+
+      - name: Deploy workflows (Logic App zip-deploy)
+        working-directory: apps/inv2sp
+        shell: pwsh
+        run: ./scripts/Deploy-Workflows.ps1 -Environment ${{ inputs.environment-name }} -Force

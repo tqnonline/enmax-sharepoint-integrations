@@ -1,5 +1,5 @@
 name: Manual handoff (IT Admin task)
-description: Track a manual IT Admin runbook execution
+description: Track a manual IT Admin runbook execution (either app)
 labels: ["runbook", "manual"]
 body:
   - type: input
@@ -9,11 +9,18 @@ body:
       placeholder: "e.g. 001 - Entra App Registration"
     validations:
       required: true
+  - type: dropdown
+    id: app
+    attributes:
+      label: App
+      options: ["autocad", "inv2sp", "shared"]
+    validations:
+      required: true
   - type: input
     id: spec_section
     attributes:
-      label: PRD section
-      placeholder: "e.g. Section 12"
+      label: PRD / ADR section
+      placeholder: "e.g. Section 12 / ADR-0033"
     validations:
       required: false
   - type: textarea
@@ -32,5 +39,5 @@ body:
   - type: input
     id: runbook_link
     attributes:
-      label: Link to runbook on runbooks branch
-      placeholder: "https://github.com/tqnonline/enmax-autocad/blob/runbooks/runbooks/001-*.md"
+      label: Link to runbook
+      placeholder: "https://github.com/tqnonline/enmax-sharepoint-integrations/blob/runbooks/runbooks/001-*.md (autocad) or apps/inv2sp/docs/operations/runbook.md (inv2sp)"

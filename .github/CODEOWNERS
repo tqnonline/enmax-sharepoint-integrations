@@ -1,0 +1,13 @@
+# Default owner for anything not matched below.
+*                                            @rahulnakmol
+
+# autocad
+/apps/autocad/                               @rahulnakmol
+/apps/autocad/solution/plugins/IssueNumbers/       @rahulnakmol
+/apps/autocad/solution/plugins/IssueNumbers.Tests/ @rahulnakmol
+
+# inv2sp
+/apps/inv2sp/                                @rahulnakmol
+
+# Shared CI/CD - changes here affect both apps' deploy pipelines
+/.github/                                    @rahulnakmol

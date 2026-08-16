@@ -1,0 +1,47 @@
+name: CD - autocad - prod
+
+# Manual, reviewer-gated deployment of autocad to production. Mirrors
+# inv2sp's deploy-prod.yml pattern (typed confirmation input; the reviewer
+# gate lives on the `prod` GitHub Environment, applied inside the reusable
+# workflow's job).
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type 'deploy' to confirm you want to deploy autocad to PRODUCTION"
+        required: true
+      push-code-app:
+        description: Push the Code App (pac code push, service account). Set false if ROPC is unavailable.
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate-input:
+    name: Validate confirmation input
+    runs-on: ubuntu-latest-enmax-corp
+    steps:
+      - name: Require the literal word 'deploy'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event.inputs.confirm }}" != "deploy" ]; then
+            echo "::error::You must type the literal word 'deploy' in the confirm input to run this pipeline against PRODUCTION. Got: '${{ github.event.inputs.confirm }}'"
+            exit 1
+          fi
+          echo "Confirmed."
+
+  deploy:
+    name: Deploy autocad to production
+    needs: validate-input
+    uses: ./.github/workflows/_rw-autocad-deploy.yml
+    permissions:
+      contents: read
+    with:
+      environment-name: prod
+      run-integration-tests: false
+      push-code-app: ${{ inputs.push-code-app }}
+    secrets: inherit

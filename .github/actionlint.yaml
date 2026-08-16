@@ -1,0 +1,6 @@
+self-hosted-runner:
+  labels:
+    - windows-latest-enmax-corp
+    - ubuntu-latest-enmax-corp
+    - windows-latest-enmax-corp-ue1
+    - ubuntu-latest-enmax-corp-ue1

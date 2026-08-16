@@ -1,0 +1,37 @@
+name: pac auth (service principal)
+description: >
+  Authenticates the Power Platform CLI against a Dataverse environment using
+  a service principal (client ID + secret), and selects the resulting
+  profile so subsequent `pac` invocations in the same job use it. Used for
+  every autocad deploy step EXCEPT the Code App push, which cannot use an
+  SPN in this tenant (see docs/cicd.md).
+
+inputs:
+  environment-url:
+    description: Dataverse environment URL
+    required: true
+  client-id:
+    required: true
+  client-secret:
+    required: true
+  tenant-id:
+    required: true
+  profile-name:
+    description: Name for the pac auth profile, so it can be re-selected later
+    required: true
+    default: spn-profile
+
+runs:
+  using: composite
+  steps:
+    - name: pac auth create (SPN)
+      shell: pwsh
+      env:
+        PP_URL: ${{ inputs.environment-url }}
+        PP_CLIENT_ID: ${{ inputs.client-id }}
+        PP_CLIENT_SECRET: ${{ inputs.client-secret }}
+        PP_TENANT_ID: ${{ inputs.tenant-id }}
+        PP_PROFILE: ${{ inputs.profile-name }}
+      run: |
+        pac auth create --name $env:PP_PROFILE --url $env:PP_URL --applicationId $env:PP_CLIENT_ID --clientSecret $env:PP_CLIENT_SECRET --tenant $env:PP_TENANT_ID
+        pac auth select --name $env:PP_PROFILE

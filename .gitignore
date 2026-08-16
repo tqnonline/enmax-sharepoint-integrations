@@ -1,0 +1,25 @@
+# Monorepo root — only patterns for artifacts that can appear at repo root.
+# Each app keeps its own .gitignore for app-specific patterns
+# (apps/autocad/.gitignore, apps/inv2sp/.gitignore) — those still apply,
+# git resolves .gitignore relative to its own directory.
+
+# Worktrees (specs / runbooks orphan branches — see CLAUDE.md pattern)
+.worktrees/
+
+# Node (root workspace hoist)
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Agent/tool local logs
+.remember/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp

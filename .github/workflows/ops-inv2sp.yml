@@ -1,0 +1,91 @@
+name: Ops - inv2sp
+
+# Manual operator actions for inv2sp: the go-live trigger switch, connection
+# health check, on-demand run, and abandoned-file reset. All read-only or
+# explicitly human-confirmed - see apps/inv2sp/docs/operations/runbook.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options: [dev, prod]
+      operation:
+        required: true
+        type: choice
+        options:
+          - enable-triggers
+          - test-connections
+          - on-demand-run
+          - reset-abandoned
+      confirm:
+        description: >
+          Required for enable-triggers and reset-abandoned only: type
+          'confirm' to proceed.
+        required: false
+
+permissions:
+  contents: read
+  id-token: none
+
+jobs:
+  run:
+    runs-on: ubuntu-latest-enmax-corp
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/azure-login
+        with:
+          client-id: ${{ secrets.INV2SP_AZURE_CLIENT_ID }}
+          client-secret: ${{ secrets.INV2SP_AZURE_CLIENT_SECRET }}
+          subscription-id: ${{ secrets.INV2SP_AZURE_SUBSCRIPTION_ID }}
+          tenant-id: ${{ secrets.INV2SP_AZURE_TENANT_ID }}
+
+      - uses: ./.github/actions/setup-inv2sp
+
+      - if: inputs.operation == 'enable-triggers'
+        name: Guard - require explicit confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.confirm }}" != "confirm" ]; then
+            echo "::error::enable-triggers requires the confirm input set to the literal word 'confirm'."
+            exit 1
+          fi
+
+      - if: inputs.operation == 'enable-triggers'
+        name: Enable scheduled trigger
+        working-directory: apps/inv2sp
+        shell: pwsh
+        run: ./scripts/Enable-Triggers.ps1 -Environment ${{ inputs.environment }} -Force
+
+      - if: inputs.operation == 'test-connections'
+        name: Test API connections
+        working-directory: apps/inv2sp
+        shell: pwsh
+        run: ./scripts/Test-Connections.ps1 -Environment ${{ inputs.environment }}
+
+      - if: inputs.operation == 'on-demand-run'
+        name: Invoke on-demand copy run
+        working-directory: apps/inv2sp
+        shell: pwsh
+        run: ./scripts/Invoke-OnDemandRun.ps1 -Environment ${{ inputs.environment }}
+
+      - if: inputs.operation == 'reset-abandoned'
+        name: Guard - require explicit confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.confirm }}" != "confirm" ]; then
+            echo "::error::reset-abandoned requires the confirm input set to the literal word 'confirm'."
+            exit 1
+          fi
+
+      - if: inputs.operation == 'reset-abandoned'
+        name: Reset abandoned files (all)
+        working-directory: apps/inv2sp
+        shell: pwsh
+        run: ./scripts/Reset-AbandonedFiles.ps1 -Environment ${{ inputs.environment }} -Force

@@ -1,0 +1,33 @@
+name: CD - inv2sp - dev
+
+# NEW pipeline - the source repo had no dev CI/CD; dev deploys were local +
+# interactive PIM-elevated only (see apps/inv2sp/docs/operations/runbook.md).
+# Requires a dev service principal (see docs/MIGRATION_PLAN.md Phase 0,
+# item 3 - not yet provisioned as of this migration).
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'apps/inv2sp/**'
+      - '.github/workflows/cd-inv2sp-dev.yml'
+      - '.github/workflows/_rw-inv2sp-deploy.yml'
+      - '.github/actions/**'
+  workflow_dispatch:
+
+concurrency:
+  group: cd-inv2sp-dev
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: none
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/_rw-inv2sp-deploy.yml
+    permissions:
+      contents: read
+    with:
+      environment-name: dev
+    secrets: inherit

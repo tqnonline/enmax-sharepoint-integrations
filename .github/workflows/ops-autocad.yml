@@ -1,0 +1,126 @@
+name: Ops - autocad
+
+# Manual operator actions for autocad that CD deliberately does not
+# automate (see docs/MIGRATION_PLAN.md "explicitly out of scope" - cloud
+# flows and the admin solution are absent from CD, matching the source
+# repo's Invoke-PpDeploy steps 9-11 being manual-only).
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target Power Platform environment
+        required: true
+        type: choice
+        options: [dev, uat, prod]
+      operation:
+        description: Operation to run
+        required: true
+        type: choice
+        options:
+          - dev-finish        # re-run optionsets/seed/roles/publish without re-importing (recovery path)
+          - deploy-flows      # Invoke-PpDeployFlows - prod or admin catalog cloud flows
+          - flows-catalog
+          - deploy-admin-solution
+          - verify-app-config
+          - verify-exception-logging
+
+permissions:
+  contents: read
+
+env:
+  DATAVERSE_GEO: can
+  PYTHONUTF8: '1'
+
+jobs:
+  run:
+    runs-on: windows-latest-enmax-corp
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-autocad
+
+      - name: pac auth (SPN)
+        uses: ./.github/actions/pac-auth-spn
+        with:
+          environment-url: ${{ secrets.AUTOCAD_DATAVERSE_URL }}
+          client-id: ${{ secrets.AUTOCAD_SP_CLIENT_ID }}
+          client-secret: ${{ secrets.AUTOCAD_SP_CLIENT_SECRET }}
+          tenant-id: ${{ secrets.AUTOCAD_TENANT_ID }}
+          profile-name: spn-ops-${{ inputs.environment }}
+
+      - name: Install Python deploy package
+        if: contains(fromJSON('["dev-finish","deploy-flows","flows-catalog","deploy-admin-solution"]'), inputs.operation)
+        working-directory: apps/autocad/solution/scripts
+        run: |
+          uv pip install -r requirements.txt --system
+          uv pip install -e . --system
+
+      # ── dev-finish: recovery path when a prior CD run died after import ─
+      - if: inputs.operation == 'dev-finish'
+        name: dev-finish - optionsets, seed, roles
+        working-directory: apps/autocad
+        run: |
+          python -m powerplatform_deploy.cli optionsets --environment ${{ inputs.environment }}
+          python -m powerplatform_deploy.cli seed --environment ${{ inputs.environment }} --scope master
+          python -m powerplatform_deploy.cli roles --environment ${{ inputs.environment }}
+
+      - if: inputs.operation == 'dev-finish'
+        name: dev-finish - pac auth (service account) + push Code App
+        uses: ./.github/actions/pac-auth-service-account
+        with:
+          environment-url: ${{ secrets.AUTOCAD_DATAVERSE_URL }}
+          username: ${{ secrets.AUTOCAD_SVC_USERNAME }}
+          password: ${{ secrets.AUTOCAD_SVC_PASSWORD }}
+          profile-name: svc-ops-${{ inputs.environment }}
+
+      - if: inputs.operation == 'dev-finish'
+        name: dev-finish - npm build + pac code push
+        working-directory: apps/autocad/code-app
+        run: |
+          npm ci
+          npm run build
+          pac code push
+
+      # ── Cloud flows (never in CD - see docs/MIGRATION_PLAN.md) ─────────
+      - if: inputs.operation == 'deploy-flows'
+        name: Deploy prod-catalog cloud flows
+        working-directory: apps/autocad
+        shell: pwsh
+        run: |
+          Import-Module ./scripts/PowerPlatform.Deploy/PowerPlatform.Deploy.psd1 -Force
+          Invoke-PpDeployFlows -Environment ${{ inputs.environment }} -Catalog prod -Activate
+
+      - if: inputs.operation == 'flows-catalog'
+        name: Deploy admin-catalog cloud flows
+        working-directory: apps/autocad
+        shell: pwsh
+        run: |
+          Import-Module ./scripts/PowerPlatform.Deploy/PowerPlatform.Deploy.psd1 -Force
+          Invoke-PpDeployFlows -Environment ${{ inputs.environment }} -Catalog admin -Activate
+
+      # ── Admin solution (never in CD; dev/uat only per ADR-0005) ────────
+      - if: inputs.operation == 'deploy-admin-solution'
+        name: Pack + import admin solution
+        working-directory: apps/autocad
+        run: |
+          python -m powerplatform_deploy.cli pack --environment ${{ inputs.environment }} --solution admin
+          python -m powerplatform_deploy.cli import --environment ${{ inputs.environment }} --solution admin
+
+      # ── Verification helpers, never run in CD in the source repo ───────
+      - if: inputs.operation == 'verify-app-config'
+        name: Verify App Configuration completeness
+        working-directory: apps/autocad
+        shell: pwsh
+        run: |
+          Import-Module ./scripts/PowerPlatform.Deploy/PowerPlatform.Deploy.psd1 -Force
+          Test-PpAppConfigCompleteness -Environment ${{ inputs.environment }}
+
+      - if: inputs.operation == 'verify-exception-logging'
+        name: Verify exception logging wiring
+        working-directory: apps/autocad
+        shell: pwsh
+        run: |
+          Import-Module ./scripts/PowerPlatform.Deploy/PowerPlatform.Deploy.psd1 -Force
+          Invoke-PpVerifyExceptionLogging -Environment ${{ inputs.environment }}

@@ -1,0 +1,154 @@
+name: _rw-autocad-deploy
+
+# Reusable workflow: the 8-step autocad deploy chain, called by
+# cd-autocad-dev.yml / cd-autocad-uat.yml / cd-autocad-prod.yml.
+#
+# IMPORTANT: GitHub does not support passing Environment-scoped secrets
+# through a `secrets:` map on a reusable-workflow call - the job that
+# declares `environment:` must read secrets.* directly, and the caller must
+# use `secrets: inherit`. See:
+# https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows
+# ("Environment secrets cannot be passed from the caller workflow").
+# That's why `environment: ${{ inputs.environment-name }}` is declared HERE,
+# on this job, and every secret below is read directly as AUTOCAD_* rather
+# than passed through workflow_call `secrets:` inputs.
+#
+# Auth model (the material change from the source repo):
+#   Steps 1-6 + integration tests -> SPN            (pac-auth-spn)
+#   Step 7 (Code App push)        -> service account (pac-auth-service-account, ROPC)
+# SPNs cannot own Code Apps in this tenant; the service account is scoped to
+# that one step only. Runners are ephemeral - no cached profile carries over
+# between jobs or between workflow runs. See docs/cicd.md.
+
+on:
+  workflow_call:
+    inputs:
+      environment-name:
+        description: dev | uat | prod - both the GitHub Environment name and the pp-deploy --environment value
+        required: true
+        type: string
+      run-integration-tests:
+        required: false
+        type: boolean
+        default: false
+      push-code-app:
+        description: >
+          Set false to degrade gracefully if the service-account ROPC path is
+          blocked (e.g. by Conditional Access): steps 1-6 still deploy, and
+          the job prints the manual command an operator must run instead of
+          silently failing.
+        required: false
+        type: boolean
+        default: true
+
+env:
+  DATAVERSE_GEO: can
+  PYTHONUTF8: '1'
+
+jobs:
+  deploy:
+    runs-on: windows-latest-enmax-corp
+    environment: ${{ inputs.environment-name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-autocad
+        with:
+          npm-install: 'false'
+
+      - name: Install Code App deps
+        working-directory: apps/autocad/code-app
+        run: npm ci
+
+      - name: Build Code App
+        working-directory: apps/autocad/code-app
+        run: npm run build
+
+      - name: Install Python deploy package
+        working-directory: apps/autocad/solution/scripts
+        run: |
+          uv pip install -r requirements.txt --system
+          uv pip install -e . --system
+
+      # ── Steps 1-6: SPN auth ────────────────────────────────────────────
+      - name: pac auth (SPN)
+        uses: ./.github/actions/pac-auth-spn
+        with:
+          environment-url: ${{ secrets.AUTOCAD_DATAVERSE_URL }}
+          client-id: ${{ secrets.AUTOCAD_SP_CLIENT_ID }}
+          client-secret: ${{ secrets.AUTOCAD_SP_CLIENT_SECRET }}
+          tenant-id: ${{ secrets.AUTOCAD_TENANT_ID }}
+          profile-name: spn-${{ inputs.environment-name }}
+
+      - name: 1. Pack solution
+        working-directory: apps/autocad
+        run: python -m powerplatform_deploy.cli pack --environment ${{ inputs.environment-name }}
+
+      - name: 2. Import solution
+        working-directory: apps/autocad
+        run: python -m powerplatform_deploy.cli import --environment ${{ inputs.environment-name }}
+
+      - name: 3. Register plugins & Custom APIs
+        working-directory: apps/autocad
+        shell: pwsh
+        run: |
+          Import-Module ./scripts/PowerPlatform.Deploy/PowerPlatform.Deploy.psd1 -Force
+          Register-PpPlugins -Environment ${{ inputs.environment-name }}
+
+      - name: 4. Patch option set labels
+        working-directory: apps/autocad
+        run: python -m powerplatform_deploy.cli optionsets --environment ${{ inputs.environment-name }}
+
+      - name: 5. Seed master reference data (idempotent PATCH upserts)
+        working-directory: apps/autocad
+        run: python -m powerplatform_deploy.cli seed --environment ${{ inputs.environment-name }} --scope master
+
+      - name: 6. Provision security roles
+        working-directory: apps/autocad
+        run: python -m powerplatform_deploy.cli roles --environment ${{ inputs.environment-name }}
+
+      # ── Step 7: Code App push - service account (ROPC), NOT the SPN ────
+      - name: pac auth (service account, ROPC) for Code App push
+        if: inputs.push-code-app && secrets.AUTOCAD_SVC_USERNAME != ''
+        uses: ./.github/actions/pac-auth-service-account
+        with:
+          environment-url: ${{ secrets.AUTOCAD_DATAVERSE_URL }}
+          username: ${{ secrets.AUTOCAD_SVC_USERNAME }}
+          password: ${{ secrets.AUTOCAD_SVC_PASSWORD }}
+          profile-name: svc-${{ inputs.environment-name }}
+
+      - name: 7. Push Code App (pac code push, service account)
+        if: inputs.push-code-app && secrets.AUTOCAD_SVC_USERNAME != ''
+        working-directory: apps/autocad/code-app
+        run: pac code push
+
+      - name: 7. Code App push SKIPPED - manual step required
+        if: "!inputs.push-code-app || secrets.AUTOCAD_SVC_USERNAME == ''"
+        shell: bash
+        run: |
+          echo "::warning::Code App push was skipped (push-code-app=false or AUTOCAD_SVC_* secrets not set for this environment)."
+          echo "::notice::Run this manually once authenticated as a Dataverse USER (not an SPN - see apps/autocad/scripts/push-codeapp-uat.ps1):"
+          echo "::notice::  pac auth create --url <dataverse-url>"
+          echo "::notice::  cd apps/autocad/code-app && npm run build && pac code push"
+
+      # ── Step 8: integration tests - back to SPN ────────────────────────
+      - if: inputs.run-integration-tests
+        name: pac auth (SPN) - restore for integration tests
+        uses: ./.github/actions/pac-auth-spn
+        with:
+          environment-url: ${{ secrets.AUTOCAD_DATAVERSE_URL }}
+          client-id: ${{ secrets.AUTOCAD_SP_CLIENT_ID }}
+          client-secret: ${{ secrets.AUTOCAD_SP_CLIENT_SECRET }}
+          tenant-id: ${{ secrets.AUTOCAD_TENANT_ID }}
+          profile-name: spn-${{ inputs.environment-name }}
+
+      - if: inputs.run-integration-tests
+        name: 8. Concurrency integration tests (IssueNumbers)
+        working-directory: apps/autocad/solution/plugins
+        env:
+          # IssueNumbers.Tests' SkipIfNoDataverse() reads the short names.
+          ENVIRONMENT_URL: ${{ secrets.AUTOCAD_DATAVERSE_URL }}
+          CLIENT_ID: ${{ secrets.AUTOCAD_SP_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.AUTOCAD_SP_CLIENT_SECRET }}
+          TENANT_ID: ${{ secrets.AUTOCAD_TENANT_ID }}
+        run: dotnet test IssueNumbers.Tests/IssueNumbers.Tests.csproj --filter "Category=Integration" --configuration Release

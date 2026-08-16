@@ -1,0 +1,24 @@
+name: Azure login (service principal secret)
+description: >
+  Thin wrapper around azure/login@v3 using 4 discrete secrets rather than
+  one combined AZURE_CREDENTIALS JSON blob, matching the pattern carried
+  over from apps/inv2sp's deploy-prod.yml (ADR-0033). azure/login has no
+  separate client-secret input for SPN-secret auth; the `creds` input takes
+  a single JSON blob, constructed here at point of use.
+
+inputs:
+  client-id:
+    required: true
+  client-secret:
+    required: true
+  subscription-id:
+    required: true
+  tenant-id:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: azure/login@v3
+      with:
+        creds: '{"clientId":"${{ inputs.client-id }}","clientSecret":"${{ inputs.client-secret }}","subscriptionId":"${{ inputs.subscription-id }}","tenantId":"${{ inputs.tenant-id }}"}'

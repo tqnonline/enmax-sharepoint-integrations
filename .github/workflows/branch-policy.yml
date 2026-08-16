@@ -4,12 +4,17 @@ name: Branch Policy
 #   - main only accepts pull requests from `dev` (never from feature
 #     branches directly).
 #   - dev only accepts pull requests from conventionally-named branches
-#     (feature/*, fix/*, hotfix/*, chore/*, docs/*, refactor/*, test/*).
+#     (feature/*, feat/*, fix/*, hotfix/*, chore/*, docs/*, refactor/*,
+#     test/*, ci/*).
 #
 # This is set as a required status check on both branches' protection
-# rules (see docs/operations - branch protection is configured via the
-# GitHub API/CLI, not as code, since GitHub does not support "only allow
-# PRs from branch X" natively in branch protection rules).
+# rulesets (see .github/rulesets/) - GitHub does not support "only allow
+# PRs from branch X" natively in branch protection.
+#
+# Carried over from apps/inv2sp's source repo (originally the only
+# CI-as-code branch-policy enforcement between the two source repos);
+# promoted to the monorepo root and extended with the `feat/*` (autocad's
+# convention: feat/<NNN>-description) and `ci/*` prefixes.
 
 on:
   pull_request:
@@ -25,7 +30,7 @@ permissions:
 jobs:
   enforce-branch-policy:
     name: Validate source/target branch
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-enmax-corp
     steps:
       - name: Check base and head branch combination
         shell: bash
@@ -53,12 +58,12 @@ jobs:
 
           if [ "$BASE" = "dev" ]; then
             case "$HEAD" in
-              feature/*|fix/*|hotfix/*|chore/*|docs/*|refactor/*|test/*)
+              feature/*|feat/*|fix/*|hotfix/*|chore/*|docs/*|refactor/*|test/*|ci/*)
                 echo "OK: dev <- $HEAD"
                 exit 0
                 ;;
               *)
-                echo "::error::Pull requests into 'dev' must come from a conventionally-named branch (feature/*, fix/*, hotfix/*, chore/*, docs/*, refactor/*, test/*). This PR is from '$HEAD'."
+                echo "::error::Pull requests into 'dev' must come from a conventionally-named branch (feature/*, feat/*, fix/*, hotfix/*, chore/*, docs/*, refactor/*, test/*, ci/*). This PR is from '$HEAD'."
                 exit 1
                 ;;
             esac

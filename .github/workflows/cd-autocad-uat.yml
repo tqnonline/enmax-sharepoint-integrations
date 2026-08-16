@@ -1,0 +1,29 @@
+name: CD - autocad - uat
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/autocad/**'
+      - '.github/workflows/cd-autocad-uat.yml'
+      - '.github/workflows/_rw-autocad-deploy.yml'
+      - '.github/actions/**'
+  workflow_dispatch:
+
+concurrency:
+  group: cd-autocad-uat
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/_rw-autocad-deploy.yml
+    permissions:
+      contents: read
+    with:
+      environment-name: uat
+      run-integration-tests: false
+      push-code-app: true
+    secrets: inherit

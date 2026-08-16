@@ -1,0 +1,60 @@
+name: Setup autocad toolchain
+description: >
+  Installs the toolchain needed to build/test/deploy apps/autocad on an
+  ephemeral runner: Node (from repo .nvmrc), .NET SDK, Python, uv, and the
+  Power Platform CLI. Runners are ephemeral (no persisted image), so this
+  runs fresh on every job.
+
+inputs:
+  node:
+    description: Install Node.js
+    required: false
+    default: 'true'
+  dotnet:
+    description: Install .NET SDK
+    required: false
+    default: 'true'
+  python:
+    description: Install Python + uv
+    required: false
+    default: 'true'
+  pac-cli:
+    description: Install the Power Platform CLI (dotnet tool)
+    required: false
+    default: 'true'
+  npm-install:
+    description: Run `npm ci` at the repo root after Node setup
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - if: inputs.node == 'true'
+      uses: actions/setup-node@v4
+      with:
+        node-version-file: .nvmrc
+        cache: npm
+        cache-dependency-path: package-lock.json
+
+    - if: inputs.node == 'true' && inputs.npm-install == 'true'
+      shell: bash
+      run: npm ci
+
+    - if: inputs.dotnet == 'true'
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - if: inputs.python == 'true'
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - if: inputs.python == 'true'
+      shell: bash
+      run: pip install uv
+
+    - if: inputs.pac-cli == 'true'
+      shell: bash
+      run: dotnet tool install --global Microsoft.PowerApps.CLI.Tool

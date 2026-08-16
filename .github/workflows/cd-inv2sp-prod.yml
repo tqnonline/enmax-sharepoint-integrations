@@ -1,0 +1,106 @@
+name: CD - inv2sp - prod
+
+# Manual, reviewer-gated deployment of inv2sp to production - see
+# apps/inv2sp/docs/decisions/0033-github-actions-prod-deployment-spn.md for
+# the full design rationale (auth method, trigger mode, scope, and the
+# deliberately narrow RBAC scope granted to the deploying service
+# principal). Carried over from the source repo's deploy-prod.yml.
+#
+# This pipeline does NOT seed Key Vault secret values
+# (fileShareServiceAccountPassword/digestEmailTo/alertEmailTo) -
+# Set-KeyVaultSecrets.ps1 stays an interactive, human-run, PIM-elevated
+# step by design (a secret value must never pass through CI logs or
+# non-interactive automation). It also does NOT enable the scheduled
+# trigger - production ships with SCHEDULED_TRIGGER_ENABLED=false by design.
+#
+# The `plan` job runs under the `prod-plan` Environment (same INV2SP_AZURE_*
+# secrets, NO reviewers) so the what-if diff is visible BEFORE a reviewer is
+# asked to approve the `deploy` job, which runs under the reviewer-gated
+# `prod` Environment. See docs/cicd.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type 'deploy' to confirm you want to deploy inv2sp to PRODUCTION"
+        required: true
+      whatIfOnly:
+        description: 'Preview only - run what-if and stop, do not deploy anything'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: none # authenticates with a stored client secret, not OIDC - see ADR-0033
+
+jobs:
+  validate-input:
+    name: Validate confirmation input
+    runs-on: ubuntu-latest-enmax-corp
+    steps:
+      - name: Require the literal word 'deploy'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event.inputs.confirm }}" != "deploy" ]; then
+            echo "::error::You must type the literal word 'deploy' in the confirm input to run this pipeline against PRODUCTION. Got: '${{ github.event.inputs.confirm }}'"
+            exit 1
+          fi
+          echo "Confirmed."
+
+  plan:
+    name: Preview changes (what-if)
+    needs: validate-input
+    runs-on: ubuntu-latest-enmax-corp
+    environment: prod-plan # credential holder ONLY - no reviewers, never deploys. See docs/cicd.md.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/azure-login
+        with:
+          client-id: ${{ secrets.INV2SP_AZURE_CLIENT_ID }}
+          client-secret: ${{ secrets.INV2SP_AZURE_CLIENT_SECRET }}
+          subscription-id: ${{ secrets.INV2SP_AZURE_SUBSCRIPTION_ID }}
+          tenant-id: ${{ secrets.INV2SP_AZURE_TENANT_ID }}
+
+      - uses: ./.github/actions/setup-inv2sp
+
+      - name: What-if preview (infra)
+        working-directory: apps/inv2sp
+        shell: pwsh
+        run: ./scripts/Deploy-Infrastructure.ps1 -Environment prod -WhatIf
+
+  deploy:
+    name: Deploy infrastructure + workflows
+    needs: plan
+    if: ${{ github.event.inputs.whatIfOnly != 'true' }}
+    runs-on: ubuntu-latest-enmax-corp
+    environment: prod # required-reviewer approval gate - see ADR-0033
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/azure-login
+        with:
+          client-id: ${{ secrets.INV2SP_AZURE_CLIENT_ID }}
+          client-secret: ${{ secrets.INV2SP_AZURE_CLIENT_SECRET }}
+          subscription-id: ${{ secrets.INV2SP_AZURE_SUBSCRIPTION_ID }}
+          tenant-id: ${{ secrets.INV2SP_AZURE_TENANT_ID }}
+
+      - uses: ./.github/actions/setup-inv2sp
+
+      - name: Deploy infrastructure (Bicep)
+        working-directory: apps/inv2sp
+        shell: pwsh
+        run: ./scripts/Deploy-Infrastructure.ps1 -Environment prod -Force
+
+      - name: Deploy workflows (Logic App zip-deploy)
+        working-directory: apps/inv2sp
+        shell: pwsh
+        run: ./scripts/Deploy-Workflows.ps1 -Environment prod -Force
+
+      - name: Reminder - Key Vault secrets and trigger enablement
+        shell: bash
+        run: |
+          echo "::notice::Deployment complete. Two things this pipeline deliberately does NOT do:"
+          echo "::notice:: 1. Seed Key Vault secret values (fileShareServiceAccountPassword/digestEmailTo/alertEmailTo) - run Set-KeyVaultSecrets.ps1 manually if not already done."
+          echo "::notice:: 2. Enable the scheduled trigger (SCHEDULED_TRIGGER_ENABLED) - production ships with this OFF by design (ADR-0009). Run Enable-Triggers.ps1 only after independently verifying this deployment."

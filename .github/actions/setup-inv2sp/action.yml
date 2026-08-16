@@ -1,0 +1,20 @@
+name: Setup inv2sp toolchain
+description: >
+  Verifies/prepares the toolchain needed to deploy apps/inv2sp on an
+  ephemeral corp runner: Azure CLI + Bicep, and PowerShell 7. Deploy scripts
+  invoke `az` directly (not the Az PowerShell module), so this only needs to
+  ensure `az` and the Bicep CLI extension are current.
+
+runs:
+  using: composite
+  steps:
+    - name: Verify az CLI and pwsh are present
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "az CLI: $(az version --query '\"azure-cli\"' -o tsv)"
+        echo "pwsh:   $(pwsh -Version)"
+
+    - name: Ensure Bicep CLI is installed/current
+      shell: bash
+      run: az bicep install || az bicep upgrade

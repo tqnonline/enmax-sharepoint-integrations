@@ -1,6 +1,6 @@
-name: Bug report
+name: Bug report (autocad)
 description: Report a defect in the ENMAX AutoCAD Drawing Numbering app
-labels: ["bug"]
+labels: ["bug", "autocad"]
 body:
   - type: markdown
     attributes:
@@ -42,4 +42,4 @@ body:
     id: files
     attributes:
       label: Affected files (if known)
-      placeholder: "e.g. solution/plugins/IssueNumbers/Plugin1.cs"
+      placeholder: "e.g. apps/autocad/solution/plugins/IssueNumbers/Plugin1.cs"

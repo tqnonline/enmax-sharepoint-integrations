@@ -1,0 +1,198 @@
+name: CI
+
+# The single required status check for both `dev` and `main` (via `ci-gate`).
+# Uses an always-running `changes` job (no path filter) feeding per-app jobs,
+# because `pull_request: paths:` combined with required status checks
+# deadlocks: a job skipped by a path filter never reports a status, and
+# GitHub blocks the PR forever waiting for a check that will never appear.
+# See docs/cicd.md.
+
+on:
+  pull_request:
+    branches: [dev, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect changed apps
+    runs-on: ubuntu-latest-enmax-corp
+    outputs:
+      autocad: ${{ steps.diff.outputs.autocad }}
+      inv2sp: ${{ steps.diff.outputs.inv2sp }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "autocad=true" >> "$GITHUB_OUTPUT"
+            echo "inv2sp=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          FILES=$(git diff --name-only "$BASE" "$HEAD")
+          echo "Changed files:"
+          echo "$FILES"
+          AUTOCAD=false
+          INV2SP=false
+          SHARED=false
+          if echo "$FILES" | grep -q '^apps/autocad/'; then AUTOCAD=true; fi
+          if echo "$FILES" | grep -q '^apps/inv2sp/'; then INV2SP=true; fi
+          if echo "$FILES" | grep -qvE '^apps/(autocad|inv2sp)/'; then SHARED=true; fi
+          if [ "$SHARED" = "true" ]; then AUTOCAD=true; INV2SP=true; fi
+          echo "autocad=$AUTOCAD" >> "$GITHUB_OUTPUT"
+          echo "inv2sp=$INV2SP" >> "$GITHUB_OUTPUT"
+
+  autocad-app:
+    name: autocad / app (lint, vitest, build)
+    needs: changes
+    if: needs.changes.outputs.autocad == 'true'
+    runs-on: windows-latest-enmax-corp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-autocad
+        with: { dotnet: 'false', python: 'false', pac-cli: 'false' }
+      - name: Lint
+        working-directory: apps/autocad/code-app
+        run: npm run lint
+      - name: Test (Vitest)
+        working-directory: apps/autocad/code-app
+        run: npm test -- --coverage
+      - name: Build
+        working-directory: apps/autocad/code-app
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: code-app-build
+          path: apps/autocad/code-app/dist
+          retention-days: 7
+
+  autocad-plugins:
+    name: autocad / plugins (net462 build + unit test)
+    needs: changes
+    if: needs.changes.outputs.autocad == 'true'
+    runs-on: windows-latest-enmax-corp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build plug-in (net462 via reference assemblies)
+        working-directory: apps/autocad/solution/plugins/IssueNumbers
+        run: dotnet build --configuration Release
+      - name: Unit tests (excludes Category=Integration)
+        working-directory: apps/autocad/solution/plugins
+        run: dotnet test IssueNumbers.Tests/IssueNumbers.Tests.csproj --filter "Category!=Integration" --configuration Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plugin-release
+          path: apps/autocad/solution/plugins/IssueNumbers/bin/Release/net462/Enmax.AutoCAD.dll
+          retention-days: 7
+
+  autocad-tooling:
+    name: autocad / deploy tooling (Pester + pytest, Linux sandbox)
+    needs: changes
+    if: needs.changes.outputs.autocad == 'true'
+    runs-on: ubuntu-latest-enmax-corp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Build plug-in on Linux (net462 via reference assemblies)
+        working-directory: apps/autocad/solution/plugins/IssueNumbers
+        run: dotnet build --configuration Release
+      - name: Install Pester
+        shell: pwsh
+        run: Install-Module Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck -Scope CurrentUser
+      - name: Run PowerPlatform.Deploy Pester (credentials scrubbed)
+        shell: pwsh
+        run: |
+          'ENVIRONMENT_URL','CLIENT_ID','CLIENT_SECRET','TENANT_ID','DATAVERSE_URL','DATAVERSE_CLIENT_ID','DATAVERSE_CLIENT_SECRET','DATAVERSE_TENANT_ID' |
+            ForEach-Object { [Environment]::SetEnvironmentVariable($_, $null, 'Process') }
+          $cfg = New-PesterConfiguration
+          $cfg.Run.Path = 'apps/autocad/scripts/PowerPlatform.Deploy/Tests'
+          $cfg.Run.Exit = $true
+          $cfg.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $cfg
+      - name: Install pip + uv
+        run: pip install uv
+      - name: Install Python deploy package + test deps
+        working-directory: apps/autocad/solution/scripts
+        run: |
+          uv pip install -r requirements.txt --system
+          uv pip install -e . --system
+          uv pip install pytest --system
+      # Newly wired into CI - these 19 pytest modules were never run in CI
+      # in the source repo. See docs/MIGRATION_PLAN.md Phase 5.
+      - name: Run Python deploy-tooling tests (pytest)
+        working-directory: apps/autocad/solution/scripts
+        run: python -m pytest tests powerplatform_deploy/tests -v
+
+  inv2sp-validate:
+    name: inv2sp / Bicep + Pester validation
+    needs: changes
+    if: needs.changes.outputs.inv2sp == 'true'
+    runs-on: ubuntu-latest-enmax-corp
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure Bicep CLI is installed/current
+        run: az bicep install || az bicep upgrade
+      - name: Install Pester
+        shell: pwsh
+        run: Install-Module Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck -Scope CurrentUser
+      # Newly wired into CI - these 99 Pester tests (Bicep validation,
+      # deployment-script static analysis, workflow.json schema/invariants,
+      # env-config unit tests) were never run in CI in the source repo.
+      # See docs/MIGRATION_PLAN.md Phase 5.
+      - name: Run inv2sp Pester suite
+        working-directory: apps/inv2sp
+        shell: pwsh
+        run: |
+          $cfg = New-PesterConfiguration
+          $cfg.Run.Path = 'tests'
+          $cfg.Run.Exit = $true
+          $cfg.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $cfg
+
+  actions-lint:
+    name: actionlint
+    runs-on: ubuntu-latest-enmax-corp
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run actionlint
+        run: |
+          bash <(curl -s https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color
+
+  ci-gate:
+    name: CI gate (required check)
+    needs: [changes, autocad-app, autocad-plugins, autocad-tooling, inv2sp-validate, actions-lint]
+    if: always()
+    runs-on: ubuntu-latest-enmax-corp
+    steps:
+      - name: Fail if any dependency job failed
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '${{ toJSON(needs) }}' > needs.json
+          cat needs.json
+          if grep -qE '"result": *"(failure|cancelled)"' needs.json; then
+            echo "::error::One or more CI jobs failed."
+            exit 1
+          fi
+          echo "All required jobs passed (or were correctly skipped)."
